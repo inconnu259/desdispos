@@ -10,11 +10,47 @@ import { DateFixDialog, type DateFixData } from './date-fix-dialog';
 
 const TONE = TONE_MAP['grimoire-emeraude'];
 
+const TODAY = '2026-10-20';
+
 const SLOTS: RankedPollSlot[] = [
-  { id: 'o2', label: 'dim. 25 oct. · matin', yes: 4, maybe: 0, no: 1, past: false },
-  { id: 'o1', label: 'sam. 24 oct. · soir', yes: 2, maybe: 1, no: 0, past: false },
-  { id: 'o3', label: 'sam. 31 oct. · soir', yes: 0, maybe: 0, no: 0, past: false },
+  {
+    id: 'o2',
+    date: '2026-10-25',
+    slot: 'MORNING',
+    label: 'dim. 25 oct. · matin',
+    yes: 4,
+    maybe: 0,
+    no: 1,
+    past: false,
+  },
+  {
+    id: 'o1',
+    date: '2026-10-24',
+    slot: 'EVENING',
+    label: 'sam. 24 oct. · soir',
+    yes: 2,
+    maybe: 1,
+    no: 0,
+    past: false,
+  },
+  {
+    id: 'o3',
+    date: '2026-10-31',
+    slot: 'EVENING',
+    label: 'sam. 31 oct. · soir',
+    yes: 0,
+    maybe: 0,
+    no: 0,
+    past: false,
+  },
 ];
+
+/** Le créneau est passé : sa date est avant `TODAY`, comme le drapeau `past` que `rankedPollSlots` pose. */
+const asPast = (slot: RankedPollSlot): RankedPollSlot => ({
+  ...slot,
+  date: '2026-10-01',
+  past: true,
+});
 
 describe('DateFixDialog — confirmation « Votre accord » (Story 40.6)', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -31,7 +67,12 @@ describe('DateFixDialog — confirmation « Votre accord » (Story 40.6)', () =>
         { provide: MatDialogRef, useValue: ref },
         {
           provide: MAT_DIALOG_DATA,
-          useValue: { title: 'Soirée plateaux', slots, confirm } satisfies DateFixData,
+          useValue: {
+            title: 'Soirée plateaux',
+            slots,
+            todayKey: TODAY,
+            confirm,
+          } satisfies DateFixData,
         },
         { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
       ],
@@ -106,6 +147,23 @@ describe('DateFixDialog — confirmation « Votre accord » (Story 40.6)', () =>
     await settle();
 
     expect(confirm).toHaveBeenCalledWith('o2');
+  });
+
+  it('Story 44.3 — personne n’a dit oui : rien n’est présélectionné, « Fixer la date » est désactivé', async () => {
+    const confirm = vi.fn();
+    const slots = SLOTS.map((s) => ({ ...s, yes: 0, maybe: 0, no: 0 }));
+    const { el, settle } = await mount(confirm, slots);
+
+    expect(
+      Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).some(
+        (r) => r.checked,
+      ),
+    ).toBe(false);
+    const button = el.querySelector('.dfd__confirm') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    button.click();
+    await settle();
+    expect(confirm).not.toHaveBeenCalled();
   });
 
   it('« Renoncer » ferme sans rien écrire', async () => {
@@ -194,7 +252,7 @@ describe('DateFixDialog — confirmation « Votre accord » (Story 40.6)', () =>
 
   it('créneau passé : désactivé, la raison est écrite, le meilleur créneau NON passé est présélectionné et envoyé', async () => {
     const confirm = vi.fn().mockResolvedValue(undefined);
-    const slots = [{ ...SLOTS[0], past: true }, SLOTS[1], SLOTS[2]];
+    const slots = [asPast(SLOTS[0]), SLOTS[1], SLOTS[2]];
     const { el, settle, text } = await mount(confirm, slots);
 
     const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
@@ -213,13 +271,15 @@ describe('DateFixDialog — confirmation « Votre accord » (Story 40.6)', () =>
 
   it('tous les créneaux passés : rien n’est sélectionné, « Fixer la date » est désactivé et n’envoie rien', async () => {
     const confirm = vi.fn();
-    const slots = SLOTS.map((s) => ({ ...s, past: true }));
+    const slots = SLOTS.map(asPast);
     const { el, settle } = await mount(confirm, slots);
 
     const button = el.querySelector('.dfd__confirm') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(
-      Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).some((r) => r.checked),
+      Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).some(
+        (r) => r.checked,
+      ),
     ).toBe(false);
     button.click();
     await settle();

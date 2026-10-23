@@ -705,6 +705,8 @@ describe('event-card.util (Story 40.1)', () => {
         ['o1', 0, 0, 0],
       ]);
       expect(ranked[0].label).toBe('dim. 25 oct. · soir');
+      // Story 44.3 : `bestOption` classe sur le jour et le moment du créneau.
+      expect(ranked[0]).toMatchObject({ date: '2026-10-25', slot: 'EVENING' });
     });
 
     it('à égalité parfaite : le plus proche d’abord, le matin avant le soir d’un même jour ; sans réponse, ordre chronologique', () => {
@@ -748,7 +750,10 @@ describe('event-card.util (Story 40.1)', () => {
 
     it('décompte écrit : « n oui · n peut-être · n non »', () => {
       expect(
-        pollCountsLabel({ id: 'x', label: 'x', yes: 4, maybe: 0, no: 1, past: false }, TONE),
+        pollCountsLabel(
+          { id: 'x', date: '2026-10-25', slot: 'EVENING', label: 'x', yes: 4, maybe: 0, no: 1, past: false },
+          TONE,
+        ),
       ).toBe('4 oui · 0 peut-être · 1 non');
     });
 

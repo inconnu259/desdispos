@@ -619,6 +619,9 @@ export function pollSummaryLabel(options: readonly { date: string }[], tone: Eve
 /** Un créneau candidat avec le décompte de ses réponses, tel que la confirmation « Fixer la date » le liste. */
 export interface RankedPollSlot {
   id: string;
+  /** Jour et moment du créneau : `bestOption` (@master-jdr/shared) en a besoin pour le classer. */
+  date: string;
+  slot: DaySlot;
   /** « sam. 25 oct. · soir ». */
   label: string;
   yes: number;
@@ -645,6 +648,8 @@ export function rankedPollSlots(card: EventCardDto, todayKey: string): RankedPol
         option,
         slot: {
           id: option.id,
+          date: option.date,
+          slot: option.slot,
           label: pollSlotLabel(option),
           yes: votes.filter((v) => v.answer === 'YES').length,
           maybe: votes.filter((v) => v.answer === 'MAYBE').length,

@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { bestOption } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { pollCountsLabel, type RankedPollSlot } from '../event-card.util';
@@ -11,6 +12,8 @@ export interface DateFixData {
   title: string;
   /** Les créneaux du sondage, du plus au moins plébiscité (le premier est présélectionné). */
   slots: readonly RankedPollSlot[];
+  /** Aujourd'hui (clé `YYYY-MM-DD`) : `bestOption` en exclut les créneaux passés. */
+  todayKey: string;
   /** Écrit la date choisie (`PATCH …/poll/:pollId/choose`). Une erreur reste affichée dans la fenêtre. */
   confirm: (optionId: string) => Promise<void>;
 }
@@ -37,9 +40,10 @@ export class DateFixDialog {
   protected readonly data = inject<DateFixData>(MAT_DIALOG_DATA);
   protected readonly theme = inject(ThemeToneService);
 
-  /** Le meilleur créneau NON passé est présélectionné ; aucun si tous sont passés. */
+  /** Le meilleur créneau (`bestOption`, Story 44.3) est présélectionné ; aucun si tous sont passés ou si
+   *  personne n'a dit oui — c'est alors à la personne de choisir. */
   protected readonly selected = signal<string | null>(
-    this.data.slots.find((slot) => !slot.past)?.id ?? null,
+    bestOption(this.data.slots, this.data.todayKey)?.id ?? null,
   );
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);

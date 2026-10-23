@@ -1040,6 +1040,18 @@ export const foretAncienne: Record<ToneKey, string> = {
   'cta.destiny_mode': 'Destinée',
   'calendar.destiny_next_aria': 'Cercle suivant',
   'calendar.destiny_prev_aria': 'Cercle précédent',
+  // Story 44.3 — la liste des destinées (puce ✦). Aucun mot du JDR : le mode soirée l'affiche aussi.
+  'calendar.destiny_list_title': 'Choisis une destinée',
+  'calendar.destiny_list_subtitle': 'Tous tes votes ouverts, quel que soit le mois.',
+  'calendar.destiny_quit': 'Quitte la Destinée',
+  'calendar.destiny_row_open_one': 'Fin du vote {date} · {n} créneau',
+  'calendar.destiny_row_open_many': 'Fin du vote {date} · {n} créneaux',
+  'calendar.destiny_row_ended_one': 'Vote terminé · {n} créneau',
+  'calendar.destiny_row_ended_many': 'Vote terminé · {n} créneaux',
+  'calendar.destiny_state_todo': 'À faire',
+  'calendar.destiny_state_answered': 'Répondu',
+  'calendar.destiny_state_organizer': 'Organisateur',
+  'calendar.destiny_state_not_voting': 'Tu ne votes pas',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

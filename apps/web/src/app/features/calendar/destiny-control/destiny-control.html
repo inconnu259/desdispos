@@ -3,10 +3,12 @@
   <div class="destiny">
     <button
       type="button"
+      #chip
       class="destiny__chip"
       [class.destiny__chip--active]="active()"
-      [attr.aria-pressed]="active()"
-      (click)="toggled.emit()"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="listOpen()"
+      (click)="listRequested.emit()"
     >
       <span class="destiny__glyph" aria-hidden="true">✦</span>{{ chipLabel() }}
     </button>

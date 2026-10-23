@@ -290,6 +290,7 @@ export class EventDialog {
     const data: DateFixData = {
       title: this.card().title,
       slots: rankedPollSlots(this.card(), this.todayKey()),
+      todayKey: this.todayKey(),
       confirm: (optionId) => this.api.choose(this.partieId(), poll.id, optionId),
     };
     const ref = this.dialog.open<DateFixDialog, DateFixData, boolean>(DateFixDialog, {

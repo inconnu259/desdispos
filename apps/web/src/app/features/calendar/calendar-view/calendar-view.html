@@ -64,7 +64,8 @@
         <app-destiny-control
           [polls]="destinyPolls()"
           [currentPollId]="destinyPollId()"
-          (toggled)="toggleDestiny()"
+          [listOpen]="destinyListShown()"
+          (listRequested)="toggleDestinyList()"
           (prevRequested)="destinyPrev()"
           (nextRequested)="destinyNext()"
         />
@@ -182,6 +183,60 @@
           (layerToggled)="toggleLayer($event)"
           (legendToggled)="toggleLegend()"
           (resetRequested)="resetToDefault()"
+        />
+      </div>
+    }
+
+    <!-- Story 44.3 — ⚠️ la puce ✦ ouvre la LISTE des destinées. Mêmes deux enveloppes que le panneau
+         « Affichage » (menu ancré sur ordinateur, tiroir modal du bas en dessous de 1024 px), même
+         contenu : `app-destiny-list`. Échap et le fond assombri ferment sans rien changer ; le focus
+         est piégé, puis rendu à la puce. -->
+    @if (isDesktop()) {
+      @if (destinyChip(); as chip) {
+        <ng-template
+          cdkConnectedOverlay
+          [cdkConnectedOverlayOrigin]="chip"
+          [cdkConnectedOverlayOpen]="destinyListShown()"
+          [cdkConnectedOverlayHasBackdrop]="true"
+          [cdkConnectedOverlayPositions]="DISPLAY_PANEL_POSITIONS"
+          cdkConnectedOverlayPush
+          [cdkConnectedOverlayViewportMargin]="8"
+          (backdropClick)="closeDestinyList()"
+          (overlayKeydown)="onDestinyListKeydown($event)"
+        >
+          <div
+            class="display-surface display-surface--menu"
+            role="dialog"
+            cdkTrapFocus
+            cdkTrapFocusAutoCapture
+            [attr.aria-label]="theme.tone()['calendar.destiny_list_title']"
+          >
+            <app-destiny-list
+              [items]="destinyListItems()"
+              [activePollId]="destinyPollId()"
+              (chosen)="chooseDestiny($event)"
+              (quit)="quitDestiny()"
+            />
+          </div>
+        </ng-template>
+      }
+    } @else if (destinyListShown()) {
+      <div class="display-backdrop" (click)="closeDestinyList()" aria-hidden="true"></div>
+      <div
+        class="display-surface display-surface--sheet"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        [attr.aria-label]="theme.tone()['calendar.destiny_list_title']"
+        (keydown)="onDestinyListKeydown($event)"
+      >
+        <app-destiny-list
+          [items]="destinyListItems()"
+          [activePollId]="destinyPollId()"
+          (chosen)="chooseDestiny($event)"
+          (quit)="quitDestiny()"
         />
       </div>
     }

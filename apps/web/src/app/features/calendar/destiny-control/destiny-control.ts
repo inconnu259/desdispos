@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, ElementRef, inject, input, output, viewChild } from '@angular/core';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 /** Un vote ouvert, tel que le contrôle a besoin de le connaître : son identité et son nom.
@@ -38,11 +38,20 @@ export class DestinyControl {
   /** Le vote courant, ou `null` quand le mode est inactif. */
   readonly currentPollId = input<string | null>(null);
 
-  readonly toggled = output<void>();
+  /** Story 44.3 — la liste des destinées est ouverte (état porté par `CalendarView`, qui l'enveloppe). */
+  readonly listOpen = input(false);
+
+  /** ⚠️ Story 44.3 — la puce ne bascule plus le mode : elle DEMANDE la liste des destinées. */
+  readonly listRequested = output<void>();
   readonly prevRequested = output<void>();
   readonly nextRequested = output<void>();
 
   protected readonly theme = inject(ThemeToneService);
+
+  private readonly chip = viewChild<ElementRef<HTMLButtonElement>>('chip');
+
+  /** La puce : l'ancre du menu de la liste, et la cible du focus quand la liste se referme. */
+  readonly chipElement = computed(() => this.chip()?.nativeElement ?? null);
 
   protected readonly active = computed(
     () =>
@@ -60,9 +69,10 @@ export class DestinyControl {
     () => this.polls().find((p) => p.pollId === this.currentPollId())?.label ?? '',
   );
 
-  /** AC11 — l'état du mode et le vote courant vivent dans du TEXTE et dans `aria-pressed`, jamais
-   *  dans la seule estompe de la grille : une opacité n'existe pas pour un lecteur d'écran, et
-   *  elle disparaît en contraste élevé (P-1). */
+  /** AC11 — l'état du mode et le vote courant vivent dans du TEXTE (la puce porte le nom du vote actif),
+   *  jamais dans la seule estompe de la grille : une opacité n'existe pas pour un lecteur d'écran, et
+   *  elle disparaît en contraste élevé (P-1). Depuis la story 44.3 la puce ouvre une liste : son
+   *  `aria-expanded` dit l'état de la liste, plus celui du mode. */
   protected readonly chipLabel = computed(() => {
     const name = this.theme.tone()['cta.destiny_mode'];
     return this.active() ? `${name} · ${this.currentLabel()}` : name;

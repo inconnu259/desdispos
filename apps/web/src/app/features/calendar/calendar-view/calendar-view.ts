@@ -52,6 +52,7 @@ import type {
 import {
   CALENDAR_LAYER_KEYS,
   DEFAULT_CALENDAR_LAYER_KEYS,
+  destinyEntryOption,
   familyOf,
 } from '@master-jdr/shared';
 import {
@@ -93,6 +94,7 @@ import {
 } from '../day-detail.utils';
 import { CalendarLayerToggle } from '../calendar-layer-toggle/calendar-layer-toggle';
 import { DestinyControl, type DestinyPollRef } from '../destiny-control/destiny-control';
+import { DestinyList, type DestinyListItem } from '../destiny-list/destiny-list';
 import { ConstraintPanel } from '../constraint-panel/constraint-panel';
 import {
   ConflictDialog,
@@ -222,6 +224,7 @@ export interface EligibleSeanceEntry {
     CalendarDetailRail,
     CalendarLayerToggle,
     DestinyControl,
+    DestinyList,
     ComposeBar,
     ConstraintPanel,
     MatButtonToggleModule,
@@ -1069,6 +1072,8 @@ export class CalendarView implements OnInit {
    */
   protected enterDestiny(pollId: string): void {
     this.destinyPollId.set(pollId);
+    // Le créneau courant appartenait au vote précédent ; `chooseDestiny` pose celui du nouveau.
+    this.destinyOptionId.set(null);
     if (!this.activeLayers().includes('votes-en-cours')) {
       this.activeLayers.update((keys) => [...keys, 'votes-en-cours']);
     }
@@ -1076,16 +1081,100 @@ export class CalendarView implements OnInit {
 
   protected exitDestiny(): void {
     this.destinyPollId.set(null);
+    this.destinyOptionId.set(null);
   }
 
-  /** Le contrôle a un seul bouton : il arme le mode sur le premier vote, ou le quitte. */
-  protected toggleDestiny(): void {
-    if (this.destinyPoll()) {
-      this.exitDestiny();
-      return;
+  // ─── Story 44.3 — choisir la destinée active dans une liste ───────────────────
+  //
+  // ⚠️ La puce ✦ ne bascule plus le mode : elle ouvre la liste des votes ouverts, et c'est le choix d'une
+  // ligne qui l'active. La liste est enveloppée comme le panneau « Affichage » (menu ancré sur ordinateur,
+  // tiroir modal du bas en dessous de 1024 px) ; son contenu est `DestinyList`, de rendu pur.
+
+  /** Le créneau courant de la Destinée : un `optionId`, jamais un rang (le plateau de la 44.4 le lit). */
+  protected readonly destinyOptionId = signal<string | null>(null);
+
+  protected readonly destinyListOpen = signal(false);
+
+  private readonly destinyControl = viewChild(DestinyControl);
+
+  /** L'ancre du menu de la liste : la puce, qui vit dans `DestinyControl`. */
+  protected readonly destinyChip = computed(() => this.destinyControl()?.chipElement() ?? null);
+
+  /**
+   * Les lignes de la liste : les votes que la vue connaît (`destinyPolls()`, qui fait autorité sur ce qui est
+   * ouvert — à l'atelier, ceux de CETTE partie seulement ; dans la vitrine, ceux de toutes mes parties),
+   * enrichis de ce que `GET /me/open-polls` sert (échéance, effectif, mon état). Un vote sans entrée servie
+   * n'est pas listé : on ne montre pas une ligne dont on ignore l'état.
+   */
+  protected readonly destinyListItems = computed<DestinyListItem[]>(() => {
+    const known = new Set(this.destinyPolls().map((p) => p.pollId));
+    const today = this.todayKey;
+    return this.openPollsSvc
+      .entries()
+      .filter((e) => known.has(e.pollId))
+      .map((e) => ({
+        pollId: e.pollId,
+        partieName: e.partieName,
+        title: e.title,
+        expiresAt: e.expiresAt,
+        ended: e.expiresAt !== null && e.expiresAt.substring(0, 10) < today,
+        optionCount: e.options.length,
+        // Qui conclut le vote d'abord ; puis qui n'y vote pas ; puis ma réponse.
+        state: e.can.choose
+          ? 'organizer'
+          : !e.me.eligible
+            ? 'not-voting'
+            : e.me.answered
+              ? 'answered'
+              : 'todo',
+      }));
+  });
+
+  /** La liste n'a de sens que s'il y a des lignes : sans elles la puce a disparu, et le menu perdrait son ancre. */
+  protected readonly destinyListShown = computed(
+    () => this.destinyListOpen() && this.destinyListItems().length > 0,
+  );
+
+  protected toggleDestinyList(): void {
+    this.destinyListOpen.update((open) => !open);
+  }
+
+  /** Rendre le focus à la puce : sans quoi un utilisateur clavier retombe en haut du document. */
+  protected closeDestinyList(): void {
+    this.destinyListOpen.set(false);
+    this.destinyChip()?.focus();
+  }
+
+  protected onDestinyListKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      // Comme le panneau « Affichage » : Échap annule aussi la sélection de la grille, deux gestes distincts.
+      event.stopPropagation();
+      this.closeDestinyList();
     }
-    const first = this.destinyPolls()[0];
-    if (first) this.enterDestiny(first.pollId);
+  }
+
+  /** Choisir une ligne : la Destinée s'active sur CE vote (`pollId`), la vue devient Mois (Semaine pour un vote
+   *  du mode soirée) même depuis l'Agenda, et la grille se place sur l'option d'entrée du vote. */
+  protected chooseDestiny(pollId: string): void {
+    const entry = this.openPollsSvc.entries().find((e) => e.pollId === pollId);
+    this.closeDestinyList();
+    if (!entry) return;
+    this.enterDestiny(pollId);
+    const target = destinyEntryOption(entry, this.todayKey);
+    this.destinyOptionId.set(target?.optionId ?? null);
+    const view = entry.family === 'ralliement' ? 'week' : 'month';
+    if (this.view() !== view) this.onViewChange(view);
+    if (!target) return;
+    // Date UTC à minuit, comme celles que les vues émettent ; la plage affichée est rechargée comme pour une
+    // navigation à la main.
+    const date = new Date(`${target.date}T00:00:00Z`);
+    void (view === 'week' ? this.onWeekDateChange(date) : this.onMonthDateChange(date));
+  }
+
+  /** « Quitter la Destinée » : le mode s'arrête, la liste se referme. */
+  protected quitDestiny(): void {
+    this.exitDestiny();
+    this.closeDestinyList();
   }
 
   private stepDestiny(delta: 1 | -1): void {
@@ -1706,7 +1795,7 @@ export class CalendarView implements OnInit {
       // autorité sur ce qui est ouvert. C'est vrai en contexte de PARTIE (`activePolls()` dérive
       // de TOUS les scénarios de la partie, remplacés d'un bloc après chargement) : absence ⇒ clos.
       if (this.partieId()) {
-        untracked(() => this.destinyPollId.set(null));
+        untracked(() => this.exitDestiny());
         return;
       }
 
@@ -1715,7 +1804,7 @@ export class CalendarView implements OnInit {
       // première fois, on ne sait rien : le mode attend. (L'ancienne heuristique « hors plage ≠ clos » n'a
       // plus d'objet.)
       if (!this.openPollsSvc.loaded()) return;
-      untracked(() => this.destinyPollId.set(null));
+      untracked(() => this.exitDestiny());
     });
 
     // Story 36.10 — la composition aussi doit savoir mourir. Un vote scellé ou clôturé ailleurs

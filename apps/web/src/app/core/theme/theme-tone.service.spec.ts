@@ -834,6 +834,8 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.view_toggle_agenda_short',
     'calendar.conflict_walkthrough_label',
     'cta.destiny_mode',
+    // Story 44.3 — « Organisateur » : mot de travail, identique partout (EXPERIENCE §3.2)
+    'calendar.destiny_state_organizer',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
     'partie.asset_journal_cta',
     'partie.asset_carte_cta',
@@ -2010,6 +2012,43 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
       expect(tone['dashboard.role_ralliement_guest'], theme).toBe('Invité');
       expect(tone['dashboard.role_ralliement_admin'], theme).toBe('Admin');
       expect(tone['dashboard.role_ralliement_member'], theme).toBe('Membre');
+    }
+  });
+});
+
+// Story 44.3 — la liste des destinées (puce ✦). Le mode soirée l'affiche : aucun mot du JDR, ni « partie ».
+describe('Tones — la liste des destinées (Story 44.3)', () => {
+  const KEYS = Object.keys(TONE_MAP['grimoire-emeraude']).filter((key) =>
+    key.startsWith('calendar.destiny_list_') ||
+    key.startsWith('calendar.destiny_row_') ||
+    key.startsWith('calendar.destiny_state_') ||
+    key === 'calendar.destiny_quit',
+  );
+
+  it('onze clés, présentes dans les trois thèmes, sans mot du JDR ni « partie »', () => {
+    expect(KEYS).toHaveLength(11);
+    for (const theme of THEMES) {
+      for (const key of KEYS) {
+        const value = TONE_MAP[theme][key];
+        expect(value, `${theme} / ${key}`).toBeTruthy();
+        expect(value, `${theme} / ${key}`).not.toMatch(NON_JDR_BANNED_WORDS);
+        expect(value.toLowerCase(), `${theme} / ${key}`).not.toContain('partie');
+      }
+    }
+  });
+
+  it('les quatre pastilles d’état suivent EXPERIENCE §3.2', () => {
+    const attendu: Record<Theme, string[]> = {
+      'grimoire-emeraude': ['À faire', 'Répondu', 'Organisateur', 'Vous ne votez pas'],
+      'foret-ancienne': ['À faire', 'Répondu', 'Organisateur', 'Tu ne votes pas'],
+      'atelier-cuivre': ['À traiter', 'Consigné', 'Organisateur', 'Non votant'],
+    };
+    for (const theme of THEMES) {
+      const tone = TONE_MAP[theme];
+      expect(
+        ['todo', 'answered', 'organizer', 'not_voting'].map((s) => tone[`calendar.destiny_state_${s}`]),
+        theme,
+      ).toEqual(attendu[theme]);
     }
   });
 });

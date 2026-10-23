@@ -1044,6 +1044,18 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'cta.destiny_mode': 'Destinée',
   'calendar.destiny_next_aria': 'Scrutin suivant',
   'calendar.destiny_prev_aria': 'Scrutin précédent',
+  // Story 44.3 — la liste des destinées (puce ✦). Aucun mot du JDR : le mode soirée l'affiche aussi.
+  'calendar.destiny_list_title': 'Sélectionner une destinée',
+  'calendar.destiny_list_subtitle': 'Tous vos votes ouverts, tous mois confondus.',
+  'calendar.destiny_quit': 'Sortir de la Destinée',
+  'calendar.destiny_row_open_one': 'Clôture du scrutin {date} · {n} créneau',
+  'calendar.destiny_row_open_many': 'Clôture du scrutin {date} · {n} créneaux',
+  'calendar.destiny_row_ended_one': 'Scrutin clos · {n} créneau',
+  'calendar.destiny_row_ended_many': 'Scrutin clos · {n} créneaux',
+  'calendar.destiny_state_todo': 'À traiter',
+  'calendar.destiny_state_answered': 'Consigné',
+  'calendar.destiny_state_organizer': 'Organisateur',
+  'calendar.destiny_state_not_voting': 'Non votant',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

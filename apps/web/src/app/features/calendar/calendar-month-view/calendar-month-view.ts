@@ -1,4 +1,13 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -495,6 +504,24 @@ export class CalendarMonthView {
     if (init) {
       this.displayDate.set(new Date(init.getFullYear(), init.getMonth(), 1));
     }
+    // Story 44.3 — la Destinée place la grille sur un autre mois pendant que la vue est montée : elle
+    // suit `initialDate` (la vue Semaine le fait déjà pour `startDate`). Sans effet sur la navigation à la
+    // main, qui émet puis voit revenir le même mois.
+    effect(() => {
+      const next = this.initialDate();
+      if (!next) return;
+      untracked(() => {
+        const shown = this.displayDate();
+        // Les dates émises par cette vue et celles de la Destinée sont à minuit UTC ; la première lecture,
+        // elle, est locale (`new Date()`) : le mois déjà affiché peut donc coïncider avec l'une ou l'autre.
+        const sameLocal =
+          shown.getFullYear() === next.getFullYear() && shown.getMonth() === next.getMonth();
+        const sameUtc =
+          shown.getFullYear() === next.getUTCFullYear() && shown.getMonth() === next.getUTCMonth();
+        if (sameLocal || sameUtc) return;
+        this.displayDate.set(new Date(next.getUTCFullYear(), next.getUTCMonth(), 1));
+      });
+    });
   }
 
   goToToday(): void {

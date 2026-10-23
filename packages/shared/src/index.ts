@@ -976,6 +976,54 @@ export function hasAnswered(
     : optionIds.every((id) => voted.has(id));
 }
 
+/** Une option de vote telle que `bestOption` la classe : un jour, un créneau et ses réponses. */
+export interface RankableOption {
+  /** Clé `YYYY-MM-DD`. */
+  date: string;
+  slot: DaySlot;
+  yes: number;
+  maybe: number;
+}
+
+const DAY_SLOT_RANK: Record<DaySlot, number> = { MORNING: 0, AFTERNOON: 1, EVENING: 2, FULL_DAY: 3 };
+
+/** Ordre chronologique : le jour, puis le créneau de la journée. */
+function compareOptionsChronologically(a: RankableOption, b: RankableOption): number {
+  return a.date.localeCompare(b.date) || DAY_SLOT_RANK[a.slot] - DAY_SLOT_RANK[b.slot];
+}
+
+/**
+ * LE meilleur créneau d'un vote (Story 44.3), source unique de l'écran (Destinée, confirmation « Fixer la
+ * date ») : le plus de « oui », puis le plus de « peut-être », puis le plus tôt. Les options passées
+ * (`date < today`) sont exclues. `null` s'il n'en reste aucune, ou si personne n'a dit oui — il n'y a alors
+ * pas de « meilleur », et rien ne doit en porter l'étiquette.
+ */
+export function bestOption<T extends RankableOption>(
+  options: readonly T[],
+  today: string,
+): T | null {
+  const best = options
+    .filter((o) => o.date >= today)
+    .sort((a, b) => b.yes - a.yes || b.maybe - a.maybe || compareOptionsChronologically(a, b))[0];
+  return best && best.yes > 0 ? best : null;
+}
+
+/**
+ * L'option sur laquelle la Destinée s'ouvre (Story 44.3) : tant que le vote est ouvert (pas d'échéance, ou
+ * échéance aujourd'hui ou plus tard), le premier créneau À VENIR ; après sa fin, le meilleur. Sans meilleur
+ * (ou sans créneau à venir), le premier créneau à venir, à défaut le premier créneau. `null` sans option.
+ */
+export function destinyEntryOption<T extends RankableOption>(
+  poll: { expiresAt: string | null; options: readonly T[] },
+  today: string,
+): T | null {
+  const chronological = [...poll.options].sort(compareOptionsChronologically);
+  const firstUpcoming = chronological.find((o) => o.date >= today) ?? null;
+  const ended = poll.expiresAt !== null && poll.expiresAt.substring(0, 10) < today;
+  const preferred = ended ? bestOption(chronological, today) : firstUpcoming;
+  return preferred ?? firstUpcoming ?? chronological[0] ?? null;
+}
+
 /** Déclaration de disponibilité telle que renvoyée par l'API. */
 export interface AvailabilityDeclarationDto {
   id: string;

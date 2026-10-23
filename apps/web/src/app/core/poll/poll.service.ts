@@ -6,6 +6,7 @@ import type {
   AvailableSlotDto,
   CastVoteDto,
   ChooseDateDto,
+  OpenPollEntry,
   SessionPollDto,
   SetPollOptionsDto,
 } from '@master-jdr/shared';
@@ -40,6 +41,13 @@ export class PollService {
         `${API_BASE}/parties/${partieId}/heatmap?from=${from}&to=${to}`,
         { withCredentials: true },
       ),
+    );
+  }
+
+  /** Mes sondages ouverts, toutes parties et toutes familles (Story 44.2) — `GET /me/open-polls`. */
+  getMyOpenPolls(): Promise<OpenPollEntry[]> {
+    return firstValueFrom(
+      this.http.get<OpenPollEntry[]>(`${API_BASE}/me/open-polls`, { withCredentials: true }),
     );
   }
 

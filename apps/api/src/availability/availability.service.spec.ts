@@ -11,7 +11,6 @@ import type { OwnEventsPort } from './ports/own-events.port';
 import { EventsService } from '../events/events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../permissions/permission.service';
-import { VISIBLE_POLL_WHERE } from '../permissions/scenario-visibility';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { anyOf, arrayLike, objectLike } from '../common/test-utils/jest-typed';
 
@@ -1694,15 +1693,16 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     );
   });
 
-  it('renvoie les 5 couches, chacune un tableau vide par défaut (AC1, AC2)', async () => {
+  it('renvoie les 4 couches temporelles, chacune un tableau vide par défaut (AC1, AC2)', async () => {
     const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
     expect(result).toEqual({
       'mes-indisponibilites': [],
       'mes-disponibilites': [],
       'mes-seances': [],
-      'votes-en-cours': [],
       'inscriptions-ouvertes': [],
     });
+    // Story 44.2 : les votes en cours ne sont plus servis ici (`GET /me/open-polls`).
+    expect(result).not.toHaveProperty('votes-en-cours');
   });
 
   it("ne renvoie jamais la clé 'disponibilite-groupe' (AC2, encadré n°2)", async () => {
@@ -2052,246 +2052,6 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     expect(result['inscriptions-ouvertes']).toEqual([]);
   });
 
-  it("un SessionPoll d'une partie tierce n'apparaît jamais dans votes-en-cours (AC7, deferred-work — même garde que mes-seances/inscriptions-ouvertes ci-dessus, jusqu'ici sans test dédié)", async () => {
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'pollEtranger',
-        // Partie 'Z' absente de myParties (mocké à [myPartie] seulement) — simule une ligne
-        // renvoyée par erreur (défense en profondeur, la requête réelle la filtrerait déjà).
-        partieId: 'Z',
-        expiresAt: null,
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours']).toEqual([]);
-  });
-
-  it('couche votes-en-cours : sondage OPEN avec une option dans la plage, identité de partie incluse, agrégats et ma réponse (Story 36.6)', async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        expiresAt: new Date('2026-10-15T00:00:00Z'),
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [
-              { userId: 'me', answer: 'YES' },
-              { userId: 'u2', answer: 'YES' },
-              { userId: 'u3', answer: 'MAYBE' },
-            ],
-          },
-          {
-            id: 'o2',
-            date: new Date('2026-11-05T00:00:00Z'),
-            slot: 'MORNING',
-            votes: [{ userId: 'u2', answer: 'NO' }],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours']).toEqual([
-      {
-        pollId: 'poll1',
-        partieId: 'A',
-        partieName: 'Ma Partie',
-        // AC9 — MJ + 3 Membership. Même effectif que `AggregatedSlotDto.total`.
-        membersCount: 4,
-        expiresAt: '2026-10-15T00:00:00.000Z',
-        options: [
-          {
-            optionId: 'o1',
-            date: '2026-10-20',
-            slot: 'EVENING',
-            yes: 2,
-            maybe: 1,
-            no: 0,
-            myAnswer: 'YES',
-          },
-          {
-            optionId: 'o2',
-            date: '2026-11-05',
-            slot: 'MORNING',
-            yes: 0,
-            maybe: 0,
-            no: 1,
-            myAnswer: null,
-          },
-        ],
-      },
-    ]);
-  });
-
-  it("couche votes-en-cours : expiresAt null (sondage créé avant l'introduction du champ) → propagé tel quel, jamais une erreur", async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        expiresAt: null,
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours'][0].expiresAt).toBeNull();
-  });
-
-  it('AC11 — aucune identité de votant tiers ne transite : ni userId, ni pseudo, ni displayName (AD-9/AD-2)', async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [
-              { userId: 'me', answer: 'YES' },
-              { userId: 'secret-user', answer: 'NO' },
-            ],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    const serialized = JSON.stringify(result['votes-en-cours']);
-    expect(serialized).not.toContain('secret-user');
-    expect(serialized).not.toContain('pseudo');
-    expect(serialized).not.toContain('displayName');
-    // Ma propre réponse, elle, est bien là — la seule information nominative autorisée.
-    expect(result['votes-en-cours'][0].options[0].myAnswer).toBe('YES');
-  });
-
-  it("AC11 — l'include des votes ne demande JAMAIS la relation user", async () => {
-    await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    const calls = mockSessionPollFindMany.mock.calls as Array<[{ include: unknown }]>;
-    // Assertion structurelle plutôt qu'une recherche de sous-chaîne (revue de code du 36.6) :
-    // un `not.toContain('user')` ne détecterait pas une relation ajoutée sous une autre clé
-    // (`voter`, `author`, casse différente). Ici, la forme exacte de l'`include` est vérifiée —
-    // `votes: true` et rien de plus, jamais un `include: { user: … }` niché dessous.
-    expect(calls[0][0].include).toEqual({
-      options: { include: { votes: true } },
-    });
-  });
-
-  it('Story 40.5 — la couche des votes en cours ignore les parties d’un groupe de ralliement (rôle admin / member)', async () => {
-    mockPartieFindMany.mockResolvedValue([
-      myPartie,
-      { ...myPartie, id: 'G', kind: 'CAMPAGNE_EPISODIQUE' },
-      { ...myPartie, id: 'G2', kind: 'CAMPAGNE_EPISODIQUE' },
-    ]);
-    permissions.rolesOf.mockResolvedValue(
-      new Map<string, PartieRole>([
-        ['A', 'mj'],
-        ['G', 'admin'],
-        ['G2', 'member'],
-      ]),
-    );
-
-    await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-
-    const calls = mockSessionPollFindMany.mock.calls as unknown as Array<[{ where: unknown }]>;
-    expect(calls[0][0].where).toEqual({
-      status: 'OPEN',
-      OR: [{ partieId: { in: ['A'] } }, { AND: [{ partieId: { in: [] } }, VISIBLE_POLL_WHERE] }],
-    });
-  });
-
-  it("AC9 — une partie absente de l'agrégat de Membership a un effectif de 1 : le MJ, qui vote", async () => {
-    mockMembershipGroupBy.mockResolvedValue([]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours'][0].membersCount).toBe(1);
-  });
-
-  it('une option sans aucune réponse porte trois compteurs à zéro et myAnswer null (jamais undefined)', async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours'][0].options[0]).toEqual({
-      optionId: 'o1',
-      date: '2026-10-20',
-      slot: 'EVENING',
-      yes: 0,
-      maybe: 0,
-      no: 0,
-      myAnswer: null,
-    });
-  });
-
-  it('couche votes-en-cours : sondage sans aucune option dans la plage est exclu', async () => {
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-11-05T00:00:00Z'),
-            slot: 'MORNING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours']).toEqual([]);
-  });
-
   it('couche inscriptions-ouvertes : séance CAMPAGNE_EPISODIQUE sans date validée et à capacité définie, non filtrée par plage', async () => {
     mockPartieFindMany.mockResolvedValue([
       { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE' },
@@ -2402,41 +2162,6 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     expect(result['mes-disponibilites']).toEqual([]); // d2 est hors plage
   });
 
-  it('anti-spoil serveur : votes-en-cours — MJ de A voit tous les votes ouverts, joueur de B sans ceux d’un brouillon caché, dans UNE requête', async () => {
-    mockPartieFindMany.mockResolvedValue([
-      myPartie,
-      { id: 'B', name: 'Autre partie', kind: 'CAMPAGNE_LINEAIRE' },
-    ]);
-    permissions.rolesOf.mockResolvedValue(
-      new Map<string, PartieRole>([
-        ['A', 'mj'],
-        ['B', 'player'],
-      ]),
-    );
-
-    await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-
-    expect(mockSessionPollFindMany).toHaveBeenCalledTimes(1);
-    const calls = mockSessionPollFindMany.mock.calls as unknown as Array<[{ where: unknown }]>;
-    expect(calls[0][0].where).toEqual({
-      status: 'OPEN',
-      OR: [{ partieId: { in: ['A'] } }, { AND: [{ partieId: { in: ['B'] } }, VISIBLE_POLL_WHERE] }],
-    });
-  });
-
-  it('anti-spoil serveur, échec FERMÉ : une partie sans rôle connu est filtrée comme celle d’un joueur', async () => {
-    mockPartieFindMany.mockResolvedValue([myPartie]);
-    permissions.rolesOf.mockResolvedValue(new Map());
-
-    await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-
-    const calls = mockSessionPollFindMany.mock.calls as unknown as Array<[{ where: unknown }]>;
-    expect(calls[0][0].where).toEqual({
-      status: 'OPEN',
-      OR: [{ partieId: { in: [] } }, { AND: [{ partieId: { in: ['A'] } }, VISIBLE_POLL_WHERE] }],
-    });
-  });
-
   it('aucune itération par partie : une seule requête pour chaque table, quel que soit le nombre de mes parties (AC1)', async () => {
     mockPartieFindMany.mockResolvedValue([
       myPartie,
@@ -2448,10 +2173,9 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     expect(permissions.rolesOf).toHaveBeenCalledTimes(1);
     expect(permissions.rolesOf).toHaveBeenCalledWith('me', ['A', 'B']);
     expect(mockSeanceFindMany).toHaveBeenCalledTimes(1);
-    expect(mockSessionPollFindMany).toHaveBeenCalledTimes(1);
-    // Story 36.6, AC12 — l'effectif de la troupe est lui aussi obtenu par UNE seule requête
-    // groupée, jamais un membership.count par partie (AD-3). Garde renforcée, jamais affaiblie.
-    expect(mockMembershipGroupBy).toHaveBeenCalledTimes(1);
+    // Story 44.2 : plus aucune lecture de sondage ni d'effectif dans `GET /me/calendar`.
+    expect(mockSessionPollFindMany).not.toHaveBeenCalled();
+    expect(mockMembershipGroupBy).not.toHaveBeenCalled();
   });
 });
 

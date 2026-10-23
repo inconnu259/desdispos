@@ -9,6 +9,7 @@ import { EventsService } from './events.service';
 import { GroupEventsService } from './group-events.service';
 import { GroupPollChoiceService } from './group-poll-choice.service';
 import { GroupPollExtensionService } from './group-poll-extension.service';
+import { OpenPollContextService } from './open-poll-context.service';
 
 /**
  * Événement de base, séances et inscriptions (Story 37.3, couche 2 « rassemblement »).
@@ -51,6 +52,7 @@ import { GroupPollExtensionService } from './group-poll-extension.service';
     GroupEventsService,
     GroupPollChoiceService,
     GroupPollExtensionService,
+    OpenPollContextService,
   ],
   exports: [
     EventsService,
@@ -58,6 +60,7 @@ import { GroupPollExtensionService } from './group-poll-extension.service';
     GroupEventsService,
     GroupPollChoiceService,
     GroupPollExtensionService,
+    OpenPollContextService,
   ],
 })
 export class EventsModule {}

@@ -15,6 +15,7 @@ import type {
   MyCalendarOpenInscriptionEntry,
   MyCalendarSeanceEntry,
   PartieKind,
+  PartieProgress,
 } from '@master-jdr/shared';
 // Import RUNTIME du registre des systèmes (Story 40.1) : la famille de la partie choisit qui
 // participe à une séance datée dans les ports du calendrier. Jamais `import type` sur une valeur.
@@ -1582,6 +1583,52 @@ export class EventsService
       lieu: seance?.lieu ?? null,
       recipients: users,
     };
+  }
+
+  /**
+   * Story 44.2 (AD-15) — l'avancement de chaque partie du lot, en lecture groupée (jamais un comptage par
+   * partie). Entrée de `partieStatus()` : cette lecture, déplacée ici depuis `PartiesService`, sert aussi
+   * bien la liste des parties que les sondages ouverts (via `OpenPollContextPort`). Un groupe de ralliement
+   * compte tous ses événements (Story 40.1) ; toute autre partie, ceux porteurs d'un scénario ; une
+   * rencontre isolée suit sa date (Story 41.4) ou son annulation (Story 42.2).
+   */
+  async progressByPartieIds(
+    parties: { id: string; kind: PartieKind; gameSystemId: string }[],
+  ): Promise<(partieId: string) => PartieProgress> {
+    const groupIds = parties.filter(isRalliementGroup).map((p) => p.id);
+    const otherIds = parties.filter((p) => !isRalliementGroup(p)).map((p) => p.id);
+    const isolatedIds = parties
+      .filter((p) => p.kind === 'ONE_SHOT' && familyOf(p.gameSystemId) === 'ralliement')
+      .map((p) => p.id);
+    const [withScenario, withEvent, ended, cancelled] = await Promise.all([
+      otherIds.length === 0
+        ? []
+        : this.prisma.event.groupBy({
+            by: ['partieId'],
+            where: { partieId: { in: otherIds }, scenario: { isNot: null } },
+            _count: { _all: true },
+          }),
+      groupIds.length === 0
+        ? []
+        : this.prisma.event.groupBy({
+            by: ['partieId'],
+            where: { partieId: { in: groupIds } },
+            _count: { _all: true },
+          }),
+      this.endedIsolatedPartieIds(isolatedIds),
+      this.cancelledIsolatedPartieIds(isolatedIds),
+    ]);
+    // `groupBy` ne renvoie jamais de groupe à compte zéro : chaque ligne retournée a au moins un
+    // événement qui compte.
+    const started = new Set([...withScenario, ...withEvent].map((c) => c.partieId));
+    return (partieId) =>
+      cancelled.has(partieId)
+        ? 'cancelled'
+        : ended.has(partieId)
+          ? 'ended'
+          : started.has(partieId)
+            ? 'started'
+            : 'none';
   }
 
   /**

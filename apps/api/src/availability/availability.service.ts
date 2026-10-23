@@ -14,14 +14,10 @@ import type {
   CreateAvailabilityBatchItem,
   DaySlot,
   MeCalendarDto,
-  MyCalendarPollEntry,
   RecurKind,
   SlotStatus,
-  VoteAnswer,
 } from '@master-jdr/shared';
-import { participantCount } from '../common/participant-count.util';
 import { PermissionService } from '../permissions/permission.service';
-import { VISIBLE_POLL_WHERE, isGameMaster } from '../permissions/scenario-visibility';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
@@ -760,8 +756,7 @@ export class AvailabilityService {
     // Story 37.8 : mes parties, `mes-seances` et `inscriptions-ouvertes` viennent d'`OwnEventsPort`
     // (qui lit les séances de TOUTES mes parties en une requête groupée). Le rôle sur chaque partie
     // est résolu en lot par le service de permission, au moment où le port connaît les parties.
-    // Les rôles sont résolus UNE fois (en lot) : le port s'en sert pour ses séances, ce service pour
-    // le filtre anti-spoil des votes ci-dessous.
+    // Les rôles sont résolus UNE fois (en lot), par le port, pour ses séances.
     let rolesLookup: ReturnType<PermissionService['rolesOf']> | null = null;
     const resolveRoles = (ids: string[]): ReturnType<PermissionService['rolesOf']> =>
       (rolesLookup ??= this.permissions.rolesOf(userId, ids));
@@ -771,59 +766,8 @@ export class AvailabilityService {
       }),
       this.ownEvents.ownEventsOf(userId, resolveRoles, { fromMs, toMs }),
     ]);
-    const partieIds = own.parties.map((p) => p.id);
-    const partieById = new Map(own.parties.map((p) => [p.id, p]));
-    // Anti-spoil serveur : hors des parties dont je suis MJ, les votes de la séance d'un brouillon
-    // caché sont ignorés. Tout rôle autre que `mj` (ou inconnu) est restreint.
-    const roles = await resolveRoles(partieIds);
-    // Story 40.5 : le sondage d'une conjonction de groupe (rôle `admin`/`member`, propre à la famille
-    // ralliement) se vote dans le calendrier du groupe (Story 40.5b) : jamais dans cette couche. Un
-    // rôle inconnu reste traité comme celui d'un joueur (échec fermé), pas comme un groupe.
-    const pollPartieIds = partieIds.filter((id) => {
-      const role = roles.get(id);
-      return role !== 'admin' && role !== 'member';
-    });
-    const mjPartieIds = pollPartieIds.filter((id) => isGameMaster(roles.get(id)));
-    const otherPartieIds = pollPartieIds.filter((id) => !isGameMaster(roles.get(id)));
-
-    const [polls, membershipCounts] = await Promise.all([
-      partieIds.length === 0
-        ? Promise.resolve([])
-        : this.prisma.sessionPoll.findMany({
-            where: {
-              status: 'OPEN',
-              OR: [
-                { partieId: { in: mjPartieIds } },
-                { AND: [{ partieId: { in: otherPartieIds } }, VISIBLE_POLL_WHERE] },
-              ],
-            },
-            // Story 36.6 — `votes: true` et RIEN de plus. 🚨 Ne jamais y ajouter
-            // `include: { user: … }` : le calendrier personnel agrège des parties entre
-            // lesquelles aucune identité ne doit transiter (AD-9/AD-2). Les compteurs et ma
-            // seule réponse se déduisent de `userId` + `answer`, qui ne sortent jamais d'ici.
-            include: { options: { include: { votes: true } } },
-          }),
-      // Story 36.6 — l'effectif de chaque partie, en UNE requête groupée pour toutes mes parties
-      // (AD-3). Jamais un `membership.count` par partie : c'est exactement le fan-out que la
-      // garde anti-N+1 de la spec interdit.
-      partieIds.length === 0
-        ? Promise.resolve([])
-        : this.prisma.membership.groupBy({
-            by: ['partieId'],
-            where: { partieId: { in: partieIds } },
-            _count: true,
-          }),
-    ]);
-
-    // Le MJ n'a jamais de ligne `Membership` : une partie absente de l'agrégat a 0 membre, donc
-    // un effectif de 1. `participantCount()` est le point unique de cette formule.
-    const membershipCountByPartie = new Map<string, number>(
-      (membershipCounts as { partieId: string; _count: number }[]).map((m) => [
-        m.partieId,
-        m._count,
-      ]),
-    );
-
+    // Story 44.2 : la couche `votes-en-cours` ne vient plus d'ici — tous mes sondages ouverts (toutes familles,
+    // tous les mois) sont lus par `GET /me/open-polls`. Les rôles résolus par le port restent ceux de `mes-seances`.
     return {
       'mes-indisponibilites': declarations
         .filter((d) => d.kind === 'UNAVAILABLE' && this.declarationOverlapsRange(d, fromMs, toMs))
@@ -832,14 +776,6 @@ export class AvailabilityService {
         .filter((d) => d.kind === 'AVAILABLE' && this.declarationOverlapsRange(d, fromMs, toMs))
         .map((d) => this.toAvailabilityDeclarationDto(d)),
       'mes-seances': own.seances,
-      'votes-en-cours': this.buildOpenPollsLayer(
-        polls,
-        partieById,
-        fromMs,
-        toMs,
-        userId,
-        membershipCountByPartie,
-      ),
       // Non filtrée par [from, to] (décision documentée, Story 30.5 Dev Notes) : une séance en
       // attente d'inscriptions n'a pas encore de date propre à comparer.
       'inscriptions-ouvertes': own.inscriptionsOuvertes,
@@ -912,69 +848,6 @@ export class AvailabilityService {
     };
   }
 
-  /**
-   * Sondages de date ouverts sur mes parties, dont au moins une option tombe dans la plage.
-   *
-   * Story 36.6 — chaque option porte désormais son `optionId`, les trois compteurs de réponses et
-   * **ma seule** réponse ; l'entrée porte l'effectif de la troupe (le dénominateur de la piste).
-   *
-   * ⚠️ **Le filtre de plage reste au niveau du SONDAGE, et toutes ses options sont renvoyées**
-   * (comportement d'origine, délibérément conservé). Filtrer option par option aurait retiré de
-   * la charge utile des créneaux que le client sait déjà ne pas rendre — la grille ne dessine que
-   * les jours qu'elle affiche — mais aurait rendu `nextMeaningfulDate()` (le rail, story 36.1)
-   * aveugle à une option juste au-delà de la fenêtre chargée, qui est précisément ce qu'il
-   * cherche : le prochain jour porteur.
-   */
-  private buildOpenPollsLayer(
-    polls: Array<{
-      id: string;
-      partieId: string;
-      expiresAt: Date | null;
-      options: {
-        id: string;
-        date: Date;
-        slot: string;
-        votes?: { userId: string; answer: string }[];
-      }[];
-    }>,
-    partieById: Map<string, { id: string; name: string }>,
-    fromMs: number,
-    toMs: number,
-    userId: string,
-    membershipCountByPartie: Map<string, number>,
-  ): MyCalendarPollEntry[] {
-    const entries: MyCalendarPollEntry[] = [];
-    for (const poll of polls) {
-      const inRange = poll.options.some(
-        (o) => o.date.getTime() >= fromMs && o.date.getTime() <= toMs,
-      );
-      if (!inRange) continue;
-      const partie = partieById.get(poll.partieId);
-      if (!partie) continue;
-      entries.push({
-        pollId: poll.id,
-        partieId: partie.id,
-        partieName: partie.name,
-        membersCount: participantCount(membershipCountByPartie.get(partie.id) ?? 0),
-        expiresAt: poll.expiresAt?.toISOString() ?? null,
-        options: poll.options.map((o) => {
-          const votes = o.votes ?? [];
-          const mine = votes.find((v) => v.userId === userId);
-          return {
-            optionId: o.id,
-            date: o.date.toISOString().substring(0, 10),
-            slot: o.slot as DaySlot,
-            yes: votes.filter((v) => v.answer === 'YES').length,
-            maybe: votes.filter((v) => v.answer === 'MAYBE').length,
-            no: votes.filter((v) => v.answer === 'NO').length,
-            // `null`, jamais `undefined` : une seule représentation de « n'a pas répondu ».
-            myAnswer: mine ? (mine.answer as VoteAnswer) : null,
-          };
-        }),
-      });
-    }
-    return entries;
-  }
   /**
    * Calcule le statut d'un créneau (date + slot) pour un utilisateur,
    * à partir de ses déclarations pré-chargées (pas de requête SQL ici).

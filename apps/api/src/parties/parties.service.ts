@@ -17,6 +17,7 @@ import type {
   ListViewMode,
   PartieDto,
   PartieKindTransitionRefusal,
+  PartieProgress,
   PartieRole,
   PartieStatus,
 } from '@master-jdr/shared';
@@ -32,6 +33,7 @@ import {
   familyOf,
   isOpenForCreation,
   kindsOf,
+  partieStatus,
 } from '@master-jdr/shared';
 import { AvailabilityService } from '../availability/availability.service';
 import { EventCancellationMailer } from '../events/event-cancellation-mailer.service';
@@ -209,23 +211,15 @@ export function coverImageVersion(coverImageUrl: string | null): string | null {
  * `TERMINEE` dès que `closedAt` est posé OU que sa plage de dates est passée (`'ended'`) ; sans date elle
  * reste `A_VENIR`. `progress` est la seule entrée de cette dérivation (cf. `isRalliementGroup`).
  */
-export type PartieProgress = 'none' | 'started' | 'ended' | 'cancelled';
-
 function toPartieDto(
   partie: Partie,
   role: PartieRole,
   progress: PartieProgress,
   isFavorite: boolean,
 ): PartieDto {
-  // Story 42.2 (AD-18) : annulée l'emporte sur terminée (clôture ou date passée), distincte d'elle.
-  const status: PartieStatus =
-    progress === 'cancelled'
-      ? 'ANNULEE'
-      : partie.closedAt || progress === 'ended'
-        ? 'TERMINEE'
-        : progress === 'started'
-          ? 'EN_COURS'
-          : 'A_VENIR';
+  // Story 44.2 (AD-15) : la dérivation est UNE fonction partagée (`partieStatus`), lue aussi par les
+  // sondages ouverts. Story 42.2 : annulée l'emporte sur terminée, distincte d'elle.
+  const status: PartieStatus = partieStatus(partie.closedAt, progress);
   return {
     id: partie.id,
     name: partie.name,
@@ -365,42 +359,8 @@ export class PartiesService implements PartieSignalsPort {
   private async progressByPartieId(
     parties: Pick<Partie, 'id' | 'kind' | 'gameSystemId'>[],
   ): Promise<(partieId: string) => PartieProgress> {
-    const groupIds = parties.filter(isRalliementGroup).map((p) => p.id);
-    const otherIds = parties.filter((p) => !isRalliementGroup(p)).map((p) => p.id);
-    // Story 41.4 : les rencontres isolées du lot, dont la plage de dates est passée (UNE lecture groupée,
-    // seulement s'il y en a).
-    const isolatedIds = parties.filter(isIsolatedRalliement).map((p) => p.id);
-    const [withScenario, withEvent, ended, cancelled] = await Promise.all([
-      otherIds.length === 0
-        ? []
-        : this.prisma.event.groupBy({
-            by: ['partieId'],
-            where: { partieId: { in: otherIds }, scenario: { isNot: null } },
-            _count: { _all: true },
-          }),
-      groupIds.length === 0
-        ? []
-        : this.prisma.event.groupBy({
-            by: ['partieId'],
-            where: { partieId: { in: groupIds } },
-            _count: { _all: true },
-          }),
-      this.events.endedIsolatedPartieIds(isolatedIds),
-      // Story 42.2 : les rencontres isolées annulées du lot (UNE lecture groupée, seulement s'il y en a).
-      this.events.cancelledIsolatedPartieIds(isolatedIds),
-    ]);
-    // `groupBy` ne renvoie jamais de groupe à compte zéro : chaque ligne retournée a au moins un
-    // événement qui compte — porteur d'un scénario (première requête) ou, pour un groupe de
-    // ralliement, n'importe lequel (seconde requête). Aucun filtre supplémentaire requis.
-    const started = new Set([...withScenario, ...withEvent].map((c) => c.partieId));
-    return (partieId) =>
-      cancelled.has(partieId)
-        ? 'cancelled'
-        : ended.has(partieId)
-          ? 'ended'
-          : started.has(partieId)
-            ? 'started'
-            : 'none';
+    // Story 44.2 : la lecture en lot vit dans `events/` (qui la sert aussi aux sondages ouverts).
+    return this.events.progressByPartieIds(parties);
   }
 
   /** Story 42.2 : une soirée isolée annulée n'accepte plus aucune action — renommer, clore, rouvrir (400). Les

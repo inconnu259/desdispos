@@ -29,9 +29,10 @@ type DocLike = { id: string; scenarioId: string | null };
 type AnnouncementLike = { id: string; text: string; scenarioId: string | null };
 type CalendarLike = {
   'mes-seances': { seanceId: string }[];
-  'votes-en-cours': { pollId: string; partieId: string }[];
   'inscriptions-ouvertes': { seanceId: string }[];
 };
+// Story 44.2 : les votes en cours viennent de `GET /me/open-polls`, plus de `GET /me/calendar`.
+type OpenPollLike = { pollId: string; partieId: string };
 type SignalsLike = Record<string, { signals: string[] }>;
 type ErrorLike = { statusCode: number; message: string };
 
@@ -367,14 +368,13 @@ describe('Anti-spoil serveur des scénarios', () => {
     });
 
     it('votes en cours : le joueur ne voit que le vote du scénario courant, le MJ voit aussi celui du brouillon', async () => {
-      const query = { from: isoDay(0), to: isoDay(40) };
-      const joueurCal = body<CalendarLike>(
-        await joueur.agent.get('/me/calendar').query(query).expect(200),
+      const joueurPolls = body<OpenPollLike[]>(
+        await joueur.agent.get('/me/open-polls').expect(200),
       );
-      expect(joueurCal['votes-en-cours'].map((p) => p.pollId)).toEqual([pollCourant.id]);
+      expect(joueurPolls.map((p) => p.pollId)).toEqual([pollCourant.id]);
 
-      const mjCal = body<CalendarLike>(await mj.agent.get('/me/calendar').query(query).expect(200));
-      expect(mjCal['votes-en-cours'].map((p) => p.pollId).sort()).toEqual(
+      const mjPolls = body<OpenPollLike[]>(await mj.agent.get('/me/open-polls').expect(200));
+      expect(mjPolls.map((p) => p.pollId).sort()).toEqual(
         [pollBrouillon.id, pollCourant.id].sort(),
       );
     });
@@ -440,16 +440,13 @@ describe('Anti-spoil serveur des scénarios', () => {
       const signals = body<SignalsLike>(await joueur.agent.get('/me/party-signals').expect(200));
       expect(signals[partieId].signals).not.toContain('VOTE_EN_COURS_SANS_REPONSE');
 
-      const joueurCal = body<CalendarLike>(
-        await joueur.agent.get('/me/calendar').query(query).expect(200),
-      );
-      // Le calendrier agrège toutes les parties du joueur : on isole celle de ce test.
-      const ici = (cal: CalendarLike) =>
-        cal['votes-en-cours'].filter((p) => p.partieId === partieId).map((p) => p.pollId);
-      expect(ici(joueurCal)).toEqual([]);
-
-      const mjCal = body<CalendarLike>(await mj.agent.get('/me/calendar').query(query).expect(200));
-      expect(ici(mjCal)).toEqual([poll.id]);
+      // La liste agrège toutes les parties : on isole celle de ce test.
+      const ici = async (who: typeof joueur) =>
+        body<OpenPollLike[]>(await who.agent.get('/me/open-polls').expect(200))
+          .filter((p) => p.partieId === partieId)
+          .map((p) => p.pollId);
+      expect(await ici(joueur)).toEqual([]);
+      expect(await ici(mj)).toEqual([poll.id]);
     });
 
     it('le MJ vote sur son propre brouillon (inchangé)', async () => {

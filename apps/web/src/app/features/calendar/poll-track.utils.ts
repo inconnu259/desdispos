@@ -43,6 +43,9 @@ export interface VoteParticipation {
   total: number;
   /** `null` = je n'ai pas répondu. Jamais `undefined` (AD-10 : une seule représentation). */
   myAnswer: VoteAnswer | null;
+  /** Story 44.2 — je ne suis pas votant de ce sondage (places limitées d'un groupe) : la piste se lit, le
+   *  sélecteur de réponse ne s'ouvre pas. Absent = je peux répondre. */
+  readOnly?: boolean;
 }
 
 /**

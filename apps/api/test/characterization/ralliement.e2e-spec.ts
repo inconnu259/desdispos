@@ -3298,7 +3298,7 @@ describe('Ralliement — proposer une conjonction par sondage de dates (Story 40
     expect(JSON.stringify(seen)).not.toContain(guest.displayName);
   });
 
-  it('calendrier : une conjonction sans date n’entre ni dans l’agenda, ni dans les indisponibilités, ni dans les inscriptions ouvertes, ni dans les votes en cours', async () => {
+  it('calendrier : une conjonction sans date n’entre ni dans l’agenda, ni dans les indisponibilités, ni dans les inscriptions ouvertes', async () => {
     const card = await create(host, { capacity: 4 });
     await signUp(guest, card.seance!.id).expect(201);
 
@@ -3306,7 +3306,6 @@ describe('Ralliement — proposer une conjonction par sondage de dates (Story 40
       const cal = body<{
         'mes-seances': { seanceId: string }[];
         'inscriptions-ouvertes': { seanceId: string }[];
-        'votes-en-cours': { pollId: string }[];
       }>(
         await who.agent
           .get('/me/calendar')
@@ -3315,10 +3314,19 @@ describe('Ralliement — proposer une conjonction par sondage de dates (Story 40
       );
       expect(cal['mes-seances'].map((s) => s.seanceId)).not.toContain(card.seance!.id);
       expect(cal['inscriptions-ouvertes'].map((s) => s.seanceId)).not.toContain(card.seance!.id);
-      // Le sondage d'un groupe se vote dans le calendrier du groupe (40.5b) : jamais dans cette couche,
-      // pour aucun membre — éligible ou non.
-      expect(cal['votes-en-cours'].map((p) => p.pollId)).not.toContain(card.poll!.id);
+      // Story 44.2 : `GET /me/calendar` ne sert plus aucun vote.
+      expect(cal).not.toHaveProperty('votes-en-cours');
     }
+
+    // Les votes de groupe sont servis par `GET /me/open-polls` : l'hôte et l'inscrit y votent, le tiers non
+    // inscrit (places limitées) le voit sans pouvoir y répondre.
+    const polls = async (who: TestUser) =>
+      body<{ pollId: string; me: { eligible: boolean } }[]>(
+        await who.agent.get('/me/open-polls').expect(200),
+      ).find((p) => p.pollId === card.poll!.id);
+    expect((await polls(host))?.me.eligible).toBe(true);
+    expect((await polls(guest))?.me.eligible).toBe(true);
+    expect((await polls(third))?.me.eligible).toBe(false);
   });
 });
 

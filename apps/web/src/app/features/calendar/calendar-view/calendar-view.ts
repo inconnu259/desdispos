@@ -60,6 +60,7 @@ import {
 } from '../../../core/availability/availability.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
+import { OpenPollsService } from '../../../core/poll/open-polls.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { getMissingVoters } from '../../../core/poll/poll.util';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
@@ -245,6 +246,7 @@ export class CalendarView implements OnInit {
   private readonly authSvc = inject(AuthService);
   private readonly partiesSvc = inject(PartiesService);
   private readonly pollSvc = inject(PollService);
+  private readonly openPollsSvc = inject(OpenPollsService);
   private readonly scenariosSvc = inject(ScenariosService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -812,22 +814,13 @@ export class CalendarView implements OnInit {
             compteRenduManquant: s.compteRenduManquant,
           });
         }
-        // Story 36.6, AC8/AC6 — même éclatement par option qu'en contexte de partie, mais les
-        // agrégats sont ici SERVIS (D-17) : le calendrier personnel n'a pas la charge utile des
-        // votants, et ne doit pas l'avoir (AD-9). L'appel unique existant les porte désormais ;
-        // aucun appel supplémentaire n'est émis.
-        for (const p of mc['votes-en-cours']) {
-          // 🚨 Dégradation honnête, trouvée à la vérification visuelle : pendant un déploiement,
-          // un client neuf peut interroger une API qui ne sert pas encore les agrégats. Sans
-          // cette garde, le rail affichait « NaN / undefined ». On préfère NE PAS rendre de piste
-          // plutôt qu'en rendre une vide, qui affirmerait faussement « personne n'a répondu ».
-          const servedAggregates = typeof p.membersCount === 'number';
+        // Story 44.2 — mes sondages ouverts viennent de `GET /me/open-polls` (toutes parties, toutes familles,
+        // tous les mois), plus de la couche de `GET /me/calendar`. Même éclatement par option qu'en contexte de
+        // partie ; les agrégats sont SERVIS (D-17) : le calendrier personnel n'a pas la charge utile des votants,
+        // et ne doit pas l'avoir (AD-9).
+        for (const p of this.openPollsSvc.entries()) {
           for (const option of p.options) {
             entries.push({
-              // `date`/`slot` sont toujours servis, même par une API dégradée (pré-36.6) —
-              // contrairement à `optionId`, absent de cette forme. Une clé bâtie sur `optionId`
-              // collisionnerait alors entre toutes les options d'un même vote (revue de code du
-              // 36.6).
               key: `poll-${p.pollId}-${option.date}-${option.slot}`,
               type: 'votes-en-cours',
               date: option.date,
@@ -835,22 +828,22 @@ export class CalendarView implements OnInit {
               // Idem contexte de partie (cf. commentaire ci-dessus, ligne ~332).
               detail: SLOT_LABELS[option.slot],
               slot: option.slot,
-              vote: !servedAggregates
-                ? undefined
-                : {
-                    // Story 36.7 — ici le `partieId` ne peut PAS venir de la route : le
-                    // calendrier personnel agrège plusieurs parties. Il vient de l'entrée
-                    // elle-même (`MyCalendarPollEntry.partieId`), et c'est le seul endroit de
-                    // l'application où voter dans la mauvaise partie serait possible.
-                    partieId: p.partieId,
-                    pollId: p.pollId,
-                    optionId: option.optionId,
-                    yes: option.yes,
-                    maybe: option.maybe,
-                    no: option.no,
-                    total: p.membersCount,
-                    myAnswer: option.myAnswer,
-                  },
+              vote: {
+                // Story 36.7 — ici le `partieId` ne peut PAS venir de la route : le calendrier personnel
+                // agrège plusieurs parties. Il vient de l'entrée elle-même (`OpenPollEntry.partieId`), et
+                // c'est le seul endroit de l'application où voter dans la mauvaise partie serait possible.
+                partieId: p.partieId,
+                pollId: p.pollId,
+                optionId: option.optionId,
+                yes: option.yes,
+                maybe: option.maybe,
+                no: option.no,
+                // Story 44.2 — le dénominateur est le nombre de votants éligibles du sondage.
+                total: p.eligibleCount,
+                myAnswer: option.myAnswer,
+                // Je ne suis pas votant (places limitées d'un groupe) : je lis la piste, sans répondre.
+                readOnly: !p.me.eligible,
+              },
             });
           }
         }
@@ -898,8 +891,24 @@ export class CalendarView implements OnInit {
   // les déclarations (dont `visibleDeclarations()` applique le même mapping kind → couche).
   protected readonly agendaEntries = computed<AgendaEntry[]>(() => {
     const active = new Set(this.activeLayers());
+    // Story 44.2 — calendrier personnel : la liste des votes couvre tous les mois, l'Agenda ne montre que les votes
+    // qui ont au moins une option dans la période chargée (comme avant, quand le serveur filtrait par période).
+    const personal = this.partieId() === null;
+    const from = this.fromDateStr();
+    const to = this.toDateStr();
+    const pollsInPeriod = new Set<string>();
+    if (personal) {
+      for (const e of this.allCalendarEntries()) {
+        if (e.type === 'votes-en-cours' && e.vote && e.date >= from && e.date <= to) {
+          pollsInPeriod.add(e.vote.pollId);
+        }
+      }
+    }
     return this.allCalendarEntries().filter(
       (e) =>
+        (!personal ||
+          e.type !== 'votes-en-cours' ||
+          (e.vote && pollsInPeriod.has(e.vote.pollId))) &&
         // Story 36.11, AC9 — 🚨 `inscriptions-ouvertes` ÉCHAPPE au filtre par couche. Son
         // interrupteur a quitté la barre (AC7) mais sa clé survit dans la préférence de compte :
         // un compte qui l'avait éteinte au palier précédent verrait sinon la section « Ça
@@ -999,13 +1008,6 @@ export class CalendarView implements OnInit {
   // la Destinée basculerait toute seule. Un `pollId` disparu, lui, est détectable — c'est l'effet
   // de fin de mode plus bas (AC9).
   protected readonly destinyPollId = signal<string | null>(null);
-
-  /** Dernier `destinyDates()` connu du vote courant, tant qu'il était encore présent dans
-   *  `destinyPolls()`. Seule trace qui reste une fois le vote disparu — c'est elle qui permet à
-   *  l'effet de fin de mode de distinguer « hors plage » de « réellement clos » en contexte
-   *  personnel (AC9, voir plus bas). Champ simple, pas un signal : écrit uniquement depuis
-   *  l'intérieur d'un effet, jamais lu de façon réactive. */
-  private lastDestinyDates: ReadonlySet<string> | null = null;
 
   /**
    * Les votes ouverts, nommés, dans l'ordre de première rencontre.
@@ -1698,15 +1700,7 @@ export class CalendarView implements OnInit {
       const polls = this.destinyPolls();
       const stillPresent = polls.some((p) => p.pollId === id);
 
-      if (stillPresent) {
-        // On garde une trace des dates du vote courant tant qu'il est visible : c'est la seule
-        // information qui survit à sa disparition, plus bas, pour juger si elle était prévisible
-        // (hors plage) ou non (réellement clos) — sans appel réseau dédié (encadré n°1).
-        untracked(() => {
-          this.lastDestinyDates = this.destinyDates();
-        });
-        return;
-      }
+      if (stillPresent) return;
 
       // « Le vote a disparu de la liste » ne veut dire « le vote est clos » QUE si la liste fait
       // autorité sur ce qui est ouvert. C'est vrai en contexte de PARTIE (`activePolls()` dérive
@@ -1716,20 +1710,12 @@ export class CalendarView implements OnInit {
         return;
       }
 
-      // 🚨 Contexte personnel : `GET /me/calendar` est chargé **par plage** (`fromDateStr()` /
-      // `toDateStr()`), et naviguer d'une semaine recharge une plage qui ne couvre plus forcément
-      // les créneaux du vote — un symptôme trouvé à la vérification visuelle (deux clics sur
-      // « semaine suivante » éteignaient le mode DÉFINITIVEMENT alors que le vote existait
-      // toujours). L'absence seule ne suffit donc plus : elle ne veut dire « clos » que si la
-      // plage actuellement chargée couvrait déjà TOUTES les dates connues du vote — sinon il est
-      // simplement hors plage, pas clos, et le mode survit (revue de code, AC9).
-      const dates = this.lastDestinyDates;
-      const from = this.fromDateStr();
-      const to = this.toDateStr();
-      const wasFullyInRange = dates !== null && [...dates].every((d) => d >= from && d <= to);
-      if (wasFullyInRange) {
-        untracked(() => this.destinyPollId.set(null));
-      }
+      // Contexte personnel (Story 44.2) : `GET /me/open-polls` couvre TOUS les mois, plus de plage — un vote
+      // absent de la liste servie est un vote qui n'est plus ouvert. Tant que la liste n'a pas été lue une
+      // première fois, on ne sait rien : le mode attend. (L'ancienne heuristique « hors plage ≠ clos » n'a
+      // plus d'objet.)
+      if (!this.openPollsSvc.loaded()) return;
+      untracked(() => this.destinyPollId.set(null));
     });
 
     // Story 36.10 — la composition aussi doit savoir mourir. Un vote scellé ou clôturé ailleurs
@@ -2294,6 +2280,8 @@ export class CalendarView implements OnInit {
    * première au premier changement.
    */
   protected onVoteOptionActivated(event: VoteOptionActivatedEvent): void {
+    // Story 44.2 — un sondage où je ne suis pas votant (places limitées d'un groupe) se lit, il ne se répond pas.
+    if (event.vote.readOnly) return;
     // Story 40.5b — un groupe : le sélecteur ne s'ouvre que pour un votant éligible avant l'échéance.
     // Les autres lisent la piste et les compteurs (lecture seule) ; le serveur reste juge de toute façon.
     if (this.isGroup()) {
@@ -2400,10 +2388,11 @@ export class CalendarView implements OnInit {
     if (ok) this.snack.open(this.theme.tone()[successToneKey], undefined, { duration: 3000 });
 
     // Les deux contextes n'ont pas la même source : contexte de partie ⇒ les scénarios (d'où
-    // `activePolls`) ; calendrier personnel ⇒ `GET /me/calendar`, qui n'a AUCUN temps réel.
+    // `activePolls`) ; calendrier personnel ⇒ `GET /me/open-polls` (Story 44.2).
     const partieId = this.partieId();
     if (partieId) await this.reloadVotes(partieId);
-    else await this.loadMeCalendarForRange(this.fromDateStr(), this.toDateStr());
+    // Story 44.2 — calendrier personnel : mes votes viennent de `GET /me/open-polls`.
+    else await this.openPollsSvc.refresh();
   }
 
   protected async onClosePoll(pollId: string): Promise<void> {

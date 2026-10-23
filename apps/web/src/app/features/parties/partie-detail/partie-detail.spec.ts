@@ -252,7 +252,7 @@ async function createFixture(
       { provide: BreakpointObserver, useValue: makeBreakpointObserver(options.desktop ?? true) },
       {
         provide: MyPartiesService,
-        useValue: { refreshAll: vi.fn(), playerParties: signal([]) },
+        useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
       },
       { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
       {
@@ -1019,7 +1019,7 @@ describe('PartieDetail — roster (Story 6.1)', () => {
         { provide: BreakpointObserver, useValue: dynamicBreakpointObserver },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]) },
+          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -1334,7 +1334,7 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]) },
+          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -2353,7 +2353,7 @@ describe('PartieDetail — rechargement sur signal temps réel (Story 18.3)', ()
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]) },
+          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -2560,7 +2560,7 @@ describe('PartieDetail — rechargement sur signal temps réel (Story 18.3)', ()
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]) },
+          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {

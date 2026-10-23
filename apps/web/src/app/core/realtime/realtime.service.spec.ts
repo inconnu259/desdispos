@@ -214,7 +214,7 @@ describe('RealtimeService', () => {
     expect(hommeDragonSvc.notifyChanged).toHaveBeenCalledTimes(2);
   });
 
-  it("'open' déclenche AUSSI notifyChanged() sur OpenPollsService ET AvailabilityService — cinq handlers au même préfixe 'partie:' (Story 22.1, AC1 ; bug fix calendrier)", () => {
+  it("'open' déclenche AUSSI notifyChanged() sur AvailabilityService — quatre handlers au même préfixe 'partie:' (Story 22.1, AC1 ; bug fix calendrier)", () => {
     service.connect(partieTopic('p1'));
 
     FakeEventSource.instances[0].emit('open');
@@ -222,8 +222,20 @@ describe('RealtimeService', () => {
     expect(partiesSvc.notifyChanged).toHaveBeenCalledTimes(1);
     expect(scenariosSvc.notifyRealtimeChanged).toHaveBeenCalledTimes(1);
     expect(charactersSvc.notifyChanged).toHaveBeenCalledTimes(1);
-    expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(1);
     expect(availabilitySvc.notifyChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("Story 44.2 : mes sondages ouverts se relisent sur 'user:' (une liste pour toutes mes parties), jamais sur 'partie:'", () => {
+    service.connect(partieTopic('p1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(openPollsSvc.notifyChanged).not.toHaveBeenCalled();
+    service.disconnect(partieTopic('p1'));
+
+    service.connect(userTopic('u1'));
+    FakeEventSource.instances[1].emit('open');
+    expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(1);
+    FakeEventSource.instances[1].emit('message');
+    expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(2);
   });
 
   it("un topic 'partie:' ne déclenche PAS notifyChanged() sur MyPartiesService (bug fix : préfixe rebranché sur 'user:')", () => {

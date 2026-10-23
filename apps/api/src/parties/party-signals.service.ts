@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { hasCapability } from '@master-jdr/shared';
+import { hasAnswered, hasCapability } from '@master-jdr/shared';
 import type { PartieDto, PartySignalCode, PartySignalsDto } from '@master-jdr/shared';
 import { VISIBLE_POLL_WHERE } from '../permissions/scenario-visibility';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,7 +14,7 @@ function startOfTodayUtc(): Date {
 
 type OpenPollWithVotes = {
   partieId: string;
-  options: { votes: { userId: string }[] }[];
+  options: { id: string; votes: { userId: string }[] }[];
 };
 
 /**
@@ -119,7 +119,7 @@ export class PartySignalsService {
         select: {
           partieId: true,
           options: {
-            select: { votes: { where: { userId }, select: { userId: true } } },
+            select: { id: true, votes: { where: { userId }, select: { userId: true } } },
           },
         },
       }),
@@ -214,8 +214,14 @@ export class PartySignalsService {
           signals.push('PERSONNAGE_A_CREER');
         }
         const openPollsHere = openPollsByPartie.get(partie.id) ?? [];
-        const hasUnanswered = openPollsHere.some((poll) =>
-          poll.options.some((opt) => opt.votes.length === 0),
+        // Story 44.2 : « a répondu » est la règle partagée `hasAnswered` (JDR : une réponse à CHAQUE option).
+        const hasUnanswered = openPollsHere.some(
+          (poll) =>
+            !hasAnswered(
+              'jdr',
+              poll.options.map((opt) => opt.id),
+              poll.options.filter((opt) => opt.votes.length > 0).map((opt) => opt.id),
+            ),
         );
         if (hasUnanswered) signals.push('VOTE_EN_COURS_SANS_REPONSE');
       } else {

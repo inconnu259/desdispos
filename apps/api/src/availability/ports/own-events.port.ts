@@ -37,7 +37,8 @@ export interface OwnEvents {
 /**
  * Port de la couche 1 : le calendrier personnel, AVEC titres (ce sont les propres parties de
  * l'utilisateur — la notion de partie tierce n'existe pas ici). Implémenté par `events/`.
- * Les couches `votes-en-cours`, disponibilités et effectifs restent lues par `availability/`.
+ * Les déclarations de disponibilité restent lues par `availability/` ; les sondages ouverts (toutes familles)
+ * ne passent plus par ce port ni par `GET /me/calendar` : ils viennent de `GET /me/open-polls` (Story 44.2).
  */
 export interface OwnEventsPort {
   ownEventsOf(userId: string, roles: OwnRolesResolver, range: OwnEventsRange): Promise<OwnEvents>;

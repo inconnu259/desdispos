@@ -378,6 +378,26 @@ export type PermissionAction =
  *  scénarios (AD-8), jamais recalculé côté client (Story 29.6). */
 export type PartieStatus = 'A_VENIR' | 'EN_COURS' | 'TERMINEE' | 'ANNULEE';
 
+/** Avancement d'une partie, lu en lot par `events/` : aucun événement, au moins un événement qui compte,
+ *  rencontre isolée dont la plage est passée, ou annulée (Story 44.2). */
+export type PartieProgress = 'none' | 'started' | 'ended' | 'cancelled';
+
+/**
+ * LE statut d'une partie (Story 44.2, AD-15) — la seule dérivation, lue par `PartieDto` et par les sondages
+ * ouverts. Annulée l'emporte sur terminée (clôture ou date passée), distincte d'elle ; `closedAt` renseigné
+ * (ou rencontre passée) vaut terminée ; sinon un avancement démarré vaut en cours.
+ */
+export function partieStatus(closedAt: Date | string | null, progress: PartieProgress): PartieStatus {
+  if (progress === 'cancelled') return 'ANNULEE';
+  if (closedAt || progress === 'ended') return 'TERMINEE';
+  return progress === 'started' ? 'EN_COURS' : 'A_VENIR';
+}
+
+/** Une partie « active » : ni terminée, ni annulée. La seule définition (Story 44.2). */
+export function isPartieActive(status: PartieStatus): boolean {
+  return status === 'A_VENIR' || status === 'EN_COURS';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversion du type d'une partie (Story 29.14)
 //
@@ -940,6 +960,22 @@ export type PollStatus = 'OPEN' | 'CLOSED';
 /** Réponse à une option de vote. */
 export type VoteAnswer = 'YES' | 'NO' | 'MAYBE';
 
+/**
+ * Une personne a-t-elle répondu à un sondage ? LA règle de chaque famille (Story 44.2), partagée par le serveur
+ * (réponses, signaux de liste) et l'écran : en JDR il faut avoir voté sur CHAQUE option (un sondage sans
+ * option compte comme répondu — rien à répondre) ; pour un groupe ou une soirée, sur AU MOINS UNE.
+ */
+export function hasAnswered(
+  family: GameSystemFamily,
+  optionIds: readonly string[],
+  votedOptionIds: ReadonlySet<string> | readonly string[],
+): boolean {
+  const voted = votedOptionIds instanceof Set ? votedOptionIds : new Set(votedOptionIds);
+  return family === 'ralliement'
+    ? optionIds.some((id) => voted.has(id))
+    : optionIds.every((id) => voted.has(id));
+}
+
 /** Déclaration de disponibilité telle que renvoyée par l'API. */
 export interface AvailabilityDeclarationDto {
   id: string;
@@ -1118,7 +1154,7 @@ export interface MyCalendarSeanceEntry {
  *  de tous les votants), cette forme est **strictement anonyme** : des compteurs, et ma seule
  *  réponse. Le calendrier personnel agrège des parties entre lesquelles rien ne doit transiter
  *  (AD-9/AD-2) — n'y ajouter jamais un `userId`, un `pseudo` ni un `displayName`. */
-export interface MyCalendarPollOption {
+export interface OpenPollOption {
   /** Story 36.6 — sans lui, ni ma réponse ni un agrégat ne sont adressables, et le sélecteur de
    *  réponse (story 36.7) ne pourrait pas voter depuis le calendrier personnel. */
   optionId: string;
@@ -1132,22 +1168,30 @@ export interface MyCalendarPollOption {
   myAnswer: VoteAnswer | null;
 }
 
-/** Vote de date en cours sur une de mes parties (couche `votes-en-cours`, `GET /me/calendar`,
- *  Story 30.5). Une entrée par sondage, pas par option — le client éclate par option. Depuis la
- *  Story 36.6, porte aussi l'effectif de la troupe (`membersCount`) et, par option, les agrégats
- *  de réponses et ma réponse (`MyCalendarPollOption`) — l'appel unique existant suffit désormais
- *  à alimenter la piste de participation, sans appel réseau supplémentaire (AD-20). */
-export interface MyCalendarPollEntry {
+/** Un sondage de dates OUVERT de l'une de mes parties actives (`GET /me/open-polls`, Story 44.2), de
+ *  n'importe quelle famille (JDR, groupe, soirée isolée). Une entrée par sondage, pas par option — le
+ *  client éclate par option. Strictement anonyme : des compteurs et ma seule réponse, jamais un
+ *  `userId` de votant. `eligibleCount` = ceux qui peuvent voter (JDR : le MJ + ses membres ; groupe :
+ *  les votants éligibles de la conjonction) ; `answeredCount` = ceux d'entre eux qui ont répondu
+ *  (règle de `hasAnswered`). `me` dit si JE peux voter et si j'ai répondu. */
+export interface OpenPollEntry {
   pollId: string;
   partieId: string;
   partieName: string;
-  /** Story 36.6 — effectif de la troupe : **le MJ + ses membres** (`participantCount()`), le
-   *  dénominateur de la piste de participation. Même nombre que `SessionPollDto.membersCount`
-   *  et que `AggregatedSlotDto.total`. Agrégat anonyme : aucune identité ne s'en déduit. */
-  membersCount: number;
-  options: MyCalendarPollOption[];
-  /** Échéance du vote, `null` si non définie (votes créés avant l'introduction du champ). */
+  family: GameSystemFamily;
+  kind: PartieKind;
+  seanceId: string;
+  title: string;
+  /** Échéance du vote, `null` si non définie. Passée ou non : un sondage ouvert reste listé. */
   expiresAt: string | null;
+  /** Durée du rendez-vous en créneaux (1 tant que l'épic 47 n'est pas livrée). */
+  durationSlots: number;
+  options: OpenPollOption[];
+  eligibleCount: number;
+  answeredCount: number;
+  me: { eligible: boolean; answered: boolean };
+  /** Droits d'organisateur de la personne qui lit sur ce rendez-vous (Story 44.1). */
+  can: OrganizerCan;
 }
 
 /** Séance à inscription ouverte d'une de mes parties CAMPAGNE_EPISODIQUE (couche
@@ -1173,7 +1217,6 @@ export interface MeCalendarDto {
   'mes-indisponibilites': AvailabilityDeclarationDto[];
   'mes-disponibilites': AvailabilityDeclarationDto[];
   'mes-seances': MyCalendarSeanceEntry[];
-  'votes-en-cours': MyCalendarPollEntry[];
   'inscriptions-ouvertes': MyCalendarOpenInscriptionEntry[];
 }
 

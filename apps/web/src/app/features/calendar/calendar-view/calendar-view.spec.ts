@@ -12,13 +12,14 @@ import { CalendarView } from './calendar-view';
 import { CalendarWeekView } from '../calendar-week-view/calendar-week-view';
 import { CalendarMonthView } from '../calendar-month-view/calendar-month-view';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser, OpenPollEntry } from '@master-jdr/shared';
 import {
   AvailabilityService,
   ConflictError,
 } from '../../../core/availability/availability.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
+import { OpenPollsService } from '../../../core/poll/open-polls.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { CALENDAR_LAYER_KEYS, DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
@@ -46,6 +47,8 @@ interface CreateOptions {
   /** Story 36.12 — les membres servis par `GET /parties/:id/members`. Chargés en mode MJ
    *  seulement ; ils alimentent `missingByPoll()` (AC14). */
   members?: unknown[];
+  /** Story 44.2 — mes sondages ouverts tels que `GET /me/open-polls` les sert (calendrier personnel). */
+  openPolls?: OpenPollEntry[];
 }
 
 /** Même forme que les mocks de `partie-detail.spec.ts` / `list-control-bar.spec.ts` :
@@ -181,6 +184,46 @@ const ACTIVE_POLL_SCENARIO = {
   ],
 };
 
+/** Un sondage ouvert tel que `GET /me/open-polls` le sert (Story 44.2). */
+function openPollEntry(over: Partial<OpenPollEntry> = {}): OpenPollEntry {
+  return {
+    pollId: 'poll9',
+    partieId: 'partie-9',
+    partieName: 'Les Cendres',
+    family: 'jdr',
+    kind: 'CAMPAGNE_LINEAIRE',
+    seanceId: 'seance-9',
+    title: 'Séance 1',
+    expiresAt: null,
+    durationSlots: 1,
+    options: [
+      {
+        optionId: 'o1',
+        date: '2026-08-28',
+        slot: 'EVENING',
+        yes: 2,
+        maybe: 1,
+        no: 0,
+        myAnswer: 'YES',
+      },
+      {
+        optionId: 'o2',
+        date: '2026-08-29',
+        slot: 'EVENING',
+        yes: 0,
+        maybe: 0,
+        no: 1,
+        myAnswer: null,
+      },
+    ],
+    eligibleCount: 4,
+    answeredCount: 2,
+    me: { eligible: true, answered: false },
+    can: { propose: false, edit: false, choose: false, extend: false },
+    ...over,
+  };
+}
+
 async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
   const opts: CreateOptions = typeof options === 'string' ? { mode: options } : (options ?? {});
 
@@ -192,6 +235,11 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
   const partiesSvc = makePartiesService(opts.members);
   const scenariosSvc = makeScenariosService(opts.scenarios ?? []);
   const realtimeSvc = makeRealtimeService();
+  const openPollsSvc = {
+    entries: signal<OpenPollEntry[]>(opts.openPolls ?? []),
+    loaded: signal(true),
+    refresh: vi.fn().mockResolvedValue(undefined),
+  };
 
   await TestBed.configureTestingModule({
     imports: [CalendarView],
@@ -208,6 +256,7 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
       { provide: ScenariosService, useValue: scenariosSvc },
       { provide: RealtimeService, useValue: realtimeSvc },
       { provide: BreakpointObserver, useValue: makeBreakpointObserver(opts.desktop ?? true) },
+      { provide: OpenPollsService, useValue: openPollsSvc },
     ],
   }).compileComponents();
 
@@ -231,6 +280,7 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
     partiesSvc,
     scenariosSvc,
     realtimeSvc,
+    openPollsSvc,
     location,
   };
 }
@@ -1629,69 +1679,13 @@ describe('CalendarView — une piste par créneau proposé (Story 36.6)', () => 
     expect(second.vote.no).toBe(1);
   });
 
-  it('🚨 dégradation : une API qui ne sert pas encore les agrégats ne produit NI piste NI « NaN / undefined »', async () => {
+  it('AC6/AC8 — contexte personnel : les agrégats servis par GET /me/open-polls sont repris tels quels, une entrée par option (Story 44.2)', async () => {
     const availabilitySvc = makeAvailabilityService();
-    // Forme ANTÉRIEURE à la story 36.6 — ce que renvoie une API en retard pendant un déploiement.
-    availabilitySvc.getMyCalendar.mockResolvedValue({
-      'mes-indisponibilites': [],
-      'mes-disponibilites': [],
-      'mes-seances': [],
-      'votes-en-cours': [
-        {
-          pollId: 'poll9',
-          partieId: 'partie-9',
-          partieName: 'Les Cendres',
-          options: [{ date: '2026-08-28', slot: 'EVENING' }],
-        },
-      ],
-      'inscriptions-ouvertes': [],
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      availabilitySvc,
+      openPolls: [openPollEntry()],
     });
-    const { fixture } = await createCalendarView({ mode: 'personal', availabilitySvc });
-    const comp = fixture.componentInstance as any;
-
-    const votes = comp.calendarEntries().filter((e: any) => e.type === 'votes-en-cours');
-    expect(votes).toHaveLength(1);
-    // L'entrée existe (le vote est toujours signalé), mais SANS participation : aucune piste.
-    expect(votes[0].vote).toBeUndefined();
-  });
-
-  it('AC6/AC8 — contexte personnel : les agrégats servis par GET /me/calendar sont repris tels quels, une entrée par option', async () => {
-    const availabilitySvc = makeAvailabilityService();
-    availabilitySvc.getMyCalendar.mockResolvedValue({
-      'mes-indisponibilites': [],
-      'mes-disponibilites': [],
-      'mes-seances': [],
-      'votes-en-cours': [
-        {
-          pollId: 'poll9',
-          partieId: 'partie-9',
-          partieName: 'Les Cendres',
-          membersCount: 4,
-          options: [
-            {
-              optionId: 'o1',
-              date: '2026-08-28',
-              slot: 'EVENING',
-              yes: 2,
-              maybe: 1,
-              no: 0,
-              myAnswer: 'YES',
-            },
-            {
-              optionId: 'o2',
-              date: '2026-08-29',
-              slot: 'EVENING',
-              yes: 0,
-              maybe: 0,
-              no: 1,
-              myAnswer: null,
-            },
-          ],
-        },
-      ],
-      'inscriptions-ouvertes': [],
-    });
-    const { fixture } = await createCalendarView({ mode: 'personal', availabilitySvc });
     const comp = fixture.componentInstance as any;
 
     const votes = comp.calendarEntries().filter((e: any) => e.type === 'votes-en-cours');
@@ -1703,10 +1697,80 @@ describe('CalendarView — une piste par créneau proposé (Story 36.6)', () => 
       yes: 2,
       maybe: 1,
       no: 0,
+      // Le dénominateur est le nombre de votants éligibles du sondage.
       total: 4,
       myAnswer: 'YES',
+      readOnly: false,
     });
+    // Plus aucun vote dans `GET /me/calendar`.
     expect(availabilitySvc.getMyCalendar).toHaveBeenCalledTimes(1);
+  });
+
+  it('Story 44.2 — un vote de groupe figure aussi sur la grille personnelle, avec ma réponse ; un non-votant le lit sans pouvoir répondre', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [
+        openPollEntry({ pollId: 'pj', family: 'jdr' }),
+        openPollEntry({
+          pollId: 'pg',
+          partieId: 'groupe-1',
+          partieName: 'Les amis',
+          family: 'ralliement',
+          me: { eligible: false, answered: false },
+        }),
+      ],
+    });
+    const comp = fixture.componentInstance as any;
+    const votes = comp.calendarEntries().filter((e: any) => e.type === 'votes-en-cours');
+
+    expect(votes.map((e: any) => e.vote.pollId)).toEqual(['pj', 'pj', 'pg', 'pg']);
+    expect(votes.find((e: any) => e.vote.pollId === 'pg').vote.readOnly).toBe(true);
+    expect(votes.find((e: any) => e.vote.pollId === 'pj').vote.readOnly).toBe(false);
+
+    // Le sélecteur de réponse ne s'ouvre jamais sur un sondage où je ne vote pas.
+    const anchor = document.createElement('button');
+    const readOnly = votes.find((e: any) => e.vote.pollId === 'pg');
+    comp.onVoteOptionActivated({
+      vote: readOnly.vote,
+      anchor,
+      date: new Date(Date.UTC(2026, 7, 28)),
+      slot: 'EVENING',
+    });
+    expect(comp.pickerVote()).toBeNull();
+    const votable = votes.find((e: any) => e.vote.pollId === 'pj');
+    comp.onVoteOptionActivated({
+      vote: votable.vote,
+      anchor,
+      date: new Date(Date.UTC(2026, 7, 28)),
+      slot: 'EVENING',
+    });
+    expect(comp.pickerVote()).not.toBeNull();
+  });
+
+  it('Story 44.2 — un vote dans un autre mois est dans la liste complète (rail, grille) mais pas dans l’Agenda de la période affichée', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [
+        openPollEntry({
+          pollId: 'loin',
+          options: [
+            {
+              optionId: 'l1',
+              date: '2031-01-10',
+              slot: 'EVENING',
+              yes: 0,
+              maybe: 0,
+              no: 0,
+              myAnswer: null,
+            },
+          ],
+        }),
+      ],
+    });
+    const comp = fixture.componentInstance as any;
+
+    expect(comp.calendarEntries().some((e: any) => e.vote?.pollId === 'loin')).toBe(true);
+    expect(comp.agendaEntries().some((e: any) => e.vote?.pollId === 'loin')).toBe(false);
   });
 });
 
@@ -2288,16 +2352,15 @@ describe('CalendarView — le sélecteur de réponse de vote (Story 36.7)', () =
     expect(pickerEl()).toBeNull();
   });
 
-  it("AC9 — en calendrier personnel, c'est GET /me/calendar qui est rejoué", async () => {
-    const availabilitySvc = makeAvailabilityService();
-    const { fixture } = await createCalendarView({ mode: 'personal', availabilitySvc });
-    const before = availabilitySvc.getMyCalendar.mock.calls.length;
+  it("AC9 — en calendrier personnel, c'est GET /me/open-polls qui est relu (Story 44.2)", async () => {
+    const { fixture, openPollsSvc } = await createCalendarView({ mode: 'personal' });
+    const before = openPollsSvc.refresh.mock.calls.length;
     await openPicker(fixture, { ...PARTIE_VOTE, partieId: 'partie-9' });
 
     pickerOption('YES').click();
     await tick(fixture);
 
-    expect(availabilitySvc.getMyCalendar.mock.calls.length).toBeGreaterThan(before);
+    expect(openPollsSvc.refresh.mock.calls.length).toBeGreaterThan(before);
   });
 
   it("AC10 — un échec n'affiche jamais une réponse comme enregistrée", async () => {
@@ -2706,17 +2769,14 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
   });
 
   it('AC1 — le calendrier personnel connaît aussi ses votes ouverts, à travers plusieurs parties', async () => {
-    const availabilitySvc = makeAvailabilityService();
-    availabilitySvc.getMyCalendar.mockResolvedValue({
-      'mes-indisponibilites': [],
-      'mes-disponibilites': [],
-      'mes-seances': [],
-      'votes-en-cours': [
-        {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [
+        openPollEntry({
           pollId: 'poll-a',
           partieId: 'partie-A',
           partieName: 'Les Cendres',
-          membersCount: 3,
+          eligibleCount: 3,
           options: [
             {
               optionId: 'oa',
@@ -2728,11 +2788,9 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
               myAnswer: null,
             },
           ],
-        },
+        }),
       ],
-      'inscriptions-ouvertes': [],
     });
-    const { fixture } = await createCalendarView({ mode: 'personal', availabilitySvc });
     const comp = fixture.componentInstance as any;
 
     expect(comp.destinyPolls()).toEqual([{ pollId: 'poll-a', label: 'Les Cendres' }]);
@@ -2745,18 +2803,17 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
   // chargé PAR PLAGE. Naviguer d'une semaine recharge une plage qui peut ne plus couvrir les
   // créneaux du vote — et l'effet de fin de mode (AC9) tuait alors le mode DÉFINITIVEMENT, alors
   // que le vote existait toujours. « Absent des données chargées » ≠ « clos ».
-  it('AC9 — contexte personnel : une plage rechargée qui ne porte plus le vote n’ÉTEINT PAS le mode', async () => {
-    const availabilitySvc = makeAvailabilityService();
-    const withPoll = {
-      'mes-indisponibilites': [],
-      'mes-disponibilites': [],
-      'mes-seances': [],
-      'votes-en-cours': [
-        {
+  // Story 44.2 — la liste des votes n'est plus chargée PAR PLAGE : naviguer d'une semaine à l'autre ne
+  // retire jamais un vote ouvert de la liste, le mode survit donc à tout changement de plage.
+  it('AC9 — contexte personnel : changer de plage ne touche pas au vote, le mode survit', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [
+        openPollEntry({
           pollId: 'poll-a',
           partieId: 'partie-A',
           partieName: 'Les Cendres',
-          membersCount: 3,
+          eligibleCount: 3,
           options: [
             {
               optionId: 'oa',
@@ -2768,28 +2825,18 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
               myAnswer: null,
             },
           ],
-        },
+        }),
       ],
-      'inscriptions-ouvertes': [],
-    };
-    availabilitySvc.getMyCalendar.mockResolvedValue(withPoll);
-
-    const { fixture } = await createCalendarView({ mode: 'personal', availabilitySvc });
+    });
     const comp = fixture.componentInstance as any;
     comp.enterDestiny('poll-a');
     await tick(fixture);
     expect(comp.destinyPoll()).not.toBeNull();
 
-    // Navigation : la nouvelle plage ne porte plus le vote.
-    availabilitySvc.getMyCalendar.mockResolvedValue({ ...withPoll, 'votes-en-cours': [] });
     await comp.onWeekDateChange(new Date(Date.UTC(2026, 10, 2)));
     await tick(fixture);
-
-    // Le mode SURVIT : hors plage il n'a rien à montrer, il ne meurt pas pour autant.
     expect(comp.destinyPollId()).toBe('poll-a');
 
-    // Retour dans la plage : il reprend, sans que l'utilisateur ait rien à réarmer.
-    availabilitySvc.getMyCalendar.mockResolvedValue(withPoll);
     await comp.onWeekDateChange(new Date(Date.UTC(2026, 7, 24)));
     await tick(fixture);
     expect(comp.destinyPoll()!.pollId).toBe('poll-a');
@@ -2800,18 +2847,15 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
   // PAS désactiver AC9 entièrement en contexte personnel. Ici la plage rechargée est EXACTEMENT
   // la même (le vote était pleinement dans la plage la fois précédente) et le vote a disparu
   // « pour de vrai » : le mode doit se terminer, comme en contexte de partie.
-  it('AC9 — contexte personnel : le vote disparaît d’une plage qui le couvrait déjà ⇒ le mode se termine', async () => {
-    const availabilitySvc = makeAvailabilityService();
-    const withPoll = {
-      'mes-indisponibilites': [],
-      'mes-disponibilites': [],
-      'mes-seances': [],
-      'votes-en-cours': [
-        {
+  it('AC9 — contexte personnel : le vote disparaît de la liste servie ⇒ le mode se termine', async () => {
+    const { fixture, openPollsSvc } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [
+        openPollEntry({
           pollId: 'poll-a',
           partieId: 'partie-A',
           partieName: 'Les Cendres',
-          membersCount: 3,
+          eligibleCount: 3,
           options: [
             {
               optionId: 'oa',
@@ -2823,26 +2867,16 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
               myAnswer: null,
             },
           ],
-        },
+        }),
       ],
-      'inscriptions-ouvertes': [],
-    };
-    availabilitySvc.getMyCalendar.mockResolvedValue(withPoll);
-
-    const { fixture } = await createCalendarView({ mode: 'personal', availabilitySvc });
+    });
     const comp = fixture.componentInstance as any;
     comp.enterDestiny('poll-a');
     await tick(fixture);
-
-    // Une plage qui couvre pleinement le 2026-08-28 (même semaine que le test précédent).
-    await comp.onWeekDateChange(new Date(Date.UTC(2026, 7, 24)));
-    await tick(fixture);
     expect(comp.destinyPoll()!.pollId).toBe('poll-a');
 
-    // Rechargement de la MÊME plage : le vote n'y est plus. Rien n'a changé côté fenêtre affichée
-    // — cette fois, l'absence fait bien autorité.
-    availabilitySvc.getMyCalendar.mockResolvedValue({ ...withPoll, 'votes-en-cours': [] });
-    await comp.onWeekDateChange(new Date(Date.UTC(2026, 7, 24)));
+    // Le serveur ne sert plus ce vote (date fixée, annulé, supprimé…) : l'absence fait autorité.
+    openPollsSvc.entries.set([]);
     await tick(fixture);
 
     expect(comp.destinyPollId()).toBeNull();

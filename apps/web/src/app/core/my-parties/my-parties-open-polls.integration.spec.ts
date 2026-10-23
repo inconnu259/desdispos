@@ -5,13 +5,12 @@ import type { PartieDto } from '@master-jdr/shared';
 import { MyPartiesService } from './my-parties.service';
 import { OpenPollsService } from '../poll/open-polls.service';
 import { PartiesService } from '../parties/parties.service';
-import { ScenariosService } from '../scenarios/scenarios.service';
-import { AuthService } from '../auth/auth.service';
+import { PollService } from '../poll/poll.service';
 
 // Intégration du VRAI MyPartiesService avec le VRAI OpenPollsService (seuls les services de niveau
-// HTTP sont simulés) : un refresh de la liste unique (Story 38.5) ne doit pas relancer le fan-out
-// `scenariosSvc.listAll` par partie de joueur tant que l'ensemble des parties de joueur ne change pas
-// (classe de bug « tempête de requêtes », cf. open-polls.service.ts).
+// HTTP sont simulés) : un refresh de la liste unique (Story 38.5) ne doit pas relancer la lecture de
+// `GET /me/open-polls` tant que l'ENSEMBLE de mes parties ne change pas (classe de bug « tempête de
+// requêtes », cf. open-polls.service.ts). Story 44.2 : une seule lecture, plus un fan-out par partie.
 
 @Component({ selector: 'app-test-host', template: '', standalone: true })
 class TestHost {
@@ -44,19 +43,18 @@ async function settle(fixture: { detectChanges(): void; whenStable(): Promise<un
   }
 }
 
-describe('MyPartiesService × OpenPollsService (Story 38.5)', () => {
+describe('MyPartiesService × OpenPollsService (Story 38.5, 44.2)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   async function setup(initial: PartieDto[]) {
     let current = initial;
     const list = vi.fn(() => Promise.resolve(current));
-    const listAll = vi.fn().mockResolvedValue([]);
+    const getMyOpenPolls = vi.fn().mockResolvedValue([]);
     await TestBed.configureTestingModule({
       imports: [TestHost],
       providers: [
         { provide: PartiesService, useValue: { list } },
-        { provide: ScenariosService, useValue: { listAll } },
-        { provide: AuthService, useValue: { currentUser: () => ({ id: 'u1' }) } },
+        { provide: PollService, useValue: { getMyOpenPolls } },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(TestHost);
@@ -65,7 +63,7 @@ describe('MyPartiesService × OpenPollsService (Story 38.5)', () => {
     return {
       fixture,
       myParties: fixture.componentInstance.myParties,
-      listAll,
+      getMyOpenPolls,
       next: async (parties: PartieDto[]) => {
         current = parties;
         await fixture.componentInstance.myParties.refreshAll();
@@ -74,25 +72,29 @@ describe('MyPartiesService × OpenPollsService (Story 38.5)', () => {
     };
   }
 
-  it("un refresh où seul le favori d'une partie MJ change ne relance aucun listAll", async () => {
-    const { listAll, next } = await setup([makeParty('mj1', 'mj'), makeParty('pl1', 'player')]);
-    expect(listAll).toHaveBeenCalledTimes(1); // une fois, pour la seule partie de joueur
-    expect(listAll).toHaveBeenCalledWith('pl1');
-    listAll.mockClear();
+  it("un refresh où seul le favori d'une partie change ne relance aucune lecture des votes", async () => {
+    const { getMyOpenPolls, next } = await setup([
+      makeParty('mj1', 'mj'),
+      makeParty('pl1', 'player'),
+    ]);
+    expect(getMyOpenPolls).toHaveBeenCalledTimes(1); // UNE lecture pour toutes mes parties
+    getMyOpenPolls.mockClear();
 
     await next([makeParty('mj1', 'mj', true), makeParty('pl1', 'player')]);
 
-    expect(listAll).not.toHaveBeenCalled();
+    expect(getMyOpenPolls).not.toHaveBeenCalled();
   });
 
-  it("un changement de l'ensemble des parties de joueur relance le fan-out", async () => {
-    const { listAll, next } = await setup([makeParty('mj1', 'mj'), makeParty('pl1', 'player')]);
-    listAll.mockClear();
+  it("un changement de l'ensemble de mes parties relance UNE lecture", async () => {
+    const { getMyOpenPolls, next } = await setup([
+      makeParty('mj1', 'mj'),
+      makeParty('pl1', 'player'),
+    ]);
+    getMyOpenPolls.mockClear();
 
     await next([makeParty('mj1', 'mj'), makeParty('pl1', 'player'), makeParty('pl2', 'player')]);
 
-    expect(listAll).toHaveBeenCalledWith('pl1');
-    expect(listAll).toHaveBeenCalledWith('pl2');
+    expect(getMyOpenPolls).toHaveBeenCalledTimes(1);
   });
 
   it('allParties() est en lecture seule : aucun .set() possible hors refreshAll()', async () => {

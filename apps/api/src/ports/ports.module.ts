@@ -5,11 +5,13 @@ import { EventsModule } from '../events/events.module';
 import { EventsService } from '../events/events.service';
 import { PartiesModule } from '../parties/parties.module';
 import { PartiesService } from '../parties/parties.service';
+import { OpenPollContextService } from '../events/open-poll-context.service';
 import { GroupPollChoiceService } from '../events/group-poll-choice.service';
 import { GroupPollExtensionService } from '../events/group-poll-extension.service';
 import { GROUP_POLL_CHOOSE_PORT } from '../poll/ports/group-poll-choose.port';
 import { GROUP_POLL_EXTEND_PORT } from '../poll/ports/group-poll-extend.port';
 import { GROUP_POLL_VOTE_PORT } from '../poll/ports/group-poll-vote.port';
+import { OPEN_POLL_CONTEXT_PORT } from '../poll/ports/open-poll-context.port';
 import { PARTIE_SIGNALS_PORT } from '../poll/ports/partie-signals.port';
 import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
 
@@ -25,6 +27,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
  *   `EventsService` ;
  * - `GroupPollChoosePort` (Story 40.6) → `GroupPollChoiceService` ;
  * - `GroupPollExtendPort` (Story 40.7) → `GroupPollExtensionService` ;
+ * - `OpenPollContextPort` (Story 44.2) → `OpenPollContextService` ;
  * - `PartieSignalsPort` → `PartiesService`.
  */
 @Global()
@@ -37,6 +40,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
     { provide: GROUP_POLL_VOTE_PORT, useExisting: EventsService },
     { provide: GROUP_POLL_CHOOSE_PORT, useExisting: GroupPollChoiceService },
     { provide: GROUP_POLL_EXTEND_PORT, useExisting: GroupPollExtensionService },
+    { provide: OPEN_POLL_CONTEXT_PORT, useExisting: OpenPollContextService },
     { provide: PARTIE_SIGNALS_PORT, useExisting: PartiesService },
   ],
   exports: [
@@ -46,6 +50,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
     GROUP_POLL_VOTE_PORT,
     GROUP_POLL_CHOOSE_PORT,
     GROUP_POLL_EXTEND_PORT,
+    OPEN_POLL_CONTEXT_PORT,
     PARTIE_SIGNALS_PORT,
   ],
 })

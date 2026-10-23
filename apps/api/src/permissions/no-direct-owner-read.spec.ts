@@ -50,6 +50,12 @@ const EXCEPTIONS: Readonly<Record<string, string>> = {
     "Filtre de lecture agrégée « annonces non vues de MES parties » (propriétaire OU membre) et auteur affiché de l'annonce ; les écritures (favori, annonce lue) passent par PermissionService.assert.",
   'characters/character.service.ts':
     "Projection d'étiquette « l'auteur de la fiche est le MJ » (`ownerIsMj`) et transmission à `notifyPartieSignalsChanged` ; le rôle de l'appelant (`viewerIsMj`) vient de PermissionService (grant.role, roleOf, rolesOf).",
+  'poll/my-open-polls.service.ts':
+    "Filtre de lecture agrégée « mes sondages ouverts » (propriétaire OU membre de MES parties) et constitution des votants d'un sondage de JDR (le MJ vote avec ses membres) : sélection de parties et de personnes, pas un droit. L'anti-spoil (brouillon caché) est décidé par le rôle de PermissionService.rolesOf.",
+  'poll/poll-voters.ts':
+    "Définition unique des votants d'un sondage de JDR : le propriétaire de la partie (le MJ) vote avec ses membres — sélection de personnes, pas un droit.",
+  'events/open-poll-context.service.ts':
+    "Hôte de la conjonction (propriétaire de l'événement) transmis à eligibleVoters : sélection de votants, pas un droit ; les droits d'organisateur viennent de PermissionService.organizerCan.",
   'notifications/notifications.service.ts':
     'Destinataires du rappel de la veille de chaque séance (propriétaire + membres de la partie) : sélection de destinataires, pas un droit.',
 };

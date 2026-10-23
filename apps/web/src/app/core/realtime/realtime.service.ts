@@ -90,7 +90,9 @@ export class RealtimeService {
     // fiche ouvre `userTopic` elle-même (`connect` / `disconnect` à sa destruction).
     { prefix: 'user:', notifyChanged: () => this.hommeDragon.notifyChanged() },
     { prefix: 'user:', notifyChanged: () => this.invitations.notifyChanged() },
-    { prefix: 'partie:', notifyChanged: (topic) => this.openPolls.notifyChanged(topic) },
+    // Story 44.2 : mes sondages ouverts (toutes parties, toutes familles) sont UNE liste lue sur `user:{id}`,
+    // que toute écriture de sondage ou de vote prévient (`notifyPartieSignalsChanged`) — plus de `partie:`.
+    { prefix: 'user:', notifyChanged: () => this.openPolls.notifyChanged() },
     { prefix: 'user:', notifyChanged: () => this.myParties.notifyChanged() },
     { prefix: 'partie:', notifyChanged: () => this.availability.notifyChanged() },
     { prefix: 'partie:', notifyChanged: () => this.announcements.notifyChanged() },

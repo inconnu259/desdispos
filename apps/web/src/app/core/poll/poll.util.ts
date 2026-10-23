@@ -1,13 +1,19 @@
+import { hasAnswered } from '@master-jdr/shared';
 import type { PartieMemberDto, PollOptionDto, SessionPollDto } from '@master-jdr/shared';
+
+/** Les options sur lesquelles `userId` a voté. */
+function votedOptionIds(poll: SessionPollDto, userId: string): string[] {
+  return poll.options.filter((opt) => opt.votes.some((v) => v.userId === userId)).map((o) => o.id);
+}
 
 /** Membres n'ayant pas répondu à TOUTES les options du poll (a répondu = a voté sur chaque option). */
 export function getMissingVoters(
   poll: SessionPollDto,
   members: PartieMemberDto[],
 ): PartieMemberDto[] {
-  return members.filter(
-    (m) => !poll.options.every((opt) => opt.votes.some((v) => v.userId === m.userId)),
-  );
+  // Story 44.2 : « a répondu » est la règle partagée `hasAnswered` (JDR : une réponse à CHAQUE option).
+  const optionIds = poll.options.map((o) => o.id);
+  return members.filter((m) => !hasAnswered('jdr', optionIds, votedOptionIds(poll, m.userId)));
 }
 
 export function getRespondedCount(poll: SessionPollDto, members: PartieMemberDto[]): number {
@@ -28,6 +34,9 @@ export function getMissingVotersForOption(
  * est traité comme "répondu" (rien à répondre) plutôt que de faire planter le badge.
  */
 export function hasUnansweredOptions(poll: SessionPollDto, userId: string): boolean {
-  if (poll.options.length === 0) return false;
-  return poll.options.some((opt) => !opt.votes.some((v) => v.userId === userId));
+  return !hasAnswered(
+    'jdr',
+    poll.options.map((o) => o.id),
+    votedOptionIds(poll, userId),
+  );
 }

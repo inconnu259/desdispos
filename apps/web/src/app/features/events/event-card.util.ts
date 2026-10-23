@@ -1,3 +1,4 @@
+import { hasAnswered } from '@master-jdr/shared';
 import type { DaySlot, EventCardDto, EventParticipantDto } from '@master-jdr/shared';
 import type { StatusBadgeState } from '../../core/status/status-derivation';
 import { daysBetweenKeys, imminenceIntensity } from '../../core/status/status-badge.model';
@@ -446,8 +447,15 @@ export function answeredSlotCount(card: EventCardDto, userId: string | null | un
 export function respondentIds(card: EventCardDto): string[] {
   const poll = card.poll;
   if (!poll) return [];
-  const voted = new Set(poll.votes.map((v) => v.userId));
-  return poll.eligibleVoterIds.filter((id) => voted.has(id));
+  // Story 44.2 : la règle d'un groupe est la règle partagée `hasAnswered` (une réponse à AU MOINS UN créneau).
+  const optionIds = poll.options.map((o) => o.id);
+  return poll.eligibleVoterIds.filter((id) =>
+    hasAnswered(
+      'ralliement',
+      optionIds,
+      poll.votes.filter((v) => v.userId === id).map((v) => v.optionId),
+    ),
+  );
 }
 
 /** Vote à faire : le vote est ouvert, la personne peut voter et n'a répondu à aucun créneau. */

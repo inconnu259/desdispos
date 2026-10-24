@@ -83,7 +83,8 @@ let nextUid = 0;
  * Story 40.5b : le panneau du sondage offre un lien écrit vers le calendrier du groupe — « Voter dans le
  * calendrier » à un votant éligible tant que le vote est ouvert, « Composer les créneaux » à l'hôte d'un
  * sondage ouvert. Ni l'un ni l'autre ne vote ni ne compose ici : la fenêtre demande à l'onglet
- * (`calendarRequested`) d'ouvrir la page, sans viser un vote en particulier (c'est le Palier 10.4).
+ * (`calendarRequested`) d'ouvrir la page : « Voter dans le calendrier » vise SON vote (`pollId`, Story 44.7 : la
+ * Destinée s'y ouvre), « Composer les créneaux » n'en vise aucun (`null`).
  *
  * Story 40.6 : l'hôte d'un sondage voit « Fixer la date… » dans son panneau (actif tant que le sondage est
  * ouvert et propose au moins un créneau). Il ouvre la confirmation « Votre accord » (`DateFixDialog`) : les
@@ -145,7 +146,7 @@ export class EventDialog {
   readonly saved = output<EventCardDto>();
   readonly closed = output<void>();
   /** Story 40.5b : la personne veut voter ou composer ses créneaux dans le calendrier du groupe. */
-  readonly calendarRequested = output<void>();
+  readonly calendarRequested = output<string | null>();
   /** Story 40.6 : la date vient d'être fixée — l'onglet relit la liste pour montrer la conjonction datée. */
   readonly refreshRequested = output<void>();
 

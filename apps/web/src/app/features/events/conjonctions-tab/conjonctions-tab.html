@@ -86,7 +86,7 @@
     [currentUserId]="currentUserId()"
     [viewerIsAdmin]="isAdmin()"
     (saved)="onSaved($event)"
-    (calendarRequested)="openCalendar()"
+    (calendarRequested)="openCalendar($event)"
     (refreshRequested)="refresh()"
     (closed)="closeDialog()"
   />

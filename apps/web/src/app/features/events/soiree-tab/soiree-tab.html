@@ -14,7 +14,7 @@
       [viewerIsAdmin]="isAdmin()"
       (saved)="onSaved($event)"
       (refreshRequested)="refresh()"
-      (calendarRequested)="openCalendar()"
+      (calendarRequested)="openCalendar($event)"
       (completeRequested)="openCreate()"
       [partieId]="partieId()"
       [card]="c"

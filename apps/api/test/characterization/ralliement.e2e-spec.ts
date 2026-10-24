@@ -4054,7 +4054,9 @@ describe('Ralliement — prolonger le vote et relancer la veille (Story 40.7)', 
       const sent = relanceMails(before, 'Relance cible');
       // « Tous les membres » : l'administrateur et le tiers n'ont pas répondu ; l'invité et l'hôte oui.
       expect(sent.map((c) => c.to).sort()).toEqual([admin.email, third.email].sort());
-      expect(String(sent[0].data.link)).toContain(`/parties/${groupId}/guild-calendar`);
+      expect(String(sent[0].data.link)).toContain(
+        `/parties/${groupId}/guild-calendar?poll=${card.poll!.id}`,
+      );
       expect((await pollRow(card.poll!.id)).relanceSentAt).not.toBeNull();
 
       // Une seconde passe ne renvoie rien : « une fois ».

@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import type { EventCardDto } from '@master-jdr/shared';
+import { atelierUrl, type EventCardDto } from '@master-jdr/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
@@ -152,8 +152,13 @@ export class SoireeTab implements OnInit {
   }
 
   /** Voter ou composer les créneaux : le calendrier du groupe (même page pour une soirée). */
-  protected openCalendar(): void {
-    void this.router.navigate(['/parties', this.partieId(), 'guild-calendar']);
+  protected openCalendar(pollId: string | null): void {
+    // Story 44.7 — « Voter dans le calendrier » arrive en Destinée sur ce vote (`?poll`).
+    const url = atelierUrl(
+      { partieId: this.partieId(), family: 'ralliement', role: 'member' },
+      pollId ? { poll: pollId } : {},
+    );
+    void this.router.navigateByUrl(url);
   }
 
   private async reload(partieId: string): Promise<void> {

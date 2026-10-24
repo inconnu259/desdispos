@@ -20,6 +20,9 @@ export class MyPartiesService {
   private readonly _allParties = signal<PartieDto[]>([]);
   /** Lecture seule : seule `refreshAll()` écrit, derrière sa garde anti-course (`seq`). */
   readonly allParties = this._allParties.asReadonly();
+  /** La liste a été lue au moins une fois (Story 44.7) : avant, « aucune partie » veut dire « pas encore su », et
+   *  rien ne doit en conclure qu'il n'y a aucun sondage ouvert. */
+  readonly loaded = signal(false);
   /** Les parties que l'utilisateur maîtrise — simple vue filtrée de la liste complète. Égalité par
    *  identité/rôle/nom : un `refreshAll()` qui ne change que `isFavorite`, le statut… ne notifie
    *  pas les consommateurs (`OpenPollsService` relance un fetch par partie à chaque changement). */
@@ -57,7 +60,10 @@ export class MyPartiesService {
       // Échec transitoire : on garde le dernier état connu bon, pas de `.set([])`.
     }
     if (seq !== this.seq) return; // réponse obsolète, une requête plus récente est en vol
-    if (list) this._allParties.set(list);
+    if (list) {
+      this._allParties.set(list);
+      this.loaded.set(true);
+    }
   }
 
   /** Story 42.5 : retire une partie terminée ou annulée de la liste de l'utilisateur, puis relit la liste (la

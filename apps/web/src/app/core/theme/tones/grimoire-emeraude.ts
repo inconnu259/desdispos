@@ -1084,6 +1084,8 @@ export const grimoireEmeraude = {
   'calendar.destiny_closed_generic': 'Ce vote est clos.',
   'calendar.destiny_closed_gone': 'Ce vote n’est plus ouvert.',
   'calendar.destiny_notice_dismiss': 'Fermer',
+  // Story 44.7 — un lien `?poll` vers un vote clos, inconnu ou d'une autre partie : même message, rien de plus.
+  'calendar.destiny_link_unknown': 'Ce vote n’existe pas ou n’est plus ouvert.',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

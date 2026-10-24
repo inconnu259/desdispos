@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { Router, RouterLink } from '@angular/router';
-import type { EventCardDto } from '@master-jdr/shared';
+import { atelierUrl, type EventCardDto } from '@master-jdr/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
@@ -179,10 +179,15 @@ export class ConjonctionsTab implements OnInit {
   /** Story 40.5b : la fenêtre de détail envoie vers le calendrier du groupe. L'entrée d'historique poussée
    *  à l'ouverture est REMPLACÉE par le calendrier (et non laissée derrière) : un retour arrière ramène à
    *  la liste, sans fenêtre fantôme ni second retour à faire. */
-  protected openCalendar(): void {
+  protected openCalendar(pollId: string | null): void {
     this.pushed = false;
     window.removeEventListener('popstate', this.onPopState);
-    void this.router.navigate(['/parties', this.partieId(), 'guild-calendar'], { replaceUrl: true });
+    // Story 44.7 — « Voter dans le calendrier » arrive en Destinée sur ce vote (`?poll`).
+    const url = atelierUrl(
+      { partieId: this.partieId(), family: 'ralliement', role: 'member' },
+      pollId ? { poll: pollId } : {},
+    );
+    void this.router.navigateByUrl(url, { replaceUrl: true });
   }
 
   /** Story 40.6 : la date d'une conjonction vient d'être fixée — la liste est relue tout de suite (les autres

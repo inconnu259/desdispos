@@ -252,7 +252,12 @@ async function createFixture(
       { provide: BreakpointObserver, useValue: makeBreakpointObserver(options.desktop ?? true) },
       {
         provide: MyPartiesService,
-        useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
+        useValue: {
+          refreshAll: vi.fn(),
+          playerParties: signal([]),
+          allParties: signal([]),
+          loaded: signal(true),
+        },
       },
       { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
       {
@@ -521,6 +526,32 @@ describe('PartieDetail — statut du vote', () => {
     const link = el.querySelector('.scheduling-widget a[mat-stroked-button]');
     expect(link).toBeTruthy();
     expect(link!.textContent).toContain('Vote de date en cours');
+  });
+
+  it('44.7 : le lien joueur arrive en Destinée sur le vote s’il est seul, ouvre la liste s’il y en a plusieurs', async () => {
+    const one = await createFixture(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
+      members,
+      poll: makePoll(['u1']),
+    });
+    const href = (el: HTMLElement) =>
+      el.querySelector('.scheduling-widget a[mat-stroked-button]')!.getAttribute('href');
+    expect(href(one.el)).toBe(`/parties/party-1/guild-calendar?poll=${makePoll(['u1']).id}`);
+    TestBed.resetTestingModule();
+
+    const poll1 = { ...makePoll(['u1']), id: 'poll1', partieId: 'party-1' };
+    const poll2 = { ...makePoll([]), id: 'poll2', partieId: 'party-1' };
+    const many = await createFixture(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
+      members,
+      polls: [poll1, poll2],
+    });
+    expect(href(many.el)).toBe('/parties/party-1/guild-calendar?pollList=');
+    TestBed.resetTestingModule();
+
+    const none = await createFixture(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
+      members,
+      poll: null,
+    });
+    expect(href(none.el)).toBe('/parties/party-1/guild-calendar');
   });
 
   it('plusieurs votes OPEN en parallèle → message agrégé "N votes de date en cours" (Story 8.8, revue de code)', async () => {
@@ -1019,7 +1050,12 @@ describe('PartieDetail — roster (Story 6.1)', () => {
         { provide: BreakpointObserver, useValue: dynamicBreakpointObserver },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
+          useValue: {
+          refreshAll: vi.fn(),
+          playerParties: signal([]),
+          allParties: signal([]),
+          loaded: signal(true),
+        },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -1334,7 +1370,12 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
+          useValue: {
+          refreshAll: vi.fn(),
+          playerParties: signal([]),
+          allParties: signal([]),
+          loaded: signal(true),
+        },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -2353,7 +2394,12 @@ describe('PartieDetail — rechargement sur signal temps réel (Story 18.3)', ()
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
+          useValue: {
+          refreshAll: vi.fn(),
+          playerParties: signal([]),
+          allParties: signal([]),
+          loaded: signal(true),
+        },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -2560,7 +2606,12 @@ describe('PartieDetail — rechargement sur signal temps réel (Story 18.3)', ()
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
         {
           provide: MyPartiesService,
-          useValue: { refreshAll: vi.fn(), playerParties: signal([]), allParties: signal([]) },
+          useValue: {
+          refreshAll: vi.fn(),
+          playerParties: signal([]),
+          allParties: signal([]),
+          loaded: signal(true),
+        },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -6232,7 +6283,7 @@ describe('PartieDetail — du groupe vers son calendrier (Story 40.5b)', () => {
       events: [pollCard()],
     });
     const router = TestBed.inject(Router);
-    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     await open(fixture, el);
 
     const button = q<HTMLButtonElement>('.ed__poll-vote')!;
@@ -6242,17 +6293,18 @@ describe('PartieDetail — du groupe vers son calendrier (Story 40.5b)', () => {
     await settle(fixture);
 
     // `replaceUrl` : le retour arrière ramène à la liste, sans entrée de fenêtre fantôme derrière.
-    expect(navigate).toHaveBeenCalledWith(['/parties', 'party-1', 'guild-calendar'], {
+    // Story 44.7 : « Voter dans le calendrier » arrive en Destinée sur SON vote.
+    expect(navigate).toHaveBeenCalledWith('/parties/party-1/guild-calendar?poll=p-a', {
       replaceUrl: true,
     });
   });
 
-  it('« Composer les créneaux » : réservé à l’hôte, mène au même endroit', async () => {
+  it('« Composer les créneaux » : réservé à l’hôte, mène à la page du groupe sans viser de vote', async () => {
     const { fixture, el } = await createFixture(groupe(), HOST_ID, {
       members: [],
       events: [pollCard()],
     });
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     await open(fixture, el);
 
     const button = q<HTMLButtonElement>('.ed__poll-compose')!;
@@ -6260,7 +6312,7 @@ describe('PartieDetail — du groupe vers son calendrier (Story 40.5b)', () => {
     expect(q('.ed__poll-vote')).toBeNull();
     button.click();
     await settle(fixture);
-    expect(navigate).toHaveBeenCalledWith(['/parties', 'party-1', 'guild-calendar'], {
+    expect(navigate).toHaveBeenCalledWith('/parties/party-1/guild-calendar', {
       replaceUrl: true,
     });
   });

@@ -24,7 +24,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { familyOf, hasCapability } from '@master-jdr/shared';
+import { atelierPath, familyOf, hasCapability } from '@master-jdr/shared';
 import type {
   AnnouncementDto,
   CharacterDto,
@@ -776,6 +776,26 @@ export class PartieDetail implements OnInit {
       me,
       this.todayKey,
     );
+  });
+
+  /**
+   * Story 44.7 — le lien du joueur vers le calendrier de la partie : avec UN vote ouvert il arrive en Destinée sur
+   * ce vote (`?poll`), avec plusieurs il ouvre la liste ✦ (`?pollList`) — c'est à lui de choisir, rien n'est choisi à
+   * sa place. Sans vote, le calendrier tout court. Le chemin vient de `atelierPath` : une seule règle de route.
+   */
+  protected readonly calendarLink = computed(() => {
+    const p = this.partie();
+    const polls = this.activePolls();
+    const commands = [
+      atelierPath({
+        partieId: p?.id ?? '',
+        family: p ? (familyOf(p.gameSystemId) ?? 'jdr') : 'jdr',
+        role: 'player',
+      }),
+    ];
+    const queryParams: Record<string, string> =
+      polls.length === 1 ? { poll: polls[0].id } : polls.length > 1 ? { pollList: '' } : {};
+    return { commands, queryParams };
   });
 
   protected readonly system = gameSystemName;

@@ -1030,6 +1030,51 @@ export function destinyEntryOption<T extends RankableOption>(
   return preferred ?? firstUpcoming ?? chronological[0] ?? null;
 }
 
+/** Paramètres d'adresse reconnus par les calendriers de l'atelier (Story 44.7). */
+export interface AtelierUrlParams {
+  /** `?poll=<pollId>` : la Destinée s'ouvre sur ce vote. */
+  poll?: string;
+  /** `?pollList` : la liste ✦ des destinées s'ouvre. */
+  pollList?: boolean;
+  /** `?seanceId=<id>` : le rendez-vous visé (armement du composer, palier 10.4). */
+  seanceId?: string;
+}
+
+/**
+ * Le chemin de l'atelier d'une partie (Story 44.7, AD-5/AR18). Le JDR du MJ vit à `/parties/:id/calendar` ; le
+ * joueur de JDR, le groupe et la soirée isolée à `/parties/:id/guild-calendar` (un lien `calendar` vers un groupe
+ * serait refusé : la lecture des scénarios lui est interdite).
+ */
+export function atelierPath(target: {
+  partieId: string;
+  family: GameSystemFamily;
+  role: PartieRole;
+}): string {
+  const page = target.family === 'jdr' && target.role === 'mj' ? 'calendar' : 'guild-calendar';
+  return `/parties/${encodeURIComponent(target.partieId)}/${page}`;
+}
+
+/** La chaîne de requête (sans `?`) des paramètres donnés, dans un ordre stable ; vide si aucun. */
+export function atelierQuery(params: AtelierUrlParams = {}): string {
+  const parts: string[] = [];
+  if (params.poll) parts.push(`poll=${encodeURIComponent(params.poll)}`);
+  if (params.pollList) parts.push('pollList');
+  if (params.seanceId) parts.push(`seanceId=${encodeURIComponent(params.seanceId)}`);
+  return parts.join('&');
+}
+
+/**
+ * **Une** fonction construit l'adresse de l'atelier, pour le web et pour les gabarits d'e-mail (Story 44.7) :
+ * aucun endroit ne choisit plus lui-même la route d'une famille.
+ */
+export function atelierUrl(
+  target: { partieId: string; family: GameSystemFamily; role: PartieRole },
+  params: AtelierUrlParams = {},
+): string {
+  const query = atelierQuery(params);
+  return query ? `${atelierPath(target)}?${query}` : atelierPath(target);
+}
+
 /** Déclaration de disponibilité telle que renvoyée par l'API. */
 export interface AvailabilityDeclarationDto {
   id: string;

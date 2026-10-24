@@ -343,7 +343,7 @@ describe('NotificationsService (intégration réelle via Postgres)', () => {
         .sort(),
     ).toEqual([inscrit.email, absent.email].sort());
     expect(String(forTitle(`Veille-${suffix}`)[0].data.link)).toMatch(
-      new RegExp(`/parties/${groupe.id}/guild-calendar$`),
+      new RegExp(`/parties/${groupe.id}/guild-calendar\\?poll=[^&]+$`),
     );
     for (const title of ['TropTot', 'TropTard', 'Datee', 'Fermee']) {
       expect(forTitle(`${title}-${suffix}`)).toEqual([]);

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import type { DaySlot } from '@prisma/client';
-import { GAME_SYSTEMS, familyOf, type PartieKind } from '@master-jdr/shared';
+import { GAME_SYSTEMS, atelierUrl, familyOf, type PartieKind } from '@master-jdr/shared';
 import {
   EventsService,
   type ReminderSeance,
@@ -266,7 +266,11 @@ export class NotificationsService {
     // Garde de défense en plus du filtre de la requête : pas de relance pour le JDR.
     if (familyOf(partie.gameSystemId) !== 'ralliement') return;
     const recipients = this.events.voteReminderRecipients({ votes: poll.votes, seance });
-    const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${partie.id}/guild-calendar`;
+    // Story 44.7 — le lien arrive en Destinée sur CE vote (`?poll`), par l'adresse unique de l'atelier.
+    const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}${atelierUrl(
+      { partieId: partie.id, family: 'ralliement', role: 'member' },
+      { poll: poll.id },
+    )}`;
     // Jour d'échéance en toutes lettres (jour UTC de `expiresAt`, sans créneau) : « samedi 24 octobre ».
     const deadline = poll.expiresAt ? formatSessionDate(poll.expiresAt, null) : null;
     for (const recipient of recipients) {

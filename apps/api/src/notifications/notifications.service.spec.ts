@@ -358,7 +358,7 @@ describe('NotificationsService', () => {
       expect(data.eventTitle).toBe('Catane');
       // Jour d'échéance en toutes lettres (jour UTC de `expiresAt`, sans créneau).
       expect(data.deadline).toBe('vendredi 20 novembre');
-      expect(String(data.link)).toMatch(/\/parties\/g1\/guild-calendar$/);
+      expect(String(data.link)).toMatch(/\/parties\/g1\/guild-calendar\?poll=poll1$/);
       expect(prisma.sessionPoll.updateMany).toHaveBeenCalledTimes(1);
       expect(prisma.sessionPoll.updateMany).toHaveBeenCalledWith({
         where: { id: 'poll1', status: 'OPEN', relanceSentAt: null, expiresAt },

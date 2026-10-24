@@ -64,8 +64,13 @@ class TestHost {
   readonly svc = inject(OpenPollsService);
 }
 
-async function createHarness(parties: PartieDto[], getMyOpenPolls: ReturnType<typeof vi.fn>) {
+async function createHarness(
+  parties: PartieDto[],
+  getMyOpenPolls: ReturnType<typeof vi.fn>,
+  partiesLoaded = true,
+) {
   const allParties = signal(parties);
+  const loaded = signal(partiesLoaded);
   await TestBed.configureTestingModule({
     imports: [TestHost],
     providers: [
@@ -73,6 +78,7 @@ async function createHarness(parties: PartieDto[], getMyOpenPolls: ReturnType<ty
         provide: MyPartiesService,
         useValue: {
           allParties,
+          loaded,
           playerParties: () => allParties().filter((p) => p.role === 'player'),
         },
       },
@@ -87,7 +93,7 @@ async function createHarness(parties: PartieDto[], getMyOpenPolls: ReturnType<ty
     }
   };
   await settle();
-  return { svc: fixture.componentInstance.svc, allParties, settle };
+  return { svc: fixture.componentInstance.svc, allParties, loaded, settle };
 }
 
 describe('OpenPollsService (Story 44.2)', () => {
@@ -165,6 +171,33 @@ describe('OpenPollsService (Story 44.2)', () => {
     // Sans partie il n'y a rien à attendre : la liste vide fait déjà autorité.
     expect(svc.loaded()).toBe(true);
     expect(svc.count()).toBe(0);
+  });
+
+  it('44.7 : tant que la liste de mes parties n’est pas lue, « aucune partie » ne vaut pas « chargé »', async () => {
+    const get = vi.fn().mockResolvedValue([makeEntry('p1')]);
+    const { svc, allParties, loaded, settle } = await createHarness([], get, false);
+
+    // Démarrage : la liste est vide parce qu'elle n'est pas encore là.
+    expect(svc.loaded()).toBe(false);
+    expect(get).not.toHaveBeenCalled();
+
+    allParties.set([makeParty('p1')]);
+    loaded.set(true);
+    await settle();
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(svc.loaded()).toBe(true);
+    expect(svc.entries()[0].pollId).toBe('poll-p1');
+  });
+
+  it('44.7 : liste lue et vide → chargé, sans requête', async () => {
+    const get = vi.fn();
+    const { svc, loaded, settle } = await createHarness([], get, false);
+    expect(svc.loaded()).toBe(false);
+
+    loaded.set(true);
+    await settle();
+    expect(svc.loaded()).toBe(true);
+    expect(get).not.toHaveBeenCalled();
   });
 
   it('notifyChanged() relit la liste (signal temps réel user:{id})', async () => {

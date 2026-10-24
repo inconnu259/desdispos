@@ -117,7 +117,11 @@
                     {{ theme.tone()['cta.find_date'] }}
                   </a>
                 } @else {
-                  <a mat-stroked-button [routerLink]="['/parties', p.id, 'guild-calendar']">
+                  <a
+                    mat-stroked-button
+                    [routerLink]="calendarLink().commands"
+                    [queryParams]="calendarLink().queryParams"
+                  >
                     {{ activePolls().length > 0 ? theme.tone()['poll.vote_pending'] : theme.tone()['cta.guild_calendar'] }}
                   </a>
                 }

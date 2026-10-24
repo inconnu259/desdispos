@@ -4338,6 +4338,8 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     members?: unknown[];
     /** Story 44.4 — mes sondages ouverts tels que `GET /me/open-polls` les sert (le plateau de la destinée). */
     openPolls?: OpenPollEntry[];
+    /** Story 44.7 — les paramètres d'adresse de l'arrivée (`?poll`, `?pollList`). */
+    queryParams?: Record<string, string>;
     beforeCreate?: () => void;
   }
 
@@ -4373,7 +4375,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       providers: [
         provideRouter([]),
         provideAnimationsAsync(),
-        { provide: ActivatedRoute, useValue: makeActivatedRoute('g1') },
+        { provide: ActivatedRoute, useValue: makeActivatedRoute('g1', opts.queryParams) },
         { provide: AvailabilityService, useValue: availabilitySvc },
         { provide: AuthService, useValue: authSvc },
         { provide: PartiesService, useValue: partiesSvc },
@@ -4420,6 +4422,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       navigate,
       drafts,
       openPollsSvc,
+      location,
     };
   }
 
@@ -5161,6 +5164,19 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     }
   });
 
+  it('44.7 UJ-3 : un lien ?poll arrive en Semaine, Destinée active, tiroir replié, sur le premier créneau à venir', async () => {
+    const { comp, location } = await createGroupView({
+      openPolls: [GROUP_POLL_ENTRY()],
+      queryParams: { poll: 'p1' },
+    });
+
+    expect(comp.destinyPollId()).toBe('p1');
+    expect(comp.view()).toBe('week');
+    expect(comp.destinySheetExpanded()).toBe(false);
+    expect(comp.destinyOptionId()).toBe('o1');
+    expect(location.path()).toContain('poll=p1');
+  });
+
   it('plateau : il remplace la colonne de 340 px du groupe, qui revient à la sortie de la Destinée', async () => {
     const { comp, fixture, tick } = await createGroupView({
       openPolls: [GROUP_POLL_ENTRY()],
@@ -5451,7 +5467,7 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
       mode: 'personal',
       openPolls: [poll({ can: ORGANIZER })],
     });
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     (fixture.componentInstance as any).chooseDestiny('poll-a');
     await tick(fixture);
 
@@ -5461,7 +5477,7 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
     expect(who.textContent!.trim()).toBe('voir qui');
 
     who.click();
-    expect(navigate).toHaveBeenCalledWith(['/parties', 'partie-A']);
+    expect(navigate).toHaveBeenCalledWith('/parties/partie-A/calendar?poll=poll-a');
   });
 
   it('vitrine, sans droit d’organisateur : le nombre seulement ; tout le monde a répondu : aucune ligne', async () => {
@@ -5832,14 +5848,14 @@ describe('CalendarView — le tiroir de la destinée (Story 44.5)', () => {
 
   it('organisateur, vitrine : « voir qui » du tiroir déplié mène à la page de la partie', async () => {
     const { fixture } = await narrow(poll({ can: ORGANIZER }));
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     toggle(fixture).click();
     await tick(fixture);
 
     const who = root(fixture).querySelector<HTMLButtonElement>('.destiny-board__who')!;
     expect(who.textContent!.trim()).toBe('voir qui');
     who.click();
-    expect(navigate).toHaveBeenCalledWith(['/parties', 'partie-A']);
+    expect(navigate).toHaveBeenCalledWith('/parties/partie-A/calendar?poll=poll-a');
   });
 
   it('le tiroir fait de la place : la page reçoit une marge basse, replié ou déplié', async () => {
@@ -6045,5 +6061,163 @@ describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () 
     button.click();
     await tick(fixture);
     expect(dialog.open.mock.calls[0][0]).toBe(SealConfirmDialog);
+  });
+});
+
+
+// ─── Story 44.7 — arriver en Destinée par un lien ─────────────────────────────
+
+describe('CalendarView — arriver en Destinée par un lien (Story 44.7)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const opt = (optionId: string, date: string, yes = 0) => ({
+    optionId,
+    date,
+    slot: 'EVENING' as const,
+    yes,
+    maybe: 0,
+    no: 0,
+    myAnswer: null,
+  });
+
+  const poll = (over: Partial<OpenPollEntry> = {}) =>
+    openPollEntry({
+      pollId: 'poll-a',
+      partieId: 'partie-A',
+      title: 'Chapitre 4',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      options: [opt('a2', '2030-03-06', 1), opt('a1', '2030-03-04'), opt('a3', '2030-03-08', 3)],
+      ...over,
+    });
+
+  const notice = (fixture: any) =>
+    (fixture.nativeElement as HTMLElement).querySelector('.calendar-notice span')?.textContent?.trim() ?? null;
+
+  it('vitrine : ?poll ouvre la Destinée sur ce vote, en Mois, tiroir replié sur téléphone, adresse conservée', async () => {
+    const { fixture, location } = await createCalendarView({
+      mode: 'personal',
+      desktop: false,
+      queryParams: { poll: 'poll-a' },
+      openPolls: [poll()],
+    });
+    await tick(fixture);
+    const comp = fixture.componentInstance as any;
+
+    expect(comp.destinyPollId()).toBe('poll-a');
+    expect(comp.view()).toBe('month');
+    expect(comp.destinySheetExpanded()).toBe(false);
+    expect(comp.destinyOptionId()).toBe('a1');
+    expect(location.path()).toContain('poll=poll-a');
+    expect(notice(fixture)).toBeNull();
+  });
+
+  it('un vote inconnu, clos ou d’une autre partie : calendrier normal, message une fois, paramètre retiré', async () => {
+    const cases: [Record<string, any>, string][] = [
+      [{ mode: 'personal', openPolls: [poll()] }, 'zzz'],
+      [
+        {
+          mode: 'mj',
+          partieId: 'partie-1',
+          scenarios: [TWO_OPTION_POLL_SCENARIO],
+          openPolls: [poll({ pollId: 'poll-x', partieId: 'partie-X' })],
+        },
+        'poll-x',
+      ],
+    ];
+    for (const [options, pollParam] of cases) {
+      const { fixture, location } = await createCalendarView({
+        ...options,
+        queryParams: { poll: pollParam },
+      });
+      await tick(fixture);
+
+      expect((fixture.componentInstance as any).destinyPollId()).toBeNull();
+      expect(notice(fixture)).toBe('Ce vote n’existe pas ou n’est plus ouvert.');
+      expect(location.path()).not.toContain('poll=');
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('atelier JDR : le lien attend les données de la partie, la Destinée n’est pas fermée aussitôt', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      queryParams: { poll: 'poll1' },
+      openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1' })],
+    });
+    await tick(fixture);
+
+    expect((fixture.componentInstance as any).destinyPollId()).toBe('poll1');
+    expect(notice(fixture)).toBeNull();
+  });
+
+  it('?pollList ouvre la liste ✦ et se consomme ; sans ligne, rien ne s’ouvre', async () => {
+    const withLines = await createCalendarView({
+      mode: 'personal',
+      queryParams: { pollList: '' },
+      openPolls: [poll()],
+    });
+    await tick(withLines.fixture);
+    expect((withLines.fixture.componentInstance as any).destinyListOpen()).toBe(true);
+    expect(withLines.location.path()).not.toContain('pollList');
+    TestBed.resetTestingModule();
+
+    const empty = await createCalendarView({
+      mode: 'personal',
+      queryParams: { pollList: '' },
+      openPolls: [],
+    });
+    await tick(empty.fixture);
+    expect((empty.fixture.componentInstance as any).destinyListOpen()).toBe(false);
+  });
+
+  it('l’adresse suit la Destinée : posée au choix, changée avec le vote, retirée à la sortie, sans navigation du routeur', async () => {
+    const { fixture, location } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll(), poll({ pollId: 'poll-b', title: 'Chapitre 5' })],
+    });
+    const comp = fixture.componentInstance as any;
+    const replace = vi.spyOn(location, 'replaceState');
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate');
+    const navigateByUrl = vi.spyOn(router, 'navigateByUrl');
+
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    expect(location.path()).toContain('poll=poll-a');
+
+    comp.chooseDestiny('poll-b');
+    await tick(fixture);
+    expect(location.path()).toContain('poll=poll-b');
+    expect(location.path()).not.toContain('poll=poll-a');
+
+    comp.quitDestiny();
+    await tick(fixture);
+    expect(location.path()).not.toContain('poll=');
+    expect(replace).toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('les autres paramètres de l’adresse sont gardés', async () => {
+    const { fixture, location } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll()],
+    });
+    location.replaceState(location.path().split('?')[0], 'from=2030-03-01&to=2030-03-31');
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(location.path()).toContain('from=2030-03-01');
+    expect(location.path()).toContain('to=2030-03-31');
+    expect(location.path()).toContain('poll=poll-a');
   });
 });

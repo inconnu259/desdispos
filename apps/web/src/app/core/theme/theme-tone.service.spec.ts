@@ -2125,11 +2125,14 @@ describe('Tones — le tiroir de la destinée (Story 44.5)', () => {
 // Story 44.6 — les messages de fermeture de la Destinée. Le mode soirée les affiche : aucun mot du JDR, ni « partie ».
 describe('Tones — la fermeture de la Destinée (Story 44.6)', () => {
   const KEYS = Object.keys(TONE_MAP['grimoire-emeraude']).filter(
-    (key) => key.startsWith('calendar.destiny_closed_') || key === 'calendar.destiny_notice_dismiss',
+    (key) =>
+      key.startsWith('calendar.destiny_closed_') ||
+      key === 'calendar.destiny_notice_dismiss' ||
+      key === 'calendar.destiny_link_unknown',
   );
 
-  it('cinq clés, présentes dans les trois thèmes, sans mot du JDR ni « partie »', () => {
-    expect(KEYS).toHaveLength(5);
+  it('six clés, présentes dans les trois thèmes, sans mot du JDR ni « partie »', () => {
+    expect(KEYS).toHaveLength(6);
     for (const theme of THEMES) {
       for (const key of KEYS) {
         const value = TONE_MAP[theme][key];
@@ -2143,7 +2146,9 @@ describe('Tones — la fermeture de la Destinée (Story 44.6)', () => {
   it('les messages du Grimoire suivent la table EXPERIENCE §5.1', () => {
     const tone = TONE_MAP['grimoire-emeraude'];
     expect(tone['calendar.destiny_closed_fixed']).toBe('Ce vote est clos : sa date est fixée.');
-    expect(tone['calendar.destiny_closed_cancelled']).toBe('Ce vote est clos : le rendez-vous est annulé.');
+    expect(tone['calendar.destiny_closed_cancelled']).toBe(
+      'Ce vote est clos : le rendez-vous est annulé.',
+    );
     expect(tone['calendar.destiny_closed_generic']).toBe('Ce vote est clos.');
     expect(tone['calendar.destiny_closed_gone']).toBe('Ce vote n’est plus ouvert.');
   });

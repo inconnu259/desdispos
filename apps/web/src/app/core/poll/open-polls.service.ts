@@ -53,8 +53,11 @@ export class OpenPollsService {
   constructor() {
     // La liste de mes parties change (partie rejointe ou quittée) : la liste des sondages aussi.
     effect(() => {
-      // Aucune partie : aucun sondage, et aucune requête.
+      // Aucune partie : aucun sondage, et aucune requête — mais seulement une fois la liste de mes parties LUE :
+      // au démarrage elle est encore vide, et déclarer `loaded` alors ferait croire à tout vote qu'il a disparu
+      // (un lien `?poll` serait refusé, la Destinée fermée).
       if (this.partieIdsKey() === '') {
+        if (!this.myPartiesSvc.loaded()) return;
         this.seq++;
         this.entries.set([]);
         this.loaded.set(true);

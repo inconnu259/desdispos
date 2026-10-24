@@ -53,6 +53,7 @@ import type {
 import {
   CALENDAR_LAYER_KEYS,
   DEFAULT_CALENDAR_LAYER_KEYS,
+  atelierUrl,
   bestOption,
   destinyEntryOption,
   familyOf,
@@ -1447,6 +1448,59 @@ export class CalendarView implements OnInit {
   /** Le message de fermeture de la Destinée (une fois, fermable) ; effacé à la prochaine entrée en Destinée. */
   protected readonly destinyNotice = signal<string | null>(null);
 
+  // ─── Story 44.7 — arriver en Destinée par un lien ─────────────────────────────────────────────
+  //
+  // `?poll` / `?pollList` sont lus à l'initialisation puis réécrits par `Location.replaceState`, JAMAIS par une
+  // navigation du routeur (elle vide le bandeau contextuel). Tant qu'un lien attend sa résolution, l'adresse reste
+  // intacte : sinon la synchro qui suit le mode l'effacerait avant qu'il n'ait servi.
+
+  /** Le lien lu à l'init et pas encore résolu ; `null` une fois appliqué (ou refusé). */
+  private readonly linkPending = signal<{ poll: string | null; list: boolean } | null>(null);
+  /** Les données de la partie (scénarios, conjonctions…) sont lues : à l'atelier, un vote ne s'ouvre pas avant. */
+  private readonly partieDataLoaded = signal(false);
+
+  /** Réécrit la chaîne de requête de l'adresse courante, sans navigation, en gardant tout le reste. */
+  private writeQuery(mutate: (params: URLSearchParams) => void): void {
+    const full = this.location.path();
+    const cut = full.indexOf('?');
+    // `replaceState('')` ne change rien (une URL vide désigne l'adresse courante) : la racine, au pire.
+    const path = (cut < 0 ? full : full.slice(0, cut)) || '/';
+    const params = new URLSearchParams(cut < 0 ? '' : full.slice(cut + 1));
+    const before = params.toString();
+    mutate(params);
+    const after = params.toString();
+    if (after !== before) this.location.replaceState(path, after);
+  }
+
+  /**
+   * Résout le lien. Un vote s'ouvre s'il est servi à la personne ET dans la liste de CETTE page (à l'atelier, de
+   * cette partie) : un lien ne peut jamais ouvrir le vote d'une autre partie. Sinon : calendrier normal, un message
+   * écrit une fois, paramètre retiré — rien n'est dit du vote.
+   */
+  private applyLink(pending: { poll: string | null; list: boolean }): void {
+    this.linkPending.set(null);
+    if (pending.poll) {
+      const pollId = pending.poll;
+      const entry = this.openPollsSvc.entries().find((e) => e.pollId === pollId);
+      const here = this.partieId();
+      const known = this.destinyPolls().some((p) => p.pollId === pollId);
+      if (entry && known && (here === null || entry.partieId === here)) {
+        // Entrée comme depuis la liste : vue Mois (Semaine en soirée), tiroir replié, créneau d'entrée.
+        this.chooseDestiny(pollId);
+        this.writeQuery((params) => params.delete('pollList'));
+        return;
+      }
+      this.destinyNotice.set(this.theme.tone()['calendar.destiny_link_unknown']);
+      this.writeQuery((params) => {
+        params.delete('poll');
+        params.delete('pollList');
+      });
+      return;
+    }
+    if (pending.list && this.destinyListItems().length > 0) this.destinyListOpen.set(true);
+    this.writeQuery((params) => params.delete('pollList'));
+  }
+
   /**
    * ⚠️ « Fixer la date… » : la confirmation EXISTANTE — `DateFixDialog` pour un groupe (e-mail « date fixée »),
    * `SealConfirmDialog` en mode liste pour un JDR (séance scellée, vote fermé). Les deux écrivent par la route
@@ -1554,7 +1608,13 @@ export class CalendarView implements OnInit {
   /** « voir qui » (vitrine, organisateur) : la page de la partie, en attendant l'atelier sur ce vote (44.7). */
   protected openDestinyWho(): void {
     const entry = this.destinyEntry();
-    if (entry) void this.router.navigate(['/parties', entry.partieId]);
+    if (!entry) return;
+    // Story 44.7 — l'atelier de CE vote : le MJ d'un JDR vit à `/calendar`, un groupe à `/guild-calendar`. Le serveur
+    // ne donne `can.choose` d'un JDR qu'au MJ, d'où son rôle ici.
+    const role = entry.family === 'jdr' && entry.can.choose ? 'mj' : 'player';
+    void this.router.navigateByUrl(
+      atelierUrl({ partieId: entry.partieId, family: entry.family, role }, { poll: entry.pollId }),
+    );
   }
 
   /** « Quitter la Destinée » : le mode s'arrête, la liste se referme. */
@@ -2220,6 +2280,28 @@ export class CalendarView implements OnInit {
       });
     });
 
+    // Story 44.7 — le lien attend les sondages ouverts et, à l'atelier, les données de la partie.
+    effect(() => {
+      const pending = this.linkPending();
+      // `partieDataLoaded` vaut aussi pour le calendrier personnel (fin de `loadForPartieId(null)`) : avant lui,
+      // `partieId()` n'est pas encore posé et l'on ne saurait pas dans quel contexte on résout le lien.
+      if (!pending || !this.openPollsSvc.loaded() || !this.partieDataLoaded()) return;
+      untracked(() => this.applyLink(pending));
+    });
+
+    // Story 44.7 — l'adresse suit la Destinée : `poll` posé à l'entrée ou au changement, retiré à la sortie. Un
+    // rechargement ramène ainsi au même vote.
+    effect(() => {
+      const id = this.destinyPollId();
+      if (this.linkPending()) return;
+      untracked(() =>
+        this.writeQuery((params) => {
+          if (id) params.set('poll', id);
+          else params.delete('poll');
+        }),
+      );
+    });
+
     // Story 44.4 — les noms de celles et ceux qui n'ont pas répondu à un vote de GROUPE ne se montrent qu'à son
     // organisateur : les membres ne sont lus qu'alors (le calendrier d'un groupe n'en lit aucun autrement).
     effect(() => {
@@ -2292,6 +2374,14 @@ export class CalendarView implements OnInit {
       this.pollPanelOpen.set(true);
     }
 
+    // Story 44.7 — `?poll=<pollId>` ouvre la Destinée sur ce vote, `?pollList` la liste ✦. Lus ICI, une fois, puis
+    // résolus quand les données sont là (`applyLink`) ; l'adresse n'est pas touchée d'ici là.
+    const pollParam = this.route.snapshot.queryParamMap.get('poll');
+    const listParam = this.route.snapshot.queryParamMap.get('pollList');
+    if (pollParam || listParam !== null) {
+      this.linkPending.set({ poll: pollParam || null, list: listParam !== null });
+    }
+
     this.destroyRef.onDestroy(() => {
       // Story 40.5b — toute sortie autre que valider / renoncer / « Retour » (retour du navigateur, menu)
       // pendant la composition d'une nouvelle conjonction rend le brouillon : la page du groupe rouvre
@@ -2323,6 +2413,7 @@ export class CalendarView implements OnInit {
     // Story 40.5b — une nouvelle identité de partie repart de zéro : ni groupe, ni conjonctions, ni
     // composition d'une partie précédente (la route réutilise l'instance sur un simple changement de
     // `:id`).
+    this.partieDataLoaded.set(false);
     this.isGroup.set(false);
     this.groupResolved.set(false);
     this.groupEvents.set([]);
@@ -2414,6 +2505,9 @@ export class CalendarView implements OnInit {
         this.loadMeCalendarForRange(this.fromDateStr(), this.toDateStr()),
       ]);
     }
+    // Story 44.7 — ce que la page montre de SA partie est lu : un lien de Destinée peut s'appliquer sans que la
+    // fin de mode (vote absent de la liste chargée) l'achève aussitôt.
+    this.partieDataLoaded.set(true);
   }
 
   // Story 8.8, AC7/AC8/AC9 : charge les scénarios/séances de la Partie via ScenariosService.listAll

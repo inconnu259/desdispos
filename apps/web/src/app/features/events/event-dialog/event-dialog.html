@@ -117,7 +117,7 @@
             mat-flat-button
             type="button"
             class="ed__poll-calendar ed__poll-vote"
-            (click)="calendarRequested.emit()"
+            (click)="calendarRequested.emit(card().poll?.id ?? null)"
           >
             {{ theme.tone()['partie.ralliement_event_vote_in_calendar_btn'] }}
           </button>
@@ -151,7 +151,7 @@
             mat-stroked-button
             type="button"
             class="ed__poll-calendar ed__poll-compose"
-            (click)="calendarRequested.emit()"
+            (click)="calendarRequested.emit(null)"
           >
             {{ theme.tone()['partie.ralliement_event_compose_in_calendar_btn'] }}
           </button>

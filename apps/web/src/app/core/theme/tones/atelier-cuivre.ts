@@ -1083,6 +1083,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.destiny_closed_generic': 'Ce scrutin est clos.',
   'calendar.destiny_closed_gone': 'Ce scrutin n’est plus ouvert.',
   'calendar.destiny_notice_dismiss': 'Fermer',
+  // Story 44.7 — un lien `?poll` vers un vote clos, inconnu ou d'une autre partie : même message, rien de plus.
+  'calendar.destiny_link_unknown': 'Ce scrutin n’existe pas ou n’est plus ouvert.',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

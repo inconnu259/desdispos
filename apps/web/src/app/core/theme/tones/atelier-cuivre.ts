@@ -1077,6 +1077,12 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.destiny_sheet_dates_many': 'Voir les {n} dates',
   'calendar.destiny_sheet_hide': 'Replier',
   'calendar.destiny_sheet_collapse_aria': 'Replier le plateau de la destinée',
+  // Story 44.6 — la Destinée se ferme quand son vote n'est plus ouvert : elle dit pourquoi, une fois.
+  'calendar.destiny_closed_fixed': 'Ce scrutin est clos : sa date est verrouillée.',
+  'calendar.destiny_closed_cancelled': 'Ce scrutin est clos : le rendez-vous est annulé.',
+  'calendar.destiny_closed_generic': 'Ce scrutin est clos.',
+  'calendar.destiny_closed_gone': 'Ce scrutin n’est plus ouvert.',
+  'calendar.destiny_notice_dismiss': 'Fermer',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

@@ -1073,6 +1073,12 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.destiny_sheet_dates_many': 'Voir les {n} dates',
   'calendar.destiny_sheet_hide': 'Replier',
   'calendar.destiny_sheet_collapse_aria': 'Replier le plateau de la destinée',
+  // Story 44.6 — la Destinée se ferme quand son vote n'est plus ouvert : elle dit pourquoi, une fois.
+  'calendar.destiny_closed_fixed': 'Ce vote est clos : sa date est fixée.',
+  'calendar.destiny_closed_cancelled': 'Ce vote est clos : la rencontre est annulée.',
+  'calendar.destiny_closed_generic': 'Ce vote est clos.',
+  'calendar.destiny_closed_gone': 'Ce vote n’est plus ouvert.',
+  'calendar.destiny_notice_dismiss': 'Fermer',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

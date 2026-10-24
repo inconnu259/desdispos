@@ -367,3 +367,29 @@
     padding-bottom: 70vh;
   }
 }
+
+/* ── Story 44.6 : le message de fermeture de la Destinée (une fois, fermable) ── */
+.calendar-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 12px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant, #ccc);
+  border-left: 4px solid var(--mat-sys-primary, #888);
+  border-radius: 8px;
+}
+
+.calendar-notice__close {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--mat-sys-primary, inherit);
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}

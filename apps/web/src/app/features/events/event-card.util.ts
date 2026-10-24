@@ -1,5 +1,10 @@
 import { hasAnswered } from '@master-jdr/shared';
-import type { DaySlot, EventCardDto, EventParticipantDto } from '@master-jdr/shared';
+import type {
+  DaySlot,
+  EventCardDto,
+  EventParticipantDto,
+  OpenPollOption,
+} from '@master-jdr/shared';
 import type { StatusBadgeState } from '../../core/status/status-derivation';
 import { daysBetweenKeys, imminenceIntensity } from '../../core/status/status-badge.model';
 import { fillTone } from '../../core/theme/tone-format';
@@ -669,6 +674,36 @@ export function rankedPollSlots(card: EventCardDto, todayKey: string): RankedPol
     .map((entry) => entry.slot);
 }
 
+/**
+ * Story 44.6 — les créneaux d'un vote ouvert tel que `GET /me/open-polls` le sert, dans le même ordre que
+ * `rankedPollSlots` (le plus plébiscité d'abord) : la confirmation « Fixer la date » de la Destinée liste les
+ * mêmes lignes, que le vote vienne d'une conjonction ou d'un scénario. Les comptes sont ceux de l'entrée.
+ */
+export function rankedEntrySlots(
+  options: readonly OpenPollOption[],
+  todayKey: string,
+): RankedPollSlot[] {
+  return options
+    .map((o) => ({
+      id: o.optionId,
+      date: o.date,
+      slot: o.slot,
+      label: pollSlotLabel(o),
+      yes: o.yes,
+      maybe: o.maybe,
+      no: o.no,
+      past: o.date < todayKey,
+    }))
+    .sort(
+      (a, b) =>
+        b.yes - a.yes ||
+        b.maybe - a.maybe ||
+        a.no - b.no ||
+        a.date.localeCompare(b.date) ||
+        SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot],
+    );
+}
+
 /** « 4 oui · 0 peut-être · 1 non » : le décompte d'un créneau dans la confirmation. */
 export function pollCountsLabel(slot: RankedPollSlot, tone: EventTone): string {
   return fillTone(tone['partie.ralliement_event_fix_counts'], {
@@ -709,7 +744,12 @@ export function canExtendVote(card: EventCardDto): boolean {
 /** Plus petite « Nouvelle échéance » proposable : le lendemain de l'échéance actuelle — jamais avant
  *  aujourd'hui (le serveur refuse un jour passé, une échéance déjà dépassée comprise). */
 export function extendMinKey(card: EventCardDto, todayKey: string): string {
-  const deadline = pollDeadlineKey(card);
+  return extendMinKeyFrom(pollDeadlineKey(card), todayKey);
+}
+
+/** La même règle à partir du jour d'échéance seul (`null` : aucune échéance) — la Destinée (Story 44.6) ne
+ *  porte pas la carte, seulement l'entrée de `GET /me/open-polls`. */
+export function extendMinKeyFrom(deadline: string | null, todayKey: string): string {
   const afterDeadline = deadline === null ? todayKey : nextDayKey(deadline);
   return afterDeadline > todayKey ? afterDeadline : todayKey;
 }

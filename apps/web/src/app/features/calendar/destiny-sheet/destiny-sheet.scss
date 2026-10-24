@@ -106,7 +106,23 @@
 
 .destiny-sheet__actions {
   display: flex;
+  gap: 0.5rem;
   margin-top: 0.4rem;
+}
+
+/* Story 44.6 — « Fixer la date… », la seule action pleine du tiroir replié. */
+.destiny-sheet__fix {
+  flex: 1;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mat-sys-primary, #9b6dff);
+  border-radius: 999px;
+  background: var(--mat-sys-primary, #9b6dff);
+  color: var(--mat-sys-on-primary, #fff);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .destiny-sheet__toggle {

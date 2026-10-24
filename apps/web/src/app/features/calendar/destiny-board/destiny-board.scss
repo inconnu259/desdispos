@@ -119,6 +119,36 @@
   cursor: pointer;
 }
 
+/* Story 44.6 — les actions de l'organisateur : des boutons au doigt (44 px), « Fixer la date… » en plein, les
+   autres cernés. */
+.destiny-board__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.destiny-board__fix,
+.destiny-board__extend {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--mat-sys-outline, #888);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.destiny-board__fix {
+  border-color: var(--mat-sys-primary, #888);
+  background: var(--mat-sys-primary, #888);
+  color: var(--mat-sys-on-primary, #fff);
+}
+
 /* Lisible par un lecteur d'écran, invisible à l'œil : l'annonce du créneau courant. */
 .destiny-board__sr {
   position: absolute;

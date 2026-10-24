@@ -86,7 +86,7 @@ import {
   type AgendaEntry,
   type AgendaSealRequest,
 } from '../calendar-agenda-view/calendar-agenda-view';
-import { SealConfirmDialog } from '../seal-confirm-dialog/seal-confirm-dialog';
+import { SealConfirmDialog, type SealSlotsData } from '../seal-confirm-dialog/seal-confirm-dialog';
 import { CalendarDetailRail } from '../calendar-detail-rail/calendar-detail-rail';
 import {
   type RailTarget,
@@ -103,6 +103,7 @@ import { DestinySheet, type DestinySheetModel } from '../destiny-sheet/destiny-s
 import {
   DestinyBoard,
   type DestinyBoardAbsent,
+  type DestinyBoardActions,
   type DestinyBoardModel,
 } from '../destiny-board/destiny-board';
 import { ConstraintPanel } from '../constraint-panel/constraint-panel';
@@ -128,7 +129,12 @@ import {
 } from '../../events/conjonction-draft.service';
 import { EventsApiService } from '../../events/events-api.service';
 import { refusalMessage } from '../../events/refusal-message';
-import { shortDayLabel } from '../../events/event-card.util';
+import { extendMinKeyFrom, rankedEntrySlots, shortDayLabel } from '../../events/event-card.util';
+import { DateFixDialog, type DateFixData } from '../../events/date-fix-dialog/date-fix-dialog';
+import {
+  ExtendVoteDialog,
+  type ExtendVoteData,
+} from '../../events/extend-vote-dialog/extend-vote-dialog';
 import { PollMissingPanel } from '../poll-missing/poll-missing';
 
 /** Story 8.8, AC7/AC8 : un vote actif, étiqueté par son scénario (et sa séance si le scénario en a
@@ -1105,6 +1111,7 @@ export class CalendarView implements OnInit {
     this.destinyOptionId.set(null);
     // Le tiroir (44.5) s'ouvre toujours replié : la grille d'abord.
     this.destinySheetExpanded.set(false);
+    this.destinyNotice.set(null);
     if (!this.activeLayers().includes('votes-en-cours')) {
       this.activeLayers.update((keys) => [...keys, 'votes-en-cours']);
     }
@@ -1283,6 +1290,21 @@ export class CalendarView implements OnInit {
       });
   }
 
+  /** Story 44.6 — ce que le serveur permet à CETTE personne de conclure (`can`, jamais déduit du rôle). « Fixer la
+   *  date… » aussi après la fin du vote ; « Prolonger le vote » jamais en JDR (`can.extend` y est toujours faux). */
+  private destinyActions(entry: OpenPollEntry): DestinyBoardActions | null {
+    const tone = this.theme.tone();
+    const fixLabel =
+      entry.can.choose && entry.options.length > 0
+        ? tone['partie.ralliement_event_fix_date_btn']
+        : null;
+    const extendLabel =
+      entry.can.extend && entry.family === 'ralliement'
+        ? tone['partie.ralliement_event_extend_btn']
+        : null;
+    return fixLabel || extendLabel ? { fixLabel, extendLabel } : null;
+  }
+
   private destinyAbsent(entry: OpenPollEntry): DestinyBoardAbsent | null {
     const tone = this.theme.tone();
     const missing = Math.max(0, entry.eligibleCount - entry.answeredCount);
@@ -1341,6 +1363,7 @@ export class CalendarView implements OnInit {
         current: o.optionId === currentId,
       })),
       absent: this.destinyAbsent(entry),
+      actions: this.destinyActions(entry),
       announcement: current
         ? fillTone(tone['calendar.destiny_board_announce'], {
             n: position,
@@ -1404,6 +1427,7 @@ export class CalendarView implements OnInit {
         { n: slots.length },
       ),
       hideLabel: tone['calendar.destiny_sheet_hide'],
+      fixLabel: board.actions?.fixLabel ?? null,
       collapseAria: tone['calendar.destiny_sheet_collapse_aria'],
       announcement: board.announcement,
       board,
@@ -1416,6 +1440,115 @@ export class CalendarView implements OnInit {
     if (!option) return;
     this.destinyOptionId.set(option.optionId);
     this.moveGridTo(option.date);
+  }
+
+  // ─── Story 44.6 — conclure le vote depuis le plateau ou le tiroir ─────────────────────────────
+
+  /** Le message de fermeture de la Destinée (une fois, fermable) ; effacé à la prochaine entrée en Destinée. */
+  protected readonly destinyNotice = signal<string | null>(null);
+
+  /**
+   * ⚠️ « Fixer la date… » : la confirmation EXISTANTE — `DateFixDialog` pour un groupe (e-mail « date fixée »),
+   * `SealConfirmDialog` en mode liste pour un JDR (séance scellée, vote fermé). Les deux écrivent par la route
+   * partagée `PATCH …/poll/:pollId/choose`, avec le `partieId` de l'ENTRÉE (la vitrine n'a pas de route de partie).
+   * Le serveur reste juge : son refus reste affiché dans la fenêtre.
+   */
+  protected async openDestinyFix(): Promise<void> {
+    const entry = this.destinyEntry();
+    if (!entry || !entry.can.choose || this.pollActionPending()) return;
+    const todayKey = this.todayKey;
+    const slots = rankedEntrySlots(entry.options, todayKey);
+    const confirm = (optionId: string) =>
+      this.pollSvc.chooseDate(entry.partieId, entry.pollId, { optionId });
+    // Posé AVANT d'ouvrir la fenêtre : deux touchers rapprochés n'en ouvrent pas deux.
+    this.pollActionPending.set(true);
+    try {
+      const ref =
+        entry.family === 'ralliement'
+          ? this.dialog.open<DateFixDialog, DateFixData, boolean>(DateFixDialog, {
+              data: { title: entry.title, slots, todayKey, confirm },
+              width: 'min(560px, 96vw)',
+              autoFocus: 'first-tabbable',
+              restoreFocus: true,
+            })
+          : this.dialog.open<SealConfirmDialog, SealSlotsData, boolean>(SealConfirmDialog, {
+              data: { pollLabel: entry.title, slots, todayKey, confirm },
+              width: 'min(560px, 96vw)',
+              autoFocus: 'first-tabbable',
+              restoreFocus: true,
+            });
+      if (await firstValueFrom(ref.afterClosed())) await this.refreshAfterDestinyWrite();
+    } finally {
+      this.pollActionPending.set(false);
+    }
+  }
+
+  /** « Prolonger le vote » (soirée seulement) : `ExtendVoteDialog` (Story 40.7), route `PATCH …/extend`. */
+  protected async openDestinyExtend(): Promise<void> {
+    const entry = this.destinyEntry();
+    if (!entry || !entry.can.extend || entry.family !== 'ralliement' || this.pollActionPending()) {
+      return;
+    }
+    const deadlineKey = entry.expiresAt?.substring(0, 10) ?? null;
+    this.pollActionPending.set(true);
+    try {
+      const ref = this.dialog.open<ExtendVoteDialog, ExtendVoteData, boolean>(ExtendVoteDialog, {
+        data: {
+          title: entry.title,
+          deadlineKey,
+          minKey: extendMinKeyFrom(deadlineKey, this.todayKey),
+          confirm: (day) =>
+            this.injector.get(EventsApiService).extend(entry.partieId, entry.pollId, day),
+        },
+        width: 'min(560px, 96vw)',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      });
+      if (await firstValueFrom(ref.afterClosed())) await this.refreshAfterDestinyWrite();
+    } finally {
+      this.pollActionPending.set(false);
+    }
+  }
+
+  /** Relire ce que la page montre après une écriture : à l'atelier les votes de la partie, dans la vitrine mes
+   *  sondages ouverts et mon calendrier. Un vote clos disparaît alors, et la Destinée se ferme avec sa raison. */
+  private async refreshAfterDestinyWrite(): Promise<void> {
+    const partieId = this.partieId();
+    if (partieId) {
+      await this.reloadVotes(partieId);
+      await this.refreshMjPanels();
+      await this.openPollsSvc.refresh();
+      return;
+    }
+    await this.openPollsSvc.refresh();
+    await this.loadMeCalendarForRange(this.fromDateStr(), this.toDateStr());
+  }
+
+  /**
+   * Pourquoi le vote de la Destinée n'est plus ouvert, d'après ce que l'atelier a déjà chargé (scénarios d'un JDR,
+   * conjonctions d'un groupe) : date fixée, rendez-vous annulé, sinon clos (y compris supprimé). La vitrine, elle,
+   * ne lit pas de charge utile par vote : elle dit seulement « n'est plus ouvert ».
+   */
+  private destinyCloseReason(pollId: string): string {
+    const tone = this.theme.tone();
+    if (this.isGroup()) {
+      const card = this.groupEvents().find((c) => c.poll?.id === pollId);
+      if (card?.cancelled) return tone['calendar.destiny_closed_cancelled'];
+      if (card?.seance?.date) return tone['calendar.destiny_closed_fixed'];
+      return tone['calendar.destiny_closed_generic'];
+    }
+    for (const scenario of this.scenarios()) {
+      for (const seance of scenario.seances) {
+        if (
+          seance.poll?.id === pollId &&
+          seance.poll.status === 'CLOSED' &&
+          seance.poll.chosenDate
+        ) {
+          return tone['calendar.destiny_closed_fixed'];
+        }
+      }
+    }
+    return tone['calendar.destiny_closed_generic'];
   }
 
   /** « voir qui » (vitrine, organisateur) : la page de la partie, en attendant l'atelier sur ce vote (44.7). */
@@ -2054,7 +2187,10 @@ export class CalendarView implements OnInit {
       // autorité sur ce qui est ouvert. C'est vrai en contexte de PARTIE (`activePolls()` dérive
       // de TOUS les scénarios de la partie, remplacés d'un bloc après chargement) : absence ⇒ clos.
       if (this.partieId()) {
-        untracked(() => this.exitDestiny());
+        untracked(() => {
+          this.destinyNotice.set(this.destinyCloseReason(id));
+          this.exitDestiny();
+        });
         return;
       }
 
@@ -2063,7 +2199,10 @@ export class CalendarView implements OnInit {
       // première fois, on ne sait rien : le mode attend. (L'ancienne heuristique « hors plage ≠ clos » n'a
       // plus d'objet.)
       if (!this.openPollsSvc.loaded()) return;
-      untracked(() => this.exitDestiny());
+      untracked(() => {
+        this.destinyNotice.set(this.theme.tone()['calendar.destiny_closed_gone']);
+        this.exitDestiny();
+      });
     });
 
     // Story 44.4 — le créneau courant doit savoir disparaître sans emporter la Destinée : retiré d'un vote qui
@@ -2190,6 +2329,10 @@ export class CalendarView implements OnInit {
     this.groupEventsError.set(null);
     this.membersRequestedFor = null;
     this.exitCompose();
+    // Story 44.6 — la Destinée d'une partie précédente ne survit pas à ce changement : elle n'a pas à se fermer
+    // plus tard sur un « Ce vote est clos. » qui ne concerne pas la partie affichée.
+    this.exitDestiny();
+    this.destinyNotice.set(null);
 
     // Story 30.6, Task 1 : état des couches actives, initialisé depuis le défaut du compte —
     // jamais persisté par la bascule elle-même (encadré n°2). `disponibilite-groupe` retirée hors

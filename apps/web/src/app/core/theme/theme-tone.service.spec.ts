@@ -849,6 +849,8 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.destiny_sheet_dates_many',
     'calendar.destiny_sheet_hide',
     'calendar.destiny_sheet_collapse_aria',
+    // Story 44.6 — « Fermer » du message de fermeture de la Destinée
+    'calendar.destiny_notice_dismiss',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
     'partie.asset_journal_cta',
     'partie.asset_carte_cta',
@@ -2117,5 +2119,32 @@ describe('Tones — le tiroir de la destinée (Story 44.5)', () => {
       expect(tone['calendar.destiny_sheet_deadline_open'], theme).toContain('{date}');
       expect(tone['calendar.destiny_sheet_dates_many'], theme).toContain('{n}');
     }
+  });
+});
+
+// Story 44.6 — les messages de fermeture de la Destinée. Le mode soirée les affiche : aucun mot du JDR, ni « partie ».
+describe('Tones — la fermeture de la Destinée (Story 44.6)', () => {
+  const KEYS = Object.keys(TONE_MAP['grimoire-emeraude']).filter(
+    (key) => key.startsWith('calendar.destiny_closed_') || key === 'calendar.destiny_notice_dismiss',
+  );
+
+  it('cinq clés, présentes dans les trois thèmes, sans mot du JDR ni « partie »', () => {
+    expect(KEYS).toHaveLength(5);
+    for (const theme of THEMES) {
+      for (const key of KEYS) {
+        const value = TONE_MAP[theme][key];
+        expect(value, `${theme} / ${key}`).toBeTruthy();
+        expect(value, `${theme} / ${key}`).not.toMatch(NON_JDR_BANNED_WORDS);
+        expect(value.toLowerCase(), `${theme} / ${key}`).not.toContain('partie');
+      }
+    }
+  });
+
+  it('les messages du Grimoire suivent la table EXPERIENCE §5.1', () => {
+    const tone = TONE_MAP['grimoire-emeraude'];
+    expect(tone['calendar.destiny_closed_fixed']).toBe('Ce vote est clos : sa date est fixée.');
+    expect(tone['calendar.destiny_closed_cancelled']).toBe('Ce vote est clos : le rendez-vous est annulé.');
+    expect(tone['calendar.destiny_closed_generic']).toBe('Ce vote est clos.');
+    expect(tone['calendar.destiny_closed_gone']).toBe('Ce vote n’est plus ouvert.');
   });
 });

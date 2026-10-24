@@ -27,6 +27,7 @@ const BOARD: DestinyBoardModel = {
   ],
   absent: { text: '3 n’ont pas encore répondu', whoLabel: 'voir qui' },
   announcement: 'Créneau 2 sur 2, dimanche 25 octobre, matin, 1 oui',
+  actions: null,
 };
 
 const MODEL: DestinySheetModel = {
@@ -37,6 +38,7 @@ const MODEL: DestinySheetModel = {
   stateLabel: 'Organisateur',
   datesLabel: 'Voir les 2 dates',
   hideLabel: 'Replier',
+  fixLabel: null,
   collapseAria: 'Replier le plateau de la destinée',
   announcement: BOARD.announcement,
   board: BOARD,
@@ -128,5 +130,55 @@ describe('DestinySheet (Story 44.5)', () => {
     fixture.nativeElement.querySelector('.destiny-board__who').click();
     expect(chosen).toEqual(['a']);
     expect(who).toBe(1);
+  });
+});
+
+describe('DestinySheet — fixer la date (Story 44.6)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function create(expanded: boolean, fixLabel: string | null) {
+    await TestBed.configureTestingModule({ imports: [DestinySheet] }).compileComponents();
+    const fixture = TestBed.createComponent(DestinySheet);
+    fixture.componentRef.setInput('model', {
+      ...MODEL,
+      fixLabel,
+      board: {
+        ...BOARD,
+        actions: fixLabel ? { fixLabel, extendLabel: 'Prolonger le vote' } : null,
+      },
+    });
+    fixture.componentRef.setInput('expanded', expanded);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it("replié, l'organisateur a « Fixer la date… » à côté de « Voir les N dates »", async () => {
+    const fixture = await create(false, 'Fixer la date…');
+    const root: HTMLElement = fixture.nativeElement;
+    let fix = 0;
+    fixture.componentInstance.fixRequested.subscribe(() => fix++);
+    const button = root.querySelector<HTMLButtonElement>('.destiny-sheet__fix')!;
+    expect(button.textContent!.trim()).toBe('Fixer la date…');
+    expect(root.querySelector('.destiny-sheet__toggle')).not.toBeNull();
+    button.click();
+    expect(fix).toBe(1);
+  });
+
+  it('sans droit, replié : pas de bouton', async () => {
+    const root: HTMLElement = (await create(false, null)).nativeElement;
+    expect(root.querySelector('.destiny-sheet__fix')).toBeNull();
+  });
+
+  it('déplié, le bouton est celui du plateau (jamais deux), et ses demandes remontent', async () => {
+    const fixture = await create(true, 'Fixer la date…');
+    const root: HTMLElement = fixture.nativeElement;
+    let fix = 0;
+    let extend = 0;
+    fixture.componentInstance.fixRequested.subscribe(() => fix++);
+    fixture.componentInstance.extendRequested.subscribe(() => extend++);
+    expect(root.querySelector('.destiny-sheet__fix')).toBeNull();
+    root.querySelector<HTMLButtonElement>('.destiny-board__fix')!.click();
+    root.querySelector<HTMLButtonElement>('.destiny-board__extend')!.click();
+    expect([fix, extend]).toEqual([1, 1]);
   });
 });

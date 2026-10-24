@@ -26,6 +26,7 @@ const MODEL: DestinyBoardModel = {
   ],
   absent: { text: '3 n’ont pas encore répondu', whoLabel: null },
   announcement: 'Créneau 2 sur 2, dimanche 25 octobre, matin, 1 oui',
+  actions: null,
 };
 
 async function createBoard(model: DestinyBoardModel = MODEL) {
@@ -108,5 +109,38 @@ describe('DestinyBoard — annonce portée par l’hôte (Story 44.5)', () => {
     fixture.componentRef.setInput('announce', false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[aria-live]')).toBeNull();
+  });
+});
+
+describe("DestinyBoard — actions d'organisateur (Story 44.6)", () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('sans droit, aucune action', async () => {
+    const root: HTMLElement = (await createBoard()).nativeElement;
+    expect(root.querySelector('.destiny-board__actions')).toBeNull();
+  });
+
+  it('« Fixer la date… » et « Prolonger le vote » demandent chacun leur confirmation', async () => {
+    const fixture = await createBoard({
+      ...MODEL,
+      actions: { fixLabel: 'Fixer la date…', extendLabel: 'Prolonger le vote' },
+    });
+    let fix = 0;
+    let extend = 0;
+    fixture.componentInstance.fixRequested.subscribe(() => fix++);
+    fixture.componentInstance.extendRequested.subscribe(() => extend++);
+    const root: HTMLElement = fixture.nativeElement;
+    root.querySelector<HTMLButtonElement>('.destiny-board__fix')!.click();
+    root.querySelector<HTMLButtonElement>('.destiny-board__extend')!.click();
+    expect(root.querySelector('.destiny-board__fix')!.textContent!.trim()).toBe('Fixer la date…');
+    expect([fix, extend]).toEqual([1, 1]);
+  });
+
+  it('un seul droit : un seul bouton', async () => {
+    const root: HTMLElement = (
+      await createBoard({ ...MODEL, actions: { fixLabel: 'Fixer la date…', extendLabel: null } })
+    ).nativeElement;
+    expect(root.querySelector('.destiny-board__fix')).not.toBeNull();
+    expect(root.querySelector('.destiny-board__extend')).toBeNull();
   });
 });

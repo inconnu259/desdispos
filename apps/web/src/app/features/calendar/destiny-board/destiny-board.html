@@ -41,6 +41,22 @@
     </p>
   }
 
+  <!-- Story 44.6 — les actions de l'organisateur, même après la fin du vote : le serveur reste juge. -->
+  @if (model().actions; as actions) {
+    <div class="destiny-board__actions">
+      @if (actions.fixLabel) {
+        <button type="button" class="destiny-board__fix" (click)="fixRequested.emit()">
+          {{ actions.fixLabel }}
+        </button>
+      }
+      @if (actions.extendLabel) {
+        <button type="button" class="destiny-board__extend" (click)="extendRequested.emit()">
+          {{ actions.extendLabel }}
+        </button>
+      }
+    </div>
+  }
+
   <!-- Annonce du créneau courant : vide au montage, réécrite à chaque changement. -->
   @if (announce()) {
     <p class="destiny-board__sr" aria-live="polite">{{ model().announcement }}</p>

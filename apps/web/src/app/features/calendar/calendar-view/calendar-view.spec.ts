@@ -30,6 +30,9 @@ import { TONE_MAP } from '../../../core/theme/tones';
 import { CalendarSessionLayersService } from '../calendar-session-layers.service';
 import { ConjonctionDraftService } from '../../events/conjonction-draft.service';
 import { EventsApiService } from '../../events/events-api.service';
+import { DateFixDialog } from '../../events/date-fix-dialog/date-fix-dialog';
+import { ExtendVoteDialog } from '../../events/extend-vote-dialog/extend-vote-dialog';
+import { SealConfirmDialog } from '../seal-confirm-dialog/seal-confirm-dialog';
 
 const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
@@ -1307,6 +1310,25 @@ describe('CalendarView — changement de :id sur une instance réutilisée (revu
 
     expect(comp.partieId()).toBe('partie-2');
     expect(comp.activeLayers()).toEqual(['votes-en-cours']);
+  });
+
+  it('44.6 : la Destinée de l’ancienne partie ne se ferme pas sur un faux « clos » dans la nouvelle', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      openPolls: [openPollEntry({ pollId: 'poll1', partieId: 'partie-1', title: 'Séance 1' })],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll1');
+    await settle(fixture);
+    expect(comp.destinyPollId()).toBe('poll1');
+
+    pushParamMap('partie-2');
+    await settle(fixture);
+
+    expect(comp.destinyPollId()).toBeNull();
+    expect(fixture.nativeElement.querySelector('.calendar-notice')).toBeNull();
   });
 
   it('reconnecte le canal temps réel sur le nouveau partieId, et déconnecte l’ancien', async () => {
@@ -4343,6 +4365,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     const eventsApi = {
       list: vi.fn().mockResolvedValue(servedTo(opts.userId ?? ME, opts.events ?? [groupCard()])),
       update: vi.fn().mockResolvedValue(groupCard()),
+      extend: vi.fn().mockResolvedValue(undefined),
     };
 
     await TestBed.configureTestingModule({
@@ -5049,6 +5072,95 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     expect(fixture.nativeElement.querySelector('.destiny-board__who')).toBeNull();
   });
 
+  // ── Conclure le vote depuis le plateau (Story 44.6) ──
+
+  /** Les créneaux (o1 : 1 oui 1 peut-être ; o2 : 0 oui 1 non) comptés par l'entrée servie. */
+  const fixButton = (fixture: any) =>
+    fixture.nativeElement.querySelector('.destiny-board__fix') as HTMLButtonElement | null;
+  const extendButton = (fixture: any) =>
+    fixture.nativeElement.querySelector('.destiny-board__extend') as HTMLButtonElement | null;
+
+  it('44.6 : l’hôte fixe la date par DateFixDialog, le meilleur créneau en tête, puis la liste est relue', async () => {
+    const { comp, fixture, tick, dialog, pollSvc, eventsApi, openPollsSvc } = await createGroupView({
+      userId: HOST,
+      members: MEMBERS,
+      openPolls: [GROUP_POLL_ENTRY({ can: HOST_CAN })],
+    });
+    comp.chooseDestiny('p1');
+    await tick();
+    dialog.__result = true;
+    const listed = eventsApi.list.mock.calls.length;
+
+    fixButton(fixture)!.click();
+    await tick();
+
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+    const [component, config] = dialog.open.mock.calls[0] as [unknown, { data: any }];
+    expect(component).toBe(DateFixDialog);
+    expect(config.data.title).toBe('Soirée plateaux');
+    expect(config.data.slots.map((s: any) => s.id)).toEqual(['o1', 'o2']);
+
+    await config.data.confirm('o1');
+    expect(pollSvc.chooseDate).toHaveBeenCalledWith('g1', 'p1', { optionId: 'o1' });
+    // Confirmé : l'atelier relit ses conjonctions et mes sondages ouverts.
+    expect(eventsApi.list.mock.calls.length).toBeGreaterThan(listed);
+    expect(openPollsSvc.refresh).toHaveBeenCalled();
+  });
+
+  it('44.6 : l’hôte prolonge le vote par ExtendVoteDialog (écriture par la route partagée)', async () => {
+    const { comp, fixture, tick, dialog, eventsApi } = await createGroupView({
+      userId: HOST,
+      members: MEMBERS,
+      openPolls: [GROUP_POLL_ENTRY({ can: HOST_CAN, expiresAt: '2099-11-20T00:00:00.000Z' })],
+    });
+    comp.chooseDestiny('p1');
+    await tick();
+
+    extendButton(fixture)!.click();
+    await tick();
+
+    const [component, config] = dialog.open.mock.calls[0] as [unknown, { data: any }];
+    expect(component).toBe(ExtendVoteDialog);
+    expect(config.data.deadlineKey).toBe('2099-11-20');
+    expect(config.data.minKey).toBe('2099-11-21');
+    await config.data.confirm('2099-12-01');
+    expect(eventsApi.extend).toHaveBeenCalledWith('g1', 'p1', '2099-12-01');
+  });
+
+  it('44.6 : sans droit d’organisateur, aucune action n’est offerte', async () => {
+    const { comp, fixture, tick } = await createGroupView({ openPolls: [GROUP_POLL_ENTRY()] });
+    comp.chooseDestiny('p1');
+    await tick();
+    expect(fixture.nativeElement.querySelector('.destiny-board__actions')).toBeNull();
+  });
+
+  it('44.6 : atelier d’un groupe, le message dit pourquoi le vote est clos (date fixée, annulé, autre)', async () => {
+    const { comp, fixture, tick } = await createGroupView({
+      userId: HOST,
+      members: MEMBERS,
+      openPolls: [GROUP_POLL_ENTRY({ can: HOST_CAN })],
+    });
+    const notice = () =>
+      fixture.nativeElement.querySelector('.calendar-notice span')?.textContent?.trim() ?? null;
+    const dated = { ...groupCard().seance, date: '2099-11-24', slot: 'EVENING' };
+    const cases: [any[], string][] = [
+      [[groupCard({ seance: dated }, { status: 'CLOSED' })], 'Ce vote est clos : sa date est fixée.'],
+      [[groupCard({ cancelled: true }, { status: 'CLOSED' })], 'Ce vote est clos : le rendez-vous est annulé.'],
+      [[], 'Ce vote est clos.'],
+    ];
+    for (const [events, expected] of cases) {
+      comp.groupEvents.set(groupCard().poll ? [groupCard()] : []);
+      comp.chooseDestiny('p1');
+      await tick();
+      expect(notice()).toBeNull();
+
+      comp.groupEvents.set(events);
+      await tick();
+      expect(comp.destinyPollId()).toBeNull();
+      expect(notice()).toBe(expected);
+    }
+  });
+
   it('plateau : il remplace la colonne de 340 px du groupe, qui revient à la sortie de la Destinée', async () => {
     const { comp, fixture, tick } = await createGroupView({
       openPolls: [GROUP_POLL_ENTRY()],
@@ -5738,5 +5850,200 @@ describe('CalendarView — le tiroir de la destinée (Story 44.5)', () => {
     await tick(fixture);
     expect(page().classList).toContain('calendar-page--sheet-open');
     expect(page().classList).not.toContain('calendar-page--sheet');
+  });
+});
+
+
+// ─── Story 44.6 — fixer la date ou prolonger le vote depuis le plateau ────────
+
+describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+
+  const opt = (optionId: string, date: string, yes = 0, maybe = 0) => ({
+    optionId,
+    date,
+    slot: 'EVENING' as const,
+    yes,
+    maybe,
+    no: 0,
+    myAnswer: null,
+  });
+
+  const poll = (over: Partial<OpenPollEntry> = {}) =>
+    openPollEntry({
+      pollId: 'poll-a',
+      partieId: 'partie-A',
+      partieName: 'Les Cendres',
+      title: 'Chapitre 4',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      eligibleCount: 5,
+      answeredCount: 2,
+      can: ORGANIZER,
+      options: [opt('a2', '2030-03-06', 1), opt('a1', '2030-03-04', 0, 1), opt('a3', '2030-03-08', 3, 2)],
+      ...over,
+    });
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+  const fix = (fixture: any) => root(fixture).querySelector<HTMLButtonElement>('.destiny-board__fix');
+  const extend = (fixture: any) =>
+    root(fixture).querySelector<HTMLButtonElement>('.destiny-board__extend');
+  const notice = (fixture: any) =>
+    root(fixture).querySelector('.calendar-notice span')?.textContent?.trim() ?? null;
+
+  async function enter(entry: OpenPollEntry = poll(), extra: Partial<CreateOptions> = {}) {
+    const ctx = await createCalendarView({ mode: 'personal', openPolls: [entry], ...extra });
+    (ctx.fixture.componentInstance as any).chooseDestiny(entry.pollId);
+    await tick(ctx.fixture);
+    return ctx;
+  }
+
+  it('JDR : « Fixer la date… » ouvre SealConfirmDialog avec les créneaux, le meilleur en tête', async () => {
+    const { fixture, dialog, pollSvc, openPollsSvc } = await enter();
+    dialog.__result = true;
+
+    fix(fixture)!.click();
+    await tick(fixture);
+
+    const [component, config] = dialog.open.mock.calls[0] as [unknown, { data: any }];
+    expect(component).toBe(SealConfirmDialog);
+    expect(config.data.pollLabel).toBe('Chapitre 4');
+    expect(config.data.slots.map((s: any) => s.id)).toEqual(['a3', 'a2', 'a1']);
+
+    // Le `partieId` vient de l'entrée : la vitrine n'a pas de route de partie.
+    await config.data.confirm('a3');
+    expect(pollSvc.chooseDate).toHaveBeenCalledWith('partie-A', 'poll-a', { optionId: 'a3' });
+    expect(openPollsSvc.refresh).toHaveBeenCalled();
+  });
+
+  it('renoncer n’écrit rien et ne relit rien', async () => {
+    const { fixture, dialog, pollSvc, openPollsSvc } = await enter();
+    dialog.__result = false;
+    const before = openPollsSvc.refresh.mock.calls.length;
+
+    fix(fixture)!.click();
+    await tick(fixture);
+
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+    expect(pollSvc.chooseDate).not.toHaveBeenCalled();
+    expect(openPollsSvc.refresh.mock.calls.length).toBe(before);
+  });
+
+  it('deux demandes rapprochées n’ouvrent qu’une confirmation', async () => {
+    const { fixture, dialog } = await enter();
+    const comp = fixture.componentInstance as any;
+    void comp.openDestinyFix();
+    void comp.openDestinyFix();
+    await tick(fixture);
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+  });
+
+  it('un vote terminé garde « Fixer la date… »', async () => {
+    const { fixture } = await enter(poll({ expiresAt: '2020-01-01T00:00:00.000Z' }));
+    expect(fix(fixture)).not.toBeNull();
+  });
+
+  it('sans droit, aucune action ; jamais « Prolonger » en JDR même si le droit le dirait', async () => {
+    const none = await enter(poll({ can: { propose: false, edit: false, choose: false, extend: false } }));
+    expect(root(none.fixture).querySelector('.destiny-board__actions')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const jdr = await enter(poll({ can: { ...ORGANIZER, extend: true } }));
+    expect(fix(jdr.fixture)).not.toBeNull();
+    expect(extend(jdr.fixture)).toBeNull();
+  });
+
+  it('soirée : « Prolonger le vote » ouvre ExtendVoteDialog, DateFixDialog sert à fixer', async () => {
+    const entry = poll({ family: 'ralliement', can: { ...ORGANIZER, extend: true } });
+    const { fixture, dialog } = await enter(entry);
+
+    extend(fixture)!.click();
+    await tick(fixture);
+    expect(dialog.open.mock.calls[0][0]).toBe(ExtendVoteDialog);
+    expect((dialog.open.mock.calls[0][1] as any).data.deadlineKey).toBe('2099-01-01');
+
+    fix(fixture)!.click();
+    await tick(fixture);
+    expect(dialog.open.mock.calls[1][0]).toBe(DateFixDialog);
+  });
+
+  it('vitrine : le vote qui n’est plus ouvert ferme la Destinée avec son message, une fois', async () => {
+    const { fixture, openPollsSvc } = await enter();
+    const comp = fixture.componentInstance as any;
+    expect(notice(fixture)).toBeNull();
+
+    openPollsSvc.entries.set([]);
+    await tick(fixture);
+
+    expect(comp.destinyPollId()).toBeNull();
+    expect(notice(fixture)).toBe('Ce vote n’est plus ouvert.');
+    expect(root(fixture).querySelector('.calendar-notice-slot')!.getAttribute('role')).toBe('status');
+
+    // « Fermer » l'efface ; une nouvelle entrée en Destinée l'efface aussi.
+    root(fixture).querySelector<HTMLButtonElement>('.calendar-notice__close')!.click();
+    await tick(fixture);
+    expect(notice(fixture)).toBeNull();
+
+    openPollsSvc.entries.set([poll()]);
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    expect(notice(fixture)).toBeNull();
+  });
+
+  it('quitter soi-même la Destinée ne pose aucun message', async () => {
+    const { fixture } = await enter();
+    (fixture.componentInstance as any).quitDestiny();
+    await tick(fixture);
+    expect(notice(fixture)).toBeNull();
+  });
+
+  it('atelier JDR : la date fixée ailleurs ferme la Destinée avec sa raison, sinon « clos »', async () => {
+    const seance = TWO_OPTION_POLL_SCENARIO.seances[0];
+    const closed = (chosenDate: string | null) => [
+      {
+        ...TWO_OPTION_POLL_SCENARIO,
+        seances: [{ ...seance, poll: { ...seance.poll, status: 'CLOSED', chosenDate } }],
+      },
+    ];
+    for (const [scenarios, expected] of [
+      [closed('2026-08-28T00:00:00.000Z'), 'Ce vote est clos : sa date est fixée.'],
+      [closed(null), 'Ce vote est clos.'],
+      [[], 'Ce vote est clos.'],
+    ] as [any[], string][]) {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [TWO_OPTION_POLL_SCENARIO],
+        openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1' })],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.chooseDestiny('poll1');
+      await tick(fixture);
+      expect(notice(fixture)).toBeNull();
+
+      comp.scenarios.set(scenarios);
+      await tick(fixture);
+      expect(comp.destinyPollId()).toBeNull();
+      expect(notice(fixture)).toBe(expected);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('tiroir replié : « Fixer la date… » ouvre la même confirmation', async () => {
+    const { fixture, dialog } = await enter(poll(), { desktop: false });
+    const button = root(fixture).querySelector<HTMLButtonElement>('.destiny-sheet__fix')!;
+    expect(button.textContent!.trim()).toBe('Fixer la date…');
+
+    button.click();
+    await tick(fixture);
+    expect(dialog.open.mock.calls[0][0]).toBe(SealConfirmDialog);
   });
 });

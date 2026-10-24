@@ -15,6 +15,9 @@ export interface DestinySheetModel {
   datesLabel: string;
   /** « Replier ». */
   hideLabel: string;
+  /** « Fixer la date… » à côté de « Voir les N dates » (tiroir replié, organisateur), sinon `null`. Déplié, le
+   *  bouton est celui du plateau. */
+  fixLabel: string | null;
   collapseAria: string;
   /** Annoncé en `aria-live` poli à chaque changement de créneau courant (la seule région du tiroir). */
   announcement: string;
@@ -44,4 +47,6 @@ export class DestinySheet {
   readonly toggled = output<void>();
   readonly slotChosen = output<string>();
   readonly whoRequested = output<void>();
+  readonly fixRequested = output<void>();
+  readonly extendRequested = output<void>();
 }

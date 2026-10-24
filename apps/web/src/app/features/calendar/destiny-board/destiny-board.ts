@@ -21,6 +21,13 @@ export interface DestinyBoardAbsent {
   whoLabel: string | null;
 }
 
+/** Story 44.6 — ce que l'organisateur peut conclure depuis le plateau ; un libellé `null` : pas de bouton (droit
+ *  absent, ou jamais en JDR pour « Prolonger »). */
+export interface DestinyBoardActions {
+  fixLabel: string | null;
+  extendLabel: string | null;
+}
+
 export interface DestinyBoardModel {
   title: string;
   subtitle: string;
@@ -28,6 +35,8 @@ export interface DestinyBoardModel {
   slotsAria: string;
   bestLabel: string;
   absent: DestinyBoardAbsent | null;
+  /** Les actions d'organisateur ; `null` pour qui n'en a aucune. */
+  actions: DestinyBoardActions | null;
   /** Annoncé en `aria-live` poli à chaque changement de créneau courant. */
   announcement: string;
 }
@@ -39,8 +48,9 @@ export interface DestinyBoardModel {
  * `CalendarView` construit le modèle — qui ne porte jamais d'identité de votant, seulement des textes et des
  * compteurs — et décide de ce que « choisir un créneau » et « voir qui » font.
  *
- * Il n'a aucune action d'organisateur (modifier, fixer, prolonger : story 44.6) : un votant répond sur la
- * grille, avec le sélecteur existant.
+ * Story 44.6 — l'organisateur y trouve « Fixer la date… » et, en soirée, « Prolonger le vote » ; le composant
+ * ne fait que les demander (`fixRequested`, `extendRequested`), `CalendarView` ouvre les confirmations. Un
+ * votant répond sur la grille, avec le sélecteur existant.
  */
 @Component({
   selector: 'app-destiny-board',
@@ -57,4 +67,6 @@ export class DestinyBoard {
 
   readonly slotChosen = output<string>();
   readonly whoRequested = output<void>();
+  readonly fixRequested = output<void>();
+  readonly extendRequested = output<void>();
 }

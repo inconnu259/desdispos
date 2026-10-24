@@ -25,6 +25,18 @@
     @if (composeRefusal()) {
       <p class="calendar-error calendar-error--compose" role="alert">{{ composeRefusal() }}</p>
     }
+    <!-- Story 44.6 — pourquoi la Destinée s'est fermée, une fois. La région existe toujours (même vide) : un texte
+         qui apparaît dans une région déjà présente est annoncé. -->
+    <div class="calendar-notice-slot" role="status">
+      @if (destinyNotice(); as notice) {
+        <p class="calendar-notice">
+          <span>{{ notice }}</span>
+          <button type="button" class="calendar-notice__close" (click)="destinyNotice.set(null)">
+            {{ theme.tone()['calendar.destiny_notice_dismiss'] }}
+          </button>
+        </p>
+      }
+    </div>
     <div class="calendar-controls">
       <!-- Story 36.14, AC1 — ⚠️ REMPLACE la bande de chips permanente de la story 30.6. Cinq
            chips plus la chip Destinée ne tenaient pas sur une ligne : la barre passait à DEUX
@@ -364,6 +376,8 @@
         [model]="board"
         (slotChosen)="chooseDestinySlot($event)"
         (whoRequested)="openDestinyWho()"
+        (fixRequested)="openDestinyFix()"
+        (extendRequested)="openDestinyExtend()"
       />
     </aside>
   }
@@ -377,6 +391,8 @@
       (toggled)="toggleDestinySheet()"
       (slotChosen)="chooseDestinySlot($event)"
       (whoRequested)="openDestinyWho()"
+      (fixRequested)="openDestinyFix()"
+      (extendRequested)="openDestinyExtend()"
     />
   }
 

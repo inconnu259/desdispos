@@ -28,6 +28,8 @@
 
 .destiny__nav {
   display: inline-flex;
+  /* Story 44.4 — « ‹ 1 / 2 › » ne se coupe jamais, même dans la colonne étroite d'un atelier à 768 px. */
+  white-space: nowrap;
   align-items: center;
   gap: 0.15rem;
 }

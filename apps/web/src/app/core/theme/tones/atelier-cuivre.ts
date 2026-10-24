@@ -1069,6 +1069,14 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.destiny_board_who': 'voir le détail',
   'calendar.destiny_board_slots_aria': 'Créneaux candidats',
   'calendar.destiny_board_announce': 'Créneau {n} sur {total}, {date}, {slot}, {yes} oui',
+  // Story 44.5 — le tiroir de la destinée (sous 768 px) : même plateau, replié en un résumé.
+  'calendar.destiny_sheet_region': 'Destinée : {name}',
+  'calendar.destiny_sheet_deadline_open': 'clôture du scrutin {date}',
+  'calendar.destiny_sheet_deadline_ended': 'scrutin clos',
+  'calendar.destiny_sheet_dates_one': 'Voir la date',
+  'calendar.destiny_sheet_dates_many': 'Voir les {n} dates',
+  'calendar.destiny_sheet_hide': 'Replier',
+  'calendar.destiny_sheet_collapse_aria': 'Replier le plateau de la destinée',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

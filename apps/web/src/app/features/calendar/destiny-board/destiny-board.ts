@@ -51,6 +51,10 @@ export interface DestinyBoardModel {
 export class DestinyBoard {
   readonly model = input.required<DestinyBoardModel>();
 
+  /** Story 44.5 — `false` quand un hôte (le tiroir) porte déjà l'annonce du créneau courant : une seule région
+   *  `aria-live`, sinon le lecteur d'écran dirait deux fois la même chose. */
+  readonly announce = input(true);
+
   readonly slotChosen = output<string>();
   readonly whoRequested = output<void>();
 }

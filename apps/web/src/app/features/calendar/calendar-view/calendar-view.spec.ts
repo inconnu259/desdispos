@@ -5516,3 +5516,227 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
     expect(openPollsSvc.refresh.mock.calls.length).toBeGreaterThan(before);
   });
 });
+
+// ─── Story 44.5 — le tiroir de la destinée, sous 768 px ───────────────────────
+
+describe('CalendarView — le tiroir de la destinée (Story 44.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+
+  const opt = (optionId: string, date: string, yes = 0, maybe = 0) => ({
+    optionId,
+    date,
+    slot: 'EVENING' as const,
+    yes,
+    maybe,
+    no: 0,
+    myAnswer: null,
+  });
+
+  const poll = (over: Partial<OpenPollEntry> = {}) =>
+    openPollEntry({
+      pollId: 'poll-a',
+      partieId: 'partie-A',
+      partieName: 'Les Cendres',
+      title: 'Chapitre 4',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      eligibleCount: 5,
+      answeredCount: 2,
+      options: [opt('a2', '2030-03-06', 1), opt('a1', '2030-03-04', 0, 1), opt('a3', '2030-03-08', 3, 2)],
+      ...over,
+    });
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+  const sheet = (fixture: any) => root(fixture).querySelector('app-destiny-sheet');
+  const summary = (fixture: any) =>
+    root(fixture).querySelector('.destiny-sheet__summary')!.textContent!.trim();
+  const toggle = (fixture: any) =>
+    root(fixture).querySelector<HTMLButtonElement>('.destiny-sheet__toggle')!;
+
+  /** Un calendrier personnel étroit (< 768 px) avec la Destinée sur le vote donné. */
+  async function narrow(entry: OpenPollEntry = poll()) {
+    const ctx = await createCalendarView({ mode: 'personal', desktop: false, openPolls: [entry] });
+    (ctx.fixture.componentInstance as any).chooseDestiny(entry.pollId);
+    await tick(ctx.fixture);
+    return ctx;
+  }
+
+  it('sous 768 px, choisir un vote ouvre le tiroir replié ; pas de plateau en colonne', async () => {
+    const { fixture } = await narrow();
+    expect(sheet(fixture)).not.toBeNull();
+    expect(root(fixture).querySelector('app-destiny-board')).toBeNull();
+    expect(root(fixture).querySelector('.destiny-board-col')).toBeNull();
+    expect(root(fixture).querySelector('.destiny-sheet__title')!.textContent).toContain('Chapitre 4');
+    expect(toggle(fixture).textContent).toContain('Voir les 3 dates');
+    expect(
+      root(fixture).querySelector('.destiny-sheet__handle')!.getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
+  it('la région est nommée « Destinée : {nom} »', async () => {
+    const { fixture } = await narrow();
+    expect(sheet(fixture)!.querySelector('[role="region"]')!.getAttribute('aria-label')).toBe(
+      'Destinée : Chapitre 4',
+    );
+  });
+
+  it('le résumé dit n / N, le créneau, les oui et la fin du vote', async () => {
+    const { fixture } = await narrow();
+    expect(summary(fixture)).toMatch(/^1 \/ 3 · .+ soir · 0 oui · fin du vote .+$/);
+  });
+
+  it('un vote terminé : « vote terminé » ; sans échéance : aucune fin de vote', async () => {
+    const ended = await narrow(poll({ expiresAt: '2020-01-01T00:00:00.000Z' }));
+    // Après la fin du vote, la Destinée s'ouvre sur le meilleur créneau (3 oui).
+    expect(summary(ended.fixture)).toMatch(/^3 \/ 3 · .+ soir · 3 oui · vote terminé$/);
+    TestBed.resetTestingModule();
+
+    const open = await narrow(poll({ expiresAt: null }));
+    expect(summary(open.fixture)).toMatch(/^1 \/ 3 · .+ soir · 0 oui$/);
+    expect(summary(open.fixture)).not.toContain('fin du vote');
+  });
+
+  it('la pastille dit mon état : À faire, Répondu, Organisateur, Vous ne votez pas', async () => {
+    const cases: [Partial<OpenPollEntry>, string][] = [
+      [{ me: { eligible: true, answered: false } }, 'À faire'],
+      [{ me: { eligible: true, answered: true } }, 'Répondu'],
+      [{ can: ORGANIZER }, 'Organisateur'],
+      [{ me: { eligible: false, answered: false } }, 'Vous ne votez pas'],
+    ];
+    for (const [over, label] of cases) {
+      const { fixture } = await narrow(poll(over));
+      expect(root(fixture).querySelector('.destiny-sheet__pill')!.textContent!.trim(), label).toBe(
+        label,
+      );
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('« Voir les N dates » déplie le plateau complet, « Replier » le referme ; la poignée fait de même', async () => {
+    const { fixture } = await narrow();
+    const handle = () => root(fixture).querySelector<HTMLButtonElement>('.destiny-sheet__handle')!;
+
+    toggle(fixture).click();
+    await tick(fixture);
+    expect(root(fixture).querySelectorAll('.destiny-board__slot')).toHaveLength(3);
+    expect(toggle(fixture).getAttribute('aria-expanded')).toBe('true');
+    expect(toggle(fixture).textContent).toContain('Replier');
+
+    handle().click();
+    await tick(fixture);
+    expect(root(fixture).querySelector('app-destiny-board')).toBeNull();
+    expect(toggle(fixture).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('une seule région aria-live dans le tiroir, replié ou déplié', async () => {
+    const { fixture } = await narrow();
+    const live = () => sheet(fixture)!.querySelectorAll('[aria-live="polite"]');
+    expect(live()).toHaveLength(1);
+    toggle(fixture).click();
+    await tick(fixture);
+    expect(live()).toHaveLength(1);
+  });
+
+  it('parcourir les créneaux met le résumé à jour ; toucher un créneau déplié garde le tiroir ouvert', async () => {
+    const { fixture } = await narrow();
+    const comp = fixture.componentInstance as any;
+    comp.destinyNext();
+    await tick(fixture);
+    expect(summary(fixture)).toMatch(/^2 \/ 3 · .+ soir · 1 oui/);
+    expect(root(fixture).querySelector('.destiny-sheet__sr')!.textContent).toContain(
+      'Créneau 2 sur 3',
+    );
+
+    toggle(fixture).click();
+    await tick(fixture);
+    root(fixture).querySelectorAll<HTMLButtonElement>('.destiny-board__slot')[2].click();
+    await tick(fixture);
+    expect(comp.destinyOptionId()).toBe('a3');
+    expect(comp.destinySheetExpanded()).toBe(true);
+  });
+
+  it('le tiroir s’ouvre replié à chaque entrée, et disparaît avec la Destinée', async () => {
+    const { fixture } = await narrow();
+    const comp = fixture.componentInstance as any;
+    comp.toggleDestinySheet();
+    await tick(fixture);
+    expect(comp.destinySheetExpanded()).toBe(true);
+
+    comp.quitDestiny();
+    await tick(fixture);
+    expect(sheet(fixture)).toBeNull();
+
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    expect(sheet(fixture)).not.toBeNull();
+    expect(comp.destinySheetExpanded()).toBe(false);
+  });
+
+  it('pas de tiroir à partir de 768 px (le plateau le remplace), ni dans l’Agenda, ni en composition', async () => {
+    const wide = await createCalendarView({ mode: 'personal', openPolls: [poll()] });
+    (wide.fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(wide.fixture);
+    expect(sheet(wide.fixture)).toBeNull();
+    expect(root(wide.fixture).querySelector('app-destiny-board')).not.toBeNull();
+    TestBed.resetTestingModule();
+
+    const { fixture } = await narrow();
+    const comp = fixture.componentInstance as any;
+    comp.composing.set(true);
+    await tick(fixture);
+    expect(sheet(fixture)).toBeNull();
+    comp.composing.set(false);
+
+    comp.onViewChange('agenda');
+    await tick(fixture);
+    expect(sheet(fixture)).toBeNull();
+    // Le mode n'est pas défait : revenir à la grille retrouve le tiroir.
+    comp.onViewChange('month');
+    await tick(fixture);
+    expect(sheet(fixture)).not.toBeNull();
+  });
+
+  it('la colonne habituelle reste empilée sous la grille', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      desktop: false,
+      openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1', can: ORGANIZER })],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll1');
+    await tick(fixture);
+    expect(sheet(fixture)).not.toBeNull();
+    expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
+  });
+
+  it('organisateur, vitrine : « voir qui » du tiroir déplié mène à la page de la partie', async () => {
+    const { fixture } = await narrow(poll({ can: ORGANIZER }));
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    toggle(fixture).click();
+    await tick(fixture);
+
+    const who = root(fixture).querySelector<HTMLButtonElement>('.destiny-board__who')!;
+    expect(who.textContent!.trim()).toBe('voir qui');
+    who.click();
+    expect(navigate).toHaveBeenCalledWith(['/parties', 'partie-A']);
+  });
+
+  it('le tiroir fait de la place : la page reçoit une marge basse, replié ou déplié', async () => {
+    const { fixture } = await narrow();
+    const page = () => root(fixture).querySelector('.calendar-page')!;
+    expect(page().classList).toContain('calendar-page--sheet');
+    toggle(fixture).click();
+    await tick(fixture);
+    expect(page().classList).toContain('calendar-page--sheet-open');
+    expect(page().classList).not.toContain('calendar-page--sheet');
+  });
+});

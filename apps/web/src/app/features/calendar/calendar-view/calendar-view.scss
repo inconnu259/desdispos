@@ -355,3 +355,15 @@
     overflow-y: auto;
   }
 }
+
+/* ── Story 44.5 : le tiroir de la destinée (sous 768 px) est posé en `position: fixed` par son composant. Le
+   contenu de la page garde de quoi défiler derrière lui : replié ≈ 120 px, déplié jusqu'à 70 % de l'écran. */
+@media (max-width: 767px) {
+  .calendar-page--sheet {
+    padding-bottom: calc(120px + 16px);
+  }
+
+  .calendar-page--sheet-open {
+    padding-bottom: 70vh;
+  }
+}

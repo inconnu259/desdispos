@@ -98,7 +98,8 @@ import {
 } from '../day-detail.utils';
 import { CalendarLayerToggle } from '../calendar-layer-toggle/calendar-layer-toggle';
 import { DestinyControl, type DestinyPollRef } from '../destiny-control/destiny-control';
-import { DestinyList, type DestinyListItem } from '../destiny-list/destiny-list';
+import { DestinyList, type DestinyListItem, type DestinyState } from '../destiny-list/destiny-list';
+import { DestinySheet, type DestinySheetModel } from '../destiny-sheet/destiny-sheet';
 import {
   DestinyBoard,
   type DestinyBoardAbsent,
@@ -243,6 +244,7 @@ export interface EligibleSeanceEntry {
     DestinyControl,
     DestinyList,
     DestinyBoard,
+    DestinySheet,
     ComposeBar,
     ConstraintPanel,
     MatButtonToggleModule,
@@ -1101,6 +1103,8 @@ export class CalendarView implements OnInit {
     this.destinyPollId.set(pollId);
     // Le créneau courant appartenait au vote précédent ; `chooseDestiny` pose celui du nouveau.
     this.destinyOptionId.set(null);
+    // Le tiroir (44.5) s'ouvre toujours replié : la grille d'abord.
+    this.destinySheetExpanded.set(false);
     if (!this.activeLayers().includes('votes-en-cours')) {
       this.activeLayers.update((keys) => [...keys, 'votes-en-cours']);
     }
@@ -1109,6 +1113,7 @@ export class CalendarView implements OnInit {
   protected exitDestiny(): void {
     this.destinyPollId.set(null);
     this.destinyOptionId.set(null);
+    this.destinySheetExpanded.set(false);
   }
 
   // ─── Story 44.3 — choisir la destinée active dans une liste ───────────────────
@@ -1146,16 +1151,17 @@ export class CalendarView implements OnInit {
         expiresAt: e.expiresAt,
         ended: e.expiresAt !== null && e.expiresAt.substring(0, 10) < today,
         optionCount: e.options.length,
-        // Qui conclut le vote d'abord ; puis qui n'y vote pas ; puis ma réponse.
-        state: e.can.choose
-          ? 'organizer'
-          : !e.me.eligible
-            ? 'not-voting'
-            : e.me.answered
-              ? 'answered'
-              : 'todo',
+        state: this.destinyStateOf(e),
       }));
   });
+
+  /** Mon état sur un vote — la liste et le tiroir (44.5) le disent de la même façon. Qui conclut le vote d'abord ;
+   *  puis qui n'y vote pas ; puis ma réponse. */
+  private destinyStateOf(e: OpenPollEntry): DestinyState {
+    if (e.can.choose) return 'organizer';
+    if (!e.me.eligible) return 'not-voting';
+    return e.me.answered ? 'answered' : 'todo';
+  }
 
   /** La liste n'a de sens que s'il y a des lignes : sans elles la puce a disparu, et le menu perdrait son ancre. */
   protected readonly destinyListShown = computed(
@@ -1243,14 +1249,15 @@ export class CalendarView implements OnInit {
 
   /** Le plateau remplace la colonne de droite : large écran, hors Agenda (la Destinée n'y existe pas), hors
    *  composition (qui masque la Destinée), et seulement pour un vote dont l'état est connu. */
-  protected readonly destinyBoardShown = computed(
+  private readonly destinyPresentable = computed(
     () =>
-      this.isWide() &&
       this.view() !== 'agenda' &&
       !this.composing() &&
       this.destinyPoll() !== null &&
       this.destinyEntry() !== null,
   );
+
+  protected readonly destinyBoardShown = computed(() => this.isWide() && this.destinyPresentable());
 
   /** Les noms de celles et ceux qui n'ont pas répondu — pour l'organisateur, à l'atelier, jamais ailleurs. */
   private absentNames(entry: OpenPollEntry): string[] {
@@ -1343,6 +1350,63 @@ export class CalendarView implements OnInit {
             yes: current.yes,
           })
         : '',
+    };
+  });
+
+  // ─── Story 44.5 — le tiroir de la destinée, sous 768 px ───────────────────────
+  //
+  // ⚠️ Là où le plateau n'a pas de place (colonne empilée sous la grille), la Destinée active s'affiche dans un
+  // tiroir du bas non modal. Mêmes conditions que le plateau, largeur inverse ; le modèle du plateau sert tel quel
+  // une fois déplié. Le reste de la colonne de droite reste empilé sous la grille, comme avant.
+
+  /** Replié par défaut, et à chaque entrée dans la Destinée (`enterDestiny`) comme à chaque sortie. */
+  protected readonly destinySheetExpanded = signal(false);
+
+  protected readonly destinySheetShown = computed(
+    () => !this.isWide() && this.destinyPresentable(),
+  );
+
+  protected toggleDestinySheet(): void {
+    this.destinySheetExpanded.update((open) => !open);
+  }
+
+  protected readonly destinySheet = computed<DestinySheetModel | null>(() => {
+    const entry = this.destinyEntry();
+    const board = this.destinyBoard();
+    if (!entry || !board) return null;
+    const tone = this.theme.tone();
+    const slots = this.destinySlots();
+    const position = this.destinySlotPosition();
+    const current = position > 0 ? slots[position - 1] : null;
+    const deadline = entry.expiresAt?.substring(0, 10) ?? null;
+    // « 2 / 5 · sam. 18 oct. soir · 4 oui · fin du vote ven. 30 oct. » : chaque morceau absent est omis.
+    const parts = [
+      current ? `${position} / ${slots.length}` : null,
+      current ? `${shortDayLabel(current.date)} ${SLOT_LABELS[current.slot].toLowerCase()}` : null,
+      current ? fillTone(tone['calendar.destiny_board_yes'], { n: current.yes }) : null,
+      deadline === null
+        ? null
+        : deadline < this.todayKey
+          ? tone['calendar.destiny_sheet_deadline_ended']
+          : fillTone(tone['calendar.destiny_sheet_deadline_open'], {
+              date: shortDayLabel(deadline),
+            }),
+    ].filter((p): p is string => p !== null);
+    const state = this.destinyStateOf(entry);
+    return {
+      region: fillTone(tone['calendar.destiny_sheet_region'], { name: entry.title }),
+      title: entry.title,
+      summary: parts.join(' · '),
+      state,
+      stateLabel: tone[`calendar.destiny_state_${state.replace('-', '_')}`],
+      datesLabel: fillTone(
+        tone[`calendar.destiny_sheet_dates_${slots.length === 1 ? 'one' : 'many'}`],
+        { n: slots.length },
+      ),
+      hideLabel: tone['calendar.destiny_sheet_hide'],
+      collapseAria: tone['calendar.destiny_sheet_collapse_aria'],
+      announcement: board.announcement,
+      board,
     };
   });
 

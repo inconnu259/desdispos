@@ -42,5 +42,7 @@
   }
 
   <!-- Annonce du créneau courant : vide au montage, réécrite à chaque changement. -->
-  <p class="destiny-board__sr" aria-live="polite">{{ model().announcement }}</p>
+  @if (announce()) {
+    <p class="destiny-board__sr" aria-live="polite">{{ model().announcement }}</p>
+  }
 </section>

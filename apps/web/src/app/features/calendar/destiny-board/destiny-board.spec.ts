@@ -97,3 +97,16 @@ describe('DestinyBoard (Story 44.4)', () => {
     expect(emitted).toBe(1);
   });
 });
+
+describe('DestinyBoard — annonce portée par l’hôte (Story 44.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('sans `announce`, le plateau ne rend aucune région aria-live', async () => {
+    await TestBed.configureTestingModule({ imports: [DestinyBoard] }).compileComponents();
+    const fixture = TestBed.createComponent(DestinyBoard);
+    fixture.componentRef.setInput('model', MODEL);
+    fixture.componentRef.setInput('announce', false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-live]')).toBeNull();
+  });
+});

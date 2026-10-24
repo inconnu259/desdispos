@@ -843,6 +843,12 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.destiny_board_best',
     'calendar.destiny_board_yes',
     'calendar.destiny_board_announce',
+    // Story 44.5 — le tiroir : mots de travail et accessibilité, identiques partout
+    'calendar.destiny_sheet_region',
+    'calendar.destiny_sheet_dates_one',
+    'calendar.destiny_sheet_dates_many',
+    'calendar.destiny_sheet_hide',
+    'calendar.destiny_sheet_collapse_aria',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
     'partie.asset_journal_cta',
     'partie.asset_carte_cta',
@@ -2082,6 +2088,34 @@ describe('Tones — le plateau de la destinée (Story 44.4)', () => {
     for (const theme of THEMES) {
       expect(TONE_MAP[theme]['calendar.destiny_prev_aria'], theme).not.toMatch(/conseil|scrutin|cercle/i);
       expect(TONE_MAP[theme]['calendar.destiny_next_aria'], theme).not.toMatch(/conseil|scrutin|cercle/i);
+    }
+  });
+});
+
+// Story 44.5 — le tiroir de la destinée. Le mode soirée l'affiche : aucun mot du JDR, ni « partie ».
+describe('Tones — le tiroir de la destinée (Story 44.5)', () => {
+  const KEYS = Object.keys(TONE_MAP['grimoire-emeraude']).filter((key) =>
+    key.startsWith('calendar.destiny_sheet_'),
+  );
+
+  it('sept clés, présentes dans les trois thèmes, sans mot du JDR ni « partie »', () => {
+    expect(KEYS).toHaveLength(7);
+    for (const theme of THEMES) {
+      for (const key of KEYS) {
+        const value = TONE_MAP[theme][key];
+        expect(value, `${theme} / ${key}`).toBeTruthy();
+        expect(value, `${theme} / ${key}`).not.toMatch(NON_JDR_BANNED_WORDS);
+        expect(value.toLowerCase(), `${theme} / ${key}`).not.toContain('partie');
+      }
+    }
+  });
+
+  it('les gabarits portent leurs variables', () => {
+    for (const theme of THEMES) {
+      const tone = TONE_MAP[theme];
+      expect(tone['calendar.destiny_sheet_region'], theme).toContain('{name}');
+      expect(tone['calendar.destiny_sheet_deadline_open'], theme).toContain('{date}');
+      expect(tone['calendar.destiny_sheet_dates_many'], theme).toContain('{n}');
     }
   });
 });

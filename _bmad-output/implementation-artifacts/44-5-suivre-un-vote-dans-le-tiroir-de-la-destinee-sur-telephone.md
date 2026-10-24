@@ -78,7 +78,7 @@ context:
 - `calendar-view`: `destinyPresentable` factored out of `destinyBoardShown`; `destinySheetShown` is its `!isWide()` mirror; `destinySheetExpanded` is reset in `enterDestiny`/`exitDestiny`; `destinyStateOf` shared by the list and the sheet; page classes `calendar-page--sheet` / `--sheet-open` add bottom padding below 768 px.
 - Tones: 7 `calendar.destiny_sheet_*` keys per theme (`expand_aria` dropped during self-review: collapsed, the handle is named by its own text, so the key and the model field were dead); 5 neutral, 2 (`deadline_*`) with a theme voice. The Code Map above still says 8 keys.
 - Tests: web suite passes except the 3 known date-dependent failures (2 `calendar-view` rail specs, 1 `calendar-week-view`); `tsc` shows only the existing TS6059 rootDir noise. Remaining eslint findings in `calendar-view.ts` (732, 1833, 2299) are on lines this story did not touch.
-- Not verified in a real browser (375 px, three themes, reduced motion): left as the manual check below.
+- Visual check done 2026-10-24 in Chrome (same-origin iframe at 375 × 812, real account, one ended vote with 2 slots, organizer): collapsed 116 px above the bottom nav with the grid visible; expanded 306 px with the full board and the live region unique; wording right in the three themes (Atelier Cuivré « scrutin clos », Grimoire and Forêt « vote terminé »). Not exercised: `prefers-reduced-motion`, a real touch device, a vote with answers (yes bar), the player pill states.
 - Process note: step 3 said to stage the diff and a `git add -N .` marked new files intent-to-add (no content staged) — the same slip as 44.3/44.4 against the repo's git rule.
 
 ## Spec Change Log

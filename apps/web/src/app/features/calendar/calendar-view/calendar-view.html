@@ -65,6 +65,8 @@
           [polls]="destinyPolls()"
           [currentPollId]="destinyPollId()"
           [listOpen]="destinyListShown()"
+          [slotPosition]="destinySlotPosition()"
+          [slotCount]="destinySlots().length"
           (listRequested)="toggleDestinyList()"
           (prevRequested)="destinyPrev()"
           (nextRequested)="destinyNext()"
@@ -347,7 +349,21 @@
     }
   </div>
 
-  @if (isMjMode()) {
+  <!-- Story 44.4 — ⚠️ le plateau de la destinée REMPLACE la colonne de droite (MJ, joueur, groupe, ou la
+       colonne de 340 px de la vitrine) tant que la Destinée est active, à partir de 768 px. Les trois colonnes
+       habituelles sont donc rendues seulement quand il est absent ; la Destinée quittée, elles reviennent
+       telles quelles. Sous 768 px rien ne change : c'est le tiroir de la story 44.5. -->
+  @if (destinyBoardShown() && destinyBoard(); as board) {
+    <aside class="destiny-board-col" [class.destiny-board-col--partie]="isMjMode()">
+      <app-destiny-board
+        [model]="board"
+        (slotChosen)="chooseDestinySlot($event)"
+        (whoRequested)="openDestinyWho()"
+      />
+    </aside>
+  }
+
+  @if (isMjMode() && !destinyBoardShown()) {
     <div class="mj-results-panel">
       <!-- ⚠️ Story 36.10, AC9 — le sélecteur « Planifier un vote pour : » a été RETIRÉ d'ici.
            Il demandait la séance AVANT les dates, à côté d'un calendrier qui ne montrait pas ces
@@ -435,7 +451,7 @@
   <!-- Story 40.5b — le calendrier d'un GROUPE : les votes de dates de ses conjonctions, chacun avec
        l'état du vote en toutes lettres (on peut répondre jusqu'au…, ou lecture seule et pourquoi).
        Ni plage de dates, ni créneaux calculés : le serveur les refuse à un groupe. -->
-  @if (isGroup()) {
+  @if (isGroup() && !destinyBoardShown()) {
     <section class="guild-slots-panel group-polls" aria-labelledby="group-polls-title">
       <h2 class="group-polls__title" id="group-polls-title">
         {{ theme.tone()['partie.ralliement_calendar_polls_heading'] }}
@@ -457,7 +473,7 @@
     </section>
   }
 
-  @if (!isMjMode() && partieId() && groupResolved() && !isGroup()) {
+  @if (!isMjMode() && partieId() && groupResolved() && !isGroup() && !destinyBoardShown()) {
     <div class="guild-slots-panel">
       <!-- ⚠️ Story 36.7, AC3 — `<app-poll-response>` a été RETIRÉ d'ici, et d'ici seulement.
            Il portait le « second chemin de retrait » que l'AC3 interdit dans le calendrier

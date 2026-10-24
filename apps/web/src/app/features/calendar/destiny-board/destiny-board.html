@@ -1,0 +1,46 @@
+<section class="destiny-board" [attr.aria-label]="model().title">
+  <h2 class="destiny-board__title">
+    <span class="destiny-board__glyph" aria-hidden="true">✦</span> {{ model().title }}
+  </h2>
+  <p class="destiny-board__subtitle">{{ model().subtitle }}</p>
+
+  <ul class="destiny-board__slots" [attr.aria-label]="model().slotsAria">
+    @for (slot of model().slots; track slot.optionId) {
+      <li>
+        <!-- Le créneau courant est dit par `aria-current`, jamais par le seul contour (P-1). -->
+        <button
+          type="button"
+          class="destiny-board__slot"
+          [class.destiny-board__slot--current]="slot.current"
+          [attr.aria-current]="slot.current ? 'true' : null"
+          (click)="slotChosen.emit(slot.optionId)"
+        >
+          <span class="destiny-board__slot-head">
+            <span class="destiny-board__slot-label">{{ slot.label }}</span>
+            @if (slot.best) {
+              <span class="destiny-board__best">{{ model().bestLabel }}</span>
+            }
+            <span class="destiny-board__yes">{{ slot.yesText }}</span>
+          </span>
+          <span class="destiny-board__bar" aria-hidden="true">
+            <span class="destiny-board__bar-fill" [style.width.%]="slot.ratio * 100"></span>
+          </span>
+        </button>
+      </li>
+    }
+  </ul>
+
+  @if (model().absent; as absent) {
+    <p class="destiny-board__absent">
+      {{ absent.text }}
+      @if (absent.whoLabel) {
+        <button type="button" class="destiny-board__who" (click)="whoRequested.emit()">
+          {{ absent.whoLabel }}
+        </button>
+      }
+    </p>
+  }
+
+  <!-- Annonce du créneau courant : vide au montage, réécrite à chaque changement. -->
+  <p class="destiny-board__sr" aria-live="polite">{{ model().announcement }}</p>
+</section>

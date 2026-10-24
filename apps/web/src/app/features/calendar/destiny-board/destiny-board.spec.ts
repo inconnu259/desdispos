@@ -1,0 +1,99 @@
+import { TestBed } from '@angular/core/testing';
+import { DestinyBoard, type DestinyBoardModel } from './destiny-board';
+
+const MODEL: DestinyBoardModel = {
+  title: 'Soirée jeux',
+  subtitle: 'Fin du vote ven. 30 oct. · 2 réponses sur 5',
+  slotsAria: 'Créneaux candidats',
+  bestLabel: 'meilleur',
+  slots: [
+    {
+      optionId: 'a',
+      label: 'sam. 24 oct. · Soir',
+      yesText: '3 oui',
+      ratio: 0.6,
+      best: true,
+      current: false,
+    },
+    {
+      optionId: 'b',
+      label: 'dim. 25 oct. · Matin',
+      yesText: '1 oui',
+      ratio: 0.2,
+      best: false,
+      current: true,
+    },
+  ],
+  absent: { text: '3 n’ont pas encore répondu', whoLabel: null },
+  announcement: 'Créneau 2 sur 2, dimanche 25 octobre, matin, 1 oui',
+};
+
+async function createBoard(model: DestinyBoardModel = MODEL) {
+  await TestBed.configureTestingModule({ imports: [DestinyBoard] }).compileComponents();
+  const fixture = TestBed.createComponent(DestinyBoard);
+  fixture.componentRef.setInput('model', model);
+  fixture.detectChanges();
+  return fixture;
+}
+
+describe('DestinyBoard (Story 44.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('montre le titre, le sous-titre et les créneaux dans l’ordre reçu', async () => {
+    const root: HTMLElement = (await createBoard()).nativeElement;
+    expect(root.querySelector('.destiny-board__title')?.textContent).toContain('Soirée jeux');
+    expect(root.querySelector('.destiny-board__subtitle')?.textContent).toContain(
+      '2 réponses sur 5',
+    );
+    const labels = [...root.querySelectorAll('.destiny-board__slot-label')].map((e) =>
+      e.textContent?.trim(),
+    );
+    expect(labels).toEqual(['sam. 24 oct. · Soir', 'dim. 25 oct. · Matin']);
+  });
+
+  it('« meilleur » seulement sur le créneau désigné, le courant est entouré et dit par aria-current', async () => {
+    const root: HTMLElement = (await createBoard()).nativeElement;
+    const rows = root.querySelectorAll<HTMLElement>('.destiny-board__slot');
+    expect(root.querySelectorAll('.destiny-board__best')).toHaveLength(1);
+    expect(rows[0].querySelector('.destiny-board__best')?.textContent).toContain('meilleur');
+    expect(rows[1].classList).toContain('destiny-board__slot--current');
+    expect(rows[1].getAttribute('aria-current')).toBe('true');
+    expect(rows[0].getAttribute('aria-current')).toBeNull();
+  });
+
+  it('la barre des oui est proportionnelle', async () => {
+    const root: HTMLElement = (await createBoard()).nativeElement;
+    const fills = root.querySelectorAll<HTMLElement>('.destiny-board__bar-fill');
+    expect(fills[0].style.width).toBe('60%');
+    expect(fills[1].style.width).toBe('20%');
+  });
+
+  it('toucher un créneau émet son optionId', async () => {
+    const fixture = await createBoard();
+    const chosen: string[] = [];
+    fixture.componentInstance.slotChosen.subscribe((id) => chosen.push(id));
+    fixture.nativeElement.querySelectorAll('.destiny-board__slot')[1].click();
+    expect(chosen).toEqual(['b']);
+  });
+
+  it('l’annonce du créneau courant vit dans une région aria-live polie', async () => {
+    const root: HTMLElement = (await createBoard()).nativeElement;
+    const live = root.querySelector('[aria-live="polite"]');
+    expect(live?.textContent).toContain('Créneau 2 sur 2, dimanche 25 octobre, matin, 1 oui');
+  });
+
+  it('sans absent, aucune ligne ; avec « voir qui », le lien émet whoRequested', async () => {
+    const none = await createBoard({ ...MODEL, absent: null });
+    expect(none.nativeElement.querySelector('.destiny-board__absent')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const withLink = await createBoard({
+      ...MODEL,
+      absent: { text: '3 n’ont pas encore répondu', whoLabel: 'voir qui' },
+    });
+    let emitted = 0;
+    withLink.componentInstance.whoRequested.subscribe(() => emitted++);
+    withLink.nativeElement.querySelector('.destiny-board__who').click();
+    expect(emitted).toBe(1);
+  });
+});

@@ -1,4 +1,9 @@
-import { bestOption, destinyEntryOption, type RankableOption } from '@master-jdr/shared';
+import {
+  bestOption,
+  destinyEntryOption,
+  sortOptionsChronologically,
+  type RankableOption,
+} from '@master-jdr/shared';
 
 const TODAY = '2026-10-20';
 
@@ -48,6 +53,25 @@ describe('bestOption (Story 44.3)', () => {
     const options = [opt('a', '2026-10-26', 1, 0), opt('b', '2026-10-25', 2, 0)];
     bestOption(options, TODAY);
     expect(options.map((o) => o.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('sortOptionsChronologically (Story 44.4)', () => {
+  it('le jour, puis le créneau de la journée', () => {
+    const sorted = sortOptionsChronologically([
+      opt('plein', '2026-10-25', 0, 0, 'FULL_DAY'),
+      opt('soir', '2026-10-25', 0, 0, 'EVENING'),
+      opt('lendemain', '2026-10-26', 0, 0, 'MORNING'),
+      opt('matin', '2026-10-25', 0, 0, 'MORNING'),
+      opt('aprem', '2026-10-25', 0, 0, 'AFTERNOON'),
+    ]);
+    expect(sorted.map((o) => o.id)).toEqual(['matin', 'aprem', 'soir', 'plein', 'lendemain']);
+  });
+
+  it('ne modifie pas la liste reçue', () => {
+    const options = [opt('b', '2026-10-26', 0, 0), opt('a', '2026-10-25', 0, 0)];
+    sortOptionsChronologically(options);
+    expect(options.map((o) => o.id)).toEqual(['b', 'a']);
   });
 });
 

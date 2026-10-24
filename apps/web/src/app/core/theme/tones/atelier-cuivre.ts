@@ -1042,8 +1042,9 @@ export const atelierCuivre: Record<ToneKey, string> = {
   /* — mode Destinée — */
   // Nom du MODE « Destinée » (EXPERIENCE.md §4.4 ter), identique dans les trois thèmes.
   'cta.destiny_mode': 'Destinée',
-  'calendar.destiny_next_aria': 'Scrutin suivant',
-  'calendar.destiny_prev_aria': 'Scrutin précédent',
+  // Story 44.4 — les chevrons parcourent les CRÉNEAUX du vote actif (plus les votes).
+  'calendar.destiny_next_aria': 'Créneau suivant',
+  'calendar.destiny_prev_aria': 'Créneau précédent',
   // Story 44.3 — la liste des destinées (puce ✦). Aucun mot du JDR : le mode soirée l'affiche aussi.
   'calendar.destiny_list_title': 'Sélectionner une destinée',
   'calendar.destiny_list_subtitle': 'Tous vos votes ouverts, tous mois confondus.',
@@ -1056,6 +1057,18 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.destiny_state_answered': 'Consigné',
   'calendar.destiny_state_organizer': 'Organisateur',
   'calendar.destiny_state_not_voting': 'Non votant',
+  // Story 44.4 — le plateau de la destinée. Le mode soirée l'affiche aussi : aucun mot du JDR.
+  'calendar.destiny_board_open': 'Clôture du scrutin {date} · {answers}',
+  'calendar.destiny_board_ended': 'Scrutin clos le {date} · plus de vote possible',
+  'calendar.destiny_board_answers_one': '{n} réponse sur {total}',
+  'calendar.destiny_board_answers_many': '{n} réponses sur {total}',
+  'calendar.destiny_board_best': 'meilleur',
+  'calendar.destiny_board_yes': '{n} oui',
+  'calendar.destiny_board_absent_one': '{n} réponse manquante',
+  'calendar.destiny_board_absent_many': '{n} réponses manquantes',
+  'calendar.destiny_board_who': 'voir le détail',
+  'calendar.destiny_board_slots_aria': 'Créneaux candidats',
+  'calendar.destiny_board_announce': 'Créneau {n} sur {total}, {date}, {slot}, {yes} oui',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

@@ -13,9 +13,10 @@
       <span class="destiny__glyph" aria-hidden="true">✦</span>{{ chipLabel() }}
     </button>
 
-    <!-- AC2 : la navigation n'existe qu'à partir de DEUX votes ouverts (EXPERIENCE.md:575). Un
-         seul vote n'a pas de « suivant », et des chevrons inertes mentiraient sur ce qui existe. -->
-    @if (active() && polls().length > 1) {
+    <!-- ⚠️ Story 44.4 — les chevrons parcourent les CRÉNEAUX du vote actif, plus les votes (on change de vote par
+         la liste). Ils n'existent qu'à partir de DEUX créneaux : un seul n'a pas de « suivant », et des
+         chevrons inertes mentiraient sur ce qui existe. -->
+    @if (active() && slotCount() > 1) {
       <span class="destiny__nav">
         <button
           type="button"
@@ -25,7 +26,7 @@
         >
           ‹
         </button>
-        <span class="destiny__pos">{{ position() }} / {{ polls().length }}</span>
+        <span class="destiny__pos">{{ slotPosition() }} / {{ slotCount() }}</span>
         <button
           type="button"
           class="destiny__arrow"

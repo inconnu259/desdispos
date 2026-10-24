@@ -1038,8 +1038,9 @@ export const foretAncienne: Record<ToneKey, string> = {
   /* — mode Destinée — */
   // Nom du MODE « Destinée » (EXPERIENCE.md §4.4 ter), identique dans les trois thèmes.
   'cta.destiny_mode': 'Destinée',
-  'calendar.destiny_next_aria': 'Cercle suivant',
-  'calendar.destiny_prev_aria': 'Cercle précédent',
+  // Story 44.4 — les chevrons parcourent les CRÉNEAUX du vote actif (plus les votes).
+  'calendar.destiny_next_aria': 'Clairière suivante',
+  'calendar.destiny_prev_aria': 'Clairière précédente',
   // Story 44.3 — la liste des destinées (puce ✦). Aucun mot du JDR : le mode soirée l'affiche aussi.
   'calendar.destiny_list_title': 'Choisis une destinée',
   'calendar.destiny_list_subtitle': 'Tous tes votes ouverts, quel que soit le mois.',
@@ -1052,6 +1053,18 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.destiny_state_answered': 'Répondu',
   'calendar.destiny_state_organizer': 'Organisateur',
   'calendar.destiny_state_not_voting': 'Tu ne votes pas',
+  // Story 44.4 — le plateau de la destinée. Le mode soirée l'affiche aussi : aucun mot du JDR.
+  'calendar.destiny_board_open': 'Fin du vote {date} · {answers}',
+  'calendar.destiny_board_ended': 'Vote terminé le {date} · plus de vote possible',
+  'calendar.destiny_board_answers_one': '{n} réponse sur {total}',
+  'calendar.destiny_board_answers_many': '{n} réponses sur {total}',
+  'calendar.destiny_board_best': 'meilleur',
+  'calendar.destiny_board_yes': '{n} oui',
+  'calendar.destiny_board_absent_one': '{n} n’a pas encore répondu',
+  'calendar.destiny_board_absent_many': '{n} n’ont pas encore répondu',
+  'calendar.destiny_board_who': 'voir qui',
+  'calendar.destiny_board_slots_aria': 'Clairières candidates',
+  'calendar.destiny_board_announce': 'Créneau {n} sur {total}, {date}, {slot}, {yes} oui',
 
   /* ═══ Vote de date ═══ */
   /* — actions, états et alertes — */

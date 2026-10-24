@@ -303,6 +303,24 @@
   }
 }
 
+/* ── Story 44.4 : le plateau de la destinée, colonne de droite (≥ 768 px : il n'est rendu qu'alors) ──
+   Colonne joueur, groupe et vitrine : 340 px ; colonne MJ : 40 %. Sticky, défilement interne. */
+
+.destiny-board-col {
+  flex: 0 0 340px;
+  min-width: 260px;
+  position: sticky;
+  top: 16px;
+  align-self: flex-start;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.destiny-board-col--partie {
+  flex: 0 0 40%;
+  min-width: 280px;
+}
+
 /* ── Mode MJ : split layout ── */
 
 .calendar-main {

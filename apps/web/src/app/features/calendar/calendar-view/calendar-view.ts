@@ -42,6 +42,7 @@ import type {
   EventPollOptionInput,
   EventSlot,
   MeCalendarDto,
+  OpenPollEntry,
   PartieMemberDto,
   ScenarioDto,
   SeanceDto,
@@ -52,8 +53,11 @@ import type {
 import {
   CALENDAR_LAYER_KEYS,
   DEFAULT_CALENDAR_LAYER_KEYS,
+  bestOption,
   destinyEntryOption,
   familyOf,
+  hasAnswered,
+  sortOptionsChronologically,
 } from '@master-jdr/shared';
 import {
   AvailabilityService,
@@ -95,6 +99,11 @@ import {
 import { CalendarLayerToggle } from '../calendar-layer-toggle/calendar-layer-toggle';
 import { DestinyControl, type DestinyPollRef } from '../destiny-control/destiny-control';
 import { DestinyList, type DestinyListItem } from '../destiny-list/destiny-list';
+import {
+  DestinyBoard,
+  type DestinyBoardAbsent,
+  type DestinyBoardModel,
+} from '../destiny-board/destiny-board';
 import { ConstraintPanel } from '../constraint-panel/constraint-panel';
 import {
   ConflictDialog,
@@ -169,6 +178,14 @@ const DISPLAY_PANEL_POSITIONS: ConnectedPosition[] = [
   { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 },
 ];
 
+/** Story 44.4 — « samedi 18 octobre » : la date que l'annonce du créneau courant dit en toutes lettres. */
+const DESTINY_ANNOUNCE_DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+});
+
 const CALENDAR_CELL_DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'short',
   day: 'numeric',
@@ -225,6 +242,7 @@ export interface EligibleSeanceEntry {
     CalendarLayerToggle,
     DestinyControl,
     DestinyList,
+    DestinyBoard,
     ComposeBar,
     ConstraintPanel,
     MatButtonToggleModule,
@@ -270,6 +288,9 @@ export class CalendarView implements OnInit {
   /** Même seuil que `partie-detail` et `list-control-bar` — pas un troisième vocabulaire de
    *  largeur dans l'application. */
   private static readonly DESKTOP_QUERY = '(min-width: 1024px)';
+  /** Story 44.4 — à partir de cette largeur la colonne de droite existe (côte à côte avec la grille) : c'est
+   *  là que le plateau de la destinée la remplace. En dessous, le tiroir (story 44.5). */
+  private static readonly WIDE_QUERY = '(min-width: 768px)';
 
   protected readonly declarations = signal<AvailabilityDeclarationDto[]>([]);
   protected readonly loading = signal(true);
@@ -392,6 +413,12 @@ export class CalendarView implements OnInit {
   protected readonly isDesktop = toSignal(
     this.breakpointObserver.observe(CalendarView.DESKTOP_QUERY).pipe(map((r) => r.matches)),
     { initialValue: this.breakpointObserver.isMatched(CalendarView.DESKTOP_QUERY) },
+  );
+
+  /** Story 44.4 — la colonne de droite est à côté de la grille (≥ 768 px). Réactif, comme `isDesktop`. */
+  protected readonly isWide = toSignal(
+    this.breakpointObserver.observe(CalendarView.WIDE_QUERY).pipe(map((r) => r.matches)),
+    { initialValue: this.breakpointObserver.isMatched(CalendarView.WIDE_QUERY) },
   );
 
   protected readonly displayPanelOpen = signal(false);
@@ -1164,11 +1191,173 @@ export class CalendarView implements OnInit {
     this.destinyOptionId.set(target?.optionId ?? null);
     const view = entry.family === 'ralliement' ? 'week' : 'month';
     if (this.view() !== view) this.onViewChange(view);
-    if (!target) return;
-    // Date UTC à minuit, comme celles que les vues émettent ; la plage affichée est rechargée comme pour une
-    // navigation à la main.
-    const date = new Date(`${target.date}T00:00:00Z`);
-    void (view === 'week' ? this.onWeekDateChange(date) : this.onMonthDateChange(date));
+    if (target) this.moveGridTo(target.date, true);
+  }
+
+  /**
+   * Place la grille sur un jour (`YYYY-MM-DD`). Date UTC à minuit, comme celles que les vues émettent ; la
+   * plage affichée est rechargée comme pour une navigation à la main.
+   *
+   * Story 44.4 — un créneau touché ou un chevron ne doit pas relire le calendrier personnel à chaque geste :
+   * en vue Mois, un jour du mois déjà affiché ne recharge rien (`force` : l'entrée dans un vote recharge
+   * toujours, comme avant). La vue Semaine recharge, sa plage étant celle de la semaine.
+   */
+  private moveGridTo(dateKey: string, force = false): void {
+    const date = new Date(`${dateKey}T00:00:00Z`);
+    if (this.view() === 'week') {
+      void this.onWeekDateChange(date);
+      return;
+    }
+    const shown = this.sharedDate();
+    const sameMonth =
+      (shown.getFullYear() === date.getUTCFullYear() && shown.getMonth() === date.getUTCMonth()) ||
+      (shown.getUTCFullYear() === date.getUTCFullYear() &&
+        shown.getUTCMonth() === date.getUTCMonth());
+    if (!force && sameMonth) return;
+    void this.onMonthDateChange(date);
+  }
+
+  // ─── Story 44.4 — le plateau de la destinée ───────────────────────────────────
+  //
+  // ⚠️ À partir de 768 px, tant que la Destinée est active, le plateau REMPLACE le contenu de la colonne de
+  // droite (colonne MJ, colonne joueur ou groupe, colonne de 340 px de la vitrine). Tout vient d'UNE source,
+  // l'entrée servie par `GET /me/open-polls` : la liste, la puce et le plateau ne peuvent pas se contredire.
+
+  /** L'entrée servie du vote courant, ou `null` (vote pas encore lu, ou disparu). */
+  protected readonly destinyEntry = computed<OpenPollEntry | null>(() => {
+    const id = this.destinyPollId();
+    return id === null ? null : (this.openPollsSvc.entries().find((e) => e.pollId === id) ?? null);
+  });
+
+  /** Les créneaux du vote courant, dans l'ordre chronologique : l'ordre du plateau ET celui des chevrons. */
+  protected readonly destinySlots = computed(() =>
+    sortOptionsChronologically(this.destinyEntry()?.options ?? []),
+  );
+
+  /** Le rang (base 1) du créneau courant dans l'ordre chronologique ; `0` s'il n'y en a pas. */
+  protected readonly destinySlotPosition = computed(() => {
+    const id = this.destinyOptionId();
+    const i = this.destinySlots().findIndex((o) => o.optionId === id);
+    return i < 0 ? 0 : i + 1;
+  });
+
+  /** Le plateau remplace la colonne de droite : large écran, hors Agenda (la Destinée n'y existe pas), hors
+   *  composition (qui masque la Destinée), et seulement pour un vote dont l'état est connu. */
+  protected readonly destinyBoardShown = computed(
+    () =>
+      this.isWide() &&
+      this.view() !== 'agenda' &&
+      !this.composing() &&
+      this.destinyPoll() !== null &&
+      this.destinyEntry() !== null,
+  );
+
+  /** Les noms de celles et ceux qui n'ont pas répondu — pour l'organisateur, à l'atelier, jamais ailleurs. */
+  private absentNames(entry: OpenPollEntry): string[] {
+    if (entry.family === 'jdr') return this.missingByPoll()[entry.pollId] ?? [];
+    // Un groupe : les votants éligibles sans aucune réponse (règle partagée `hasAnswered`), nommés par les membres.
+    if (!this.membersLoaded()) return [];
+    const poll = this.groupPolls().find((g) => g.poll.id === entry.pollId)?.poll;
+    if (!poll) return [];
+    const optionIds = poll.options.map((o) => o.id);
+    const byId = new Map(this.members().map((m) => [m.userId, m]));
+    return poll.eligibleVoterIds
+      .filter(
+        (userId) =>
+          !hasAnswered(
+            'ralliement',
+            optionIds,
+            poll.votes.filter((v) => v.userId === userId).map((v) => v.optionId),
+          ),
+      )
+      .flatMap((userId) => {
+        const member = byId.get(userId);
+        return member ? [member.displayName || member.pseudo] : [];
+      });
+  }
+
+  private destinyAbsent(entry: OpenPollEntry): DestinyBoardAbsent | null {
+    const tone = this.theme.tone();
+    const missing = Math.max(0, entry.eligibleCount - entry.answeredCount);
+    if (missing === 0) return null;
+    const atelier = this.partieId() !== null;
+    // Les noms : l'organisateur, à l'atelier. La vitrine n'en porte jamais (AD-9).
+    if (atelier && entry.can.choose) {
+      const names = this.absentNames(entry);
+      if (names.length > 0) {
+        return { text: `${tone['poll.missing_prefix']} ${names.join(', ')}`, whoLabel: null };
+      }
+    }
+    return {
+      text: fillTone(tone[`calendar.destiny_board_absent_${missing === 1 ? 'one' : 'many'}`], {
+        n: missing,
+      }),
+      whoLabel: !atelier && entry.can.choose ? tone['calendar.destiny_board_who'] : null,
+    };
+  }
+
+  protected readonly destinyBoard = computed<DestinyBoardModel | null>(() => {
+    const entry = this.destinyEntry();
+    if (!entry) return null;
+    const tone = this.theme.tone();
+    const slots = this.destinySlots();
+    const currentId = this.destinyOptionId();
+    const best = bestOption(slots, this.todayKey);
+    const eligible = entry.eligibleCount;
+    const answers = fillTone(
+      tone[`calendar.destiny_board_answers_${entry.answeredCount <= 1 ? 'one' : 'many'}`],
+      { n: entry.answeredCount, total: eligible },
+    );
+    const deadline = entry.expiresAt?.substring(0, 10) ?? null;
+    const subtitle =
+      deadline === null
+        ? answers
+        : deadline < this.todayKey
+          ? fillTone(tone['calendar.destiny_board_ended'], { date: shortDayLabel(deadline) })
+          : fillTone(tone['calendar.destiny_board_open'], {
+              date: shortDayLabel(deadline),
+              answers,
+            });
+    const position = this.destinySlotPosition();
+    const current = position > 0 ? slots[position - 1] : null;
+    return {
+      title: entry.title,
+      subtitle,
+      slotsAria: tone['calendar.destiny_board_slots_aria'],
+      bestLabel: tone['calendar.destiny_board_best'],
+      slots: slots.map((o) => ({
+        optionId: o.optionId,
+        label: `${shortDayLabel(o.date)} · ${SLOT_LABELS[o.slot]}`,
+        yesText: fillTone(tone['calendar.destiny_board_yes'], { n: o.yes }),
+        ratio: eligible > 0 ? Math.min(1, o.yes / eligible) : 0,
+        best: best?.optionId === o.optionId,
+        current: o.optionId === currentId,
+      })),
+      absent: this.destinyAbsent(entry),
+      announcement: current
+        ? fillTone(tone['calendar.destiny_board_announce'], {
+            n: position,
+            total: slots.length,
+            date: DESTINY_ANNOUNCE_DATE_FORMAT.format(new Date(`${current.date}T00:00:00Z`)),
+            slot: SLOT_LABELS[current.slot].toLowerCase(),
+            yes: current.yes,
+          })
+        : '',
+    };
+  });
+
+  /** Toucher un créneau du plateau : il devient le créneau courant et la grille se place sur son jour. */
+  protected chooseDestinySlot(optionId: string): void {
+    const option = this.destinySlots().find((o) => o.optionId === optionId);
+    if (!option) return;
+    this.destinyOptionId.set(option.optionId);
+    this.moveGridTo(option.date);
+  }
+
+  /** « voir qui » (vitrine, organisateur) : la page de la partie, en attendant l'atelier sur ce vote (44.7). */
+  protected openDestinyWho(): void {
+    const entry = this.destinyEntry();
+    if (entry) void this.router.navigate(['/parties', entry.partieId]);
   }
 
   /** « Quitter la Destinée » : le mode s'arrête, la liste se referme. */
@@ -1177,13 +1366,14 @@ export class CalendarView implements OnInit {
     this.closeDestinyList();
   }
 
+  /** ⚠️ Story 44.4 — les chevrons parcourent les CRÉNEAUX du vote actif (on change de vote par la liste), en
+   *  boucle. Le créneau courant est un `optionId` ; n/N se déduit de l'ordre chronologique. */
   private stepDestiny(delta: 1 | -1): void {
-    const polls = this.destinyPolls();
-    const current = this.destinyPoll();
-    if (!current || polls.length < 2) return;
-    const i = polls.findIndex((p) => p.pollId === current.pollId);
-    const next = polls[(i + delta + polls.length) % polls.length];
-    this.enterDestiny(next.pollId);
+    const slots = this.destinySlots();
+    if (slots.length < 2) return;
+    const i = slots.findIndex((o) => o.optionId === this.destinyOptionId());
+    const next = i < 0 ? slots[0] : slots[(i + delta + slots.length) % slots.length];
+    this.chooseDestinySlot(next.optionId);
   }
 
   protected destinyNext(): void {
@@ -1677,6 +1867,8 @@ export class CalendarView implements OnInit {
   // PollCreationComponent sur cette séance, ouvre automatiquement le panneau sans re-clic du MJ.
   protected readonly lockedSeanceId = signal<string | null>(null);
   protected readonly members = signal<PartieMemberDto[]>([]);
+  /** Story 44.4 — la partie dont un groupe a déjà demandé les membres (pour nommer les absents). */
+  private membersRequestedFor: string | null = null;
   /** Revue de code (36.12) — distingue « personne ne manque » de « pas encore chargé » pour
    *  `missingByPoll`, que `members().length === 0` seul ne pouvait pas trancher. */
   protected readonly membersLoaded = signal(false);
@@ -1745,6 +1937,9 @@ export class CalendarView implements OnInit {
           // l'option affichée : le sélecteur ouvert référencerait alors des données périmées, et
           // son ancre peut devenir un nœud détaché une fois la grille reconstruite ci-dessous.
           this.closePicker();
+          // Story 44.4 — le plateau lit `GET /me/open-polls`, qu'aucun canal `user:` ne tient à jour à
+          // l'atelier : tant qu'une Destinée est active, le signal `partie:` le relit aussi.
+          if (this.destinyPollId() !== null) void this.openPollsSvc.refresh();
           // Story 40.5b — un groupe relit ses conjonctions (sondages, votes) sur CE même signal : aucun
           // nouveau handler `'partie:'`. Il n'a ni scénarios, ni créneaux agrégés à relire.
           if (this.isGroup()) {
@@ -1805,6 +2000,32 @@ export class CalendarView implements OnInit {
       // plus d'objet.)
       if (!this.openPollsSvc.loaded()) return;
       untracked(() => this.exitDestiny());
+    });
+
+    // Story 44.4 — le créneau courant doit savoir disparaître sans emporter la Destinée : retiré d'un vote qui
+    // reste ouvert (dates modifiées ailleurs), il est remplacé par le créneau d'entrée du vote, et la grille
+    // s'y replace. Un vote qui n'a pas encore de créneau courant (entrée par `enterDestiny`) en reçoit un.
+    effect(() => {
+      const entry = this.destinyEntry();
+      if (!entry) return;
+      const current = this.destinyOptionId();
+      if (current !== null && entry.options.some((o) => o.optionId === current)) return;
+      untracked(() => {
+        const target = destinyEntryOption(entry, this.todayKey);
+        this.destinyOptionId.set(target?.optionId ?? null);
+        if (target && current !== null) this.moveGridTo(target.date);
+      });
+    });
+
+    // Story 44.4 — les noms de celles et ceux qui n'ont pas répondu à un vote de GROUPE ne se montrent qu'à son
+    // organisateur : les membres ne sont lus qu'alors (le calendrier d'un groupe n'en lit aucun autrement).
+    effect(() => {
+      const entry = this.destinyEntry();
+      const id = this.partieId();
+      if (!entry || !id || entry.family !== 'ralliement' || !entry.can.choose) return;
+      if (!this.isGroup() || this.membersRequestedFor === id) return;
+      this.membersRequestedFor = id;
+      untracked(() => void this.loadMembers(id));
     });
 
     // Story 36.10 — la composition aussi doit savoir mourir. Un vote scellé ou clôturé ailleurs
@@ -1903,6 +2124,7 @@ export class CalendarView implements OnInit {
     this.groupResolved.set(false);
     this.groupEvents.set([]);
     this.groupEventsError.set(null);
+    this.membersRequestedFor = null;
     this.exitCompose();
 
     // Story 30.6, Task 1 : état des couches actives, initialisé depuis le défaut du compte —

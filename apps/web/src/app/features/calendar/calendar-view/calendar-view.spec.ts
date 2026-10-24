@@ -2638,25 +2638,11 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
     fixture.detectChanges();
     expect([...comp.destinyDates()].sort()).toEqual(['2026-08-28', '2026-08-29']);
 
-    comp.destinyNext();
+    // Story 44.4 — on change de vote par la liste (les chevrons parcourent les créneaux du vote actif).
+    comp.enterDestiny('poll2');
     fixture.detectChanges();
     expect(comp.destinyPoll().pollId).toBe('poll2');
     expect([...comp.destinyDates()]).toEqual(['2026-09-04']);
-  });
-
-  it('AC2 — la navigation boucle dans les deux sens', async () => {
-    const { fixture } = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      scenarios: [TWO_OPTION_POLL_SCENARIO, SECOND_POLL_SCENARIO],
-    });
-    const comp = fixture.componentInstance as any;
-
-    comp.enterDestiny('poll1');
-    comp.destinyPrev();
-    expect(comp.destinyPoll().pollId).toBe('poll2');
-    comp.destinyNext();
-    expect(comp.destinyPoll().pollId).toBe('poll1');
   });
 
   it('AC6 — activer le mode ALLUME « votes-en-cours » si elle est éteinte, et le quitter ne la rééteint pas', async () => {
@@ -2750,28 +2736,6 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
     expect(control!.textContent).toContain('Chapitre 1');
   });
 
-  it('AC2 — les chevrons n’apparaissent qu’à partir de DEUX votes ouverts', async () => {
-    const one = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      scenarios: [TWO_OPTION_POLL_SCENARIO],
-    });
-    (one.fixture.componentInstance as any).enterDestiny('poll1');
-    one.fixture.detectChanges();
-    expect(one.fixture.nativeElement.querySelector('.destiny__nav')).toBeNull();
-    TestBed.resetTestingModule();
-
-    const two = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      scenarios: [TWO_OPTION_POLL_SCENARIO, SECOND_POLL_SCENARIO],
-    });
-    (two.fixture.componentInstance as any).enterDestiny('poll1');
-    two.fixture.detectChanges();
-    const nav = two.fixture.nativeElement.querySelector('.destiny__nav');
-    expect(nav).toBeTruthy();
-    expect(nav.textContent).toContain('1 / 2');
-  });
 
   it('AC1 — le calendrier personnel connaît aussi ses votes ouverts, à travers plusieurs parties', async () => {
     const { fixture } = await createCalendarView({
@@ -4348,6 +4312,10 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     userId?: string;
     party?: Record<string, unknown>;
     events?: unknown[];
+    /** Story 44.4 — les membres servis par `GET /parties/:id/members` (nomment les absents d'un vote de groupe). */
+    members?: unknown[];
+    /** Story 44.4 — mes sondages ouverts tels que `GET /me/open-polls` les sert (le plateau de la destinée). */
+    openPolls?: OpenPollEntry[];
     beforeCreate?: () => void;
   }
 
@@ -4363,8 +4331,13 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     const snack = makeSnackBar();
     const dialog = makeMatDialog();
     const partiesSvc = {
-      ...makePartiesService([]),
+      ...makePartiesService(opts.members ?? []),
       get: vi.fn().mockResolvedValue(opts.party ?? GROUP_PARTY),
+    };
+    const openPollsSvc = {
+      entries: signal<OpenPollEntry[]>(opts.openPolls ?? []),
+      loaded: signal(true),
+      refresh: vi.fn().mockResolvedValue(undefined),
     };
     const scenariosSvc = makeScenariosService([]);
     const eventsApi = {
@@ -4388,6 +4361,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
         { provide: RealtimeService, useValue: makeRealtimeService() },
         { provide: EventsApiService, useValue: eventsApi },
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
+        ...(opts.openPolls ? [{ provide: OpenPollsService, useValue: openPollsSvc }] : []),
       ],
     }).compileComponents();
 
@@ -4422,6 +4396,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       dialog,
       navigate,
       drafts,
+      openPollsSvc,
     };
   }
 
@@ -5009,5 +4984,535 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
   it('sans brouillon en attente, la page ne compose rien d’elle-même', async () => {
     const { comp } = await createGroupView();
     expect(comp.composing()).toBe(false);
+  });
+
+  // ── Le plateau de la destinée (Story 44.4) ──
+
+  const GROUP_POLL_ENTRY = (over: Partial<OpenPollEntry> = {}): OpenPollEntry => ({
+    pollId: 'p1',
+    partieId: 'g1',
+    partieName: 'La Bande',
+    family: 'ralliement',
+    kind: 'CAMPAGNE_EPISODIQUE',
+    seanceId: 's1',
+    title: 'Soirée plateaux',
+    expiresAt: null,
+    durationSlots: 1,
+    options: [
+      { optionId: 'o1', date: '2099-11-24', slot: 'EVENING', yes: 1, maybe: 1, no: 0, myAnswer: null },
+      { optionId: 'o2', date: '2099-11-25', slot: 'MORNING', yes: 0, maybe: 0, no: 1, myAnswer: null },
+    ],
+    eligibleCount: 3,
+    answeredCount: 2,
+    me: { eligible: true, answered: false },
+    can: NO_CAN,
+    ...over,
+  });
+  const MEMBERS = [
+    { userId: HOST, pseudo: 'lea', displayName: 'Léa' },
+    { userId: ME, pseudo: 'moi', displayName: 'Moi' },
+    { userId: OTHER, pseudo: 'tom', displayName: 'Tom' },
+  ];
+
+  it('plateau : l’organisateur d’un groupe voit les NOMS de qui n’a pas répondu, les membres sont lus à ce moment-là', async () => {
+    const { comp, fixture, tick, partiesSvc } = await createGroupView({
+      userId: HOST,
+      members: MEMBERS,
+      openPolls: [GROUP_POLL_ENTRY({ can: HOST_CAN })],
+    });
+    expect(partiesSvc.members).not.toHaveBeenCalled();
+
+    comp.chooseDestiny('p1');
+    await tick();
+
+    expect(partiesSvc.members).toHaveBeenCalledWith('g1');
+    const absent = fixture.nativeElement.querySelector('.destiny-board__absent') as HTMLElement;
+    // `ME` n'a répondu à aucune option : seul absent (l'hôte et l'autre membre ont voté).
+    expect(absent.textContent).toContain('Moi');
+    expect(absent.textContent).not.toContain('Tom');
+    expect(absent.textContent).not.toContain('Léa');
+  });
+
+  it('plateau : un simple membre d’un groupe ne voit que le nombre, et ne déclenche aucune lecture des membres', async () => {
+    const { comp, fixture, tick, partiesSvc } = await createGroupView({
+      members: MEMBERS,
+      openPolls: [GROUP_POLL_ENTRY()],
+    });
+
+    comp.chooseDestiny('p1');
+    await tick();
+
+    expect(partiesSvc.members).not.toHaveBeenCalled();
+    const absent = fixture.nativeElement.querySelector('.destiny-board__absent') as HTMLElement;
+    expect(absent.textContent).toContain('1 n’a pas encore répondu');
+    expect(absent.textContent).not.toContain('Moi');
+    expect(fixture.nativeElement.querySelector('.destiny-board__who')).toBeNull();
+  });
+
+  it('plateau : il remplace la colonne de 340 px du groupe, qui revient à la sortie de la Destinée', async () => {
+    const { comp, fixture, tick } = await createGroupView({
+      openPolls: [GROUP_POLL_ENTRY()],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.group-polls')).not.toBeNull();
+    expect(root.querySelector('app-destiny-board')).toBeNull();
+
+    comp.chooseDestiny('p1');
+    await tick();
+    expect(root.querySelector('.group-polls')).toBeNull();
+    expect(root.querySelector('.destiny-board-col:not(.destiny-board-col--partie) app-destiny-board')).not.toBeNull();
+
+    comp.quitDestiny();
+    await tick();
+    expect(root.querySelector('.group-polls')).not.toBeNull();
+    expect(root.querySelector('app-destiny-board')).toBeNull();
+  });
+});
+
+// ─── Story 44.4 — le plateau de la destinée ───────────────────────────────────
+
+describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+
+  /** Une option dans le futur lointain : « à venir » quelle que soit la date d'exécution. */
+  const opt = (optionId: string, date: string, yes = 0, maybe = 0) => ({
+    optionId,
+    date,
+    slot: 'EVENING' as const,
+    yes,
+    maybe,
+    no: 0,
+    myAnswer: null,
+  });
+
+  const poll = (over: Partial<OpenPollEntry> = {}) =>
+    openPollEntry({
+      pollId: 'poll-a',
+      partieId: 'partie-A',
+      partieName: 'Les Cendres',
+      title: 'Chapitre 4',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      eligibleCount: 5,
+      answeredCount: 2,
+      // Volontairement dans le désordre : le plateau les range dans l'ordre chronologique.
+      options: [opt('a2', '2030-03-06', 1), opt('a1', '2030-03-04', 0, 1), opt('a3', '2030-03-08', 3, 2)],
+      ...over,
+    });
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+  const board = (fixture: any) => root(fixture).querySelector('app-destiny-board');
+  const column = (fixture: any) => root(fixture).querySelector('.destiny-board-col');
+
+  it('vitrine : une colonne de 340 px apparaît avec la Destinée et disparaît avec elle', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [poll()] });
+    const comp = fixture.componentInstance as any;
+    expect(column(fixture)).toBeNull();
+
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    expect(column(fixture)).not.toBeNull();
+    expect(column(fixture)!.classList).not.toContain('destiny-board-col--partie');
+    expect(board(fixture)).not.toBeNull();
+
+    comp.quitDestiny();
+    await tick(fixture);
+    expect(column(fixture)).toBeNull();
+  });
+
+  it('le plateau dit le titre, la fin du vote, les réponses, et range les créneaux dans l’ordre chronologique', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [poll()] });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(root(fixture).querySelector('.destiny-board__title')!.textContent).toContain('Chapitre 4');
+    expect(root(fixture).querySelector('.destiny-board__subtitle')!.textContent!.trim()).toMatch(
+      /^Fin du vote .+ · 2 réponses sur 5$/,
+    );
+    expect(comp.destinyBoard().slots.map((s: any) => s.optionId)).toEqual(['a1', 'a2', 'a3']);
+    expect(root(fixture).querySelectorAll('.destiny-board__slot')).toHaveLength(3);
+  });
+
+  it('« meilleur » ne va qu’au meilleur créneau, et le créneau courant est entouré', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [poll()] });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+
+    const rows = Array.from(root(fixture).querySelectorAll<HTMLElement>('.destiny-board__slot'));
+    expect(root(fixture).querySelectorAll('.destiny-board__best')).toHaveLength(1);
+    expect(rows[2].querySelector('.destiny-board__best')).not.toBeNull();
+    // Vote encore ouvert : la Destinée s'est ouverte sur le premier créneau à venir.
+    expect(rows[0].getAttribute('aria-current')).toBe('true');
+    expect(rows[0].classList).toContain('destiny-board__slot--current');
+    expect(rows[2].getAttribute('aria-current')).toBeNull();
+  });
+
+  it('sans aucun « oui », « meilleur » n’apparaît nulle part', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll({ options: [opt('a1', '2030-03-04', 0, 2), opt('a2', '2030-03-06')] })],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(root(fixture).querySelector('.destiny-board__best')).toBeNull();
+  });
+
+  it('un vote terminé : « Vote terminé le … · plus de vote possible », les créneaux restent parcourables', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll({ expiresAt: '2020-01-01T00:00:00.000Z' })],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(root(fixture).querySelector('.destiny-board__subtitle')!.textContent).toMatch(
+      /^\s*Vote terminé le .+ · plus de vote possible\s*$/,
+    );
+    // Après la fin du vote, la Destinée s'ouvre sur le meilleur créneau.
+    expect(comp.destinyOptionId()).toBe('a3');
+    comp.destinyPrev();
+    expect(comp.destinyOptionId()).toBe('a2');
+  });
+
+  it('sans échéance, le sous-titre ne dit que les réponses', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll({ expiresAt: null, answeredCount: 1 })],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(root(fixture).querySelector('.destiny-board__subtitle')!.textContent!.trim()).toBe(
+      '1 réponse sur 5',
+    );
+  });
+
+  it('pas de plateau sous 768 px : la colonne habituelle reste', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      desktop: false,
+      openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1' })],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll1');
+    await tick(fixture);
+
+    expect(board(fixture)).toBeNull();
+    expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
+  });
+
+  it('ni dans l’Agenda, ni pendant la composition : la colonne habituelle revient', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1', can: ORGANIZER })],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll1');
+    await tick(fixture);
+    expect(board(fixture)).not.toBeNull();
+    expect(root(fixture).querySelector('.mj-results-panel')).toBeNull();
+
+    comp.composing.set(true);
+    await tick(fixture);
+    expect(board(fixture)).toBeNull();
+    expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
+    comp.composing.set(false);
+
+    comp.onViewChange('agenda');
+    await tick(fixture);
+    expect(board(fixture)).toBeNull();
+    // Le mode n'est pas défait : revenir à la grille retrouve le plateau.
+    comp.onViewChange('month');
+    await tick(fixture);
+    expect(board(fixture)).not.toBeNull();
+  });
+
+  it('atelier MJ : le plateau remplace la colonne MJ (40 %), qui revient à la sortie de la Destinée', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1', can: ORGANIZER })],
+    });
+    const comp = fixture.componentInstance as any;
+    expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
+
+    comp.chooseDestiny('poll1');
+    await tick(fixture);
+    expect(root(fixture).querySelector('.mj-results-panel')).toBeNull();
+    expect(root(fixture).querySelector('.destiny-board-col--partie app-destiny-board')).not.toBeNull();
+
+    comp.quitDestiny();
+    await tick(fixture);
+    expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
+    expect(board(fixture)).toBeNull();
+  });
+
+  it('atelier joueur : le plateau remplace la colonne des créneaux de la guilde', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1' })],
+    });
+    const comp = fixture.componentInstance as any;
+    expect(root(fixture).querySelector('.guild-slots-panel')).not.toBeNull();
+
+    comp.chooseDestiny('poll1');
+    await tick(fixture);
+    expect(root(fixture).querySelector('.guild-slots-panel')).toBeNull();
+    expect(board(fixture)).not.toBeNull();
+
+    comp.quitDestiny();
+    await tick(fixture);
+    expect(root(fixture).querySelector('.guild-slots-panel')).not.toBeNull();
+  });
+
+  it('atelier MJ organisateur : « N’ont pas … » nomme celles et ceux qui n’ont pas répondu', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      // `me` et `u3` n'ont voté que sur l'une des deux options, `u4` sur aucune ; `u2` a tout répondu.
+      members: [
+        { userId: 'me', pseudo: 'moi', displayName: 'Moi' },
+        { userId: 'u2', pseudo: 'bob', displayName: 'Bob' },
+        { userId: 'u3', pseudo: 'cyd', displayName: 'Cyd' },
+        { userId: 'u4', pseudo: 'dan', displayName: 'Dan' },
+      ],
+      openPolls: [
+        poll({
+          pollId: 'poll1',
+          partieId: 'partie-1',
+          can: ORGANIZER,
+          eligibleCount: 4,
+          answeredCount: 1,
+        }),
+      ],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll1');
+    await tick(fixture);
+
+    const absent = root(fixture).querySelector('.destiny-board__absent')!.textContent!;
+    expect(absent).toContain('N’ont pas consulté l’oracle');
+    expect(absent).toContain('Cyd');
+    expect(absent).toContain('Dan');
+    expect(absent).not.toContain('Bob');
+  });
+
+  it('atelier, sans droit d’organisateur : le nombre, jamais un nom', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      members: [{ userId: 'u4', pseudo: 'dan', displayName: 'Dan' }],
+      openPolls: [
+        poll({ pollId: 'poll1', partieId: 'partie-1', eligibleCount: 4, answeredCount: 1 }),
+      ],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll1');
+    await tick(fixture);
+
+    const absent = root(fixture).querySelector('.destiny-board__absent')!.textContent!;
+    expect(absent).toContain('3 n’ont pas encore répondu');
+    expect(absent).not.toContain('Dan');
+    expect(root(fixture).querySelector('.destiny-board__who')).toBeNull();
+  });
+
+  it('vitrine, organisateur : le nombre et « voir qui » — jamais un nom — qui mène à la page de la partie', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll({ can: ORGANIZER })],
+    });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+
+    const absent = root(fixture).querySelector('.destiny-board__absent')!;
+    expect(absent.textContent).toContain('3 n’ont pas encore répondu');
+    const who = absent.querySelector('.destiny-board__who') as HTMLButtonElement;
+    expect(who.textContent!.trim()).toBe('voir qui');
+
+    who.click();
+    expect(navigate).toHaveBeenCalledWith(['/parties', 'partie-A']);
+  });
+
+  it('vitrine, sans droit d’organisateur : le nombre seulement ; tout le monde a répondu : aucune ligne', async () => {
+    const { fixture, openPollsSvc } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll()],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(root(fixture).querySelector('.destiny-board__absent')!.textContent).toContain(
+      '3 n’ont pas encore répondu',
+    );
+    expect(root(fixture).querySelector('.destiny-board__who')).toBeNull();
+
+    openPollsSvc.entries.set([poll({ answeredCount: 5 })]);
+    await tick(fixture);
+    expect(root(fixture).querySelector('.destiny-board__absent')).toBeNull();
+  });
+
+  it('une personne qui ne vote pas lit quand même le plateau', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll({ me: { eligible: false, answered: false } })],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(board(fixture)).not.toBeNull();
+  });
+
+  it('‹ n/N › parcourent les CRÉNEAUX du vote actif, en boucle, et annoncent le créneau courant', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [poll()] });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    const nav = () => root(fixture).querySelector('.destiny__nav')!.textContent!;
+    const live = () => root(fixture).querySelector('.destiny-board__sr')!.textContent!;
+
+    expect(nav()).toContain('1 / 3');
+    comp.destinyNext();
+    await tick(fixture);
+    expect(comp.destinyOptionId()).toBe('a2');
+    expect(nav()).toContain('2 / 3');
+    expect(live()).toBe('Créneau 2 sur 3, mercredi 6 mars, soir, 1 oui');
+
+    comp.destinyNext();
+    comp.destinyNext();
+    await tick(fixture);
+    expect(comp.destinyOptionId()).toBe('a1');
+    comp.destinyPrev();
+    await tick(fixture);
+    expect(comp.destinyOptionId()).toBe('a3');
+    expect(nav()).toContain('3 / 3');
+    // Le vote reste le même : les chevrons ne changent plus de vote.
+    expect(comp.destinyPollId()).toBe('poll-a');
+  });
+
+  it('un seul créneau : pas de chevrons', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll({ options: [opt('a1', '2030-03-04')] })],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+
+    expect(root(fixture).querySelector('.destiny__nav')).toBeNull();
+  });
+
+  it('toucher un créneau du plateau le rend courant et place la grille sur son mois', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll({ options: [opt('c1', '2030-03-04'), opt('c2', '2030-05-10')] })],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    expect(comp.sharedDate().toISOString().substring(0, 7)).toBe('2030-03');
+
+    (root(fixture).querySelectorAll('.destiny-board__slot')[1] as HTMLButtonElement).click();
+    await tick(fixture);
+
+    expect(comp.destinyOptionId()).toBe('c2');
+    expect(comp.sharedDate().toISOString().substring(0, 7)).toBe('2030-05');
+    expect(
+      root(fixture).querySelectorAll('.destiny-board__slot')[1].getAttribute('aria-current'),
+    ).toBe('true');
+  });
+
+  it('un créneau du mois déjà affiché ne relit pas le calendrier', async () => {
+    const { fixture, availabilitySvc } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll()],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    const calls = availabilitySvc.getMyCalendar.mock.calls.length;
+
+    comp.destinyNext();
+    comp.destinyNext();
+    await tick(fixture);
+
+    expect(comp.destinyOptionId()).toBe('a3');
+    expect(availabilitySvc.getMyCalendar.mock.calls.length).toBe(calls);
+  });
+
+  it('le créneau courant retiré d’un vote toujours ouvert : la Destinée se replace sur le créneau d’entrée', async () => {
+    const { fixture, openPollsSvc } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll()],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    comp.destinyNext();
+    await tick(fixture);
+    expect(comp.destinyOptionId()).toBe('a2');
+
+    openPollsSvc.entries.set([poll({ options: [opt('a1', '2030-03-04'), opt('a3', '2030-03-08')] })]);
+    await tick(fixture);
+
+    expect(comp.destinyPollId()).toBe('poll-a');
+    expect(comp.destinyOptionId()).toBe('a1');
+  });
+
+  it('en direct : les comptes d’un autre vote se mettent à jour', async () => {
+    const { fixture, openPollsSvc } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [poll()],
+    });
+    (fixture.componentInstance as any).chooseDestiny('poll-a');
+    await tick(fixture);
+    const yes = () => root(fixture).querySelectorAll('.destiny-board__yes')[0].textContent!.trim();
+    expect(yes()).toBe('0 oui');
+
+    openPollsSvc.entries.set([
+      poll({ answeredCount: 3, options: [opt('a1', '2030-03-04', 4), opt('a2', '2030-03-06', 1)] }),
+    ]);
+    await tick(fixture);
+
+    expect(yes()).toBe('4 oui');
+    expect(root(fixture).querySelector('.destiny-board__subtitle')!.textContent).toContain(
+      '3 réponses sur 5',
+    );
+  });
+
+  it('atelier : tant qu’une Destinée est active, le signal partie: relit mes sondages ouverts — sinon non', async () => {
+    const { fixture, scenariosSvc, openPollsSvc } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+      openPolls: [poll({ pollId: 'poll1', partieId: 'partie-1' })],
+    });
+    const comp = fixture.componentInstance as any;
+    const before = openPollsSvc.refresh.mock.calls.length;
+
+    scenariosSvc.changed.set({ partieId: 'partie-1' });
+    await tick(fixture);
+    expect(openPollsSvc.refresh.mock.calls.length).toBe(before);
+
+    comp.chooseDestiny('poll1');
+    scenariosSvc.changed.set({ partieId: 'partie-1' });
+    await tick(fixture);
+    expect(openPollsSvc.refresh.mock.calls.length).toBeGreaterThan(before);
   });
 });

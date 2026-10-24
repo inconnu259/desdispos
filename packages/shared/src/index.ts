@@ -992,6 +992,12 @@ function compareOptionsChronologically(a: RankableOption, b: RankableOption): nu
   return a.date.localeCompare(b.date) || DAY_SLOT_RANK[a.slot] - DAY_SLOT_RANK[b.slot];
 }
 
+/** Les options dans l'ordre chronologique (Story 44.4) — le jour, puis le créneau de la journée. Source unique
+ *  de l'ordre du plateau de la Destinée et de ses chevrons ; ne modifie pas la liste reçue. */
+export function sortOptionsChronologically<T extends RankableOption>(options: readonly T[]): T[] {
+  return [...options].sort(compareOptionsChronologically);
+}
+
 /**
  * LE meilleur créneau d'un vote (Story 44.3), source unique de l'écran (Destinée, confirmation « Fixer la
  * date ») : le plus de « oui », puis le plus de « peut-être », puis le plus tôt. Les options passées

@@ -4,6 +4,7 @@ import { PermissionsModule } from '../permissions/permissions.module';
 import { CharacterModule } from '../characters/character.module';
 import { PollModule } from '../poll/poll.module';
 import { EventsModule } from '../events/events.module';
+import { ScenarioDatableSeanceFilter } from './datable-seance-filter.service';
 import { ScenariosController } from './scenarios.controller';
 import { ScenariosService } from './scenarios.service';
 
@@ -18,7 +19,7 @@ import { ScenariosService } from './scenarios.service';
   // la séance.
   imports: [PartiesModule, PermissionsModule, CharacterModule, EventsModule, PollModule],
   controllers: [ScenariosController],
-  providers: [ScenariosService],
-  exports: [ScenariosService],
+  providers: [ScenariosService, ScenarioDatableSeanceFilter],
+  exports: [ScenariosService, ScenarioDatableSeanceFilter],
 })
 export class ScenariosModule {}

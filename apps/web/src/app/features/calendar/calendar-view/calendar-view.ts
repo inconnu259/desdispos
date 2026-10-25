@@ -1,7 +1,7 @@
 import {
   Component,
   DestroyRef,
-  type ElementRef,
+  ElementRef,
   Injector,
   OnInit,
   computed,
@@ -68,6 +68,7 @@ import {
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
+import { DatableSeancesService } from '../../../core/poll/datable-seances.service';
 import { OpenPollsService } from '../../../core/poll/open-polls.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { getMissingVoters } from '../../../core/poll/poll.util';
@@ -103,6 +104,15 @@ import {
 import { CalendarLayerToggle } from '../calendar-layer-toggle/calendar-layer-toggle';
 import { DestinyControl, type DestinyPollRef } from '../destiny-control/destiny-control';
 import { DestinyList, type DestinyListItem, type DestinyState } from '../destiny-list/destiny-list';
+import { RendezvousPicker } from '../rendezvous-picker/rendezvous-picker';
+import {
+  armableRendezvous,
+  groupRendezvous,
+  jdrRendezvous,
+  rowFromEntry,
+  type RendezvousRow,
+  type RendezvousTitle,
+} from '../rendezvous-picker/rendezvous.utils';
 import { DestinySheet, type DestinySheetModel } from '../destiny-sheet/destiny-sheet';
 import {
   DestinyBoard,
@@ -253,6 +263,7 @@ export interface EligibleSeanceEntry {
     CalendarLayerToggle,
     DestinyControl,
     DestinyList,
+    RendezvousPicker,
     DestinyBoard,
     DestinySheet,
     ComposeBar,
@@ -637,9 +648,6 @@ export class CalendarView implements OnInit {
         eventId: card.id,
         title: card.title,
         state,
-        // Story 44.1 : le droit de modifier les dates vient du serveur (`can.edit`), jamais de `hostId`.
-        canCompose: card.can.edit,
-        armLabel: fillTone(tone['partie.ralliement_calendar_compose_arm'], { title: card.title }),
       };
     });
   });
@@ -1834,6 +1842,137 @@ export class CalendarView implements OnInit {
     return hasTargetPoll || this.eligibleSeances().length > 0;
   });
 
+  // ─── Story 45.1 — « Proposer des dates » ────────────────────────────────────────────────────────
+  //
+  // ⚠️ UN bouton écrit, dans les trois calendriers, remplace « Inscrire des dates » (MJ) et les boutons
+  // « Composer les créneaux : {titre} » de l'hôte. Il ouvre le choix du rendez-vous à dater (sauté s'il n'y en
+  // a qu'un). À l'atelier la liste se DÉRIVE de la charge utile déjà chargée, avec le prédicat partagé
+  // `isDatableSeance` ; dans la vitrine elle vient de `GET /me/datable-seances`. Choisir arme le composer à
+  // l'atelier ; dans la vitrine, cela ouvre l'atelier (`?seanceId`, que la 45.2 transforme en composer armé).
+  // Quand la destinée active est un vote que l'organisateur peut modifier ici, le même bouton devient
+  // « Modifier les dates » et arme le composer sur ce vote (comportement d'avant, sous son nouveau nom).
+  private readonly datableSvc = inject(DatableSeancesService);
+
+  /** Nom et état de la partie de l'atelier — le nom titre le choix, l'état « figé » écarte les rendez-vous. */
+  private readonly partieMeta = signal<{ name: string; frozen: boolean } | null>(null);
+
+  protected readonly rendezvousPickerOpen = signal(false);
+  private readonly proposeButtonRef = viewChild('proposeBtn', {
+    read: ElementRef<HTMLButtonElement>,
+  });
+  /** L'ancre du menu du choix : le bouton lui-même. */
+  protected readonly proposeAnchor = computed(() => this.proposeButtonRef()?.nativeElement ?? null);
+
+  /** « Titre — Séance 2 » seulement quand le scénario a plusieurs séances (comme `pollEntryLabel`). */
+  private readonly rendezvousTitle: RendezvousTitle = (title, rank, count) =>
+    count > 1 ? this.scenarioSeanceTitle(title, rank) : title;
+
+  /** Les rendez-vous que le bouton propose de dater, dans le contexte affiché (atelier ou vitrine). */
+  protected readonly rendezvousRows = computed<RendezvousRow[]>(() => {
+    const id = this.partieId();
+    if (id === null) {
+      return armableRendezvous(
+        this.datableSvc.entries().map((e) => rowFromEntry(e, this.rendezvousTitle)),
+      );
+    }
+    const meta = this.partieMeta();
+    const partie = { id, name: meta?.name ?? '' };
+    const frozen = meta?.frozen ?? false;
+    const rows = this.isGroup()
+      ? groupRendezvous(this.groupEvents(), partie, frozen)
+      : this.isMjMode()
+        ? jdrRendezvous(this.scenarios(), partie, frozen, this.rendezvousTitle)
+        : [];
+    return armableRendezvous(rows);
+  });
+
+  /** La destinée active est un vote que l'organisateur peut modifier DEPUIS CET ATELIER, ou `null`. */
+  private readonly modifiablePoll = computed<
+    { kind: 'jdr' } | { kind: 'group'; eventId: string } | null
+  >(() => {
+    const destinyId = this.destinyPollId();
+    if (destinyId === null || this.partieId() === null) return null;
+    if (this.isGroup()) {
+      const entry = this.groupPolls().find((e) => e.poll.id === destinyId && e.card.can.edit);
+      return entry ? { kind: 'group', eventId: entry.card.id } : null;
+    }
+    return this.isMjMode() && this.activePolls().some((e) => e.poll.id === destinyId)
+      ? { kind: 'jdr' }
+      : null;
+  });
+
+  /** Le bouton de la ligne de contrôles : « Proposer des dates », « Modifier les dates », ou rien — jamais
+   *  pendant une composition (le mode se voit tant qu'il dure). */
+  protected readonly proposeButton = computed<'propose' | 'modify' | null>(() => {
+    if (this.composing()) return null;
+    if (this.modifiablePoll()) return 'modify';
+    return this.rendezvousRows().length > 0 ? 'propose' : null;
+  });
+
+  /** Le choix n'a de sens que s'il y a des lignes : sans elles le bouton a disparu, et le menu perdrait son ancre. */
+  protected readonly rendezvousPickerShown = computed(
+    () => this.rendezvousPickerOpen() && this.rendezvousRows().length > 0,
+  );
+
+  protected onProposeClicked(): void {
+    const mode = this.proposeButton();
+    if (mode === 'modify') {
+      const target = this.modifiablePoll();
+      if (target?.kind === 'group') this.startGroupCompose(target.eventId);
+      else this.startCompose();
+      return;
+    }
+    if (mode !== 'propose') return;
+    const rows = this.rendezvousRows();
+    // Un seul rendez-vous : l'étape du choix est sautée.
+    if (rows.length === 1) this.pickRendezvous(rows[0]);
+    else this.rendezvousPickerOpen.set(true);
+  }
+
+  /** Rendre le focus au bouton : sans quoi un utilisateur clavier retombe en haut du document. */
+  protected closeRendezvousPicker(): void {
+    this.rendezvousPickerOpen.set(false);
+    this.proposeButtonRef()?.nativeElement.focus();
+  }
+
+  protected onRendezvousPickerKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      this.closeRendezvousPicker();
+    }
+  }
+
+  /** Choisir un rendez-vous : à l'atelier, le composer s'arme pour sa séance ; dans la vitrine, l'atelier de sa
+   *  partie s'ouvre (la vitrine n'arme JAMAIS de composer). */
+  protected pickRendezvous(row: RendezvousRow): void {
+    this.rendezvousPickerOpen.set(false);
+    if (this.partieId() === null) {
+      // Seul le MJ d'un JDR a `can.propose` sur une séance de JDR : son atelier vit à `/calendar`.
+      const role = row.family === 'jdr' ? 'mj' : 'player';
+      void this.router.navigateByUrl(
+        atelierUrl(
+          { partieId: row.partieId, family: row.family, role },
+          { seanceId: row.seanceId },
+        ),
+      );
+      return;
+    }
+    if (row.nature === 'seance') this.startCompose(row.seanceId);
+  }
+
+  /** Lit le nom et l'état de la partie de l'atelier (le mode MJ ne lit pas la partie par ailleurs). Un échec
+   *  laisse la partie « active » et sans nom : le choix reste utilisable. */
+  private async loadPartieMeta(id: string): Promise<void> {
+    try {
+      const partie = await this.partiesSvc.get(id);
+      if (this.partieId() === id) {
+        this.partieMeta.set({ name: partie.name, frozen: !isPartieActive(partie.status) });
+      }
+    } catch {
+      /* le choix se passe du nom */
+    }
+  }
+
   /**
    * AC1 — arme le mode. La cible se déduit de ce que le MJ regarde : un vote mis en avant par la
    * Destinée se MODIFIE, sinon on en compose un neuf.
@@ -2497,6 +2636,9 @@ export class CalendarView implements OnInit {
     this.destinyNotice.set(null);
     // Story 44.8 — le filtre est celui du calendrier personnel : il ne suit pas dans une autre page.
     this.hiddenPartieIds.set(new Set());
+    // Story 45.1 — le choix du rendez-vous et le nom de la partie ne suivent pas dans une autre page.
+    this.rendezvousPickerOpen.set(false);
+    this.partieMeta.set(null);
 
     // Story 30.6, Task 1 : état des couches actives, initialisé depuis le défaut du compte —
     // jamais persisté par la bascule elle-même (encadré n°2). `disponibilite-groupe` retirée hors
@@ -2554,6 +2696,8 @@ export class CalendarView implements OnInit {
         if (draft) this.startGroupComposeNew(draft);
       }
     } else {
+      // Story 45.1 — mes rendez-vous à dater (le bouton « Proposer des dates » de la vitrine).
+      void this.datableSvc.refresh();
       // Deferred-work (SSE, calendrier personnel) — le calendrier personnel agrège plusieurs
       // Parties : aucun `partieTopic` unique ne peut le couvrir, donc `user:{id}` (même patron que
       // `dashboard.ts`). Le serveur y fait désormais un fan-out (`notifyPartieSignalsChanged`) sur
@@ -2603,12 +2747,16 @@ export class CalendarView implements OnInit {
    */
   private async resolveGroup(id: string): Promise<void> {
     if (this.isMjMode()) {
+      void this.loadPartieMeta(id);
       this.groupResolved.set(true);
       return;
     }
     let group = false;
     try {
       const partie = await this.partiesSvc.get(id);
+      if (this.partieId() === id) {
+        this.partieMeta.set({ name: partie.name, frozen: !isPartieActive(partie.status) });
+      }
       // Story 41.2 : la soirée isolée (`ONE_SHOT`) vote aussi dans le calendrier du groupe.
       group = familyOf(partie.gameSystemId) === 'ralliement';
     } catch {

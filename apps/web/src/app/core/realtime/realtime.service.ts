@@ -5,6 +5,7 @@ import { ScenariosService } from '../scenarios/scenarios.service';
 import { CharacterService } from '../characters/character.service';
 import { HommeDragonService } from '../homme-dragon/homme-dragon.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { DatableSeancesService } from '../poll/datable-seances.service';
 import { OpenPollsService } from '../poll/open-polls.service';
 import { MyPartiesService } from '../my-parties/my-parties.service';
 import { AvailabilityService } from '../availability/availability.service';
@@ -53,6 +54,7 @@ export class RealtimeService {
   private readonly hommeDragon = inject(HommeDragonService);
   private readonly invitations = inject(InvitationsService);
   private readonly openPolls = inject(OpenPollsService);
+  private readonly datableSeances = inject(DatableSeancesService);
   private readonly myParties = inject(MyPartiesService);
   private readonly availability = inject(AvailabilityService);
   private readonly announcements = inject(AnnouncementsService);
@@ -93,6 +95,8 @@ export class RealtimeService {
     // Story 44.2 : mes sondages ouverts (toutes parties, toutes familles) sont UNE liste lue sur `user:{id}`,
     // que toute écriture de sondage ou de vote prévient (`notifyPartieSignalsChanged`) — plus de `partie:`.
     { prefix: 'user:', notifyChanged: () => this.openPolls.notifyChanged() },
+    // Story 45.1 : mes rendez-vous à dater — même canal, même règle ; relus seulement une fois lus une première fois.
+    { prefix: 'user:', notifyChanged: () => this.datableSeances.notifyChanged() },
     { prefix: 'user:', notifyChanged: () => this.myParties.notifyChanged() },
     { prefix: 'partie:', notifyChanged: () => this.availability.notifyChanged() },
     { prefix: 'partie:', notifyChanged: () => this.announcements.notifyChanged() },

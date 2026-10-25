@@ -398,6 +398,28 @@ export function isPartieActive(status: PartieStatus): boolean {
   return status === 'A_VENIR' || status === 'EN_COURS';
 }
 
+/**
+ * Un rendez-vous (séance) « à dater » (Story 45.1, AR3) : sans date, sans sondage (ouvert ou clos — un vote
+ * fermé sans date n'en est plus un), événement non annulé, partie active, et la personne peut proposer des
+ * dates. LA définition, lue par les trois calendriers et par `GET /me/datable-seances`.
+ * `frozen` = la partie n'est plus active ; `canOrganize` = `can.propose`.
+ */
+export function isDatableSeance(seance: {
+  hasDate: boolean;
+  hasPoll: boolean;
+  cancelled: boolean;
+  frozen: boolean;
+  canOrganize: boolean;
+}): boolean {
+  return (
+    !seance.hasDate &&
+    !seance.hasPoll &&
+    !seance.cancelled &&
+    !seance.frozen &&
+    seance.canOrganize
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversion du type d'une partie (Story 29.14)
 //
@@ -1290,6 +1312,24 @@ export interface OpenPollEntry {
   answeredCount: number;
   me: { eligible: boolean; answered: boolean };
   /** Droits d'organisateur de la personne qui lit sur ce rendez-vous (Story 44.1). */
+  can: OrganizerCan;
+}
+
+/** Un rendez-vous qui attend une date, proposable par la personne qui lit (`GET /me/datable-seances`,
+ *  Story 45.1). Une entrée par séance ; aucune donnée d'un autre membre. */
+export interface DatableSeanceEntry {
+  seanceId: string;
+  partieId: string;
+  partieName: string;
+  family: GameSystemFamily;
+  kind: PartieKind;
+  /** Titre du rendez-vous (celui de l'événement). */
+  title: string;
+  /** Rang de la séance dans son événement (1 = la première) et nombre de séances de l'événement : le client
+   *  écrit « Titre — Séance 2 » seulement quand il y en a plusieurs. */
+  seanceRank: number;
+  seanceCount: number;
+  /** Droits d'organisateur de la personne qui lit (`propose` est vrai pour toute entrée servie). */
   can: OrganizerCan;
 }
 

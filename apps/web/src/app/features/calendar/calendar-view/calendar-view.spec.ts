@@ -12,13 +12,14 @@ import { CalendarView } from './calendar-view';
 import { CalendarWeekView } from '../calendar-week-view/calendar-week-view';
 import { CalendarMonthView } from '../calendar-month-view/calendar-month-view';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import type { AuthUser, OpenPollEntry } from '@master-jdr/shared';
+import type { AuthUser, DatableSeanceEntry, OpenPollEntry } from '@master-jdr/shared';
 import {
   AvailabilityService,
   ConflictError,
 } from '../../../core/availability/availability.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
+import { DatableSeancesService } from '../../../core/poll/datable-seances.service';
 import { OpenPollsService } from '../../../core/poll/open-polls.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
@@ -54,6 +55,10 @@ interface CreateOptions {
   members?: unknown[];
   /** Story 44.2 — mes sondages ouverts tels que `GET /me/open-polls` les sert (calendrier personnel). */
   openPolls?: OpenPollEntry[];
+  /** Story 45.1 — mes rendez-vous à dater tels que `GET /me/datable-seances` les sert (calendrier personnel). */
+  datable?: DatableSeanceEntry[];
+  /** Story 45.1 — la partie de l'atelier telle que `GET /parties/:id` la sert (nom et statut). */
+  partie?: { name: string; gameSystemId?: string; status?: string };
   /** Story 44.8 — mes parties (`MyPartiesService`), source du filtre par partie. */
   myParties?: { id: string; name: string; status: string }[];
 }
@@ -146,10 +151,23 @@ function makePartiesService(members: unknown[] = []) {
   return { members: vi.fn().mockResolvedValue(members) };
 }
 
+// Story 45.1 — une séance du serveur porte toujours `can` et `dateValidee` ; les fixtures historiques de ce fichier
+// n'en disent rien : par défaut, aucun droit d'organisateur et aucune date (une fixture qui en veut les écrit).
+function withOrganizerDefaults(scenarios: any[]): any[] {
+  return scenarios.map((s) => ({
+    ...s,
+    seances: (s.seances ?? []).map((se: any) => ({
+      can: { propose: false, edit: false, choose: false, extend: false },
+      dateValidee: null,
+      ...se,
+    })),
+  }));
+}
+
 function makeScenariosService(scenarios: any[] = []) {
   return {
     createSeancePoll: vi.fn(),
-    listAll: vi.fn().mockResolvedValue(scenarios),
+    listAll: vi.fn().mockResolvedValue(withOrganizerDefaults(scenarios)),
     changed: signal<{ partieId: string } | null>(null),
   };
 }
@@ -239,7 +257,15 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
   const pollSvc = makePollService();
   const snack = makeSnackBar();
   const dialog = makeMatDialog();
-  const partiesSvc = makePartiesService(opts.members);
+  const partiesSvc: any = makePartiesService(opts.members);
+  if (opts.partie) {
+    partiesSvc.get = vi.fn().mockResolvedValue({ gameSystemId: 'ryuutama', status: 'EN_COURS', ...opts.partie });
+  }
+  const datableSvc = {
+    entries: signal<DatableSeanceEntry[]>(opts.datable ?? []),
+    loaded: signal(true),
+    refresh: vi.fn().mockResolvedValue(undefined),
+  };
   const scenariosSvc = makeScenariosService(opts.scenarios ?? []);
   const realtimeSvc = makeRealtimeService();
   const openPollsSvc = {
@@ -264,6 +290,7 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
       { provide: RealtimeService, useValue: realtimeSvc },
       { provide: BreakpointObserver, useValue: makeBreakpointObserver(opts.desktop ?? true) },
       { provide: OpenPollsService, useValue: openPollsSvc },
+      { provide: DatableSeancesService, useValue: datableSvc },
       ...(opts.myParties
         ? [
             {
@@ -296,6 +323,7 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
     scenariosSvc,
     realtimeSvc,
     openPollsSvc,
+    datableSvc,
     location,
   };
 }
@@ -2716,7 +2744,7 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
     expect(comp.destinyPoll().pollId).toBe('poll1');
 
     // Le premier vote est scellé par quelqu'un d'autre : il n'est plus OPEN.
-    scenariosSvc.listAll.mockResolvedValue([SECOND_POLL_SCENARIO]);
+    scenariosSvc.listAll.mockResolvedValue(withOrganizerDefaults([SECOND_POLL_SCENARIO]));
     scenariosSvc.changed.set({ partieId: '*' });
     await tick(fixture);
 
@@ -2736,7 +2764,7 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
     const comp = fixture.componentInstance as any;
 
     comp.enterDestiny('poll1');
-    scenariosSvc.listAll.mockResolvedValue([TWO_OPTION_POLL_SCENARIO]);
+    scenariosSvc.listAll.mockResolvedValue(withOrganizerDefaults([TWO_OPTION_POLL_SCENARIO]));
     scenariosSvc.changed.set({ partieId: '*' });
     await tick(fixture);
 
@@ -3261,7 +3289,13 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
   const FREE_SEANCE_SCENARIO = {
     ...ACTIVE_POLL_SCENARIO,
     seances: [
-      { id: 'seanceX', scenarioId: 's1', compteRendu: null, createdAt: '2026-07-13T00:00:00.000Z' },
+      {
+        id: 'seanceX',
+        scenarioId: 's1',
+        compteRendu: null,
+        createdAt: '2026-07-13T00:00:00.000Z',
+        can: { propose: true, edit: true, choose: true, extend: false },
+      },
     ],
   };
 
@@ -3298,7 +3332,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     expect(comp.composeTarget()).toBeNull();
   });
 
-  it('AC1/AC10 — MJ sur une partie avec une séance éligible : le bouton « Ajouter des dates » est rendu', async () => {
+  it('AC1/AC10 — MJ sur une partie avec une séance à dater : le bouton « Proposer des dates » est rendu', async () => {
     const { fixture } = await createCalendarView({
       mode: 'mj',
       partieId: 'partie-1',
@@ -3306,7 +3340,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     });
     const btn = fixture.nativeElement.querySelector('.compose-arm');
     expect(btn).not.toBeNull();
-    expect(btn.textContent.trim()).toBe(GRIMOIRE_TONE['calendar.view_compose_arm']);
+    expect(btn.textContent.trim()).toBe(GRIMOIRE_TONE['calendar.view_propose_dates']);
   });
 
   // ── AC13 : la composition part de l'état réel du vote ──
@@ -4660,16 +4694,22 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
   // ── Composer pour un sondage ouvert ──
 
-  it('seul l’hôte d’un sondage ouvert a le bouton « composer », écrit avec le nom de la conjonction', async () => {
+  it('seul l’hôte d’un sondage ouvert a « Modifier les dates », et seulement quand ce vote est la destinée active (Story 45.1)', async () => {
     const member = await createGroupView();
-    expect(member.fixture.nativeElement.querySelector('.compose-arm--group')).toBeNull();
+    member.comp.destinyPollId.set('p1');
+    member.fixture.detectChanges();
+    expect(member.fixture.nativeElement.querySelector('.compose-arm')).toBeNull();
     member.comp.startGroupCompose('e1');
     expect(member.comp.composing()).toBe(false);
     TestBed.resetTestingModule();
 
     const host = await createGroupView({ userId: HOST });
-    const btn = host.fixture.nativeElement.querySelector('.compose-arm--group');
-    expect(btn?.textContent?.trim()).toBe('Composer les créneaux : Soirée plateaux');
+    // Sans destinée active ni rendez-vous à dater : plus de bouton « Composer les créneaux : {titre} ».
+    expect(host.fixture.nativeElement.querySelector('.compose-arm')).toBeNull();
+    host.comp.destinyPollId.set('p1');
+    host.fixture.detectChanges();
+    const btn = host.fixture.nativeElement.querySelector('.compose-arm');
+    expect(btn?.textContent?.trim()).toBe(GRIMOIRE_TONE['calendar.view_modify_dates']);
   });
 
   it('le bouton « composer » suit le droit servi (`can.edit`), pas l’identité de l’hôte', async () => {
@@ -4677,14 +4717,18 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       userId: HOST,
       events: [groupCard({ can: { ...HOST_CAN, edit: false } })],
     });
-    expect(fixture.nativeElement.querySelector('.compose-arm--group')).toBeNull();
+    comp.destinyPollId.set('p1');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.compose-arm')).toBeNull();
     comp.startGroupCompose('e1');
     expect(comp.composing()).toBe(false);
   });
 
   it('armer la composition part des créneaux actuels et passe en vue Semaine', async () => {
     const { comp, fixture } = await createGroupView({ userId: HOST });
-    fixture.nativeElement.querySelector('.compose-arm--group').click();
+    comp.destinyPollId.set('p1');
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.compose-arm').click();
     fixture.detectChanges();
 
     expect(comp.composing()).toBe(true);
@@ -6057,7 +6101,7 @@ describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () 
       await tick(fixture);
       expect(notice(fixture)).toBeNull();
 
-      comp.scenarios.set(scenarios);
+      comp.scenarios.set(withOrganizerDefaults(scenarios));
       await tick(fixture);
       expect(comp.destinyPollId()).toBeNull();
       expect(notice(fixture)).toBe(expected);
@@ -6432,5 +6476,278 @@ describe('CalendarView — filtrer par partie (Story 44.8)', () => {
     const comp = fixture.componentInstance as any;
     expect(comp.filterParties()).toEqual([]);
     expect(comp.hiddenForViews()).toBeNull();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// Story 45.1 — « Proposer des dates » : voir les rendez-vous qui attendent une date
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+
+describe('CalendarView — Proposer des dates (Story 45.1)', () => {
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+  const NOBODY = { propose: false, edit: false, choose: false, extend: false };
+
+  /** Un scénario à une séance sans date, que `can` permet ou non de dater. */
+  function freeScenario(id: string, title: string, over: Record<string, unknown> = {}) {
+    return {
+      id,
+      partieId: 'partie-1',
+      title,
+      description: null,
+      status: 'COURANT',
+      dureeHeures: null,
+      dureeSeances: null,
+      resumeFin: null,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      closedAt: null,
+      seances: [
+        {
+          id: `${id}-s1`,
+          scenarioId: id,
+          compteRendu: null,
+          createdAt: '2026-07-13T00:00:00.000Z',
+          can: ORGANIZER,
+          ...over,
+        },
+      ],
+    };
+  }
+
+  function entry(seanceId: string, partieName: string, over: Partial<DatableSeanceEntry> = {}) {
+    return {
+      seanceId,
+      partieId: `p-${partieName}`,
+      partieName,
+      family: 'jdr',
+      kind: 'CAMPAGNE_LINEAIRE',
+      title: `Titre ${seanceId}`,
+      seanceRank: 1,
+      seanceCount: 1,
+      can: ORGANIZER,
+      ...over,
+    } as DatableSeanceEntry;
+  }
+
+  const button = (fixture: { nativeElement: HTMLElement }) =>
+    fixture.nativeElement.querySelector<HTMLButtonElement>('.compose-arm');
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((n) => n.remove());
+  });
+
+  async function atelier(scenarios: any[], extra: Partial<CreateOptions> = {}) {
+    return createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios,
+      partie: { name: 'La Tour' },
+      ...extra,
+    });
+  }
+
+  it('atelier JDR, un seul rendez-vous : le bouton s’écrit « Proposer des dates » et arme le composer sans passer par le choix', async () => {
+    const { fixture } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    const comp = fixture.componentInstance as any;
+    expect(button(fixture)?.textContent?.trim()).toBe(GRIMOIRE_TONE['calendar.view_propose_dates']);
+
+    button(fixture)!.click();
+    fixture.detectChanges();
+
+    expect(comp.rendezvousPickerOpen()).toBe(false);
+    expect(comp.composing()).toBe(true);
+    expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
+  });
+
+  it('atelier JDR, plusieurs rendez-vous : le bouton ouvre le choix, grouper sous le nom de la partie ; choisir arme le composer', async () => {
+    const { fixture } = await atelier([
+      freeScenario('sc1', 'Chapitre 1'),
+      freeScenario('sc2', 'Chapitre 2'),
+    ]);
+    const comp = fixture.componentInstance as any;
+
+    button(fixture)!.click();
+    await tick(fixture);
+
+    expect(comp.rendezvousPickerShown()).toBe(true);
+    expect(comp.composing()).toBe(false);
+    const picker = document.body.querySelector('app-rendezvous-picker');
+    expect(picker).not.toBeNull();
+    expect(picker!.querySelector('.rendezvous-picker__group-name')?.textContent?.trim()).toBe(
+      'La Tour',
+    );
+    const rows = [...picker!.querySelectorAll('.rendezvous-picker__row')];
+    expect(
+      rows.map((r) => [
+        r.querySelector('.rendezvous-picker__name')!.textContent!.trim(),
+        r.querySelector('.rendezvous-picker__meta')!.textContent!.trim(),
+      ]),
+    ).toEqual([
+      ['Chapitre 1', GRIMOIRE_TONE['calendar.rendezvous_nature_seance']],
+      ['Chapitre 2', GRIMOIRE_TONE['calendar.rendezvous_nature_seance']],
+    ]);
+
+    (rows[1] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(comp.rendezvousPickerOpen()).toBe(false);
+    expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc2-s1' });
+  });
+
+  it('atelier JDR : rien à dater → pas de bouton (vote lancé, date posée, scénario clôturé, droit absent, partie terminée)', async () => {
+    const dated = freeScenario('sc1', 'A', { dateValidee: '2099-01-01' });
+    const polled = freeScenario('sc2', 'B', {
+      poll: { id: 'poll9', status: 'OPEN', options: [], membersCount: 2 },
+    });
+    const closed = { ...freeScenario('sc3', 'C'), status: 'PASSE' };
+    const noRight = freeScenario('sc4', 'D', { can: NOBODY });
+    const { fixture } = await atelier([dated, polled, closed, noRight]);
+    expect(button(fixture)).toBeNull();
+    TestBed.resetTestingModule();
+
+    const frozen = await atelier([freeScenario('sc5', 'E')], {
+      partie: { name: 'La Tour', status: 'TERMINEE' },
+    });
+    expect(button(frozen.fixture)).toBeNull();
+  });
+
+  it('atelier JDR, destinée active sur un vote modifiable : le même bouton s’écrit « Modifier les dates » et arme ce vote', async () => {
+    const withOptions = {
+      ...ACTIVE_POLL_SCENARIO,
+      seances: [
+        {
+          ...ACTIVE_POLL_SCENARIO.seances[0],
+          poll: {
+            ...ACTIVE_POLL_SCENARIO.seances[0].poll,
+            options: [
+              { id: 'optA', date: '2026-08-01T00:00:00.000Z', slot: 'EVENING', votes: [] },
+              { id: 'optB', date: '2026-08-02T00:00:00.000Z', slot: 'MORNING', votes: [] },
+            ],
+          },
+        },
+      ],
+    };
+    const { fixture } = await atelier([withOptions]);
+    const comp = fixture.componentInstance as any;
+    comp.destinyPollId.set('poll1');
+    fixture.detectChanges();
+
+    expect(button(fixture)?.textContent?.trim()).toBe(GRIMOIRE_TONE['calendar.view_modify_dates']);
+    button(fixture)!.click();
+    fixture.detectChanges();
+    expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll1' });
+  });
+
+  it('une composition en cours masque le bouton', async () => {
+    const { fixture } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    (fixture.componentInstance as any).startCompose();
+    fixture.detectChanges();
+    expect(button(fixture)).toBeNull();
+  });
+
+  it('atelier d’un groupe : une soirée isolée sans date est servie par le prédicat mais le web la masque (Story 45.5)', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      partieId: 'partie-g',
+      partie: { name: 'Apéro', gameSystemId: 'ralliement' },
+    });
+    const comp = fixture.componentInstance as any;
+    comp.isGroup.set(true);
+    comp.groupEvents.set([
+      {
+        id: 'e1',
+        title: 'Apéro',
+        hostId: 'moi',
+        hostDisplayName: 'Moi',
+        seance: { id: 's1', date: null, slot: null },
+        participants: [],
+        myInscription: null,
+        poll: null,
+        cancelled: false,
+        can: ORGANIZER,
+      },
+    ]);
+    fixture.detectChanges();
+    expect(comp.rendezvousRows()).toEqual([]);
+    expect(button(fixture)).toBeNull();
+  });
+
+  describe('calendrier personnel', () => {
+    it('lit mes rendez-vous à dater ; aucun, pas de bouton', async () => {
+      const { fixture, datableSvc } = await createCalendarView({ mode: 'personal' });
+      expect(datableSvc.refresh).toHaveBeenCalledTimes(1);
+      expect(button(fixture)).toBeNull();
+    });
+
+    it('un seul rendez-vous : le choix est sauté et l’atelier de sa partie s’ouvre sur ?seanceId — jamais de composer', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'personal',
+        datable: [entry('s1', 'La Tour', { partieId: 'pT' })],
+      });
+      const router = TestBed.inject(Router);
+      const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      expect(button(fixture)?.textContent?.trim()).toBe(
+        GRIMOIRE_TONE['calendar.view_propose_dates'],
+      );
+
+      button(fixture)!.click();
+      fixture.detectChanges();
+
+      expect(navigate).toHaveBeenCalledWith('/parties/pT/calendar?seanceId=s1');
+      expect((fixture.componentInstance as any).composing()).toBe(false);
+    });
+
+    it('plusieurs rendez-vous de deux parties : le choix les groupe par nom ; « Titre — Séance 2 » seulement s’il y en a plusieurs', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'personal',
+        datable: [
+          entry('s1', 'La Tour', { partieId: 'pT', title: 'Chapitre', seanceRank: 2, seanceCount: 3 }),
+          entry('s2', 'Les Dragons', { partieId: 'pD', title: 'Épilogue' }),
+        ],
+      });
+      const router = TestBed.inject(Router);
+      const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+
+      button(fixture)!.click();
+      await tick(fixture);
+
+      const picker = document.body.querySelector('app-rendezvous-picker')!;
+      expect(
+        [...picker.querySelectorAll('.rendezvous-picker__group-name')].map((n) =>
+          n.textContent!.trim(),
+        ),
+      ).toEqual(['La Tour', 'Les Dragons']);
+      const rows = [...picker.querySelectorAll<HTMLButtonElement>('.rendezvous-picker__row')];
+      expect(rows[0].textContent).toContain('Chapitre — Séance 2');
+      expect(rows[1].textContent).toContain('Épilogue');
+      expect(rows[1].textContent).not.toContain('Séance');
+
+      rows[1].click();
+      expect(navigate).toHaveBeenCalledWith('/parties/pD/calendar?seanceId=s2');
+    });
+
+    it('un rendez-vous daté ailleurs (temps réel) fait disparaître le bouton', async () => {
+      const { fixture, datableSvc } = await createCalendarView({
+        mode: 'personal',
+        datable: [entry('s1', 'La Tour')],
+      });
+      expect(button(fixture)).not.toBeNull();
+      datableSvc.entries.set([]);
+      fixture.detectChanges();
+      expect(button(fixture)).toBeNull();
+    });
+
+    it('une soirée sans date est servie mais pas encore proposée par le web (Story 45.5)', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'personal',
+        datable: [entry('s1', 'Apéro', { family: 'ralliement', kind: 'ONE_SHOT' })],
+      });
+      expect(button(fixture)).toBeNull();
+    });
   });
 });

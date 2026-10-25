@@ -3,8 +3,11 @@ import { OCCUPIED_SPANS_PORT } from '../availability/ports/occupied-spans.port';
 import { OWN_EVENTS_PORT } from '../availability/ports/own-events.port';
 import { EventsModule } from '../events/events.module';
 import { EventsService } from '../events/events.service';
+import { DATABLE_SEANCE_FILTER } from '../events/ports/datable-seance-filter.port';
 import { PartiesModule } from '../parties/parties.module';
 import { PartiesService } from '../parties/parties.service';
+import { ScenarioDatableSeanceFilter } from '../scenarios/datable-seance-filter.service';
+import { ScenariosModule } from '../scenarios/scenarios.module';
 import { OpenPollContextService } from '../events/open-poll-context.service';
 import { GroupPollChoiceService } from '../events/group-poll-choice.service';
 import { GroupPollExtensionService } from '../events/group-poll-extension.service';
@@ -28,11 +31,12 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
  * - `GroupPollChoosePort` (Story 40.6) → `GroupPollChoiceService` ;
  * - `GroupPollExtendPort` (Story 40.7) → `GroupPollExtensionService` ;
  * - `OpenPollContextPort` (Story 44.2) → `OpenPollContextService` ;
+ * - `DatableSeanceFilter` (Story 45.1, déclaré dans `events/ports/`) → `ScenarioDatableSeanceFilter` ;
  * - `PartieSignalsPort` → `PartiesService`.
  */
 @Global()
 @Module({
-  imports: [EventsModule, PartiesModule],
+  imports: [EventsModule, PartiesModule, ScenariosModule],
   providers: [
     { provide: OCCUPIED_SPANS_PORT, useExisting: EventsService },
     { provide: OWN_EVENTS_PORT, useExisting: EventsService },
@@ -42,6 +46,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
     { provide: GROUP_POLL_EXTEND_PORT, useExisting: GroupPollExtensionService },
     { provide: OPEN_POLL_CONTEXT_PORT, useExisting: OpenPollContextService },
     { provide: PARTIE_SIGNALS_PORT, useExisting: PartiesService },
+    { provide: DATABLE_SEANCE_FILTER, useExisting: ScenarioDatableSeanceFilter },
   ],
   exports: [
     OCCUPIED_SPANS_PORT,
@@ -52,6 +57,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
     GROUP_POLL_EXTEND_PORT,
     OPEN_POLL_CONTEXT_PORT,
     PARTIE_SIGNALS_PORT,
+    DATABLE_SEANCE_FILTER,
   ],
 })
 export class PortsModule {}

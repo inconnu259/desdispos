@@ -7,6 +7,7 @@ import { ScenariosService } from '../scenarios/scenarios.service';
 import { CharacterService } from '../characters/character.service';
 import { HommeDragonService } from '../homme-dragon/homme-dragon.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { DatableSeancesService } from '../poll/datable-seances.service';
 import { OpenPollsService } from '../poll/open-polls.service';
 import { MyPartiesService } from '../my-parties/my-parties.service';
 import { AvailabilityService } from '../availability/availability.service';
@@ -86,6 +87,7 @@ describe('RealtimeService', () => {
     changed: ReturnType<typeof signal<number>>;
   };
   let openPollsSvc: { notifyChanged: ReturnType<typeof vi.fn> };
+  let datableSeancesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let myPartiesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let availabilitySvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let characterRolesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
@@ -111,6 +113,7 @@ describe('RealtimeService', () => {
     // Story 22.1 : RealtimeService injecte désormais aussi OpenPollsService (sixième entrée,
     // préfixe 'partie:'). Mock direct.
     openPollsSvc = { notifyChanged: vi.fn() };
+    datableSeancesSvc = { notifyChanged: vi.fn() };
     // Bug fix post-22.1 : ModeService (renommé MyPartiesService, Story 29.1) rebranché sur le
     // préfixe 'user:' (ne représente que l'appartenance, jamais déclenché par une mutation
     // partie-scopée générique).
@@ -132,6 +135,7 @@ describe('RealtimeService', () => {
         { provide: HommeDragonService, useValue: hommeDragonSvc },
         { provide: InvitationsService, useValue: invitationsSvc },
         { provide: OpenPollsService, useValue: openPollsSvc },
+        { provide: DatableSeancesService, useValue: datableSeancesSvc },
         { provide: MyPartiesService, useValue: myPartiesSvc },
         { provide: AvailabilityService, useValue: availabilitySvc },
         { provide: CharacterRolesService, useValue: characterRolesSvc },
@@ -236,6 +240,17 @@ describe('RealtimeService', () => {
     expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(1);
     FakeEventSource.instances[1].emit('message');
     expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it("Story 45.1 : mes rendez-vous à dater se relisent sur 'user:', jamais sur 'partie:'", () => {
+    service.connect(partieTopic('p1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(datableSeancesSvc.notifyChanged).not.toHaveBeenCalled();
+    service.disconnect(partieTopic('p1'));
+
+    service.connect(userTopic('u1'));
+    FakeEventSource.instances[1].emit('open');
+    expect(datableSeancesSvc.notifyChanged).toHaveBeenCalledTimes(1);
   });
 
   it("un topic 'partie:' ne déclenche PAS notifyChanged() sur MyPartiesService (bug fix : préfixe rebranché sur 'user:')", () => {

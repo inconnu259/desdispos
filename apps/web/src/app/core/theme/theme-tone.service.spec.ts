@@ -851,6 +851,10 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.destiny_sheet_collapse_aria',
     // Story 44.6 — « Fermer » du message de fermeture de la Destinée
     'calendar.destiny_notice_dismiss',
+    // Story 45.1 — nature d'un rendez-vous dans le choix : explication en clair, volontairement hors thème
+    // (« soirée sans date » dans les trois thèmes, EXPERIENCE §3.3)
+    'calendar.rendezvous_nature_seance',
+    'calendar.rendezvous_nature_soiree',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
     'partie.asset_journal_cta',
     'partie.asset_carte_cta',
@@ -1220,7 +1224,9 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.agenda.no_date',
     'calendar.legend.title',
     'calendar.view_no_poll',
-    'calendar.view_compose_arm',
+    'calendar.view_propose_dates',
+    'calendar.view_modify_dates',
+    'calendar.rendezvous_picker_title',
     'calendar.conflict_intent_prefix',
     'calendar.conflict_title_many',
     'calendar.conflict_overwrite_available_many',
@@ -1761,7 +1767,6 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     // Les trous des gabarits du mode « composer » et du panneau des votes.
     for (const theme of THEMES) {
       const tone = TONE_MAP[theme];
-      expect(tone['partie.ralliement_calendar_compose_arm'], theme).toContain('{title}');
       expect(tone['partie.ralliement_calendar_compose_target_poll'], theme).toContain('{title}');
       expect(tone['partie.ralliement_calendar_poll_can_vote'], theme).toContain('{date}');
       expect(tone['partie.ralliement_calendar_confirm_warning_many'], theme).toMatch(

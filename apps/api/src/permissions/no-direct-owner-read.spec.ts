@@ -54,6 +54,8 @@ const EXCEPTIONS: Readonly<Record<string, string>> = {
     "Filtre de lecture agrégée « mes sondages ouverts » (propriétaire OU membre de MES parties) et constitution des votants d'un sondage de JDR (le MJ vote avec ses membres) : sélection de parties et de personnes, pas un droit. L'anti-spoil (brouillon caché) est décidé par le rôle de PermissionService.rolesOf.",
   'poll/poll-voters.ts':
     "Définition unique des votants d'un sondage de JDR : le propriétaire de la partie (le MJ) vote avec ses membres — sélection de personnes, pas un droit.",
+  'events/datable-seances.service.ts':
+    'Filtre de lecture agrégée « mes rendez-vous à dater » (propriétaire OU membre de MES parties) : sélection de parties, pas un droit. Le droit de proposer des dates vient de PermissionService.organizerCan, jamais du propriétaire.',
   'events/open-poll-context.service.ts':
     "Hôte de la conjonction (propriétaire de l'événement) transmis à eligibleVoters : sélection de votants, pas un droit ; les droits d'organisateur viennent de PermissionService.organizerCan.",
   'notifications/notifications.service.ts':

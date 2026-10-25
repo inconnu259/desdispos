@@ -167,22 +167,12 @@
 /* Story 36.10, AC1 — l'armement du mode de composition. Même forme de chip que la Destinée
    (`destiny-control.scss`) : ce sont deux entrées de mode, dans la même bande de contrôles, et
    elles ne doivent pas se ressembler « presque ». Teinte primaire pour la distinguer du vote. */
+/* Story 45.1 — « Proposer / Modifier les dates » : un `mat-stroked-button`, cible au doigt de 44 px. */
 .compose-arm {
-  border: 1px solid var(--mat-sys-primary, #666);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--mat-sys-primary, inherit);
-  padding: 0.25rem 0.75rem;
-  font-size: 0.85rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-/* Story 40.5b — calendrier d'un groupe : un bouton « composer » par sondage dont on est l'hôte (même
-   forme que l'armement ci-dessus) ; le panneau des votes occupe la colonne latérale du mode joueur. */
-.compose-arm--group {
   min-height: 44px;
 }
+
+/* Story 40.5b — calendrier d'un groupe : le panneau des votes occupe la colonne latérale du mode joueur. */
 
 .group-polls__title {
   margin: 0 0 8px;

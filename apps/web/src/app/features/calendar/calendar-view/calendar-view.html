@@ -90,33 +90,25 @@
         />
       }
 
-      <!-- Story 36.10, AC1/AC10 — ⚠️ ÉCART ASSUMÉ avec `contrat-ui-calendrier.html:376`, qui
-           place ce bouton dans la barre de SÉLECTION. Celle-ci n'existe que tant qu'une sélection
-           existe : y loger l'armement obligerait le MJ à déclarer d'abord ses propres
-           disponibilités pour pouvoir composer un vote. Le bouton vit donc ici, frère de la
-           Destinée — même règle qu'elle : un mode s'arme hors panneau et se voit tant qu'il dure.
-           AC10 : rendu seulement pour un MJ, en contexte de partie, et seulement s'il y a
-           quelque chose à composer (un vote mis en avant, ou une séance qui en attend un). -->
-      @if (canCompose() && !composing()) {
-        <button type="button" class="compose-arm" (click)="startCompose()">
-          {{ theme.tone()['calendar.view_compose_arm'] }}
+      <!-- Story 45.1 — ⚠️ UN bouton écrit remplace « Inscrire des dates » (MJ) et « Composer les créneaux :
+           {titre} » (hôte) : « Proposer des dates », ou « Modifier les dates » quand la destinée active est un
+           vote que l'organisateur modifie ici. Absent quand il n'y a rien à proposer ni à modifier. Frère de la
+           Destinée, comme avant (36.10) : un mode s'arme hors panneau et se voit tant qu'il dure. -->
+      @if (proposeButton(); as proposeMode) {
+        <button
+          #proposeBtn
+          type="button"
+          mat-stroked-button
+          class="compose-arm"
+          [attr.aria-expanded]="rendezvousPickerShown()"
+          (click)="onProposeClicked()"
+        >
+          {{
+            proposeMode === 'modify'
+              ? theme.tone()['calendar.view_modify_dates']
+              : theme.tone()['calendar.view_propose_dates']
+          }}
         </button>
-      }
-
-      <!-- Story 40.5b — l'hôte d'un sondage ouvert arme la composition de SES créneaux : un bouton écrit
-           par sondage dont il est l'hôte (jamais une icône seule). Même frère de la Destinée que ci-dessus. -->
-      @if (isGroup() && !composing()) {
-        @for (row of groupPollRows(); track row.eventId) {
-          @if (row.canCompose) {
-            <button
-              type="button"
-              class="compose-arm compose-arm--group"
-              (click)="startGroupCompose(row.eventId)"
-            >
-              {{ row.armLabel }}
-            </button>
-          }
-        }
       }
 
       <!-- AC1 — la bascule de vues PARTAGE cette ligne ; elle formait auparavant un bloc centré
@@ -263,6 +255,49 @@
           (chosen)="chooseDestiny($event)"
           (quit)="quitDestiny()"
         />
+      </div>
+    }
+
+    <!-- Story 45.1 — le choix du rendez-vous, ouvert par « Proposer des dates » : mêmes deux enveloppes que la
+         liste des destinées (menu ancré sur ordinateur, tiroir modal du bas en dessous de 1024 px), même
+         piège de focus rendu au bouton, Échap et fond assombri ferment sans rien changer. -->
+    @if (isDesktop()) {
+      @if (proposeAnchor(); as anchor) {
+        <ng-template
+          cdkConnectedOverlay
+          [cdkConnectedOverlayOrigin]="anchor"
+          [cdkConnectedOverlayOpen]="rendezvousPickerShown()"
+          [cdkConnectedOverlayHasBackdrop]="true"
+          [cdkConnectedOverlayPositions]="DISPLAY_PANEL_POSITIONS"
+          cdkConnectedOverlayPush
+          [cdkConnectedOverlayViewportMargin]="8"
+          (backdropClick)="closeRendezvousPicker()"
+          (overlayKeydown)="onRendezvousPickerKeydown($event)"
+        >
+          <div
+            class="display-surface display-surface--menu"
+            role="dialog"
+            cdkTrapFocus
+            cdkTrapFocusAutoCapture
+            [attr.aria-label]="theme.tone()['calendar.rendezvous_picker_title']"
+          >
+            <app-rendezvous-picker [rows]="rendezvousRows()" (chosen)="pickRendezvous($event)" />
+          </div>
+        </ng-template>
+      }
+    } @else if (rendezvousPickerShown()) {
+      <div class="display-backdrop" (click)="closeRendezvousPicker()" aria-hidden="true"></div>
+      <div
+        class="display-surface display-surface--sheet"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        [attr.aria-label]="theme.tone()['calendar.rendezvous_picker_title']"
+        (keydown)="onRendezvousPickerKeydown($event)"
+      >
+        <app-rendezvous-picker [rows]="rendezvousRows()" (chosen)="pickRendezvous($event)" />
       </div>
     }
 

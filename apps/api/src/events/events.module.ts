@@ -3,10 +3,12 @@ import { EmailModule } from '../email/email.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { InvitationCleanupService } from '../invitations/invitation-cleanup.service';
 import { PollModule } from '../poll/poll.module';
+import { DatableSeancesService } from './datable-seances.service';
 import { EventCancellationMailer } from './event-cancellation-mailer.service';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
 import { GroupEventsService } from './group-events.service';
+import { MyDatableSeancesController } from './me-datable-seances.controller';
 import { GroupPollChoiceService } from './group-poll-choice.service';
 import { GroupPollExtensionService } from './group-poll-extension.service';
 import { OpenPollContextService } from './open-poll-context.service';
@@ -44,7 +46,7 @@ import { OpenPollContextService } from './open-poll-context.service';
  */
 @Module({
   imports: [PermissionsModule, EmailModule, PollModule],
-  controllers: [EventsController],
+  controllers: [EventsController, MyDatableSeancesController],
   providers: [
     EventsService,
     EventCancellationMailer,
@@ -53,6 +55,7 @@ import { OpenPollContextService } from './open-poll-context.service';
     GroupPollChoiceService,
     GroupPollExtensionService,
     OpenPollContextService,
+    DatableSeancesService,
   ],
   exports: [
     EventsService,

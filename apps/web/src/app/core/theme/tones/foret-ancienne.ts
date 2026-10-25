@@ -570,7 +570,6 @@ export const foretAncienne: Record<ToneKey, string> = {
   'partie.ralliement_calendar_confirm_responses_many': '{n} réponses',
   'partie.ralliement_calendar_confirm_summary_one': '{n} créneau proposé.',
   'partie.ralliement_calendar_confirm_summary_many': '{n} créneaux proposés.',
-  'partie.ralliement_calendar_compose_arm': 'Choisir les créneaux : {title}',
   'partie.ralliement_calendar_compose_target_poll': 'Créneaux de la halte : {title}',
   'partie.ralliement_calendar_compose_target_new': 'Créneaux d’une nouvelle halte',
   'partie.ralliement_calendar_compose_full_day':
@@ -892,7 +891,13 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.rail_status_unknown': 'Rien de prévu',
   'calendar.layer_group_aria': 'Couches affichées du calendrier lunaire',
   'calendar.view_back': '← Retour',
-  'calendar.view_compose_arm': 'Marquer des dates',
+  // Story 45.1 — « Proposer / Modifier les dates » remplace l'armement du composer et les boutons de l'hôte.
+  'calendar.view_propose_dates': 'Propose des dates',
+  'calendar.view_modify_dates': 'Modifie les dates',
+  'calendar.rendezvous_picker_title': 'Que veux-tu dater ?',
+  // Nature d'un rendez-vous dans le choix : explication en clair, identique dans les trois thèmes.
+  'calendar.rendezvous_nature_seance': 'séance sans date',
+  'calendar.rendezvous_nature_soiree': 'soirée sans date',
   'calendar.view_toggle_aria': 'Vue du calendrier lunaire',
   'calendar.view_toggle_month_short': 'Mois',
   'calendar.view_toggle_week_short': 'Sem.',

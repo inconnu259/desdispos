@@ -141,6 +141,8 @@ export const JDR_POLICY: Readonly<Record<PermissionAction, readonly PartieRole[]
   // Story 39.5 : quitter soi-même une partie n'existe pas en JDR (seul le MJ retire un joueur).
   PARTIE_LEAVE: NOBODY,
   PARTIE_AVAILABILITY_READ: OWNER_AND_MEMBERS,
+  // Story 46.4 : masquer une fenêtre de l'automate — le MJ seul, pour lui seul.
+  SLOT_WINDOW_HIDE: OWNER_ONLY,
   PARTIE_VISIBILITY_LOCKS_READ: OWNER_ONLY,
   PARTIE_VISIBILITY_LOCKS_UPDATE: OWNER_ONLY,
   PARTIE_COVER_READ: OWNER_AND_MEMBERS,
@@ -248,6 +250,8 @@ export const RALLIEMENT_POLICY: Readonly<Record<PermissionAction, readonly Parti
   // refus du `ONE_SHOT` est posé dans le service (`PartiesService.leave`).
   PARTIE_LEAVE: ADMIN_AND_MEMBERS,
   PARTIE_AVAILABILITY_READ: NOBODY,
+  // Story 46.4 : le ralliement n'a pas de fenêtres de l'automate (le serveur les refuse à un groupe).
+  SLOT_WINDOW_HIDE: NOBODY,
   PARTIE_VISIBILITY_LOCKS_READ: NOBODY,
   PARTIE_VISIBILITY_LOCKS_UPDATE: NOBODY,
   PARTIE_COVER_READ: ADMIN_AND_MEMBERS,

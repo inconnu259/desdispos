@@ -73,6 +73,8 @@ const MJ_ONLY: PermissionAction[] = [
   'PARTIE_VISIBILITY_LOCKS_UPDATE',
   'PARTIE_COVER_UPDATE',
   'PARTIE_REFERENCE_ASSET_MJ_READ',
+  // Story 46.4 : masquer une fenêtre de l'automate — le MJ seul.
+  'SLOT_WINDOW_HIDE',
   'SCENARIO_CREATE',
   'SCENARIO_UPDATE',
   'SCENARIO_STATUS_CHANGE',

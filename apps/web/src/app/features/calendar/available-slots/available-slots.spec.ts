@@ -7,6 +7,7 @@ const SLOT: AvailableSlotDto = {
   date: '2026-07-04',
   slot: 'MORNING',
   members: [{ userId: 'u1', pseudo: 'Alice', displayName: 'Alice au pays', status: 'AVAILABLE' }],
+  durationSlots: 1,
 };
 
 describe('AvailableSlotsPanel', () => {
@@ -222,5 +223,68 @@ describe('AvailableSlotsPanel — sélection d’une fenêtre (Story 46.2)', () 
     ]);
     expect(el.querySelector('app-aggregated-creneau-card')).not.toBeNull();
     expect(el.querySelector('.creneau-card__select')).toBeNull();
+  });
+});
+
+// Story 46.4 — les fenêtres masquées : un lien en pied de liste, puis chacune avec « Démasquer ».
+describe('AvailableSlotsPanel — fenêtres masquées (Story 46.4)', () => {
+  let fixture: ComponentFixture<AvailableSlotsPanel>;
+  let el: HTMLElement;
+  const HIDDEN: AvailableSlotDto = { ...SLOT, date: '2026-07-09', hidden: true };
+
+  function create(inputs: Record<string, unknown>): void {
+    fixture = TestBed.createComponent(AvailableSlotsPanel);
+    fixture.componentRef.setInput('slots', [SLOT]);
+    for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  beforeEach(() => TestBed.configureTestingModule({ imports: [AvailableSlotsPanel] }));
+
+  it('sans masquée : pas de lien', () => {
+    create({});
+    expect(el.querySelector('.available-slots__hidden-toggle')).toBeNull();
+  });
+
+  it('avec une masquée : le lien (aria-expanded) la montre, sans la compter dans le titre', () => {
+    create({ hiddenSlots: [HIDDEN] });
+    expect(el.querySelector('.available-slots__title')!.textContent!.trim()).toBe(
+      'Éphémérides · 1',
+    );
+    const toggle = el.querySelector<HTMLButtonElement>('.available-slots__hidden-toggle')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent!.trim()).toBe('Afficher les 1 masquées');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.textContent!.trim()).toBe('Replier les masquées');
+    expect(
+      el.querySelectorAll('.available-slots__list--hidden .creneau-card--hidden'),
+    ).toHaveLength(1);
+  });
+
+  it('« Démasquer » émet la fenêtre ; « Masquer » de la carte sélectionnée aussi', () => {
+    create({ hiddenSlots: [HIDDEN], selectable: true, selectedKey: '2026-07-04|MORNING' });
+    const shown: unknown[] = [];
+    const hid: unknown[] = [];
+    fixture.componentInstance.showRequested.subscribe((s) => shown.push(s));
+    fixture.componentInstance.hideRequested.subscribe((s) => hid.push(s));
+
+    el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')[1].click();
+    expect(hid).toEqual([SLOT]);
+
+    el.querySelector<HTMLButtonElement>('.available-slots__hidden-toggle')!.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>(
+      '.available-slots__list--hidden .creneau-card__action',
+    )!.click();
+    expect(shown).toEqual([HIDDEN]);
+  });
+
+  it('repliée (sous 768 px) : le lien disparaît avec la liste', () => {
+    create({ hiddenSlots: [HIDDEN], foldable: true, folded: true });
+    expect(el.querySelector('.available-slots__hidden-toggle')).toBeNull();
   });
 });

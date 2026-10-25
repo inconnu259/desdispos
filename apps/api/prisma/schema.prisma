@@ -48,6 +48,7 @@ model User {
   emailChangeRollbackTokens EmailChangeRollbackToken[]
   favorites                 PartieFavorite[]
   hiddenParties             PartieHidden[]
+  hiddenSlotWindows         SlotWindowHidden[]
   announcementReads         AnnouncementRead[]
   calendarLayers            UserCalendarLayer[]
 }
@@ -88,6 +89,7 @@ model Partie {
   characterGroupRoles CharacterGroupRole[]
   favorites           PartieFavorite[]
   hiddenBy            PartieHidden[]
+  hiddenSlotWindows   SlotWindowHidden[]
   visibilityLocks     PartieVisibilityLock[]
 
   /// AD-23 — l'Homme Dragon que cette partie (une « aventure ») suit : au plus un, par construction.
@@ -143,6 +145,25 @@ model PartieHidden {
   createdAt DateTime @default(now())
 
   @@unique([userId, partieId])
+  @@index([partieId])
+}
+
+/// Story 46.4 — une fenêtre de l'automate que le MJ a masquée (« Masquer » dans la liste des éphémérides). Par
+/// utilisateur ET par partie ; la clé naturelle est celle de la fenêtre servie (jour, créneau de départ, durée en
+/// créneaux — 1 jusqu'à l'épic 47), recopiée de la réponse, jamais d'un paramètre de page. Seul `parties/` l'écrit. Une
+/// ligne dont la date est passée est ignorée à la lecture. Rien ne change pour les joueurs ni pour les dispos.
+model SlotWindowHidden {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partieId      String
+  partie        Partie   @relation(fields: [partieId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  startSlot     DaySlot
+  durationSlots Int
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, partieId, date, startSlot, durationSlots], map: "SlotWindowHidden_key")
   @@index([partieId])
 }
 

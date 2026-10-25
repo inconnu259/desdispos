@@ -1398,6 +1398,51 @@ export class CalendarView implements OnInit {
     this.moveGridTo(slot.date);
   }
 
+  /**
+   * ⚠️ Story 46.4 — « Masquer » : la fenêtre est rangée parmi les masquées (`PUT …/available-slots/hidden`, avec sa clé
+   * recopiée de la fenêtre servie), puis la liste est relue. La sélection tombe. Un échec la laisse en place et le dit.
+   * Le serveur émet `user:{id}` : les autres onglets et appareils du MJ relisent la liste d'eux-mêmes.
+   */
+  protected async hideWindow(slot: AvailableSlotDto): Promise<void> {
+    const id = this.partieId();
+    if (!id || this.pollActionPending()) return;
+    this.pollActionPending.set(true);
+    this.error.set(null);
+    try {
+      await this.pollSvc.hideWindow(id, {
+        date: slot.date,
+        startSlot: slot.slot,
+        durationSlots: slot.durationSlots,
+      });
+      this.selectedWindow.set(null);
+      await this.refreshMjPanels();
+    } catch {
+      this.error.set(this.theme.tone()['calendar.window_hide_error']);
+    } finally {
+      this.pollActionPending.set(false);
+    }
+  }
+
+  /** Story 46.4 — « Démasquer » : la fenêtre revient dans la liste si l'automate la juge encore libre. */
+  protected async showWindow(slot: AvailableSlotDto): Promise<void> {
+    const id = this.partieId();
+    if (!id || this.pollActionPending()) return;
+    this.pollActionPending.set(true);
+    this.error.set(null);
+    try {
+      await this.pollSvc.showWindow(id, {
+        date: slot.date,
+        startSlot: slot.slot,
+        durationSlots: slot.durationSlots,
+      });
+      await this.refreshMjPanels();
+    } catch {
+      this.error.set(this.theme.tone()['calendar.window_hide_error']);
+    } finally {
+      this.pollActionPending.set(false);
+    }
+  }
+
   /** `Échap` désélectionne la fenêtre (les panneaux et sélecteurs ouverts retiennent la touche avant nous). */
   protected onWindowEscape(): void {
     if (this.selectedWindow()) this.selectedWindow.set(null);
@@ -1411,7 +1456,16 @@ export class CalendarView implements OnInit {
   /** Story 46.3 (AR8) — les fenêtres de l'automate affichées : celles que le serveur sert, moins celles du composer.
    *  Une seule fonction pure (`displayedWindows`) ; la vue des joueurs, sans composer, reçoit la liste servie. */
   protected readonly displayedSlots = computed(() =>
-    displayedWindows(this.availableSlots(), this.composedKeys()),
+    displayedWindows(
+      this.availableSlots().filter((s) => !('hidden' in s && s.hidden)),
+      this.composedKeys(),
+    ),
+  );
+
+  /** Story 46.4 — les fenêtres que ce MJ a masquées, servies à part : derrière le lien du pied de liste, jamais
+   *  comptées dans « Éphémérides · N ». Vide pour les joueurs (la vue agrégée n'en porte pas). */
+  protected readonly hiddenSlots = computed(() =>
+    this.availableSlots().filter((s): s is AvailableSlotDto => 'hidden' in s && s.hidden === true),
   );
 
   /** Story 46.1 — le dock de la colonne d'un groupe : ses votes de dates, comptés. */
@@ -3064,6 +3118,14 @@ export class CalendarView implements OnInit {
       const topic = partieTopic(id);
       this.realtime.connect(topic);
       this.connectedPartieTopic = topic;
+      // Story 46.4 — le masquage d'une fenêtre est un fait PAR UTILISATEUR : le serveur émet `user:{id}` du MJ, jamais
+      // `partie:{id}`. L'atelier du MJ s'y connecte aussi, pour que ses autres onglets et appareils relisent la liste.
+      const myId = this.authSvc.currentUser()?.id;
+      if (this.mode() === 'mj' && myId) {
+        const userTopicName = userTopic(myId);
+        this.realtime.connect(userTopicName);
+        this.connectedUserTopic = userTopicName;
+      }
 
       // Story 40.5b — seules les lectures que le serveur ne refuse pas à un groupe attendent de savoir
       // si la partie en est un ; les déclarations de la personne partent tout de suite.

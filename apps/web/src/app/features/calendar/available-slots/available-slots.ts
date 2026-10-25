@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import type { AggregatedSlotDto, AvailableSlotDto, DaySlot } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { AggregatedCreneauCard } from '../aggregated-creneau-card/aggregated-creneau-card';
@@ -73,6 +73,19 @@ export class AvailableSlotsPanel {
   readonly addRequested = output<AvailableSlotDto>();
   /** Story 46.3 — y a-t-il un rendez-vous où verser la fenêtre ? Sinon « Ajouter au vote » est désactivé. */
   readonly canAdd = input<boolean>(true);
+  /** Story 46.4 — les fenêtres que le MJ a masquées : à part, derrière le lien « Afficher les N masquées ». */
+  readonly hiddenSlots = input<readonly AvailableSlotDto[]>([]);
+  /** Story 46.4 — « Masquer » sur la fenêtre sélectionnée, « Démasquer » sur une masquée. */
+  readonly hideRequested = output<AvailableSlotDto>();
+  readonly showRequested = output<AvailableSlotDto>();
+  protected readonly hiddenOpen = signal(false);
+
+  protected readonly hiddenLabel = computed(() => {
+    const tone = this.theme.tone();
+    return this.hiddenOpen()
+      ? tone['calendar.window_hide_hidden']
+      : tone['calendar.window_show_hidden'].replace('{n}', String(this.hiddenSlots().length));
+  });
 
   protected readonly theme = inject(ThemeToneService);
 

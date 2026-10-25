@@ -906,6 +906,11 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.window_add': 'Ajouter au vote',
   'calendar.window_hide': 'Masquer',
   'calendar.window_selected_aria': 'clairière sélectionnée',
+  // Story 46.4 — les fenêtres masquées : lien du pied de liste, repli, démasquer, échec.
+  'calendar.window_show_hidden': 'Retrouver les {n} masquées',
+  'calendar.window_hide_hidden': 'Ranger les masquées',
+  'calendar.window_unhide': 'Démasquer',
+  'calendar.window_hide_error': "La clairière n'a pas pu être masquée.",
   'calendar.rail_empty': 'Aucun jour à explorer',
   'calendar.rail_status_unknown': 'Rien de prévu',
   'calendar.layer_group_aria': 'Couches affichées du calendrier lunaire',

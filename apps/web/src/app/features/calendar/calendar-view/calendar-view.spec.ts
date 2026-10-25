@@ -118,6 +118,9 @@ function makeAuthService(defaultCalendarLayers?: AuthUser['defaultCalendarLayers
 function makePollService() {
   return {
     getAvailableSlots: vi.fn().mockResolvedValue([]),
+    // Story 46.4 — masquer / démasquer une fenêtre de l'automate.
+    hideWindow: vi.fn().mockResolvedValue(undefined),
+    showWindow: vi.fn().mockResolvedValue(undefined),
     getHeatmap: vi.fn().mockResolvedValue([]),
     chooseDate: vi.fn().mockResolvedValue(undefined),
     closePoll: vi.fn().mockResolvedValue(undefined),
@@ -4457,16 +4460,34 @@ describe('CalendarView — ce que l’Agenda reçoit (Story 36.11, AC14, D-3)', 
     expect(realtimeSvc.disconnect).toHaveBeenCalledWith(userTopic('me1'));
   });
 
-  it("contexte MJ : connect(userTopic(...)) n'est PAS appelé — seul partieTopic(id) l'est", async () => {
+  it("atelier d'un joueur : connect(userTopic(...)) n'est PAS appelé — seul partieTopic(id) l'est", async () => {
     const authSvc = { currentUser: signal({ id: 'me1' }) } as any;
     const { realtimeSvc } = await createCalendarView({
-      mode: 'mj',
+      mode: 'personal',
       partieId: 'partie-1',
       authSvc,
     });
 
     expect(realtimeSvc.connect).toHaveBeenCalledWith(partieTopic('partie-1'));
     expect(realtimeSvc.connect).not.toHaveBeenCalledWith(userTopic('me1'));
+  });
+
+  // Story 46.4 — ⚠️ le contrat de la 36.11 (D-3) change pour le seul atelier du MJ : masquer une fenêtre de l'automate est
+  // un fait PAR UTILISATEUR, que le serveur n'émet que sur `user:{id}` ; sans cette connexion, ses autres onglets et
+  // appareils ne reliraient jamais la liste. Le joueur, lui, n'en a pas besoin.
+  it("atelier du MJ : se connecte à partieTopic(id) ET à userTopic(moi), et s'en déconnecte", async () => {
+    const authSvc = { currentUser: signal({ id: 'me1' }) } as any;
+    const { fixture, realtimeSvc } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      authSvc,
+    });
+
+    expect(realtimeSvc.connect).toHaveBeenCalledWith(partieTopic('partie-1'));
+    expect(realtimeSvc.connect).toHaveBeenCalledWith(userTopic('me1'));
+
+    fixture.destroy();
+    expect(realtimeSvc.disconnect).toHaveBeenCalledWith(userTopic('me1'));
   });
 
   it('contexte personnel : un changement de scenariosSvc.changed() APRÈS le montage recharge GET /me/calendar (deferred-work, SSE calendrier personnel)', async () => {
@@ -8161,5 +8182,141 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
     comp.addSelectedWindow(WIN_A);
     await tick(fixture);
     expect(comp.composedCells()).toHaveLength(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 46.4 — masquer une fenêtre de l'automate
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CalendarView — masquer une fenêtre de l’automate (Story 46.4)', () => {
+  const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[], durationSlots: 1 };
+  const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[], durationSlots: 1 };
+  const HIDDEN = {
+    date: '2030-03-12',
+    slot: 'AFTERNOON',
+    members: [] as any[],
+    durationSlots: 1,
+    hidden: true,
+  };
+
+  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+
+  async function atelier(served: any[] = [WIN_A, WIN_B, HIDDEN]) {
+    const ctx = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [] });
+    const comp = ctx.fixture.componentInstance as any;
+    comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+    comp.availableSlots.set(served);
+    await tick(ctx.fixture);
+    return { ...ctx, comp };
+  }
+
+  it('les masquées sont servies à part : jamais dans la liste, ni dans le compte « Éphémérides · N »', async () => {
+    const { fixture, comp } = await atelier();
+
+    expect(comp.displayedSlots().map((s: any) => s.date)).toEqual(['2030-03-06', '2030-03-09']);
+    expect(comp.hiddenSlots().map((s: any) => s.date)).toEqual(['2030-03-12']);
+    expect(comp.slotsDockLabel()).toBe('Éphémérides · 2');
+    expect(
+      root(fixture).querySelector('.mj-results-panel .available-slots__title')!.textContent,
+    ).toContain('Éphémérides · 2');
+  });
+
+  it('« Masquer » écrit la fenêtre avec sa clé servie, désélectionne et relit la liste', async () => {
+    const { fixture, comp, pollSvc } = await atelier();
+    pollSvc.getAvailableSlots.mockResolvedValue([WIN_B, { ...WIN_A, hidden: true }]);
+    comp.onWindowSelected(WIN_A);
+    await tick(fixture);
+    const reads = pollSvc.getAvailableSlots.mock.calls.length;
+
+    root(fixture)
+      .querySelectorAll<HTMLButtonElement>('.mj-results-panel .creneau-card__action')[1]
+      .click();
+    await tick(fixture);
+
+    expect(pollSvc.hideWindow).toHaveBeenCalledWith('partie-1', {
+      date: '2030-03-06',
+      startSlot: 'EVENING',
+      durationSlots: 1,
+    });
+    expect(comp.selectedWindow()).toBeNull();
+    expect(pollSvc.getAvailableSlots.mock.calls.length).toBe(reads + 1);
+    expect(comp.displayedSlots().map((s: any) => s.date)).toEqual(['2030-03-09']);
+  });
+
+  it('un échec garde la fenêtre sélectionnée et le dit', async () => {
+    const { fixture, comp, pollSvc } = await atelier();
+    pollSvc.hideWindow.mockRejectedValue(new Error('500'));
+    comp.onWindowSelected(WIN_A);
+    await tick(fixture);
+
+    await comp.hideWindow(WIN_A);
+    await tick(fixture);
+
+    expect(comp.selectedWindowKey()).toBe('2030-03-06|EVENING');
+    expect(comp.error()).toBe(GRIMOIRE_TONE['calendar.window_hide_error']);
+  });
+
+  it('le lien du pied montre les masquées à 55 % avec « Démasquer » ; « Démasquer » écrit et relit', async () => {
+    const { fixture, pollSvc } = await atelier();
+    const toggle = root(fixture).querySelector<HTMLButtonElement>(
+      '.mj-results-panel .available-slots__hidden-toggle',
+    )!;
+    expect(toggle.textContent!.trim()).toBe('Afficher les 1 masquées');
+    expect(root(fixture).querySelector('.available-slots__list--hidden')).toBeNull();
+
+    toggle.click();
+    await tick(fixture);
+    const card = root(fixture).querySelector('.available-slots__list--hidden .creneau-card')!;
+    expect(card.classList).toContain('creneau-card--hidden');
+
+    pollSvc.getAvailableSlots.mockResolvedValue([WIN_A, WIN_B, { ...HIDDEN, hidden: undefined }]);
+    root(fixture)
+      .querySelector<HTMLButtonElement>('.available-slots__list--hidden .creneau-card__action')!
+      .click();
+    await tick(fixture);
+
+    expect(pollSvc.showWindow).toHaveBeenCalledWith('partie-1', {
+      date: '2030-03-12',
+      startSlot: 'AFTERNOON',
+      durationSlots: 1,
+    });
+  });
+
+  it('aucune masquée : pas de lien', async () => {
+    const { fixture } = await atelier([WIN_A, WIN_B]);
+    expect(root(fixture).querySelector('.available-slots__hidden-toggle')).toBeNull();
+  });
+
+  it('une fenêtre masquée ne se sélectionne pas', async () => {
+    const { fixture, comp } = await atelier();
+    root(fixture).querySelector<HTMLButtonElement>('.available-slots__hidden-toggle')!.click();
+    await tick(fixture);
+    root(fixture).querySelector<HTMLElement>('.available-slots__list--hidden .creneau-card')!.click();
+    await tick(fixture);
+    expect(comp.selectedWindow()).toBeNull();
+  });
+
+  it('un joueur : aucune masquée, aucune action', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', partieId: 'partie-1' });
+    const comp = fixture.componentInstance as any;
+    comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+    comp.availableSlots.set([
+      { date: '2030-03-06', slot: 'EVENING', total: 2, available: 2, unavailable: 0, unknown: 0 },
+    ]);
+    await tick(fixture);
+
+    expect(comp.hiddenSlots()).toEqual([]);
+    expect(root(fixture).querySelector('.available-slots__hidden-toggle')).toBeNull();
+    expect(root(fixture).querySelector('.creneau-card__action')).toBeNull();
   });
 });

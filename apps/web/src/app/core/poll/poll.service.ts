@@ -9,6 +9,7 @@ import type {
   OpenPollEntry,
   SessionPollDto,
   SetPollOptionsDto,
+  SlotWindowKeyDto,
 } from '@master-jdr/shared';
 import { API_BASE } from '../api-base';
 
@@ -32,6 +33,26 @@ export class PollService {
     }
     return firstValueFrom(
       this.http.get<(AvailableSlotDto | AggregatedSlotDto)[]>(url, { withCredentials: true }),
+    );
+  }
+
+  /** Story 46.4 — masque une fenêtre de l'automate (MJ d'un JDR, pour lui seul). `window` est la clé de la fenêtre
+   *  telle que `available-slots` l'a servie. */
+  async hideWindow(partieId: string, window: SlotWindowKeyDto): Promise<void> {
+    await firstValueFrom(
+      this.http.put(`${API_BASE}/parties/${partieId}/available-slots/hidden`, window, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Story 46.4 — rend une fenêtre masquée à la liste. */
+  async showWindow(partieId: string, window: SlotWindowKeyDto): Promise<void> {
+    await firstValueFrom(
+      this.http.delete(`${API_BASE}/parties/${partieId}/available-slots/hidden`, {
+        body: window,
+        withCredentials: true,
+      }),
     );
   }
 

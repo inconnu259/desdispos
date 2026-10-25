@@ -462,6 +462,9 @@
             (slotSelected)="onWindowSelected($event)"
             [canAdd]="windowAddable()"
             (addRequested)="addSelectedWindow($event)"
+            [hiddenSlots]="hiddenSlots()"
+            (hideRequested)="hideWindow($event)"
+            (showRequested)="showWindow($event)"
           />
         </div>
       }
@@ -581,6 +584,9 @@
           (slotSelected)="onWindowSelected($event)"
           [canAdd]="windowAddable()"
           (addRequested)="addSelectedWindow($event)"
+          [hiddenSlots]="hiddenSlots()"
+          (hideRequested)="hideWindow($event)"
+          (showRequested)="showWindow($event)"
         />
       }
     </app-side-dock>

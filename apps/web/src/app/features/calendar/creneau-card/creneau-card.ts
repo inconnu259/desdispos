@@ -35,6 +35,11 @@ export class CreneauCard {
   readonly addRequested = output<void>();
   /** Story 46.3 — il y a un composer à armer (ou déjà armé) : sinon le bouton reste écrit mais désactivé, jamais muet. */
   readonly canAdd = input(true);
+  /** Story 46.4 — « Masquer » sur la fenêtre sélectionnée. */
+  readonly hideRequested = output<void>();
+  /** Story 46.4 — la carte est celle d'une fenêtre MASQUÉE : 55 % d'opacité, non sélectionnable, « Démasquer ». */
+  readonly hiddenWindow = input(false);
+  readonly showRequested = output<void>();
 
   protected onAdd(): void {
     if (this.canAdd()) this.addRequested.emit();

@@ -17,6 +17,7 @@ import { PartiesService } from './parties.service';
 import { ConvertPartieKindDto } from './dto/convert-partie-kind.dto';
 import { CreatePartieDto } from './dto/create-partie.dto';
 import { GetAvailableSlotsDto } from './dto/get-available-slots.dto';
+import { SlotWindowKeyBody } from './dto/slot-window.dto';
 import { GetHeatmapDto } from './dto/get-heatmap.dto';
 import { SetMemberRoleDto } from './dto/set-member-role.dto';
 import { SetVisibilityLocksDto } from './dto/set-visibility-locks.dto';
@@ -65,6 +66,27 @@ export class PartiesController {
     @Query() q: GetAvailableSlotsDto,
   ) {
     return this.parties.getAvailableSlots(id, user.id, q.weeks ?? DEFAULT_WEEKS, q.from, q.to);
+  }
+
+  /** Story 46.4 : masquer une fenêtre de l'automate (MJ d'un JDR, pour lui seul). La fenêtre est celle que
+   *  `available-slots` a servie ; `PUT` est idempotent. */
+  @Put(':id/available-slots/hidden')
+  hideWindow(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SlotWindowKeyBody,
+  ) {
+    return this.parties.hideWindow(id, user.id, dto);
+  }
+
+  /** Story 46.4 : démasquer une fenêtre (sans effet si elle ne l'était pas). */
+  @Delete(':id/available-slots/hidden')
+  showWindow(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SlotWindowKeyBody,
+  ) {
+    return this.parties.showWindow(id, user.id, dto);
   }
 
   @Get(':id/heatmap')

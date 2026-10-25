@@ -78,6 +78,7 @@ import {
   GAME_SYSTEM_FAMILY_CHANGE_MESSAGE,
   GAME_SYSTEM_WITHOUT_MODULE_MESSAGE,
   HIDE_NOT_OVER_MESSAGE,
+  HIDE_WINDOW_PAST_MESSAGE,
   KIND_NOT_ALLOWED_FOR_SYSTEM_MESSAGE,
   LAST_ADMIN_MESSAGE,
   PartiesService,
@@ -150,6 +151,11 @@ describe('PartiesService', () => {
     partieHidden: {
       createMany: jest.Mock;
       deleteMany: jest.Mock;
+    };
+    slotWindowHidden: {
+      createMany: jest.Mock;
+      deleteMany: jest.Mock;
+      findMany: jest.Mock;
     };
     partieVisibilityLock: {
       findMany: jest.Mock;
@@ -257,6 +263,12 @@ describe('PartiesService', () => {
       partieHidden: {
         createMany: jest.fn().mockResolvedValue({ count: 1 }),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      // Story 46.4 : fenêtres de l'automate masquées (défaut : aucune).
+      slotWindowHidden: {
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       // Story 31.6 — les tests dédiés au cadenas de visibilité reconfigurent explicitement.
       partieVisibilityLock: {
@@ -2693,9 +2705,7 @@ describe('PartiesService', () => {
         );
         const results = await service.getAvailableSlots('p1', 'mj1', 1, FROM, TO);
         expect(results).toHaveLength(20);
-        expect(
-          (results as AvailableSlotDto[]).some((r) => r.date === '2030-03-04'),
-        ).toBe(false);
+        expect((results as AvailableSlotDto[]).some((r) => r.date === '2030-03-04')).toBe(false);
       });
 
       it('sans sondage ouvert, la liste est celle d’avant', async () => {
@@ -2723,6 +2733,78 @@ describe('PartiesService', () => {
         expect(polls.openOptionKeys).not.toHaveBeenCalled();
         expect(results[0]).toMatchObject({ date: '2030-03-04', slot: 'MORNING' });
         expect(results[0]).not.toHaveProperty('members');
+      });
+    });
+
+    describe('fenêtres masquées par le MJ (Story 46.4)', () => {
+      const FROM = '2030-03-04';
+      const TO = '2030-03-14';
+      const row = (date: string, startSlot: string, durationSlots = 1) => ({
+        date: new Date(`${date}T00:00:00.000Z`),
+        startSlot,
+        durationSlots,
+      });
+
+      it('retire les fenêtres masquées AVANT le plafond, puis les sert à part, marquées hidden', async () => {
+        prisma.slotWindowHidden.findMany.mockResolvedValue([
+          row('2030-03-04', 'MORNING'),
+          row('2030-03-04', 'EVENING'),
+        ]);
+        const results = (await service.getAvailableSlots(
+          'p1',
+          'mj1',
+          1,
+          FROM,
+          TO,
+        )) as AvailableSlotDto[];
+
+        const visible = results.filter((r) => !r.hidden);
+        const apart = results.filter((r) => r.hidden);
+        expect(visible).toHaveLength(20);
+        expect(visible.some((r) => r.date === '2030-03-04' && r.slot === 'MORNING')).toBe(false);
+        expect(apart.map((r) => `${r.date}|${r.slot}`)).toEqual([
+          '2030-03-04|MORNING',
+          '2030-03-04|EVENING',
+        ]);
+        // Les masquées viennent APRÈS toutes les visibles, et toute fenêtre porte sa durée.
+        expect(results.slice(-2).every((r) => r.hidden)).toBe(true);
+        expect(results.every((r) => r.durationSlots === 1)).toBe(true);
+      });
+
+      it('ne lit que les lignes de CE MJ et de CETTE partie, dates passées exclues', async () => {
+        await service.getAvailableSlots('p1', 'mj1', 1, FROM, TO);
+        const where = prisma.slotWindowHidden.findMany.mock.calls[0][0].where;
+        expect(where).toMatchObject({ userId: 'mj1', partieId: 'p1' });
+        expect(where.date.gte.getTime()).toBeLessThanOrEqual(Date.now());
+        expect(where.date.gte.getUTCHours()).toBe(0);
+      });
+
+      it('une fenêtre masquée d’une autre durée n’est pas la même fenêtre', async () => {
+        prisma.slotWindowHidden.findMany.mockResolvedValue([row('2030-03-04', 'MORNING', 2)]);
+        const results = (await service.getAvailableSlots(
+          'p1',
+          'mj1',
+          1,
+          FROM,
+          TO,
+        )) as AvailableSlotDto[];
+        expect(results.some((r) => r.hidden)).toBe(false);
+        expect(results[0]).toMatchObject({ date: '2030-03-04', slot: 'MORNING' });
+      });
+
+      it('un joueur : vue agrégée intacte, aucune ligne masquée lue', async () => {
+        prisma.membership.findUnique.mockResolvedValue({ userId: 'u1', partieId: 'p1' });
+        prisma.slotWindowHidden.findMany.mockResolvedValue([row('2030-03-04', 'MORNING')]);
+        const results = (await service.getAvailableSlots(
+          'p1',
+          'u1',
+          1,
+          FROM,
+          TO,
+        )) as AggregatedSlotDto[];
+        expect(prisma.slotWindowHidden.findMany).not.toHaveBeenCalled();
+        expect(results[0]).toMatchObject({ date: '2030-03-04', slot: 'MORNING' });
+        expect(results.some((r) => 'hidden' in r || 'durationSlots' in r)).toBe(false);
       });
     });
 
@@ -2971,6 +3053,7 @@ describe('PartiesService', () => {
           findUnique: jest.fn().mockResolvedValue({ id: 'mjA', pseudo: 'MJ', displayName: 'MJ' }),
         },
         availabilityDeclaration: { findMany: jest.fn().mockResolvedValue([]) },
+        slotWindowHidden: { findMany: jest.fn().mockResolvedValue([]) },
         seance: {
           findMany: jest.fn().mockResolvedValue([
             {
@@ -4015,6 +4098,77 @@ describe('PartiesService', () => {
           groupDepartures: [],
         }),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  // Story 46.4 — masquer / démasquer une fenêtre de l'automate.
+  describe('masquer une fenêtre de l’automate (Story 46.4)', () => {
+    const DAY = '2099-03-06';
+    const body = { date: DAY, startSlot: 'EVENING' as const, durationSlots: 1 };
+
+    describe.each([
+      ['hideWindow', 'createMany'],
+      ['showWindow', 'deleteMany'],
+    ] as const)('%s', (method, write) => {
+      it('le MJ écrit sa propre ligne et émet seulement son canal user:', async () => {
+        prisma.partie.findUnique.mockResolvedValue(partie); // ownerId = 'mj1'
+        await expect(service[method]('p1', 'mj1', body)).resolves.toEqual({ ok: true });
+
+        const call = prisma.slotWindowHidden[write].mock.calls[0][0];
+        const payload = method === 'hideWindow' ? call.data[0] : call.where;
+        expect(payload).toMatchObject({
+          userId: 'mj1',
+          partieId: 'p1',
+          startSlot: 'EVENING',
+          durationSlots: 1,
+        });
+        expect(payload.date.toISOString()).toBe(`${DAY}T00:00:00.000Z`);
+        expect(realtimeEvents.emit).toHaveBeenCalledTimes(1);
+        expect(realtimeEvents.emit).toHaveBeenCalledWith('user:mj1');
+      });
+
+      it('un joueur est refusé : rien d’écrit, rien d’émis', async () => {
+        prisma.partie.findUnique.mockResolvedValue(partie);
+        prisma.membership.findUnique.mockResolvedValue({ userId: 'u1', partieId: 'p1' });
+        await expect(service[method]('p1', 'u1', body)).rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.slotWindowHidden[write]).not.toHaveBeenCalled();
+        expect(realtimeEvents.emit).not.toHaveBeenCalled();
+      });
+
+      it('un étranger à la partie est refusé', async () => {
+        prisma.partie.findUnique.mockResolvedValue(partie);
+        prisma.membership.findUnique.mockResolvedValue(null);
+        await expect(service[method]('p1', 'intrus', body)).rejects.toThrow();
+        expect(prisma.slotWindowHidden[write]).not.toHaveBeenCalled();
+      });
+
+      it('un ralliement est refusé, même à son créateur', async () => {
+        prisma.partie.findUnique.mockResolvedValue({ ...partie, gameSystemId: 'ralliement' });
+        await expect(service[method]('p1', 'mj1', body)).rejects.toThrow();
+        expect(prisma.slotWindowHidden[write]).not.toHaveBeenCalled();
+      });
+    });
+
+    it('masquer : idempotent (skipDuplicates)', async () => {
+      prisma.partie.findUnique.mockResolvedValue(partie);
+      await service.hideWindow('p1', 'mj1', body);
+      expect(prisma.slotWindowHidden.createMany.mock.calls[0][0].skipDuplicates).toBe(true);
+    });
+
+    it('masquer une date passée : 400 en français, rien d’écrit', async () => {
+      prisma.partie.findUnique.mockResolvedValue(partie);
+      await expect(
+        service.hideWindow('p1', 'mj1', { ...body, date: '2020-01-01' }),
+      ).rejects.toThrow(HIDE_WINDOW_PAST_MESSAGE);
+      expect(prisma.slotWindowHidden.createMany).not.toHaveBeenCalled();
+      expect(realtimeEvents.emit).not.toHaveBeenCalled();
+    });
+
+    it('démasquer une fenêtre passée reste permis (nettoyage)', async () => {
+      prisma.partie.findUnique.mockResolvedValue(partie);
+      await expect(
+        service.showWindow('p1', 'mj1', { ...body, date: '2020-01-01' }),
+      ).resolves.toEqual({ ok: true });
     });
   });
 });

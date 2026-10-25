@@ -46,6 +46,7 @@ import {
 } from '../permissions/permission.service';
 import type { PartieSignalsPort } from '../poll/ports/partie-signals.port';
 import { PollVoteCleanupService } from '../poll/poll-vote-cleanup.service';
+import type { SlotWindowKeyBody } from './dto/slot-window.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import {
@@ -113,6 +114,9 @@ export const KIND_NOT_ALLOWED_FOR_SYSTEM_MESSAGE =
 /** Refus de retirer de sa liste une partie qui n'est ni terminée ni annulée (Story 42.5, FR17). */
 export const HIDE_NOT_OVER_MESSAGE =
   'Seule une partie terminée ou annulée peut être retirée de votre liste';
+/** Refus de masquer une fenêtre de l'automate dont le jour est passé (Story 46.4). */
+export const HIDE_WINDOW_PAST_MESSAGE =
+  'Cette fenêtre est déjà passée : elle ne peut plus être masquée';
 export const RALLIEMENT_TYPE_LOCKED_MESSAGE = "Le type d'un ralliement ne peut pas être modifié";
 
 /** Story 39.3 : un administrateur ne retire qu'un simple membre. Story 39.5 : le créateur n'est plus
@@ -1560,6 +1564,7 @@ export class PartiesService implements PartieSignalsPort {
             date: dateUtc.toISOString().substring(0, 10),
             slot,
             members,
+            durationSlots: 1,
           });
         }
       }
@@ -1583,6 +1588,7 @@ export class PartiesService implements PartieSignalsPort {
             date: dateUtc.toISOString().substring(0, 10),
             slot,
             members,
+            durationSlots: 1,
           });
         }
       }
@@ -1626,9 +1632,22 @@ export class PartiesService implements PartieSignalsPort {
     const proposed = nominative
       ? await this.polls.openOptionKeys(this.prisma, partieId)
       : new Set<string>();
-    const limited = sorted.filter((s) => !proposed.has(`${s.date}|${s.slot}`)).slice(0, 20);
+    const open = sorted.filter((s) => !proposed.has(`${s.date}|${s.slot}`));
 
-    if (nominative) return limited;
+    if (nominative) {
+      // Story 46.4 — les fenêtres que CE MJ a masquées : retirées AVANT le plafond de 20, puis servies à part, après
+      // les visibles, marquées `hidden`. Une ligne dont la date est passée est ignorée. Chaque fenêtre porte sa durée
+      // en créneaux (1 jusqu'à l'épic 47).
+      const hidden = await this.hiddenWindowKeys(partieId, userId);
+      const hiddenKey = (s: AvailableSlotDto) => `${s.date}|${s.slot}|1`;
+      const visible = open.filter((s) => !hidden.has(hiddenKey(s))).slice(0, 20);
+      const apart = open
+        .filter((s) => hidden.has(hiddenKey(s)))
+        .map((s) => ({ ...s, hidden: true }));
+      return [...visible, ...apart];
+    }
+
+    const limited = open.slice(0, 20);
 
     return limited.map(({ date, slot, members }) => ({
       date,
@@ -1638,6 +1657,70 @@ export class PartiesService implements PartieSignalsPort {
       unknown: members.filter((m) => m.status === 'UNKNOWN').length,
       total: members.length,
     }));
+  }
+
+  /** Story 46.4 — les clés `AAAA-MM-JJ|CRÉNEAU|DURÉE` des fenêtres que `userId` a masquées sur cette partie, hors
+   *  dates passées (ignorées à la lecture). Les lignes d'un autre utilisateur ne sont jamais lues. */
+  private async hiddenWindowKeys(partieId: string, userId: string): Promise<Set<string>> {
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const rows = await this.prisma.slotWindowHidden.findMany({
+      where: { userId, partieId, date: { gte: today } },
+      select: { date: true, startSlot: true, durationSlots: true },
+    });
+    return new Set(
+      rows.map((r) => `${r.date.toISOString().substring(0, 10)}|${r.startSlot}|${r.durationSlots}`),
+    );
+  }
+
+  /**
+   * Story 46.4 (FR3, AR7) — masquer une fenêtre de l'automate : le MJ d'un JDR, pour lui seul (`SLOT_WINDOW_HIDE`,
+   * refusé à un joueur, à un groupe, à un non-membre). La fenêtre est celle que `getAvailableSlots` a servie ; une
+   * date passée est refusée (400). Idempotent (`skipDuplicates`). N'émet qu'après l'écriture : `user:{id}` du MJ
+   * seulement, pour que ses autres onglets et appareils relisent la liste.
+   */
+  async hideWindow(
+    partieId: string,
+    userId: string,
+    dto: SlotWindowKeyBody,
+  ): Promise<{ ok: true }> {
+    await this.permissions.assert(userId, 'SLOT_WINDOW_HIDE', { partieId });
+    const todayKey = new Date().toISOString().substring(0, 10);
+    if (dto.date < todayKey) throw new BadRequestException(HIDE_WINDOW_PAST_MESSAGE);
+    await this.prisma.slotWindowHidden.createMany({
+      data: [
+        {
+          userId,
+          partieId,
+          date: new Date(`${dto.date}T00:00:00.000Z`),
+          startSlot: dto.startSlot,
+          durationSlots: dto.durationSlots,
+        },
+      ],
+      skipDuplicates: true,
+    });
+    this.realtimeEvents.emit(userTopic(userId));
+    return { ok: true };
+  }
+
+  /** Story 46.4 — démasquer une fenêtre : même droit, mêmes émissions ; sans effet si elle ne l'était pas. */
+  async showWindow(
+    partieId: string,
+    userId: string,
+    dto: SlotWindowKeyBody,
+  ): Promise<{ ok: true }> {
+    await this.permissions.assert(userId, 'SLOT_WINDOW_HIDE', { partieId });
+    await this.prisma.slotWindowHidden.deleteMany({
+      where: {
+        userId,
+        partieId,
+        date: new Date(`${dto.date}T00:00:00.000Z`),
+        startSlot: dto.startSlot,
+        durationSlots: dto.durationSlots,
+      },
+    });
+    this.realtimeEvents.emit(userTopic(userId));
+    return { ok: true };
   }
 
   async getHeatmap(

@@ -142,3 +142,12 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Story 46.4 — une fenêtre masquée : 55 % d'opacité, comme le contrat des fenêtres de l'automate. */
+.creneau-card--hidden {
+  opacity: 0.55;
+}
+
+.creneau-card--hidden .creneau-card__action {
+  opacity: 1;
+}

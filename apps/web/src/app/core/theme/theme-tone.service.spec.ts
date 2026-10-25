@@ -870,6 +870,8 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     // Story 46.2 — actions de la fenêtre sélectionnée : mêmes mots dans les trois thèmes
     'calendar.window_add',
     'calendar.window_hide',
+    // Story 46.4 — « Démasquer » : le même mot dans les trois thèmes
+    'calendar.window_unhide',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
     'partie.asset_journal_cta',
     'partie.asset_carte_cta',
@@ -2235,6 +2237,7 @@ describe("Tones — fenêtres de l'automate et colonne de droite (Story 46.1)", 
     'calendar.column_reopen',
     'calendar.window_add',
     'calendar.window_hide',
+    'calendar.window_unhide',
   ])('%s : le même texte dans les trois thèmes', (key) => {
     const texts = THEMES.map((theme) => TONE_MAP[theme][key]);
     expect(texts[0], key).toBeTruthy();

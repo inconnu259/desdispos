@@ -292,6 +292,8 @@ export type PermissionAction =
   // Story 39.5 : quitter soi-même une partie (groupe de ralliement seulement)
   | 'PARTIE_LEAVE'
   | 'PARTIE_AVAILABILITY_READ'
+  // Story 46.4 : masquer / démasquer une fenêtre de l'automate (MJ d'un JDR seul)
+  | 'SLOT_WINDOW_HIDE'
   | 'PARTIE_VISIBILITY_LOCKS_READ'
   | 'PARTIE_VISIBILITY_LOCKS_UPDATE'
   | 'PARTIE_COVER_READ'
@@ -1275,6 +1277,23 @@ export interface AvailableSlotDto {
   date: string;
   slot: DaySlot;
   members: SlotMemberDto[];
+  /** Story 46.4 — la durée de la fenêtre, en créneaux : 1 jusqu'à l'épic 47. Fait partie de sa clé naturelle (avec le
+   *  jour et le créneau de départ), recopiée telle quelle pour masquer ou démasquer. */
+  durationSlots: number;
+  /** Story 46.4 — la fenêtre est masquée par le MJ : servie à part, après les visibles, jamais comptée dans les 20. */
+  hidden?: boolean;
+}
+
+/** Story 46.4 — plafond d'une fenêtre ou d'un rendez-vous, en créneaux : 15 jours de 3 créneaux (AR10). Borne la durée
+ *  d'un masquage ; la durée du rendez-vous elle-même arrive avec l'épic 47. */
+export const MAX_SLOT_WINDOW_SLOTS = 45;
+
+/** Story 46.4 — corps de `PUT` / `DELETE /parties/:id/available-slots/hidden` : la fenêtre telle que servie. */
+export interface SlotWindowKeyDto {
+  /** `AAAA-MM-JJ`. */
+  date: string;
+  startSlot: DaySlot;
+  durationSlots: number;
 }
 
 /** Vue agrégée d'un créneau disponible pour un joueur non-MJ (sans identité des membres). */

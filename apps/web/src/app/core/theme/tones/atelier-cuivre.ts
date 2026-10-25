@@ -909,6 +909,11 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.window_add': 'Ajouter au vote',
   'calendar.window_hide': 'Masquer',
   'calendar.window_selected_aria': "créneau de l'automate sélectionné",
+  // Story 46.4 — les fenêtres masquées : lien du pied de liste, repli, démasquer, échec.
+  'calendar.window_show_hidden': "Afficher les {n} masquées de l'automate",
+  'calendar.window_hide_hidden': "Replier les masquées de l'automate",
+  'calendar.window_unhide': 'Démasquer',
+  'calendar.window_hide_error': "L'automate n'a pas pu masquer ce créneau.",
   'calendar.rail_empty': 'Aucun jour à détailler',
   'calendar.rail_status_unknown': 'Rien au planning',
   'calendar.layer_group_aria': 'Couches affichées du registre',

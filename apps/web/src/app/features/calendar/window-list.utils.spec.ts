@@ -5,6 +5,7 @@ const win = (date: string, slot: AvailableSlotDto['slot']): AvailableSlotDto => 
   date,
   slot,
   members: [],
+  durationSlots: 1,
 });
 const SERVED = [
   win('2030-03-06', 'EVENING'),

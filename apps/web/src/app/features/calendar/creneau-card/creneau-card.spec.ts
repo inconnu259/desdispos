@@ -15,6 +15,7 @@ function makeSlot(overrides: Partial<AvailableSlotDto> = {}): AvailableSlotDto {
       { userId: 'u1', pseudo: 'Alice', displayName: 'Alice au pays', status: 'AVAILABLE' },
       { userId: 'u2', pseudo: 'Bob', displayName: 'Bobby', status: 'AVAILABLE' },
     ],
+    durationSlots: 1,
     ...overrides,
   };
 }
@@ -142,14 +143,39 @@ describe('CreneauCard — sélection (Story 46.2)', () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  it('sélectionnée : contour, aria-pressed, « Ajouter au vote » actif et « Masquer » encore désactivé', () => {
+  it('sélectionnée : contour, aria-pressed, les deux actions actives', () => {
     create({ selectable: true, selected: true });
     expect(el.querySelector('.creneau-card')!.classList).toContain('creneau-card--selected');
     expect(el.querySelector('.creneau-card__select')!.getAttribute('aria-pressed')).toBe('true');
     const actions = [...el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')];
     expect(actions.map((a) => a.textContent!.trim())).toEqual(['Ajouter au vote', 'Masquer']);
-    expect(actions[0].getAttribute('aria-disabled')).toBeNull();
-    expect(actions[1].getAttribute('aria-disabled')).toBe('true');
+    expect(actions.every((a) => a.getAttribute('aria-disabled') === null)).toBe(true);
+  });
+
+  it('« Masquer » demande le masquage, sans basculer la sélection ni demander l’ajout', () => {
+    create({ selectable: true, selected: true });
+    const hide = vi.fn();
+    const add = vi.fn();
+    const toggled = vi.fn();
+    fixture.componentInstance.hideRequested.subscribe(hide);
+    fixture.componentInstance.addRequested.subscribe(add);
+    fixture.componentInstance.selectToggled.subscribe(toggled);
+    el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')[1].click();
+    expect(hide).toHaveBeenCalledTimes(1);
+    expect(add).not.toHaveBeenCalled();
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('une carte de fenêtre masquée : 55 %, « Démasquer », ni sélection ni « Ajouter / Masquer »', () => {
+    create({ hiddenWindow: true });
+    const show = vi.fn();
+    fixture.componentInstance.showRequested.subscribe(show);
+    expect(el.querySelector('.creneau-card')!.classList).toContain('creneau-card--hidden');
+    const actions = [...el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')];
+    expect(actions.map((a) => a.textContent!.trim())).toEqual(['Démasquer']);
+    actions[0].click();
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(el.querySelector('.creneau-card__select')).toBeNull();
   });
 
   it('sans composer à armer (canAdd faux) : « Ajouter au vote » est désactivé et ne demande rien', () => {
@@ -171,17 +197,6 @@ describe('CreneauCard — sélection (Story 46.2)', () => {
     el.querySelector<HTMLButtonElement>('.creneau-card__action--primary')!.click();
     expect(add).toHaveBeenCalledTimes(1);
     expect(toggled).not.toHaveBeenCalled();
-  });
-
-  it('cliquer « Masquer » (désactivé jusqu’à la 46.4) ne bascule pas la sélection et ne demande rien', () => {
-    create({ selectable: true, selected: true });
-    const spy = vi.fn();
-    const add = vi.fn();
-    fixture.componentInstance.selectToggled.subscribe(spy);
-    fixture.componentInstance.addRequested.subscribe(add);
-    el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')[1].click();
-    expect(spy).not.toHaveBeenCalled();
-    expect(add).not.toHaveBeenCalled();
   });
 
   it('non sélectionnée : pas d’actions', () => {

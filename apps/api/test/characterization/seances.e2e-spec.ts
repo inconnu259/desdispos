@@ -310,6 +310,110 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
     });
   });
 
+  describe('masquer une fenêtre de l’automate (Story 46.4)', () => {
+    const range = { from: isoDay(20), to: isoDay(24) };
+    const hidden = { date: isoDay(21), startSlot: 'EVENING', durationSlots: 1 };
+    type Served = { date: string; slot: string; hidden?: boolean; durationSlots?: number };
+
+    const read = async (user: TestUser, partieId: string) =>
+      body<Served[]>(
+        await user.agent.get(`/parties/${partieId}/available-slots`).query(range).expect(200),
+      );
+    const find = (list: Served[]) =>
+      list.find((s) => s.date === hidden.date && s.slot === hidden.startSlot);
+
+    it('le MJ masque une fenêtre : elle sort de la liste, revient à part, puis se démasque', async () => {
+      const mjA = await h.createUser('mj-masque');
+      const { id: partieId } = await h.createPartie(mjA, 'ONE_SHOT', 'masque');
+
+      const avant = find(await read(mjA, partieId));
+      expect(avant?.hidden).toBeUndefined();
+      expect(avant?.durationSlots).toBe(1);
+
+      await mjA.agent.put(`/parties/${partieId}/available-slots/hidden`).send(hidden).expect(200);
+      // Idempotent : un second PUT ne double rien et ne casse rien.
+      await mjA.agent.put(`/parties/${partieId}/available-slots/hidden`).send(hidden).expect(200);
+
+      const apres = await read(mjA, partieId);
+      expect(find(apres)?.hidden).toBe(true);
+      expect(apres.filter((s) => s.hidden)).toHaveLength(1);
+      // Les masquées viennent après toutes les visibles.
+      expect(apres.findIndex((s) => s.hidden)).toBe(apres.length - 1);
+
+      await mjA.agent
+        .delete(`/parties/${partieId}/available-slots/hidden`)
+        .send(hidden)
+        .expect(200);
+      expect(find(await read(mjA, partieId))?.hidden).toBeUndefined();
+      // Démasquer ce qui ne l'est pas : sans effet.
+      await mjA.agent
+        .delete(`/parties/${partieId}/available-slots/hidden`)
+        .send(hidden)
+        .expect(200);
+    });
+
+    it('un joueur est refusé (403) et la vue agrégée ne montre ni masque ni durée', async () => {
+      const mjA = await h.createUser('mj-masque-j');
+      const joueur = await h.createUser('joueur-masque');
+      const { id: partieId } = await h.createPartie(mjA, 'ONE_SHOT', 'masque-joueur');
+      await h.addMember(partieId, joueur);
+      await mjA.agent.put(`/parties/${partieId}/available-slots/hidden`).send(hidden).expect(200);
+
+      await joueur.agent
+        .put(`/parties/${partieId}/available-slots/hidden`)
+        .send(hidden)
+        .expect(403);
+      await joueur.agent
+        .delete(`/parties/${partieId}/available-slots/hidden`)
+        .send(hidden)
+        .expect(403);
+
+      // Pour le joueur, la fenêtre reste servie, sans aucune trace du masquage du MJ.
+      const vue = await read(joueur, partieId);
+      expect(find(vue)).toBeDefined();
+      expect(vue.every((s) => !('hidden' in s) && !('durationSlots' in s))).toBe(true);
+    });
+
+    it('un étranger à la partie est refusé, et rien n’est écrit', async () => {
+      const mjA = await h.createUser('mj-masque-e');
+      const intrus = await h.createUser('intrus-masque');
+      const { id: partieId } = await h.createPartie(mjA, 'ONE_SHOT', 'masque-etranger');
+      const res = await intrus.agent
+        .put(`/parties/${partieId}/available-slots/hidden`)
+        .send(hidden);
+      expect([403, 404]).toContain(res.status);
+      expect(find(await read(mjA, partieId))?.hidden).toBeUndefined();
+    });
+
+    it('un groupe de ralliement refuse, même à son administrateur', async () => {
+      const admin = await h.createUser('admin-masque');
+      const { id: partieId } = await h.createPartie(
+        admin,
+        'ONE_SHOT',
+        'masque-ralliement',
+        'ralliement',
+      );
+      await admin.agent.put(`/parties/${partieId}/available-slots/hidden`).send(hidden).expect(403);
+      await admin.agent
+        .delete(`/parties/${partieId}/available-slots/hidden`)
+        .send(hidden)
+        .expect(403);
+    });
+
+    it.each([
+      ['une date passée', { ...hidden, date: '2020-01-01' }],
+      ['un créneau inconnu', { ...hidden, startSlot: 'NIGHT' }],
+      ['une durée nulle', { ...hidden, durationSlots: 0 }],
+      ['une durée au-delà du plafond', { ...hidden, durationSlots: 46 }],
+      ['une date mal formée', { ...hidden, date: 'demain' }],
+      ['un corps vide', {}],
+    ])('refuse %s en 400', async (_label, bad) => {
+      const mjA = await h.createUser('mj-masque-v');
+      const { id: partieId } = await h.createPartie(mjA, 'ONE_SHOT', 'masque-valide');
+      await mjA.agent.put(`/parties/${partieId}/available-slots/hidden`).send(bad).expect(400);
+    });
+  });
+
   describe('scénario Courant en campagne linéaire', () => {
     it('fige : un seul scénario Courant — 1er passage 200, second refusé en 409', async () => {
       const { id: partieId } = await h.createPartie(mj, 'CAMPAGNE_LINEAIRE', 'courant');

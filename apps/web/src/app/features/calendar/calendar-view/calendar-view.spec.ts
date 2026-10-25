@@ -7702,3 +7702,192 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
     expect(root(fixture).querySelector('.available-slots__empty')).toBeNull();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 46.2 — mettre une fenêtre de l'automate en évidence
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', () => {
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+  const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[] };
+  const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[] };
+  const KEY_A = '2030-03-06|EVENING';
+
+  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+  const cards = (fixture: any) => [...root(fixture).querySelectorAll<HTMLElement>('.mj-results-panel .creneau-card')];
+  const headers = (fixture: any) =>
+    [...root(fixture).querySelectorAll<HTMLButtonElement>('.mj-results-panel .creneau-card__select')];
+
+  async function atelier(extra: Record<string, unknown> = {}) {
+    const ctx = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [], ...extra });
+    const comp = ctx.fixture.componentInstance as any;
+    comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+    comp.availableSlots.set([WIN_A, WIN_B]);
+    await tick(ctx.fixture);
+    return { ...ctx, comp };
+  }
+
+  const poll = () =>
+    openPollEntry({
+      pollId: 'poll1',
+      partieId: 'partie-1',
+      partieName: 'Les Cendres',
+      title: 'Chapitre 4',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      eligibleCount: 3,
+      answeredCount: 1,
+      can: ORGANIZER,
+      options: [
+        { optionId: 'a1', date: '2030-04-04', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
+        { optionId: 'a2', date: '2030-04-06', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
+      ],
+    });
+
+  it('toucher une carte la sélectionne : carte contournée, jour net, autres jours estompés, grille sur son mois', async () => {
+    const { fixture, comp } = await atelier();
+    expect(comp.destinyDates()).toBeNull();
+
+    headers(fixture)[0].click();
+    await tick(fixture);
+
+    expect(comp.selectedWindowKey()).toBe(KEY_A);
+    expect([...comp.destinyDates()]).toEqual(['2030-03-06']);
+    expect(cards(fixture).filter((c) => c.classList.contains('creneau-card--selected'))).toHaveLength(1);
+    // La grille se place sur mars 2030 (« Mars 2030 » dans le titre de la vue Mois).
+    expect(comp.sharedDate().getUTCFullYear?.() ?? comp.sharedDate().getFullYear()).toBe(2030);
+    expect(comp.sharedDate().getMonth()).toBe(2);
+    expect(root(fixture).querySelector('.band--window')).not.toBeNull();
+  });
+
+  it('une seule fenêtre à la fois : en toucher une autre remplace la première', async () => {
+    const { fixture, comp } = await atelier();
+    headers(fixture)[0].click();
+    await tick(fixture);
+    headers(fixture)[1].click();
+    await tick(fixture);
+
+    expect(comp.selectedWindowKey()).toBe('2030-03-09|MORNING');
+    expect(cards(fixture).filter((c) => c.classList.contains('creneau-card--selected'))).toHaveLength(1);
+  });
+
+  it('retoucher la carte sélectionnée désélectionne : affichage normal', async () => {
+    const { fixture, comp } = await atelier();
+    headers(fixture)[0].click();
+    await tick(fixture);
+    headers(fixture)[0].click();
+    await tick(fixture);
+
+    expect(comp.selectedWindow()).toBeNull();
+    expect(comp.destinyDates()).toBeNull();
+    expect(root(fixture).querySelector('.band--window')).toBeNull();
+  });
+
+  it('Échap désélectionne', async () => {
+    const { fixture, comp } = await atelier();
+    headers(fixture)[0].click();
+    await tick(fixture);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await tick(fixture);
+    expect(comp.selectedWindow()).toBeNull();
+  });
+
+  it('composer ouvert : la carte reste sélectionnée mais rien n’est estompé', async () => {
+    const { fixture, comp } = await atelier();
+    comp.composing.set(true);
+    headers(fixture)[0].click();
+    await tick(fixture);
+
+    expect(comp.selectedWindowKey()).toBe(KEY_A);
+    expect(comp.destinyDates()).toBeNull();
+    expect(root(fixture).querySelector('.band--window')).not.toBeNull();
+  });
+
+  it('la fenêtre qui n’est plus servie perd sa sélection', async () => {
+    const { fixture, comp } = await atelier();
+    headers(fixture)[0].click();
+    await tick(fixture);
+
+    comp.availableSlots.set([WIN_B]);
+    await tick(fixture);
+    expect(comp.selectedWindow()).toBeNull();
+  });
+
+  it('couche éteinte ou vue Agenda : la sélection tombe', async () => {
+    const { fixture, comp } = await atelier();
+    headers(fixture)[0].click();
+    await tick(fixture);
+    comp.onViewChange('agenda');
+    await tick(fixture);
+    expect(comp.selectedWindow()).toBeNull();
+  });
+
+  it('joueur : pas de sélection, la vue agrégée reste telle quelle', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', partieId: 'partie-1' });
+    const comp = fixture.componentInstance as any;
+    comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+    comp.availableSlots.set([{ date: '2030-03-06', slot: 'EVENING', total: 2, available: 2, unavailable: 0 }]);
+    await tick(fixture);
+
+    expect(comp.windowSelectable()).toBe(false);
+    expect(root(fixture).querySelector('.creneau-card__select')).toBeNull();
+  });
+
+  describe('pendant une Destinée', () => {
+    async function destinee() {
+      const ctx = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [TWO_OPTION_POLL_SCENARIO],
+        openPolls: [poll()],
+      });
+      const comp = ctx.fixture.componentInstance as any;
+      comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+      comp.availableSlots.set([WIN_A, WIN_B]);
+      comp.chooseDestiny('poll1');
+      await tick(ctx.fixture);
+      return { ...ctx, comp };
+    }
+
+    it('le plateau garde en pied « Éphémérides · N » replié ; le déplier montre les cartes', async () => {
+      const { fixture, comp } = await destinee();
+      const foot = root(fixture).querySelector('.destiny-board-col__slots')!;
+      expect(foot.querySelector('.available-slots__title span')!.textContent!.trim()).toBe('Éphémérides · 2');
+      expect(foot.querySelectorAll('.creneau-card')).toHaveLength(0);
+
+      foot.querySelector<HTMLButtonElement>('.available-slots__fold')!.click();
+      await tick(fixture);
+      expect(comp.boardSlotsOpen()).toBe(true);
+      expect(root(fixture).querySelectorAll('.destiny-board-col__slots .creneau-card')).toHaveLength(2);
+    });
+
+    it('toucher une carte suspend la Destinée (le plateau cède la place) ; désélectionner la rétablit', async () => {
+      const { fixture, comp } = await destinee();
+      root(fixture).querySelector<HTMLButtonElement>('.destiny-board-col__slots .available-slots__fold')!.click();
+      await tick(fixture);
+      expect(root(fixture).querySelector('app-destiny-board')).not.toBeNull();
+
+      root(fixture).querySelector<HTMLButtonElement>('.destiny-board-col__slots .creneau-card__select')!.click();
+      await tick(fixture);
+      expect(root(fixture).querySelector('app-destiny-board')).toBeNull();
+      expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
+      // Le vote reste le mode actif : seul son affichage est suspendu, et l'estompe est celle de la fenêtre.
+      expect(comp.destinyPollId()).toBe('poll1');
+      expect([...comp.destinyDates()]).toEqual(['2030-03-06']);
+
+      comp.onWindowSelected(null);
+      await tick(fixture);
+      expect(root(fixture).querySelector('app-destiny-board')).not.toBeNull();
+      expect(root(fixture).querySelector('.mj-results-panel')).toBeNull();
+    });
+  });
+});

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { ComponentFixture } from '@angular/core/testing';
 import { CreneauCard } from './creneau-card';
@@ -94,5 +95,72 @@ describe('CreneauCard', () => {
   it('aucune collision → aucun pseudo affiché (AC3)', () => {
     create(makeSlot());
     expect(el.querySelector('.identity-label__pseudo')).toBeNull();
+  });
+});
+
+// Story 46.2 — la carte d'une fenêtre de l'automate se sélectionne (vue nominative du MJ seulement).
+describe('CreneauCard — sélection (Story 46.2)', () => {
+  let fixture: ComponentFixture<CreneauCard>;
+  let el: HTMLElement;
+
+  function create(inputs: Record<string, unknown>): void {
+    fixture = TestBed.createComponent(CreneauCard);
+    fixture.componentRef.setInput('slot', makeSlot());
+    for (const [k, v] of Object.entries(inputs)) fixture.componentRef.setInput(k, v);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('non sélectionnable : ni bouton d’en-tête, ni action, un tap ne fait rien', () => {
+    create({});
+    const spy = vi.fn();
+    fixture.componentInstance.selectToggled.subscribe(spy);
+    expect(el.querySelector('.creneau-card__select')).toBeNull();
+    el.querySelector<HTMLElement>('.creneau-card')!.click();
+    expect(spy).not.toHaveBeenCalled();
+    expect(el.querySelector('.creneau-card__actions')).toBeNull();
+  });
+
+  it('sélectionnable : l’en-tête est un bouton aria-pressed, la date et le créneau restent lisibles', () => {
+    create({ selectable: true });
+    const button = el.querySelector<HTMLButtonElement>('.creneau-card__select')!;
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(button.querySelector('.creneau-card__date')).not.toBeNull();
+    expect(button.querySelector('.creneau-card__slot')!.textContent).toContain('Matin');
+  });
+
+  it('un tap sur la carte et un clic sur le bouton demandent chacun UNE bascule', () => {
+    create({ selectable: true });
+    const spy = vi.fn();
+    fixture.componentInstance.selectToggled.subscribe(spy);
+
+    el.querySelector<HTMLElement>('.creneau-card__member')!.click();
+    expect(spy).toHaveBeenCalledTimes(1);
+    el.querySelector<HTMLButtonElement>('.creneau-card__select')!.click();
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('sélectionnée : contour, aria-pressed, et les deux actions écrites mais désactivées', () => {
+    create({ selectable: true, selected: true });
+    expect(el.querySelector('.creneau-card')!.classList).toContain('creneau-card--selected');
+    expect(el.querySelector('.creneau-card__select')!.getAttribute('aria-pressed')).toBe('true');
+    const actions = [...el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')];
+    expect(actions.map((a) => a.textContent!.trim())).toEqual(['Ajouter au vote', 'Masquer']);
+    expect(actions.every((a) => a.getAttribute('aria-disabled') === 'true')).toBe(true);
+  });
+
+  it('cliquer une action désactivée ne bascule pas la sélection', () => {
+    create({ selectable: true, selected: true });
+    const spy = vi.fn();
+    fixture.componentInstance.selectToggled.subscribe(spy);
+    el.querySelector<HTMLButtonElement>('.creneau-card__action')!.click();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('non sélectionnée : pas d’actions', () => {
+    create({ selectable: true, selected: false });
+    expect(el.querySelector('.creneau-card__actions')).toBeNull();
   });
 });

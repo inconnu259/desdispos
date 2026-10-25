@@ -83,21 +83,29 @@
             class="grid-cell slot-cell"
             [attr.data-cell-date]="cell.date.getTime()"
             [attr.data-cell-slot]="row.slot"
-            [attr.data-status]="(getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status)"
+            [attr.data-status]="
+              getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status
+            "
             [attr.data-winner]="cellWinner(getSlotData(cell, row.key))"
             [class.past]="cell.isPast"
             [class.today-col]="cell.isToday"
             [class.preview]="getSlotData(cell, row.key).preview !== null"
-            [class.unknown]="(getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status) === 'UNKNOWN'"
+            [class.unknown]="
+              (getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status) ===
+              'UNKNOWN'
+            "
             [class.selected]="isCellSelected(cell, row.slot)"
             [class.slot-cell--composed]="isCellComposed(cell, row.slot)"
+            [class.slot-cell--window]="isCellWindow(cell, row.slot)"
             [class.current]="isCurrentCell(cell, row.slot)"
             [class.slot-cell--dim]="isDayDimmed(cell)"
             [class.has-event]="!!eventTitle(getSlotData(cell, row.key))"
             [attr.role]="cell.isPast ? 'presentation' : 'button'"
             [attr.tabindex]="cell.isPast ? null : 0"
             [attr.aria-label]="
-              cell.isPast ? null : cellAriaLabel(cell, getSlotData(cell, row.key), row.label, row.slot)
+              cell.isPast
+                ? null
+                : cellAriaLabel(cell, getSlotData(cell, row.key), row.label, row.slot)
             "
             (pointerdown)="onCellPointerDown($event, cell, row.slot)"
             (keyup.enter)="onCellEnterKey()"

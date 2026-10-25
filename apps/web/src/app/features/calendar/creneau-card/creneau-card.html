@@ -1,7 +1,29 @@
-<article class="creneau-card">
+<!-- Story 46.2 — le tap sur la carte sélectionne la fenêtre ; le bouton d'en-tête est le chemin clavier et lecteur
+     d'écran (`aria-pressed`). Le clic du bouton ne remonte pas, sinon la carte basculerait deux fois. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- équivalent clavier : le bouton d'en-tête -->
+<article
+  class="creneau-card"
+  [class.creneau-card--selectable]="selectable()"
+  [class.creneau-card--selected]="selected()"
+  (click)="toggleSelection($event)"
+>
   <header class="creneau-card__header">
-    <span class="creneau-card__date">{{ formatDate(slot().date) }}</span>
-    <span class="creneau-card__slot">{{ slotLabel(slot().slot) }}</span>
+    <ng-template #headText>
+      <span class="creneau-card__date">{{ formatDate(slot().date) }}</span>
+      <span class="creneau-card__slot">{{ slotLabel(slot().slot) }}</span>
+    </ng-template>
+    @if (selectable()) {
+      <button
+        type="button"
+        class="creneau-card__select"
+        [attr.aria-pressed]="selected()"
+        (click)="toggleSelection($event)"
+      >
+        <ng-container [ngTemplateOutlet]="headText" />
+      </button>
+    } @else {
+      <ng-container [ngTemplateOutlet]="headText" />
+    }
     @if (allAvailable()) {
       <span class="creneau-card__tag creneau-card__tag--full">{{
         theme.tone()['calendar.card_full_guild']
@@ -30,5 +52,19 @@
         <li class="creneau-card__alert">{{ missingAlert(member.displayName) }}</li>
       }
     </ul>
+  }
+
+  @if (selectable() && selected()) {
+    <!-- Story 46.2 — les deux actions de la fenêtre sélectionnée. Écrites, 44 px, mais DÉSACTIVÉES : leur effet
+         arrive avec 46.3 (« Ajouter au vote ») et 46.4 (« Masquer »), qui n'auront qu'à les activer. -->
+    <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- le clic ne fait que ne pas remonter à la carte -->
+    <div class="creneau-card__actions" (click)="$event.stopPropagation()">
+      <button type="button" class="creneau-card__action creneau-card__action--primary" aria-disabled="true">
+        {{ theme.tone()['calendar.window_add'] }}
+      </button>
+      <button type="button" class="creneau-card__action" aria-disabled="true">
+        {{ theme.tone()['calendar.window_hide'] }}
+      </button>
+    </div>
   }
 </article>

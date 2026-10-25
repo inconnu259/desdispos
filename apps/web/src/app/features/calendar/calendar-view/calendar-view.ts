@@ -132,7 +132,7 @@ import {
   ComposeConfirmDialog,
   type ComposeConfirmData,
 } from '../compose-confirm-dialog/compose-confirm-dialog';
-import { AvailableSlotsPanel } from '../available-slots/available-slots';
+import { AvailableSlotsPanel, availableSlotKey } from '../available-slots/available-slots';
 import { ColumnDockService } from '../side-dock/column-dock.service';
 import { SideDock } from '../side-dock/side-dock';
 import { VoteAnswerPicker } from '../vote-answer-picker/vote-answer-picker';
@@ -257,6 +257,8 @@ export interface EligibleSeanceEntry {
 @Component({
   selector: 'app-calendar-view',
   standalone: true,
+  // Story 46.2 — `Échap` désélectionne la fenêtre de l'automate (document : le focus peut être n'importe où).
+  host: { '(document:keydown.escape)': 'onWindowEscape()' },
   imports: [
     CalendarMonthView,
     CalendarWeekView,
@@ -1165,6 +1167,9 @@ export class CalendarView implements OnInit {
     // `destinyPresentable`). `destinyPollId` n'est pas touché : annuler rend l'état exact d'avant, valider
     // réactive la Destinée sur le vote créé ou modifié.
     if (this.composing()) return null;
+    // Story 46.2 — une fenêtre de l'automate sélectionnée passe avant la Destinée : seul son jour reste net.
+    const window = this.selectedWindow();
+    if (window) return new Set([window.date]);
     const current = this.destinyPoll();
     if (!current) return null;
     const dates = new Set<string>();
@@ -1350,9 +1355,45 @@ export class CalendarView implements OnInit {
     () =>
       this.view() !== 'agenda' &&
       !this.composing() &&
+      // Story 46.2 — sélectionner une fenêtre SUSPEND la Destinée (`destinyPollId` intact : désélectionner la rétablit).
+      !this.selectedWindow() &&
       this.destinyPoll() !== null &&
       this.destinyEntry() !== null,
   );
+
+  // ─── Story 46.2 — mettre une fenêtre de l'automate en évidence ─────────────────
+  //
+  // Un signal ÉPHÉMÈRE, jamais une couche : une seule fenêtre à la fois, celle que le MJ vient de toucher dans la liste
+  // de l'automate. Priorité unique des modes : composer > fenêtre sélectionnée > Destinée (`destinyDates`,
+  // `destinyPresentable`). Elle n'existe que pour la vue nominative du MJ, à l'atelier.
+
+  protected readonly selectedWindow = signal<{ date: string; slot: DaySlot } | null>(null);
+
+  /** La clé de la fenêtre sélectionnée, dans le format des grilles (`AAAA-MM-JJ|créneau`). */
+  protected readonly selectedWindowKey = computed(() => {
+    const w = this.selectedWindow();
+    return w ? availableSlotKey(w) : null;
+  });
+
+  /** Le pied « Éphémérides · N » du plateau est-il déplié ? Local : le dock de 46.1 ne le concerne pas. */
+  protected readonly boardSlotsOpen = signal(false);
+
+  /** Les cartes de l'automate ne se sélectionnent qu'à l'atelier du MJ (les joueurs gardent leur vue agrégée). */
+  protected readonly windowSelectable = computed(() => this.isMjMode() && this.partieId() !== null);
+
+  protected onWindowSelected(slot: AvailableSlotDto | null): void {
+    if (!slot) {
+      this.selectedWindow.set(null);
+      return;
+    }
+    this.selectedWindow.set({ date: slot.date, slot: slot.slot });
+    this.moveGridTo(slot.date);
+  }
+
+  /** `Échap` désélectionne la fenêtre (les panneaux et sélecteurs ouverts retiennent la touche avant nous). */
+  protected onWindowEscape(): void {
+    if (this.selectedWindow()) this.selectedWindow.set(null);
+  }
 
   /** Story 46.1 — ce que le dock de la colonne MJ ou joueur dit en vertical : « Éphémérides · 18 ». */
   protected readonly slotsDockLabel = computed(
@@ -2742,6 +2783,20 @@ export class CalendarView implements OnInit {
         this.destinyOptionId.set(target?.optionId ?? null);
         if (target && current !== null) this.moveGridTo(target.date);
       });
+    });
+
+    // Story 46.2 — la fenêtre sélectionnée disparaît avec ce qui la montrait : atelier quitté, liste relue sans elle,
+    // couche éteinte ou vue Agenda.
+    effect(() => {
+      const sel = this.selectedWindow();
+      if (!sel) return;
+      const gone =
+        !this.windowSelectable() ||
+        !this.isLayerActive('disponibilite-groupe') ||
+        this.view() === 'agenda' ||
+        (!this.slotsLoading() &&
+          !this.availableSlots().some((s) => availableSlotKey(s) === availableSlotKey(sel)));
+      if (gone) untracked(() => this.selectedWindow.set(null));
     });
 
     // Story 44.7 — le lien attend les sondages ouverts et, à l'atelier, les données de la partie.

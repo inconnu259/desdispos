@@ -317,6 +317,7 @@
         [composing]="composing()"
         [composeFullDay]="composeAllowsFullDay()"
         [composedKeys]="composedKeys()"
+        [windowKey]="selectedWindowKey()"
         [canSeal]="isMjMode() && partieId() !== null"
         (slotSelected)="onSlotSelected($event)"
         (displayDateChange)="onMonthDateChange($event)"
@@ -342,6 +343,7 @@
         [composing]="composing()"
         [composeFullDay]="composeAllowsFullDay()"
         [composedKeys]="composedKeys()"
+        [windowKey]="selectedWindowKey()"
         [canSeal]="isMjMode() && partieId() !== null"
         (slotSelected)="onSlotSelected($event)"
         (displayDateChange)="onWeekDateChange($event)"
@@ -441,6 +443,23 @@
         (modifyRequested)="openDestinyModify()"
         (otherRequested)="proposeOther()"
       />
+      <!-- Story 46.2 — en Destinée, le MJ garde en pied l'en-tête replié « Éphémérides · N » : le déplier et toucher
+           une carte suspend la Destinée (la désélection la rétablit). Les joueurs n'ont pas cette liste. -->
+      @if (windowSelectable() && isLayerActive('disponibilite-groupe')) {
+        <div class="destiny-board-col__slots">
+          <app-available-slots
+            [slots]="availableSlots()"
+            [loading]="slotsLoading()"
+            [error]="slotsError()"
+            [foldable]="true"
+            [folded]="!boardSlotsOpen()"
+            (foldToggled)="boardSlotsOpen.set(!boardSlotsOpen())"
+            [selectable]="true"
+            [selectedKey]="selectedWindowKey()"
+            (slotSelected)="onWindowSelected($event)"
+          />
+        </div>
+      }
     </app-side-dock>
   }
 
@@ -552,6 +571,9 @@
           [foldable]="!isWide()"
           [folded]="dock.closed()"
           (foldToggled)="dock.toggle()"
+          [selectable]="windowSelectable()"
+          [selectedKey]="selectedWindowKey()"
+          (slotSelected)="onWindowSelected($event)"
         />
       }
     </app-side-dock>

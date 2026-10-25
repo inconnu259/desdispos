@@ -866,6 +866,9 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     // Story 46.1 — boutons de la colonne de droite : noms accessibles identiques dans les trois thèmes
     'calendar.column_dock',
     'calendar.column_reopen',
+    // Story 46.2 — actions de la fenêtre sélectionnée : mêmes mots dans les trois thèmes
+    'calendar.window_add',
+    'calendar.window_hide',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
     'partie.asset_journal_cta',
     'partie.asset_carte_cta',
@@ -2226,7 +2229,12 @@ describe("Tones — fenêtres de l'automate et colonne de droite (Story 46.1)", 
     for (const theme of THEMES) expect(TONE_MAP[theme]['section.slots']).not.toMatch(/destin/i);
   });
 
-  it.each(['calendar.column_dock', 'calendar.column_reopen'])('%s : le même texte dans les trois thèmes', (key) => {
+  it.each([
+    'calendar.column_dock',
+    'calendar.column_reopen',
+    'calendar.window_add',
+    'calendar.window_hide',
+  ])('%s : le même texte dans les trois thèmes', (key) => {
     const texts = THEMES.map((theme) => TONE_MAP[theme][key]);
     expect(texts[0], key).toBeTruthy();
     expect(new Set(texts).size, key).toBe(1);

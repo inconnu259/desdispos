@@ -194,6 +194,12 @@
   /* Story 36.10, AC13 — un créneau DÉSIGNÉ pour un vote, traité comme en vue Mois
      (`.band--composed`) : teinte du vote, trait TIRETÉ, jamais la couleur seule. Distinct de
      `.selected`, qui dit « ce créneau partira à l'écriture de MA disponibilité ». */
+  /* Story 46.2 — la fenêtre de l'automate sélectionnée : contour PLEIN (le tireté est celui du composer). */
+  &.slot-cell--window {
+    outline: 2px solid var(--mat-sys-primary, #6750a4);
+    outline-offset: -2px;
+  }
+
   &.slot-cell--composed {
     background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 24%, transparent);
     outline: 2px dashed var(--jdr-status-todo, #f0a030);

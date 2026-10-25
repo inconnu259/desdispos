@@ -251,6 +251,12 @@
    « ce créneau sera proposé à TOUT LE MONDE ». Deux intentions opposées ne peuvent pas porter le
    même traitement. La teinte est celle du vote (`status-todo`), et le trait est TIRETÉ — la
    forme, pas seulement la couleur (P-1), et « pas encore enregistré » se lit dans le pointillé. */
+.band--window {
+  /* Story 46.2 — la fenêtre de l'automate sélectionnée : contour PLEIN (le tireté est celui du composer). */
+  outline: 2px solid var(--mat-sys-primary, #6750a4);
+  outline-offset: -2px;
+}
+
 .band--composed {
   box-shadow:
     inset 0 0 0 100px color-mix(in srgb, var(--jdr-status-todo, #f0a030) 24%, transparent);

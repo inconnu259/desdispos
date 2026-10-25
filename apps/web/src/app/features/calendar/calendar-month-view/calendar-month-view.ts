@@ -307,6 +307,9 @@ export class CalendarMonthView {
    *  🚨 Comme `destinyDates`, cette vue ne CALCULE rien : elle reçoit l'ensemble dérivé une fois
    *  par `CalendarView`, et la vue Semaine reçoit exactement le même. */
   readonly composedKeys = input<ReadonlySet<string> | null>(null);
+  /** Story 46.2 — la clé (`AAAA-MM-JJ|créneau`) de la fenêtre de l'automate sélectionnée : sa bande prend un contour
+   *  plein. Reçue, jamais dérivée ici (comme `composedKeys`). */
+  readonly windowKey = input<string | null>(null);
 
   /** Story 36.15 — bloc JUMEAU de `calendar-week-view.ts` (`canSeal`). Même double garde que
    *  `CalendarAgendaView.canSeal` (36.12) : être MJ ET être dans le calendrier d'une partie. */
@@ -679,7 +682,7 @@ export class CalendarMonthView {
    *  LETTRES : un lecteur d'écran ne voit ni fond, ni filet, ni trame. Quand un événement est
    *  posé et nommé, c'est son titre qui fait l'état (« Soir : Le Convoi du Nord ») ; quand la
    *  couche est éteinte, on retombe sur l'état de disponibilité, qui lui demeure (AC6). */
-  protected bandAriaLabel(band: DayBand, composed = false): string {
+  protected bandAriaLabel(band: DayBand, composed = false, windowSelected = false): string {
     // Story 36.8, AC15 — 🚨 `.band` porte `role="img"` et un `aria-label` : celui-ci ÉCRASE le
     // contenu, y compris le `role="img"`/`aria-label` propre à `<app-group-gauge>` qu'elle
     // contient désormais. Sans ce repli, le canal serait purement visuel dans la case du Mois —
@@ -700,6 +703,7 @@ export class CalendarMonthView {
       // Story 36.10, AC16 — l'état composé est ANNONCÉ. Le liseré qui le montre n'existe pas pour
       // un lecteur d'écran, et « jamais la couleur seule » (P-1) vaut aussi pour un filet.
       if (composed) parts.push(tone[COMPOSED_ARIA_KEY]);
+      if (windowSelected) parts.push(tone['calendar.window_selected_aria']);
       return parts.join(' — ');
     }
     const labels: Record<SlotStatus, string> = {
@@ -710,6 +714,7 @@ export class CalendarMonthView {
     const parts = [`${band.label} : ${labels[band.status]}`];
     if (groupe) parts.push(groupe);
     if (composed) parts.push(tone[COMPOSED_ARIA_KEY]);
+    if (windowSelected) parts.push(tone['calendar.window_selected_aria']);
     return parts.join(' — ');
   }
 
@@ -725,6 +730,18 @@ export class CalendarMonthView {
 
   /** Story 36.10, AC13 — ce créneau fait-il partie de la composition en cours ? Test
    *  d'appartenance pur : la vue ne dérive rien, elle lit l'ensemble reçu (comme `destinyDates`). */
+  protected isBandWindow(cell: DayCell, slot: DaySlot): boolean {
+    return this.windowKey() === composeCellKey(cell.date, slot);
+  }
+
+  /** Une bande fusionnée porte les trois créneaux : elle est contournée dès que le jour de la fenêtre est le sien. */
+  protected isUniformWindow(cell: DayCell): boolean {
+    const key = this.windowKey();
+    if (key === null) return false;
+    const day = composeCellKey(cell.date, 'FULL_DAY').split('|')[0];
+    return key.startsWith(`${day}|`);
+  }
+
   protected isBandComposed(cell: DayCell, slot: DaySlot): boolean {
     return this.composedKeys()?.has(composeCellKey(cell.date, slot)) ?? false;
   }
@@ -744,6 +761,7 @@ export class CalendarMonthView {
     return this.bandAriaLabel(
       { ...cell.bands[0], label: 'Journée' },
       this.isBandComposed(cell, 'FULL_DAY'),
+      this.isUniformWindow(cell),
     );
   }
 

@@ -306,6 +306,12 @@
   overflow-y: auto;
 }
 
+.destiny-board-col__slots {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mat-sys-outline-variant, #ccc);
+}
+
 .destiny-board-col--partie {
   flex: 0 0 40%;
   min-width: 280px;

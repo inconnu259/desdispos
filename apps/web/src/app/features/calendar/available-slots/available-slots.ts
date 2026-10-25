@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { AggregatedSlotDto, AvailableSlotDto } from '@master-jdr/shared';
+import type { AggregatedSlotDto, AvailableSlotDto, DaySlot } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { AggregatedCreneauCard } from '../aggregated-creneau-card/aggregated-creneau-card';
 import { CreneauCard } from '../creneau-card/creneau-card';
@@ -20,6 +20,11 @@ type AnySlotDto = AvailableSlotDto | AggregatedSlotDto;
  */
 export function isNamedSlot(s: AnySlotDto): s is AvailableSlotDto {
   return !('total' in s);
+}
+
+/** La clé d'une fenêtre : son jour et son créneau. Partagée avec les grilles, qui la comparent à la leur. */
+export function availableSlotKey(s: { date: string; slot: DaySlot }): string {
+  return `${s.date}|${s.slot}`;
 }
 
 function slotPriority(s: AnySlotDto): number {
@@ -57,6 +62,12 @@ export class AvailableSlotsPanel {
   /** Story 46.1 — la liste est repliée (état partagé, tenu par `ColumnDockService`). Sans effet si non repliable. */
   readonly folded = input<boolean>(false);
   readonly foldToggled = output<void>();
+  /** Story 46.2 — le MJ peut sélectionner une fenêtre (vue nominative seulement : les joueurs n'ont rien à choisir). */
+  readonly selectable = input<boolean>(false);
+  /** Story 46.2 — la clé de la fenêtre sélectionnée (`date|créneau`), ou `null`. */
+  readonly selectedKey = input<string | null>(null);
+  /** Story 46.2 — la fenêtre touchée ; `null` quand on retouche celle qui était sélectionnée. */
+  readonly slotSelected = output<AvailableSlotDto | null>();
 
   protected readonly theme = inject(ThemeToneService);
 
@@ -80,6 +91,14 @@ export class AvailableSlotsPanel {
       return a.date.localeCompare(b.date);
     }),
   );
+
+  protected windowKey(s: AvailableSlotDto): string {
+    return availableSlotKey(s);
+  }
+
+  protected onSelectToggled(s: AvailableSlotDto): void {
+    this.slotSelected.emit(this.selectedKey() === availableSlotKey(s) ? null : s);
+  }
 
   protected isMjSlot(s: AnySlotDto): s is AvailableSlotDto {
     return isNamedSlot(s);

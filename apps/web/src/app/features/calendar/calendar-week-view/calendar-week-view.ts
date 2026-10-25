@@ -310,6 +310,8 @@ export class CalendarWeekView {
   readonly composing = input(false);
   /** Créneaux composés, en clés `YYYY-MM-DD|SLOT` (`composeCellKey`). `null` hors mode. */
   readonly composedKeys = input<ReadonlySet<string> | null>(null);
+  /** Story 46.2 — la clé (`AAAA-MM-JJ|créneau`) de la fenêtre de l'automate sélectionnée (reçue, jamais dérivée ici). */
+  readonly windowKey = input<string | null>(null);
 
   /** Story 36.15 — même double garde que `CalendarAgendaView.canSeal` (36.12) : être MJ ET être
    *  dans le calendrier d'une partie. `CalendarView` la calcule (`isMjMode() && partieId() !==
@@ -774,7 +776,13 @@ export class CalendarWeekView {
     // passé par le gabarit (`row.slot`) plutôt que redéduit du libellé : `slotName` est du texte
     // d'affichage, s'en servir de clé le rendrait intraduisible.
     if (slot && this.isCellComposed(cell, slot)) parts.push(tone['common.designe_pour_le_vote']);
+    if (slot && this.isCellWindow(cell, slot)) parts.push(tone['calendar.window_selected_aria']);
     return parts.join(' — ');
+  }
+
+  /** Story 46.2 — cette cellule est-elle la fenêtre de l'automate sélectionnée ? */
+  protected isCellWindow(cell: WeekCell, slot: DaySlot): boolean {
+    return this.windowKey() === composeCellKey(cell.date, slot);
   }
 
   /** Story 36.10, AC13 — ce créneau fait-il partie de la composition en cours ? */

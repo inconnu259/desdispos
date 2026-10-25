@@ -2016,3 +2016,50 @@ describe('CalendarMonthView — sceller depuis la barre de sélection (Story 36.
     );
   });
 });
+
+// ─── Story 46.2 — la fenêtre de l'automate sélectionnée : contour plein, jamais tireté ──────────
+describe('CalendarMonthView — fenêtre de l’automate sélectionnée (Story 46.2)', () => {
+  let el: HTMLElement;
+
+  async function createWith(windowKey: string | null) {
+    await TestBed.configureTestingModule({
+      imports: [CalendarMonthView],
+      providers: [provideAnimationsAsync()],
+    }).compileComponents();
+    const f = TestBed.createComponent(CalendarMonthView);
+    f.componentRef.setInput('activeLayers', ['mes-disponibilites']);
+    f.componentRef.setInput('initialDate', new Date(2026, 7, 15));
+    f.componentRef.setInput('windowKey', windowKey);
+    f.detectChanges();
+    el = f.nativeElement;
+    return f;
+  }
+
+  const cellOf = (day: number) => {
+    const target = new Date(2026, 7, day).getTime();
+    return el.querySelector(`.day-cell[data-cell-date="${target}"]`) as HTMLElement;
+  };
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('sans fenêtre : aucune bande contournée', async () => {
+    await createWith(null);
+    expect(el.querySelectorAll('.band--window')).toHaveLength(0);
+  });
+
+  it('un jour sans rien (bande fusionnée) est contourné dès que la fenêtre tombe ce jour-là', async () => {
+    await createWith('2026-08-20|EVENING');
+    const band = cellOf(20).querySelector('.band') as HTMLElement;
+    expect(band.classList).toContain('band--uniform');
+    expect(band.classList).toContain('band--window');
+    expect(el.querySelectorAll('.band--window')).toHaveLength(1);
+    expect(band.getAttribute('aria-label')).toContain(
+      TONE_MAP['grimoire-emeraude']['calendar.window_selected_aria'],
+    );
+  });
+
+  it('une autre clé ne contourne rien', async () => {
+    await createWith('2026-09-20|EVENING');
+    expect(el.querySelectorAll('.band--window')).toHaveLength(0);
+  });
+});

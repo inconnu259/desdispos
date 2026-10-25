@@ -1399,3 +1399,56 @@ describe('CalendarWeekView — sceller depuis la barre de sélection (Story 36.1
     );
   });
 });
+
+// ─── Story 46.2 — la fenêtre de l'automate sélectionnée : contour plein, jamais tireté ──────────
+describe('CalendarWeekView — fenêtre de l’automate sélectionnée (Story 46.2)', () => {
+  let fixture: ComponentFixture<CalendarWeekView>;
+  let el: HTMLElement;
+  const start = new Date();
+  start.setDate(start.getDate() + 14);
+  const weekStart = getWeekStart(
+    new Date(Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())),
+  );
+  const dayKey = (i: number) => {
+    const y = weekStart.getUTCFullYear();
+    const d = new Date(y, weekStart.getUTCMonth(), weekStart.getUTCDate() + i);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  function create(windowKey: string | null): void {
+    TestBed.configureTestingModule({ imports: [CalendarWeekView] });
+    fixture = TestBed.createComponent(CalendarWeekView);
+    fixture.componentRef.setInput('startDate', start);
+    fixture.componentRef.setInput('entries', []);
+    fixture.componentRef.setInput('activeLayers', []);
+    fixture.componentRef.setInput('windowKey', windowKey);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+  const cellAt = (slot: 'MORNING' | 'AFTERNOON' | 'EVENING', i: number) =>
+    Array.from(el.querySelectorAll<HTMLElement>(`.slot-cell[data-cell-slot="${slot}"]`))[i];
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('sans fenêtre : aucune cellule contournée', () => {
+    create(null);
+    expect(el.querySelectorAll('.slot-cell--window')).toHaveLength(0);
+  });
+
+  it('la cellule de la fenêtre porte le contour, et elle seule', () => {
+    create(`${dayKey(2)}|EVENING`);
+    expect(el.querySelectorAll('.slot-cell--window')).toHaveLength(1);
+    expect(cellAt('EVENING', 2).classList).toContain('slot-cell--window');
+    expect(cellAt('MORNING', 2).classList).not.toContain('slot-cell--window');
+  });
+
+  it('son nom accessible dit « fenêtre sélectionnée » (jamais le contour seul)', () => {
+    create(`${dayKey(2)}|EVENING`);
+    expect(cellAt('EVENING', 2).getAttribute('aria-label')).toContain(
+      TONE_MAP['grimoire-emeraude']['calendar.window_selected_aria'],
+    );
+    expect(cellAt('EVENING', 3).getAttribute('aria-label')).not.toContain(
+      TONE_MAP['grimoire-emeraude']['calendar.window_selected_aria'],
+    );
+  });
+});

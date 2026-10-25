@@ -907,6 +907,10 @@ export const grimoireEmeraude = {
   // Story 46.1 — les deux boutons de la colonne de droite : mêmes mots dans les trois thèmes (accessibilité).
   'calendar.column_dock': 'Ranger la colonne',
   'calendar.column_reopen': 'Rouvrir la colonne',
+  // Story 46.2 — la fenêtre de l'automate sélectionnée : actions écrites et annonce, mêmes mots dans les trois thèmes.
+  'calendar.window_add': 'Ajouter au vote',
+  'calendar.window_hide': 'Masquer',
+  'calendar.window_selected_aria': 'fenêtre sélectionnée',
   'calendar.rail_empty': 'Aucun jour à consulter',
   'calendar.rail_status_unknown': 'Rien d’inscrit',
   'calendar.layer_group_aria': 'Couches affichées de l’almanach',

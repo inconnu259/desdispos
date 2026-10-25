@@ -126,6 +126,7 @@
                   [class.preview]="cell.bands[0].preview !== null"
                   [class.band--selected]="isDaySelected(cell)"
                   [class.band--composed]="isBandComposed(cell, 'FULL_DAY')"
+                  [class.band--window]="isUniformWindow(cell)"
                   [attr.aria-label]="uniformAriaLabel(cell)"
                   role="img"
                   (pointerdown)="
@@ -146,7 +147,14 @@
                     [class.band--selected]="isBandSelected(cell, band.slot)"
                     [class.band--gauge]="bandHasGauge(band)"
                     [class.band--composed]="isBandComposed(cell, band.slot)"
-                    [attr.aria-label]="bandAriaLabel(band, isBandComposed(cell, band.slot))"
+                    [class.band--window]="isBandWindow(cell, band.slot)"
+                    [attr.aria-label]="
+                      bandAriaLabel(
+                        band,
+                        isBandComposed(cell, band.slot),
+                        isBandWindow(cell, band.slot)
+                      )
+                    "
                     role="img"
                     (pointerdown)="
                       $event.stopPropagation(); onBandPointerDown($event, cell, band.slot)

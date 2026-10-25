@@ -1,4 +1,5 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, inject, input, output } from '@angular/core';
 import type { AvailableSlotDto, DaySlot, SlotStatus } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
@@ -19,12 +20,17 @@ const STATUS_ICONS: Record<SlotStatus, string> = {
 @Component({
   selector: 'app-creneau-card',
   standalone: true,
-  imports: [IdentityLabel],
+  imports: [IdentityLabel, NgTemplateOutlet],
   templateUrl: './creneau-card.html',
   styleUrl: './creneau-card.scss',
 })
 export class CreneauCard {
   readonly slot = input.required<AvailableSlotDto>();
+  /** Story 46.2 — la carte peut être sélectionnée (la vue nominative du MJ seulement). */
+  readonly selectable = input(false);
+  readonly selected = input(false);
+  /** Touché (ou entrée au clavier sur l'en-tête) : sélectionner, ou désélectionner si c'est déjà la carte choisie. */
+  readonly selectToggled = output<void>();
   protected readonly theme = inject(ThemeToneService);
 
   protected readonly allAvailable = computed(() =>
@@ -37,6 +43,13 @@ export class CreneauCard {
 
   /** AC3 : distingue les membres homonymes par leur pseudo. */
   protected readonly ambiguousMembers = computed(() => ambiguousUserIds(this.slot().members));
+
+  /** Un seul chemin pour le tap sur la carte et l'activation du bouton d'en-tête. */
+  protected toggleSelection(event: Event): void {
+    if (!this.selectable()) return;
+    event.stopPropagation();
+    this.selectToggled.emit();
+  }
 
   protected isAmbiguous(userId: string): boolean {
     return this.ambiguousMembers().has(userId);

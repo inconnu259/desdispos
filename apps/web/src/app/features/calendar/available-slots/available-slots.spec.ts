@@ -179,3 +179,48 @@ describe('AvailableSlotsPanel — titre et repli (Story 46.1)', () => {
     expect(el.querySelectorAll('app-creneau-card')).toHaveLength(2);
   });
 });
+
+// Story 46.2 — sélectionner une fenêtre de l'automate : la vue nominative du MJ seulement.
+describe('AvailableSlotsPanel — sélection d’une fenêtre (Story 46.2)', () => {
+  let fixture: ComponentFixture<AvailableSlotsPanel>;
+  let el: HTMLElement;
+  const OTHER: AvailableSlotDto = { ...SLOT, slot: 'AFTERNOON' };
+
+  function create(inputs: Record<string, unknown>, slots: unknown[] = [SLOT, OTHER]): void {
+    fixture = TestBed.createComponent(AvailableSlotsPanel);
+    fixture.componentRef.setInput('slots', slots);
+    for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  beforeEach(() => TestBed.configureTestingModule({ imports: [AvailableSlotsPanel] }));
+
+  it('la carte dont la clé est celle de la sélection est marquée, les autres non', () => {
+    create({ selectable: true, selectedKey: '2026-07-04|MORNING' });
+    const cards = [...el.querySelectorAll('.creneau-card')];
+    expect(cards[0].classList).toContain('creneau-card--selected');
+    expect(cards[1].classList).not.toContain('creneau-card--selected');
+  });
+
+  it('toucher une carte émet la fenêtre ; retoucher la sélectionnée émet null', () => {
+    create({ selectable: true, selectedKey: null });
+    const emitted: unknown[] = [];
+    fixture.componentInstance.slotSelected.subscribe((s) => emitted.push(s));
+    el.querySelectorAll<HTMLButtonElement>('.creneau-card__select')[1].click();
+    expect(emitted).toEqual([OTHER]);
+
+    fixture.componentRef.setInput('selectedKey', '2026-07-04|AFTERNOON');
+    fixture.detectChanges();
+    el.querySelectorAll<HTMLButtonElement>('.creneau-card__select')[1].click();
+    expect(emitted).toEqual([OTHER, null]);
+  });
+
+  it('vue des joueurs (cartes agrégées) : rien à sélectionner', () => {
+    create({ selectable: true }, [
+      { date: '2026-07-04', slot: 'MORNING', total: 2, available: 2, unavailable: 0 },
+    ]);
+    expect(el.querySelector('app-aggregated-creneau-card')).not.toBeNull();
+    expect(el.querySelector('.creneau-card__select')).toBeNull();
+  });
+});

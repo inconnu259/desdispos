@@ -863,6 +863,7 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'partie.ralliement_kind_plain_CAMPAGNE_EPISODIQUE',
     'calendar.rendezvous_nature_seance',
     'calendar.rendezvous_nature_soiree',
+    'calendar.rendezvous_nature_seance_poll',
     // Story 46.1 — boutons de la colonne de droite : noms accessibles identiques dans les trois thèmes
     'calendar.column_dock',
     'calendar.column_reopen',

@@ -31,6 +31,14 @@ export class CreneauCard {
   readonly selected = input(false);
   /** Touché (ou entrée au clavier sur l'en-tête) : sélectionner, ou désélectionner si c'est déjà la carte choisie. */
   readonly selectToggled = output<void>();
+  /** Story 46.3 — « Ajouter au vote » : la fenêtre part vers le composer. */
+  readonly addRequested = output<void>();
+  /** Story 46.3 — il y a un composer à armer (ou déjà armé) : sinon le bouton reste écrit mais désactivé, jamais muet. */
+  readonly canAdd = input(true);
+
+  protected onAdd(): void {
+    if (this.canAdd()) this.addRequested.emit();
+  }
   protected readonly theme = inject(ThemeToneService);
 
   protected readonly allAvailable = computed(() =>

@@ -165,7 +165,11 @@ describe('PartiesService', () => {
     computeSlotStatus: jest.Mock;
   };
   let realtimeEvents: { emit: jest.Mock };
-  let polls: { removeOpenVotesInTx: jest.Mock; closePollsInTx: jest.Mock };
+  let polls: {
+    removeOpenVotesInTx: jest.Mock;
+    closePollsInTx: jest.Mock;
+    openOptionKeys: jest.Mock;
+  };
   let mailer: { send: jest.Mock };
 
   const partie = {
@@ -277,6 +281,8 @@ describe('PartiesService', () => {
     polls = {
       removeOpenVotesInTx: jest.fn().mockResolvedValue(0),
       closePollsInTx: jest.fn().mockResolvedValue(0),
+      // Story 46.3 — aucun créneau proposé par un sondage ouvert, par défaut.
+      openOptionKeys: jest.fn().mockResolvedValue(new Set<string>()),
     };
     mailer = { send: jest.fn().mockResolvedValue(undefined) };
     service = new PartiesService(
@@ -2661,6 +2667,65 @@ describe('PartiesService', () => {
       expect(results.length).toBeLessThanOrEqual(20);
     });
 
+    describe('fenêtres déjà proposées par un sondage ouvert (Story 46.3)', () => {
+      const FROM = '2030-03-04';
+      const TO = '2030-03-14'; // 11 jours = 33 créneaux : le plafond de 20 joue
+
+      it('le MJ ne reçoit pas une fenêtre qui coïncide avec une option d’un sondage ouvert', async () => {
+        polls.openOptionKeys.mockResolvedValue(new Set(['2030-03-04|MORNING']));
+        const results = (await service.getAvailableSlots(
+          'p1',
+          'mj1',
+          1,
+          FROM,
+          TO,
+        )) as AvailableSlotDto[];
+
+        expect(polls.openOptionKeys).toHaveBeenCalledWith(prisma, 'p1');
+        expect(results.some((r) => r.date === '2030-03-04' && r.slot === 'MORNING')).toBe(false);
+        // Le même jour, un autre créneau reste proposé : seul le DÉPART identique est exclu.
+        expect(results[0]).toMatchObject({ date: '2030-03-04', slot: 'AFTERNOON' });
+      });
+
+      it('l’exclusion précède le plafond : la liste garde ses 20 fenêtres', async () => {
+        polls.openOptionKeys.mockResolvedValue(
+          new Set(['2030-03-04|MORNING', '2030-03-04|AFTERNOON', '2030-03-04|EVENING']),
+        );
+        const results = await service.getAvailableSlots('p1', 'mj1', 1, FROM, TO);
+        expect(results).toHaveLength(20);
+        expect(
+          (results as AvailableSlotDto[]).some((r) => r.date === '2030-03-04'),
+        ).toBe(false);
+      });
+
+      it('sans sondage ouvert, la liste est celle d’avant', async () => {
+        const results = (await service.getAvailableSlots(
+          'p1',
+          'mj1',
+          1,
+          FROM,
+          TO,
+        )) as AvailableSlotDto[];
+        expect(results[0]).toMatchObject({ date: '2030-03-04', slot: 'MORNING' });
+      });
+
+      it('un joueur reçoit la vue agrégée, intacte, sans que les sondages soient lus', async () => {
+        polls.openOptionKeys.mockResolvedValue(new Set(['2030-03-04|MORNING']));
+        prisma.membership.findUnique.mockResolvedValue({ userId: 'u1', partieId: 'p1' });
+        const results = (await service.getAvailableSlots(
+          'p1',
+          'u1',
+          1,
+          FROM,
+          TO,
+        )) as AggregatedSlotDto[];
+
+        expect(polls.openOptionKeys).not.toHaveBeenCalled();
+        expect(results[0]).toMatchObject({ date: '2030-03-04', slot: 'MORNING' });
+        expect(results[0]).not.toHaveProperty('members');
+      });
+    });
+
     it('trie par priorité : AVAILABLE avant UNKNOWN, UNAVAILABLE en dernier', async () => {
       // Alterne AVAILABLE / UNAVAILABLE par participant pour créer des priorités mixtes
       // (MJ absent du mock → seuls u1/u2 sont participants)
@@ -2936,7 +3001,10 @@ describe('PartiesService', () => {
         realtime,
         new EventsService(p, realtime),
         permissions,
-        { removeOpenVotesInTx: jest.fn() } as unknown as PollVoteCleanupService,
+        {
+          removeOpenVotesInTx: jest.fn(),
+          openOptionKeys: jest.fn().mockResolvedValue(new Set<string>()),
+        } as unknown as PollVoteCleanupService,
         { send: jest.fn() } as unknown as EventCancellationMailer,
       );
 

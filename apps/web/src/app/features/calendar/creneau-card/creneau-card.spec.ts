@@ -142,21 +142,46 @@ describe('CreneauCard — sélection (Story 46.2)', () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  it('sélectionnée : contour, aria-pressed, et les deux actions écrites mais désactivées', () => {
+  it('sélectionnée : contour, aria-pressed, « Ajouter au vote » actif et « Masquer » encore désactivé', () => {
     create({ selectable: true, selected: true });
     expect(el.querySelector('.creneau-card')!.classList).toContain('creneau-card--selected');
     expect(el.querySelector('.creneau-card__select')!.getAttribute('aria-pressed')).toBe('true');
     const actions = [...el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')];
     expect(actions.map((a) => a.textContent!.trim())).toEqual(['Ajouter au vote', 'Masquer']);
-    expect(actions.every((a) => a.getAttribute('aria-disabled') === 'true')).toBe(true);
+    expect(actions[0].getAttribute('aria-disabled')).toBeNull();
+    expect(actions[1].getAttribute('aria-disabled')).toBe('true');
   });
 
-  it('cliquer une action désactivée ne bascule pas la sélection', () => {
+  it('sans composer à armer (canAdd faux) : « Ajouter au vote » est désactivé et ne demande rien', () => {
+    create({ selectable: true, selected: true, canAdd: false });
+    const add = vi.fn();
+    fixture.componentInstance.addRequested.subscribe(add);
+    const button = el.querySelector<HTMLButtonElement>('.creneau-card__action--primary')!;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    button.click();
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it('« Ajouter au vote » demande l’ajout, sans basculer la sélection', () => {
+    create({ selectable: true, selected: true });
+    const add = vi.fn();
+    const toggled = vi.fn();
+    fixture.componentInstance.addRequested.subscribe(add);
+    fixture.componentInstance.selectToggled.subscribe(toggled);
+    el.querySelector<HTMLButtonElement>('.creneau-card__action--primary')!.click();
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('cliquer « Masquer » (désactivé jusqu’à la 46.4) ne bascule pas la sélection et ne demande rien', () => {
     create({ selectable: true, selected: true });
     const spy = vi.fn();
+    const add = vi.fn();
     fixture.componentInstance.selectToggled.subscribe(spy);
-    el.querySelector<HTMLButtonElement>('.creneau-card__action')!.click();
+    fixture.componentInstance.addRequested.subscribe(add);
+    el.querySelectorAll<HTMLButtonElement>('.creneau-card__action')[1].click();
     expect(spy).not.toHaveBeenCalled();
+    expect(add).not.toHaveBeenCalled();
   });
 
   it('non sélectionnée : pas d’actions', () => {

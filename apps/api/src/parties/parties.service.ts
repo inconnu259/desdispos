@@ -1620,7 +1620,13 @@ export class PartiesService implements PartieSignalsPort {
       return dateCmp !== 0 ? dateCmp : slotIdx(a) - slotIdx(b);
     });
 
-    const limited = sorted.slice(0, 20);
+    // Story 46.3 — vue nominative du MJ seulement : une fenêtre déjà proposée par un sondage ouvert de la partie ne
+    // se repropose pas. L'exclusion précède le plafond (les 20 restants sont de vraies propositions) ; la vue agrégée
+    // des joueurs reste identique à celle d'avant.
+    const proposed = nominative
+      ? await this.polls.openOptionKeys(this.prisma, partieId)
+      : new Set<string>();
+    const limited = sorted.filter((s) => !proposed.has(`${s.date}|${s.slot}`)).slice(0, 20);
 
     if (nominative) return limited;
 

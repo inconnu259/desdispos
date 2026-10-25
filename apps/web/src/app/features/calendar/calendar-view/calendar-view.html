@@ -261,7 +261,7 @@
     <!-- Story 45.1 — le choix du rendez-vous, ouvert par « Proposer des dates » : mêmes deux enveloppes que la
          liste des destinées (menu ancré sur ordinateur, tiroir modal du bas en dessous de 1024 px), même
          piège de focus rendu au bouton, Échap et fond assombri ferment sans rien changer. -->
-    @if (isDesktop()) {
+    @if (isDesktop() && rendezvousPickerMode() === 'propose') {
       @if (proposeAnchor(); as anchor) {
         <ng-template
           cdkConnectedOverlay
@@ -281,7 +281,10 @@
             cdkTrapFocusAutoCapture
             [attr.aria-label]="theme.tone()['calendar.rendezvous_picker_title']"
           >
-            <app-rendezvous-picker [rows]="rendezvousRows()" (chosen)="pickRendezvous($event)" />
+            <app-rendezvous-picker
+              [rows]="rendezvousPickerRows()"
+              (chosen)="pickRendezvous($event)"
+            />
           </div>
         </ng-template>
       }
@@ -297,7 +300,7 @@
         [attr.aria-label]="theme.tone()['calendar.rendezvous_picker_title']"
         (keydown)="onRendezvousPickerKeydown($event)"
       >
-        <app-rendezvous-picker [rows]="rendezvousRows()" (chosen)="pickRendezvous($event)" />
+        <app-rendezvous-picker [rows]="rendezvousPickerRows()" (chosen)="pickRendezvous($event)" />
       </div>
     }
 
@@ -448,7 +451,7 @@
       @if (windowSelectable() && isLayerActive('disponibilite-groupe')) {
         <div class="destiny-board-col__slots">
           <app-available-slots
-            [slots]="availableSlots()"
+            [slots]="displayedSlots()"
             [loading]="slotsLoading()"
             [error]="slotsError()"
             [foldable]="true"
@@ -457,6 +460,8 @@
             [selectable]="true"
             [selectedKey]="selectedWindowKey()"
             (slotSelected)="onWindowSelected($event)"
+            [canAdd]="windowAddable()"
+            (addRequested)="addSelectedWindow($event)"
           />
         </div>
       }
@@ -565,7 +570,7 @@
            affiche déjà ces mêmes créneaux chronologiquement, pour éviter le doublon. -->
       @if (isLayerActive('disponibilite-groupe') && view() !== 'agenda') {
         <app-available-slots
-          [slots]="availableSlots()"
+          [slots]="displayedSlots()"
           [loading]="slotsLoading()"
           [error]="slotsError()"
           [foldable]="!isWide()"
@@ -574,6 +579,8 @@
           [selectable]="windowSelectable()"
           [selectedKey]="selectedWindowKey()"
           (slotSelected)="onWindowSelected($event)"
+          [canAdd]="windowAddable()"
+          (addRequested)="addSelectedWindow($event)"
         />
       }
     </app-side-dock>

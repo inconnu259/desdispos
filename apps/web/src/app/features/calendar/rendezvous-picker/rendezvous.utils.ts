@@ -1,4 +1,5 @@
 import {
+  isComposableSeance,
   isDatableSeance,
   type DatableSeanceEntry,
   type EventCardDto,
@@ -7,7 +8,7 @@ import {
 } from '@master-jdr/shared';
 
 /** La nature d'un rendez-vous à dater, telle que le choix l'écrit : une séance de JDR ou une soirée isolée. */
-export type RendezvousNature = 'seance' | 'soiree';
+export type RendezvousNature = 'seance' | 'soiree' | 'seance_poll';
 
 /** Un rendez-vous à dater, tel que « Proposer des dates » le liste (Story 45.1). */
 export interface RendezvousRow {
@@ -71,6 +72,45 @@ export function jdrRendezvous(
         partieName: partie.name,
         family: 'jdr',
         nature: 'seance',
+        title: titleOf(scenario.title, i + 1, scenario.seances.length),
+      });
+    });
+  }
+  return rows;
+}
+
+/**
+ * Story 46.3 — les rendez-vous COMPOSABLES d'une partie de JDR : à dater (comme `jdrRendezvous`), ou porteurs d'un vote
+ * OUVERT que la personne peut modifier (`can.edit`) — le composer part alors de ses créneaux. Définis par le prédicat
+ * partagé `isComposableSeance`. C'est ce que liste le choix quand une fenêtre de l'automate s'ajoute au vote.
+ */
+export function jdrComposable(
+  scenarios: readonly ScenarioDto[],
+  partie: { id: string; name: string },
+  frozen: boolean,
+  titleOf: RendezvousTitle,
+): RendezvousRow[] {
+  const rows: RendezvousRow[] = [];
+  for (const scenario of scenarios) {
+    if (scenario.status === 'PASSE') continue;
+    scenario.seances.forEach((seance, i) => {
+      const hasOpenPoll = seance.poll?.status === 'OPEN';
+      const composable = isComposableSeance({
+        hasDate: !!seance.dateValidee || !!seance.inscription?.dateValidee,
+        hasPoll: !!seance.poll,
+        hasOpenPoll,
+        cancelled: false,
+        frozen,
+        canPropose: seance.can.propose,
+        canEdit: seance.can.edit,
+      });
+      if (!composable) return;
+      rows.push({
+        seanceId: seance.id,
+        partieId: partie.id,
+        partieName: partie.name,
+        family: 'jdr',
+        nature: hasOpenPoll ? 'seance_poll' : 'seance',
         title: titleOf(scenario.title, i + 1, scenario.seances.length),
       });
     });

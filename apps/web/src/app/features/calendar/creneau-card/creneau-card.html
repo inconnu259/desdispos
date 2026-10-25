@@ -55,11 +55,16 @@
   }
 
   @if (selectable() && selected()) {
-    <!-- Story 46.2 — les deux actions de la fenêtre sélectionnée. Écrites, 44 px, mais DÉSACTIVÉES : leur effet
-         arrive avec 46.3 (« Ajouter au vote ») et 46.4 (« Masquer »), qui n'auront qu'à les activer. -->
+    <!-- Story 46.2 / 46.3 — les deux actions de la fenêtre sélectionnée, écrites, 44 px. « Ajouter au vote » envoie la
+         fenêtre au composer (46.3) ; « Masquer » reste DÉSACTIVÉ jusqu'à la 46.4, qui n'aura qu'à l'activer. -->
     <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- le clic ne fait que ne pas remonter à la carte -->
     <div class="creneau-card__actions" (click)="$event.stopPropagation()">
-      <button type="button" class="creneau-card__action creneau-card__action--primary" aria-disabled="true">
+      <button
+        type="button"
+        class="creneau-card__action creneau-card__action--primary"
+        [attr.aria-disabled]="canAdd() ? null : 'true'"
+        (click)="onAdd()"
+      >
         {{ theme.tone()['calendar.window_add'] }}
       </button>
       <button type="button" class="creneau-card__action" aria-disabled="true">

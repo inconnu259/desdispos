@@ -40,4 +40,23 @@ export class PollVoteCleanupService {
     });
     return count;
   }
+
+  /**
+   * Story 46.3 — les créneaux déjà proposés par un sondage OUVERT de la partie, en clés `AAAA-MM-JJ|CRÉNEAU`
+   * (UTC). `PartiesService.getAvailableSlots()` en retire, pour le MJ seul, les fenêtres de l'automate qui
+   * coïncident (même départ ; la durée de chaque option est de 1 créneau, jusqu'à l'épic 47) : une fenêtre déjà
+   * dans un vote n'a pas à être reproposée. Lecture seule, aucun droit décidé ici (l'appelant a déjà fait
+   * `PARTIE_AVAILABILITY_READ` et ne s'en sert que pour la vue nominative) ; `parties/` ne lit jamais les tables
+   * du sondage lui-même.
+   */
+  async openOptionKeys(
+    db: Pick<Prisma.TransactionClient, 'pollOption'>,
+    partieId: string,
+  ): Promise<Set<string>> {
+    const options = await db.pollOption.findMany({
+      where: { poll: { partieId, status: 'OPEN' } },
+      select: { date: true, slot: true },
+    });
+    return new Set(options.map((o) => `${o.date.toISOString().substring(0, 10)}|${o.slot}`));
+  }
 }

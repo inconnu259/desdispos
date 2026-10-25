@@ -272,6 +272,44 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
     });
   });
 
+  describe('fenêtres déjà proposées par un vote ouvert (Story 46.3)', () => {
+    it("le MJ ne reçoit plus une fenêtre qu'un vote ouvert propose ; le joueur garde sa vue agrégée", async () => {
+      const mjA = await h.createUser('mj-fenetres');
+      const joueur = await h.createUser('joueur-fenetres');
+      const { id: partieId } = await h.createPartie(mjA, 'ONE_SHOT', 'fenetres');
+      await h.addMember(partieId, joueur);
+      const scenariosRes = await mjA.agent.get(`/parties/${partieId}/scenarios`).expect(200);
+      const seanceId = body<ScenarioDtoLike[]>(scenariosRes)[0].seances[0].id;
+
+      const proposed = { date: isoDay(21), slot: 'EVENING' };
+      const range = { from: isoDay(20), to: isoDay(24) };
+      const read = async (user: TestUser) =>
+        body<{ date: string; slot: string; members?: unknown }[]>(
+          await user.agent.get(`/parties/${partieId}/available-slots`).query(range).expect(200),
+        );
+      const has = (list: { date: string; slot: string }[]) =>
+        list.some((s) => s.date === proposed.date && s.slot === proposed.slot);
+
+      // Avant le vote : la fenêtre est servie aux deux.
+      expect(has(await read(mjA))).toBe(true);
+      expect(has(await read(joueur))).toBe(true);
+
+      await mjA.agent
+        .post(`/scenarios/seances/${seanceId}/poll`)
+        .send({ options: [proposed, { date: isoDay(22), slot: 'MORNING' }] })
+        .expect(201);
+
+      // Vote ouvert : le MJ ne la reçoit plus (ni l'autre option) ; le joueur, si — vue agrégée intacte.
+      const mjList = await read(mjA);
+      expect(has(mjList)).toBe(false);
+      expect(mjList.some((s) => s.date === isoDay(22) && s.slot === 'MORNING')).toBe(false);
+      expect(mjList.every((s) => 'members' in s)).toBe(true);
+      const playerList = await read(joueur);
+      expect(has(playerList)).toBe(true);
+      expect(playerList.every((s) => !('members' in s))).toBe(true);
+    });
+  });
+
   describe('scénario Courant en campagne linéaire', () => {
     it('fige : un seul scénario Courant — 1er passage 200, second refusé en 409', async () => {
       const { id: partieId } = await h.createPartie(mj, 'CAMPAGNE_LINEAIRE', 'courant');

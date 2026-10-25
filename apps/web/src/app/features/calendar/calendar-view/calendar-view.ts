@@ -109,10 +109,12 @@ import { RendezvousPicker } from '../rendezvous-picker/rendezvous-picker';
 import {
   groupRendezvous,
   jdrRendezvous,
+  jdrComposable,
   rowFromEntry,
   type RendezvousRow,
   type RendezvousTitle,
 } from '../rendezvous-picker/rendezvous.utils';
+import { displayedWindows } from '../window-list.utils';
 import { DestinySheet, type DestinySheetModel } from '../destiny-sheet/destiny-sheet';
 import {
   DestinyBoard,
@@ -1381,6 +1383,12 @@ export class CalendarView implements OnInit {
   /** Les cartes de l'automate ne se sélectionnent qu'à l'atelier du MJ (les joueurs gardent leur vue agrégée). */
   protected readonly windowSelectable = computed(() => this.isMjMode() && this.partieId() !== null);
 
+  /** Story 46.3 — « Ajouter au vote » a-t-il quelque part où verser la fenêtre ? Composer ouvert, vote de la Destinée
+   *  modifiable, ou au moins un rendez-vous composable. Sinon le bouton est désactivé : jamais un clic muet. */
+  protected readonly windowAddable = computed(
+    () => this.composing() || this.modifiablePoll() !== null || this.composableRows().length > 0,
+  );
+
   protected onWindowSelected(slot: AvailableSlotDto | null): void {
     if (!slot) {
       this.selectedWindow.set(null);
@@ -1397,7 +1405,13 @@ export class CalendarView implements OnInit {
 
   /** Story 46.1 — ce que le dock de la colonne MJ ou joueur dit en vertical : « Éphémérides · 18 ». */
   protected readonly slotsDockLabel = computed(
-    () => `${this.theme.tone()['section.slots']} · ${this.availableSlots().length}`,
+    () => `${this.theme.tone()['section.slots']} · ${this.displayedSlots().length}`,
+  );
+
+  /** Story 46.3 (AR8) — les fenêtres de l'automate affichées : celles que le serveur sert, moins celles du composer.
+   *  Une seule fonction pure (`displayedWindows`) ; la vue des joueurs, sans composer, reçoit la liste servie. */
+  protected readonly displayedSlots = computed(() =>
+    displayedWindows(this.availableSlots(), this.composedKeys()),
   );
 
   /** Story 46.1 — le dock de la colonne d'un groupe : ses votes de dates, comptés. */
@@ -1972,6 +1986,11 @@ export class CalendarView implements OnInit {
   private readonly partieMeta = signal<{ name: string; frozen: boolean } | null>(null);
 
   protected readonly rendezvousPickerOpen = signal(false);
+  /** Story 46.3 — le choix sert « Proposer des dates » (rendez-vous à dater) ou « Ajouter au vote » d'une fenêtre de
+   *  l'automate (rendez-vous composables : à dater, ou au vote ouvert). */
+  protected readonly rendezvousPickerMode = signal<'propose' | 'window'>('propose');
+  /** Story 46.3 — la fenêtre que le MJ veut verser au vote, en attente du choix du rendez-vous. */
+  private readonly pendingWindow = signal<{ date: string; slot: DaySlot } | null>(null);
   private readonly proposeButtonRef = viewChild('proposeBtn', {
     read: ElementRef<HTMLButtonElement>,
   });
@@ -1997,6 +2016,25 @@ export class CalendarView implements OnInit {
     return rows;
   });
 
+  /** Story 46.3 — les rendez-vous COMPOSABLES de l'atelier (JDR) : à dater, ou au vote ouvert modifiable
+   *  (`isComposableSeance`). Seul le MJ d'un JDR a des fenêtres de l'automate à verser. */
+  protected readonly composableRows = computed<RendezvousRow[]>(() => {
+    const id = this.partieId();
+    if (id === null || this.isGroup()) return [];
+    const meta = this.partieMeta();
+    return jdrComposable(
+      this.scenarios(),
+      { id, name: meta?.name ?? '' },
+      meta?.frozen ?? false,
+      this.rendezvousTitle,
+    );
+  });
+
+  /** Les lignes du choix, selon ce qu'il sert. */
+  protected readonly rendezvousPickerRows = computed<RendezvousRow[]>(() =>
+    this.rendezvousPickerMode() === 'window' ? this.composableRows() : this.rendezvousRows(),
+  );
+
   /** La destinée active est un vote que l'organisateur peut modifier DEPUIS CET ATELIER (`can.edit`), ou `null`. */
   private readonly modifiablePoll = computed<ComposeTarget | null>(() => {
     const destinyId = this.destinyPollId();
@@ -2021,7 +2059,7 @@ export class CalendarView implements OnInit {
 
   /** Le choix n'a de sens que s'il y a des lignes : sans elles le bouton a disparu, et le menu perdrait son ancre. */
   protected readonly rendezvousPickerShown = computed(
-    () => this.rendezvousPickerOpen() && this.rendezvousRows().length > 0,
+    () => this.rendezvousPickerOpen() && this.rendezvousPickerRows().length > 0,
   );
 
   protected onProposeClicked(): void {
@@ -2064,6 +2102,8 @@ export class CalendarView implements OnInit {
     if (this.composing()) return;
     const rows = this.rendezvousRows();
     if (rows.length === 0) return;
+    this.pendingWindow.set(null);
+    this.rendezvousPickerMode.set('propose');
     if (rows.length === 1) this.pickRendezvous(rows[0]);
     else this.rendezvousPickerOpen.set(true);
   }
@@ -2071,6 +2111,8 @@ export class CalendarView implements OnInit {
   /** Rendre le focus au bouton : sans quoi un utilisateur clavier retombe en haut du document. */
   protected closeRendezvousPicker(): void {
     this.rendezvousPickerOpen.set(false);
+    // Story 46.3 — renoncer au choix garde la fenêtre sélectionnée : rien n'a été versé.
+    this.pendingWindow.set(null);
     this.proposeButtonRef()?.nativeElement.focus();
   }
 
@@ -2085,6 +2127,8 @@ export class CalendarView implements OnInit {
    *  partie s'ouvre (la vitrine n'arme JAMAIS de composer). */
   protected pickRendezvous(row: RendezvousRow): void {
     this.rendezvousPickerOpen.set(false);
+    const pending = this.pendingWindow();
+    this.pendingWindow.set(null);
     if (this.partieId() === null) {
       // Seul le MJ d'un JDR a `can.propose` sur une séance de JDR : son atelier vit à `/calendar`.
       const role = row.family === 'jdr' ? 'mj' : 'player';
@@ -2097,6 +2141,47 @@ export class CalendarView implements OnInit {
       return;
     }
     this.startCompose(row.seanceId);
+    // Story 46.3 — le composer est armé : la fenêtre qui a lancé le choix y entre.
+    if (pending && this.composing()) this.addWindowCell(pending);
+  }
+
+  /**
+   * ⚠️ Story 46.3 — « Ajouter au vote » : la fenêtre passe TOUJOURS par le composer. Composer ouvert : elle y entre
+   * directement ; sinon, la destinée active est un vote de cette partie que l'on peut modifier : le composer s'arme avec
+   * ses créneaux plus la fenêtre ; sinon, le choix du rendez-vous (sauté s'il n'y en a qu'un). Rien n'est écrit ici :
+   * la validation du composer reste le seul chemin d'écriture.
+   */
+  protected addSelectedWindow(slot?: AvailableSlotDto): void {
+    const window = slot ? { date: slot.date, slot: slot.slot } : this.selectedWindow();
+    if (!window) return;
+    if (this.composing()) {
+      this.addWindowCell(window);
+      return;
+    }
+    const target = this.modifiablePoll();
+    if (target) {
+      this.armTarget(target);
+      this.addWindowCell(window);
+      return;
+    }
+    const rows = this.composableRows();
+    if (rows.length === 0) return;
+    this.pendingWindow.set(window);
+    this.rendezvousPickerMode.set('window');
+    if (rows.length === 1) this.pickRendezvous(rows[0]);
+    else this.rendezvousPickerOpen.set(true);
+  }
+
+  /** Verse une fenêtre dans les créneaux composés (sans doublon) et la désélectionne : elle est désormais une cellule
+   *  du composer, et quitte la liste de l'automate. */
+  private addWindowCell(window: { date: string; slot: DaySlot }): void {
+    const cell: SelectedCell = { date: dateKeyToLocalMidnight(window.date), slot: window.slot };
+    const key = composeCellKey(cell.date, cell.slot);
+    this.composedCells.update((cells) =>
+      cells.some((c) => composeCellKey(c.date, c.slot) === key) ? cells : [...cells, cell],
+    );
+    this.composeRefusal.set(null);
+    this.selectedWindow.set(null);
   }
 
   /** Lit le nom et l'état de la partie de l'atelier (le mode MJ ne lit pas la partie par ailleurs). Un échec

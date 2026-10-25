@@ -25,6 +25,7 @@ import { PollService } from '../../../core/poll/poll.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { CALENDAR_LAYER_KEYS, DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
 import { toDateKey } from '../day-detail.utils';
+import { composeCellKey } from '../selection.utils';
 import { RealtimeService, partieTopic, userTopic } from '../../../core/realtime/realtime.service';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';
@@ -7889,5 +7890,276 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
       expect(root(fixture).querySelector('app-destiny-board')).not.toBeNull();
       expect(root(fixture).querySelector('.mj-results-panel')).toBeNull();
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 46.3 — ajouter une fenêtre de l'automate au vote
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+  const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[] };
+  const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[] };
+
+  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((n) => n.remove());
+    TestBed.resetTestingModule();
+  });
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+
+  /** Un scénario à une séance sans date ni vote, que le MJ peut dater. */
+  function freeScenario(id: string, title: string, over: Record<string, unknown> = {}) {
+    return {
+      id,
+      partieId: 'partie-1',
+      title,
+      description: null,
+      status: 'COURANT',
+      dureeHeures: null,
+      dureeSeances: null,
+      resumeFin: null,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      closedAt: null,
+      seances: [
+        {
+          id: `${id}-s1`,
+          scenarioId: id,
+          compteRendu: null,
+          createdAt: '2026-07-13T00:00:00.000Z',
+          can: ORGANIZER,
+          ...over,
+        },
+      ],
+    };
+  }
+
+  /** Un scénario dont la séance porte un vote OUVERT de deux créneaux (le composer part d'eux). */
+  const openVoteScenario = (id: string, title: string) =>
+    freeScenario(id, title, {
+      poll: {
+        id: 'poll9',
+        partieId: 'partie-1',
+        status: 'OPEN',
+        scenarioRef: null,
+        expiresAt: null,
+        chosenDate: null,
+        chosenSlot: null,
+        membersCount: 2,
+        options: [
+          { id: 'o1', date: '2030-04-04T00:00:00.000Z', slot: 'EVENING', votes: [] },
+          { id: 'o2', date: '2030-04-06T00:00:00.000Z', slot: 'EVENING', votes: [] },
+        ],
+      },
+    });
+
+  async function atelier(scenarios: any[], extra: Record<string, unknown> = {}) {
+    const ctx = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios,
+      partie: { name: 'La Tour' },
+      ...extra,
+    });
+    const comp = ctx.fixture.componentInstance as any;
+    comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+    comp.availableSlots.set([WIN_A, WIN_B]);
+    await tick(ctx.fixture);
+    return { ...ctx, comp };
+  }
+
+  const keys = (comp: any) => comp.composedCells().map((c: any) => composeCellKey(c.date, c.slot));
+
+  it('composer déjà ouvert : la fenêtre y entre directement, quitte la liste et n’est plus sélectionnée', async () => {
+    const { fixture, comp } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    comp.startCompose('sc1-s1');
+    comp.onWindowSelected(WIN_A);
+    await tick(fixture);
+
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    expect(keys(comp)).toEqual(['2030-03-06|EVENING']);
+    expect(comp.selectedWindow()).toBeNull();
+    expect(comp.displayedSlots().map((s: any) => s.date)).toEqual(['2030-03-09']);
+    // Aucune écriture : seul le composer a bougé.
+    expect(comp.composing()).toBe(true);
+  });
+
+  it('le bouton « Ajouter au vote » de la carte sélectionnée fait la même chose', async () => {
+    const { fixture, comp } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    root(fixture).querySelector<HTMLButtonElement>('.mj-results-panel .creneau-card__select')!.click();
+    await tick(fixture);
+    root(fixture)
+      .querySelector<HTMLButtonElement>('.mj-results-panel .creneau-card__action--primary')!
+      .click();
+    await tick(fixture);
+
+    expect(comp.composing()).toBe(true);
+    expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
+    expect(keys(comp)).toEqual(['2030-03-06|EVENING']);
+  });
+
+  it('un seul rendez-vous composable : le choix est sauté, le composer s’arme sur lui avec la fenêtre', async () => {
+    const { fixture, comp } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    comp.onWindowSelected(WIN_B);
+    await tick(fixture);
+
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    expect(comp.rendezvousPickerOpen()).toBe(false);
+    expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
+    expect(keys(comp)).toEqual(['2030-03-09|MORNING']);
+  });
+
+  it('la Destinée active est un vote modifiable de cette partie : le composer part de ses créneaux plus la fenêtre', async () => {
+    const { fixture, comp } = await atelier([openVoteScenario('sc1', 'Chapitre 1')], {
+      openPolls: [
+        openPollEntry({
+          pollId: 'poll9',
+          partieId: 'partie-1',
+          can: ORGANIZER,
+          options: [
+            { optionId: 'o1', date: '2030-04-04', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+            { optionId: 'o2', date: '2030-04-06', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+          ],
+        }),
+      ],
+    });
+    comp.chooseDestiny('poll9');
+    await tick(fixture);
+    comp.onWindowSelected(WIN_A);
+    await tick(fixture);
+
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    expect(comp.rendezvousPickerOpen()).toBe(false);
+    expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll9' });
+    expect(keys(comp).sort()).toEqual(['2030-03-06|EVENING', '2030-04-04|EVENING', '2030-04-06|EVENING']);
+  });
+
+  it('plusieurs composables : le choix s’ouvre (à dater ET au vote ouvert) ; en choisir un arme le composer et y verse la fenêtre', async () => {
+    const { fixture, comp } = await atelier([
+      freeScenario('sc1', 'Chapitre 1'),
+      openVoteScenario('sc2', 'Chapitre 2'),
+    ]);
+    comp.onWindowSelected(WIN_A);
+    await tick(fixture);
+
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    expect(comp.rendezvousPickerShown()).toBe(true);
+    expect(comp.composing()).toBe(false);
+    const rows = [...document.body.querySelectorAll('.rendezvous-picker__row')];
+    expect(rows.map((r) => r.querySelector('.rendezvous-picker__meta')!.textContent!.trim())).toEqual([
+      GRIMOIRE_TONE['calendar.rendezvous_nature_seance'],
+      GRIMOIRE_TONE['calendar.rendezvous_nature_seance_poll'],
+    ]);
+
+    (rows[1] as HTMLButtonElement).click();
+    await tick(fixture);
+    expect(comp.rendezvousPickerOpen()).toBe(false);
+    expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll9' });
+    expect(keys(comp).sort()).toEqual(['2030-03-06|EVENING', '2030-04-04|EVENING', '2030-04-06|EVENING']);
+  });
+
+  it('plusieurs composables : choisir une séance à dater crée un vote neuf avec la fenêtre', async () => {
+    const { fixture, comp } = await atelier([
+      freeScenario('sc1', 'Chapitre 1'),
+      openVoteScenario('sc2', 'Chapitre 2'),
+    ]);
+    comp.onWindowSelected(WIN_A);
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    (document.body.querySelectorAll('.rendezvous-picker__row')[0] as HTMLButtonElement).click();
+    await tick(fixture);
+    expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
+    expect(keys(comp)).toEqual(['2030-03-06|EVENING']);
+  });
+
+  it('fermer le choix sans rien choisir garde la fenêtre sélectionnée et n’arme rien', async () => {
+    const { fixture, comp } = await atelier([
+      freeScenario('sc1', 'Chapitre 1'),
+      freeScenario('sc2', 'Chapitre 2'),
+    ]);
+    comp.onWindowSelected(WIN_A);
+    comp.addSelectedWindow();
+    await tick(fixture);
+    expect(comp.rendezvousPickerShown()).toBe(true);
+
+    comp.closeRendezvousPicker();
+    await tick(fixture);
+    expect(comp.composing()).toBe(false);
+    expect(comp.selectedWindowKey()).toBe('2030-03-06|EVENING');
+    expect(comp.pendingWindow()).toBeNull();
+  });
+
+  it('annuler le composer rend les fenêtres ajoutées à la liste', async () => {
+    const { fixture, comp } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    comp.onWindowSelected(WIN_A);
+    comp.addSelectedWindow();
+    await tick(fixture);
+    expect(comp.displayedSlots()).toHaveLength(1);
+
+    comp.cancelCompose();
+    await tick(fixture);
+    expect(comp.displayedSlots()).toHaveLength(2);
+    expect(comp.composing()).toBe(false);
+  });
+
+  it('retirer la fenêtre du composer la rend à la liste', async () => {
+    const { fixture, comp } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    comp.onWindowSelected(WIN_A);
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    comp.onComposeToggled({ date: comp.composedCells()[0].date, slot: 'EVENING' });
+    await tick(fixture);
+    expect(comp.composedCells()).toHaveLength(0);
+    expect(comp.displayedSlots()).toHaveLength(2);
+  });
+
+  it('rien de composable (date posée, droit absent) : ajouter n’arme rien et n’écrit rien', async () => {
+    const { fixture, comp, pollSvc, scenariosSvc } = await atelier([
+      freeScenario('sc1', 'A', { dateValidee: '2099-01-01' }),
+      freeScenario('sc2', 'B', { can: { propose: false, edit: false, choose: false, extend: false } }),
+    ]);
+    comp.onWindowSelected(WIN_A);
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    expect(comp.composing()).toBe(false);
+    expect(comp.rendezvousPickerOpen()).toBe(false);
+    expect(comp.selectedWindowKey()).toBe('2030-03-06|EVENING');
+    expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
+    expect(scenariosSvc.createSeancePoll).not.toHaveBeenCalled();
+    // Le bouton le dit : désactivé, jamais un clic muet.
+    expect(comp.windowAddable()).toBe(false);
+    expect(
+      root(fixture)
+        .querySelector('.mj-results-panel .creneau-card__action--primary')!
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+  });
+
+  it('la même fenêtre ajoutée deux fois ne se double pas', async () => {
+    const { fixture, comp } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
+    comp.startCompose('sc1-s1');
+    comp.addSelectedWindow(WIN_A);
+    comp.addSelectedWindow(WIN_A);
+    await tick(fixture);
+    expect(comp.composedCells()).toHaveLength(1);
   });
 });

@@ -3,6 +3,7 @@ import type { AggregatedSlotDto, AvailableSlotDto, DaySlot } from '@master-jdr/s
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { AggregatedCreneauCard } from '../aggregated-creneau-card/aggregated-creneau-card';
 import { CreneauCard } from '../creneau-card/creneau-card';
+import { windowKeyOf } from '../window-list.utils';
 
 type AnySlotDto = AvailableSlotDto | AggregatedSlotDto;
 
@@ -24,7 +25,7 @@ export function isNamedSlot(s: AnySlotDto): s is AvailableSlotDto {
 
 /** La clé d'une fenêtre : son jour et son créneau. Partagée avec les grilles, qui la comparent à la leur. */
 export function availableSlotKey(s: { date: string; slot: DaySlot }): string {
-  return `${s.date}|${s.slot}`;
+  return windowKeyOf(s);
 }
 
 function slotPriority(s: AnySlotDto): number {
@@ -68,6 +69,10 @@ export class AvailableSlotsPanel {
   readonly selectedKey = input<string | null>(null);
   /** Story 46.2 — la fenêtre touchée ; `null` quand on retouche celle qui était sélectionnée. */
   readonly slotSelected = output<AvailableSlotDto | null>();
+  /** Story 46.3 — « Ajouter au vote » sur la fenêtre sélectionnée. */
+  readonly addRequested = output<AvailableSlotDto>();
+  /** Story 46.3 — y a-t-il un rendez-vous où verser la fenêtre ? Sinon « Ajouter au vote » est désactivé. */
+  readonly canAdd = input<boolean>(true);
 
   protected readonly theme = inject(ThemeToneService);
 

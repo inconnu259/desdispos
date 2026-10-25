@@ -420,6 +420,35 @@ export function isDatableSeance(seance: {
   );
 }
 
+/**
+ * Un rendez-vous (séance) « composable » (Story 46.3, AR3) : celui sur lequel le composer peut s'armer — soit « à dater »
+ * (`isDatableSeance`), soit porteur d'un sondage OUVERT que la personne peut modifier (le composer part alors de ses
+ * créneaux). Ni annulé ni figé dans les deux cas. LA définition, lue par le choix du rendez-vous quand une fenêtre de
+ * l'automate est ajoutée au vote. `canPropose` = `can.propose`, `canEdit` = `can.edit`.
+ */
+export function isComposableSeance(seance: {
+  hasDate: boolean;
+  hasPoll: boolean;
+  hasOpenPoll: boolean;
+  cancelled: boolean;
+  frozen: boolean;
+  canPropose: boolean;
+  canEdit: boolean;
+}): boolean {
+  if (
+    isDatableSeance({
+      hasDate: seance.hasDate,
+      hasPoll: seance.hasPoll,
+      cancelled: seance.cancelled,
+      frozen: seance.frozen,
+      canOrganize: seance.canPropose,
+    })
+  ) {
+    return true;
+  }
+  return seance.hasOpenPoll && !seance.cancelled && !seance.frozen && seance.canEdit;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversion du type d'une partie (Story 29.14)
 //

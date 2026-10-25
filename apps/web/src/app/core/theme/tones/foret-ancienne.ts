@@ -919,6 +919,8 @@ export const foretAncienne: Record<ToneKey, string> = {
   // Nature d'un rendez-vous dans le choix : explication en clair, identique dans les trois thèmes.
   'calendar.rendezvous_nature_seance': 'séance sans date',
   'calendar.rendezvous_nature_soiree': 'soirée sans date',
+  // Story 46.3 — un rendez-vous au vote ouvert, que l'on peut rouvrir au composer : même explication dans les trois thèmes.
+  'calendar.rendezvous_nature_seance_poll': 'séance au vote ouvert',
   'calendar.view_toggle_aria': 'Vue du calendrier lunaire',
   'calendar.view_toggle_month_short': 'Mois',
   'calendar.view_toggle_week_short': 'Sem.',

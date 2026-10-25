@@ -46,6 +46,8 @@
               [selectable]="selectable()"
               [selected]="selectedKey() === windowKey($any(s))"
               (selectToggled)="onSelectToggled($any(s))"
+              [canAdd]="canAdd()"
+              (addRequested)="addRequested.emit($any(s))"
             />
           } @else {
             <app-aggregated-creneau-card [slot]="$any(s)" />

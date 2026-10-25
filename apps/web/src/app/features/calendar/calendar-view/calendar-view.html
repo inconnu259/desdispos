@@ -595,17 +595,6 @@
   }
 </div>
 
-@if (pollPanelOpen() && lockedSeanceId(); as sid) {
-  <p class="locked-seance-indicator">{{ theme.tone()['calendar.view_locked_seance_hint'] }}</p>
-  <app-poll-creation
-    [partieId]="partieId()!"
-    [preselectedSlots]="mjSlots()"
-    [seanceId]="sid"
-    (created)="onPollCreated($event)"
-    (cancelled)="closePollPanel()"
-  />
-}
-
 @if (panelOpen()) {
   <div class="constraint-backdrop" (click)="closePanel()" aria-hidden="true"></div>
   <app-constraint-panel

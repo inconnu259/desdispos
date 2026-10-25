@@ -22,6 +22,7 @@ import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { PollService } from '../../../core/poll/poll.service';
+import { atelierUrl } from '@master-jdr/shared';
 import { composeSeanceInfo, toDateKey } from '../../calendar/day-detail.utils';
 import { PollStatusPanel } from '../../poll/poll-status/poll-status';
 import { PollResponseComponent } from '../../poll/poll-response/poll-response';
@@ -208,13 +209,14 @@ export class SeanceList {
       : this.formatValidatedDate(this.resolvedDate(seance)!);
   }
 
-  // Story 8.7, AC2/AC3 : point d'entrée unique — envoie le MJ sur le calendrier (mode MJ) avec
-  // cette séance pré-sélectionnée/verrouillée, plutôt qu'un panneau de création dupliqué ici.
-  // Story 8.8 : ce même point d'entrée est désormais aussi utilisé pour l'épisodique.
+  // Story 8.7, AC2/AC3 : point d'entrée unique — envoie le MJ sur le calendrier (mode MJ) plutôt qu'un panneau
+  // de création dupliqué ici. Story 8.8 : aussi utilisé pour l'épisodique.
+  // ⚠️ Story 45.2 : `?seanceId` ARME le composer du calendrier pour cette séance (le panneau 8.7 n'existe plus),
+  // par l'adresse de l'atelier construite par la fonction unique `atelierUrl`.
   protected goToCalendarForSeance(seanceId: string): void {
-    void this.router.navigate(['/parties', this.partieId(), 'calendar'], {
-      queryParams: { seanceId },
-    });
+    void this.router.navigateByUrl(
+      atelierUrl({ partieId: this.partieId(), family: 'jdr', role: 'mj' }, { seanceId }),
+    );
   }
 
   protected openCapacityEdit(seanceId: string): void {

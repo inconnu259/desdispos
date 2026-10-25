@@ -131,12 +131,10 @@ import { ComposeBar } from '../compose-bar/compose-bar';
 import {
   ComposeConfirmDialog,
   type ComposeConfirmData,
-  type ComposeSeanceChoice,
 } from '../compose-confirm-dialog/compose-confirm-dialog';
-import { AvailableSlotsPanel, isNamedSlot } from '../available-slots/available-slots';
+import { AvailableSlotsPanel } from '../available-slots/available-slots';
 import { VoteAnswerPicker } from '../vote-answer-picker/vote-answer-picker';
 import type { VoteOptionActivatedEvent, VoteParticipation } from '../poll-track.utils';
-import { PollCreationComponent } from '../../poll/poll-creation/poll-creation';
 import {
   ConjonctionDraftService,
   type ConjonctionDraft,
@@ -220,14 +218,12 @@ const CALENDAR_CELL_DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', {
  * alors un AUTRE vote — donc écrirait les créneaux composés dans le mauvais. */
 /** Ce que la composition de créneaux vise.
  *
- *  🚨 Story 36.12 — `seanceId` **facultatif** sur `'new'` : quand la composition est armée depuis
- *  l'Agenda, le MJ a déjà désigné la séance en cliquant sa ligne, et la lui redemander à la
- *  validation serait une question dont il a déjà donné la réponse. Renseigné, il restreint
- *  `composeSeanceChoices()` à cette séance — ce qui suffit à pré-remplir `ComposeConfirmDialog`,
- *  qui le fait déjà quand il n'y a qu'un choix. Aucune ligne à changer dans le dialogue. */
+ *  ⚠️ Story 45.2 — `seanceId` est REQUIS sur `'new'` : le rendez-vous se choisit AVANT le composer (« Proposer
+ *  des dates », `?seanceId`, ligne d'Agenda), plus à la validation ; la fenêtre de confirmation n'a plus de
+ *  sélecteur de séance. */
 export type ComposeTarget =
   | { kind: 'poll'; pollId: string }
-  | { kind: 'new'; seanceId?: string }
+  | { kind: 'new'; seanceId: string }
   // Story 40.5b — les deux cibles d'un GROUPE : les créneaux du sondage d'une conjonction déjà
   // ouverte (par l'identifiant de la conjonction, jamais un index : la liste est rechargée en direct),
   // ou ceux d'une conjonction qui n'existe pas encore (aucun appel au serveur : le brouillon de la
@@ -271,7 +267,6 @@ export interface EligibleSeanceEntry {
     MatButtonToggleModule,
     MatButtonModule,
     AvailableSlotsPanel,
-    PollCreationComponent,
     PollMissingPanel,
     VoteAnswerPicker,
     CdkConnectedOverlay,
@@ -1157,6 +1152,10 @@ export class CalendarView implements OnInit {
    * recalcule la pertinence depuis ses propres bandes (doctrine AD-12/AD-19).
    */
   protected readonly destinyDates = computed<ReadonlySet<string> | null>(() => {
+    // ⚠️ Story 45.2 (AR16) — armer le composer SUSPEND la Destinée : plus d'estompe (le plateau est déjà masqué par
+    // `destinyPresentable`). `destinyPollId` n'est pas touché : annuler rend l'état exact d'avant, valider
+    // réactive la Destinée sur le vote créé ou modifié.
+    if (this.composing()) return null;
     const current = this.destinyPoll();
     if (!current) return null;
     const dates = new Set<string>();
@@ -1770,6 +1769,11 @@ export class CalendarView implements OnInit {
         label: this.pollEntryLabel(entry),
       });
     }
+    const target = this.composeTarget();
+    if (target?.kind === 'new') {
+      const row = this.rendezvousRows().find((r) => r.seanceId === target.seanceId);
+      if (row) return fillTone(tone['calendar.view_compose_target_poll'], { label: row.title });
+    }
     return tone['calendar.view_compose_target_new'];
   });
 
@@ -1785,23 +1789,6 @@ export class CalendarView implements OnInit {
       : entry.scenario.title;
   }
 
-  /** Les séances auxquelles un vote neuf peut être rattaché (AC11). Vide ⇒ la création n'est pas
-   *  proposée : un vote sans séance est structurellement interdit. */
-  private readonly composeSeanceChoices = computed<ComposeSeanceChoice[]>(() => {
-    const target = this.composeTarget();
-    // Story 36.12, AC13 — armée depuis une ligne d'agenda, la composition connaît déjà sa séance.
-    // On restreint la liste plutôt que d'ajouter un chemin : le dialogue pré-remplit tout seul
-    // quand il n'y a qu'un choix, et si la séance a cessé d'être éligible entre-temps (un vote y
-    // a été créé ailleurs), la liste devient vide et `composeBlockedReason()` le dit.
-    const only = target?.kind === 'new' ? target.seanceId : undefined;
-    return this.eligibleSeances()
-      .filter((e) => !only || e.seance.id === only)
-      .map((e) => ({
-        seanceId: e.seance.id,
-        label: this.scenarioSeanceTitle(e.scenario.title, e.seanceIndex),
-      }));
-  });
-
   /** Story 40.5b — la composition vise la conjonction d'un groupe (ouverte, ou à créer). */
   private isGroupTarget(): boolean {
     const kind = this.composeTarget()?.kind;
@@ -1814,10 +1801,7 @@ export class CalendarView implements OnInit {
     const n = this.composedCells().length;
     // Story 40.5b — un groupe : au moins deux créneaux, aucun plafond métier (le serveur garde le sien).
     if (this.isGroupTarget()) return n >= GROUP_MIN_SLOTS;
-    if (n < 2 || n > 40) return false;
-    if (this.composeTarget()?.kind === 'new' && this.composeSeanceChoices().length === 0)
-      return false;
-    return true;
+    return n >= 2 && n <= 40;
   });
 
   protected readonly composeBlockedReason = computed(() => {
@@ -1828,19 +1812,16 @@ export class CalendarView implements OnInit {
     }
     if (n < 2) return tone['calendar.view_compose_blocked_min'];
     if (n > 40) return tone['calendar.view_compose_blocked_max'];
-    if (this.composeTarget()?.kind === 'new' && this.composeSeanceChoices().length === 0)
-      return tone['calendar.view_compose_blocked_no_seance'];
     return '';
   });
 
-  /** Le point d'entrée n'existe que là où la composition a un sens (AC10). */
-  protected readonly canCompose = computed(() => {
-    if (!this.isMjMode() || this.partieId() === null) return false;
-    const destinyId = this.destinyPollId();
-    const hasTargetPoll =
-      destinyId !== null && this.activePolls().some((e) => e.poll.id === destinyId);
-    return hasTargetPoll || this.eligibleSeances().length > 0;
-  });
+  /** Le point d'entrée n'existe que là où la composition a un sens (AC10) : à l'atelier, et s'il y a quelque chose à
+   *  proposer ou à modifier — décidé par les droits servis (`can`), jamais par le mode de la route (Story 45.2). */
+  protected readonly canCompose = computed(
+    () =>
+      this.partieId() !== null &&
+      (this.modifiablePoll() !== null || this.rendezvousRows().length > 0),
+  );
 
   // ─── Story 45.1 — « Proposer des dates » ────────────────────────────────────────────────────────
   //
@@ -1880,25 +1861,20 @@ export class CalendarView implements OnInit {
     const frozen = meta?.frozen ?? false;
     const rows = this.isGroup()
       ? groupRendezvous(this.groupEvents(), partie, frozen)
-      : this.isMjMode()
-        ? jdrRendezvous(this.scenarios(), partie, frozen, this.rendezvousTitle)
-        : [];
+      : jdrRendezvous(this.scenarios(), partie, frozen, this.rendezvousTitle);
     return armableRendezvous(rows);
   });
 
-  /** La destinée active est un vote que l'organisateur peut modifier DEPUIS CET ATELIER, ou `null`. */
-  private readonly modifiablePoll = computed<
-    { kind: 'jdr' } | { kind: 'group'; eventId: string } | null
-  >(() => {
+  /** La destinée active est un vote que l'organisateur peut modifier DEPUIS CET ATELIER (`can.edit`), ou `null`. */
+  private readonly modifiablePoll = computed<ComposeTarget | null>(() => {
     const destinyId = this.destinyPollId();
     if (destinyId === null || this.partieId() === null) return null;
     if (this.isGroup()) {
       const entry = this.groupPolls().find((e) => e.poll.id === destinyId && e.card.can.edit);
-      return entry ? { kind: 'group', eventId: entry.card.id } : null;
+      return entry ? { kind: 'group-poll', eventId: entry.card.id } : null;
     }
-    return this.isMjMode() && this.activePolls().some((e) => e.poll.id === destinyId)
-      ? { kind: 'jdr' }
-      : null;
+    const entry = this.activePolls().find((e) => e.poll.id === destinyId && e.seance.can.edit);
+    return entry ? { kind: 'poll', pollId: entry.poll.id } : null;
   });
 
   /** Le bouton de la ligne de contrôles : « Proposer des dates », « Modifier les dates », ou rien — jamais
@@ -1918,8 +1894,7 @@ export class CalendarView implements OnInit {
     const mode = this.proposeButton();
     if (mode === 'modify') {
       const target = this.modifiablePoll();
-      if (target?.kind === 'group') this.startGroupCompose(target.eventId);
-      else this.startCompose();
+      if (target) this.armTarget(target);
       return;
     }
     if (mode !== 'propose') return;
@@ -1974,54 +1949,106 @@ export class CalendarView implements OnInit {
   }
 
   /**
-   * AC1 — arme le mode. La cible se déduit de ce que le MJ regarde : un vote mis en avant par la
-   * Destinée se MODIFIE, sinon on en compose un neuf.
-   *
-   * AC13 — modifier part de l'état RÉEL du vote : ses options actuelles sont déjà composées, sans
-   * quoi « retiré s'il y était déjà » (AC2) n'aurait aucun référent et le MJ ne pourrait
-   * qu'ajouter.
+   * ⚠️ Story 45.2 — la cible de composition d'un rendez-vous, décidée par ce que la charge utile a de plus frais ET
+   * par les droits servis (`can`) — jamais par le mode de la route :
+   * - un vote OUVERT que l'on peut modifier (`can.edit`) → le composer part de ses créneaux actuels ;
+   * - un rendez-vous encore à dater (`can.propose`, scénario non clôturé) → un vote neuf ;
+   * - sinon `null` : le rendez-vous n'est plus à dater ni modifiable.
+   * Une soirée isolée sans date n'a pas encore de cible (Story 45.5).
    */
-  protected startCompose(seanceId?: string): void {
-    if (!this.canCompose()) return;
-
-    // Story 36.12, AC13 — armée depuis l'Agenda sur une séance précise : on compose un vote NEUF
-    // pour ELLE, sans regarder la Destinée. Sinon « Lancer un vote » sur une séance modifierait
-    // le vote mis en avant d'une autre.
-    //
-    // 🚨 Revue de code (36.12) — ne JAMAIS écraser une composition déjà en cours avec des créneaux
-    // choisis : sans cette garde, cliquer « Lancer un vote » sur une autre séance pendant qu'une
-    // composition est en cours viderait silencieusement la sélection du MJ.
-    if (seanceId) {
-      if (this.composing() && this.composedCells().length > 0) return;
-      this.composeTarget.set({ kind: 'new', seanceId });
-      this.composedCells.set([]);
-      this.composing.set(true);
-      return;
+  private composeTargetFor(seanceId: string): ComposeTarget | null {
+    if (this.isGroup()) {
+      const entry = this.groupPolls().find((e) => e.card.seance?.id === seanceId);
+      return entry?.card.can.edit ? { kind: 'group-poll', eventId: entry.card.id } : null;
     }
+    const open = this.activePolls().find((e) => e.seance.id === seanceId);
+    if (open) return open.seance.can.edit ? { kind: 'poll', pollId: open.poll.id } : null;
+    return this.rendezvousRows().some((r) => r.seanceId === seanceId)
+      ? { kind: 'new', seanceId }
+      : null;
+  }
 
-    // 🚨 On repart de `destinyPollId()` et d'`activePolls()`, jamais de `destinyPoll()` :
-    // celui-ci dérive des ENTRÉES du calendrier, donc d'un vote dont au moins une option tombe
-    // dans la plage affichée. Un vote mis en avant dont les créneaux sont hors du mois courant
-    // serait alors traité comme « pas de cible », et la validation créerait un SECOND vote au
-    // lieu de modifier le premier. `activePolls()` fait autorité en contexte de partie.
-    const destinyId = this.destinyPollId();
-    const entry = destinyId ? this.activePolls().find((e) => e.poll.id === destinyId) : null;
-
-    if (entry) {
-      this.composeTarget.set({ kind: 'poll', pollId: entry.poll.id });
-      // 🚨 Les options viennent d'`activePolls()`, jamais d'`allCalendarEntries()` : celles-ci
-      // sont bornées par la plage affichée en contexte personnel, et une option hors plage
-      // manquerait au jeu de départ — donc serait silencieusement SUPPRIMÉE à la validation.
-      const cells = entry.poll.options.map((o) => ({
+  /**
+   * Arme le composer sur une cible décidée. Modifier part de l'état RÉEL du vote : ses options actuelles sont
+   * déjà composées, sans quoi « retiré s'il y était déjà » (AC2) n'aurait aucun référent et le MJ ne pourrait
+   * qu'ajouter.
+   *
+   * 🚨 Les options viennent d'`activePolls()` / `groupPolls()`, jamais d'`allCalendarEntries()` : celles-ci sont
+   * bornées par la plage affichée en contexte personnel, et une option hors plage manquerait au jeu de départ —
+   * donc serait silencieusement SUPPRIMÉE à la validation.
+   */
+  private armTarget(target: ComposeTarget): void {
+    let cells: SelectedCell[] = [];
+    if (target.kind === 'poll') {
+      const entry = this.activePolls().find((e) => e.poll.id === target.pollId);
+      if (!entry) return;
+      cells = entry.poll.options.map((o) => ({
         date: dateKeyToLocalMidnight(o.date.substring(0, 10)),
         slot: o.slot,
       }));
-      this.composedCells.set(cells);
-    } else {
-      this.composeTarget.set({ kind: 'new' });
-      this.composedCells.set([]);
+    } else if (target.kind === 'group-poll') {
+      const entry = this.groupPolls().find((e) => e.card.id === target.eventId);
+      if (!entry) return;
+      cells = entry.poll.options.map((o) => ({
+        date: dateKeyToLocalMidnight(o.date.substring(0, 10)),
+        slot: o.slot,
+      }));
     }
+    this.composeTarget.set(target);
+    this.composedCells.set(cells);
+    this.composeRefusal.set(null);
     this.composing.set(true);
+    // Un groupe se compose en vue Semaine (règle 40.5b) ; la vue Agenda n'a ni grille ni barre de composition.
+    if (target.kind === 'group-poll') this.showGridForCompose();
+    else if (this.view() === 'agenda') this.onViewChange('month');
+  }
+
+  /**
+   * Arme le mode pour un rendez-vous précis (`seanceId`), ou — sans argument — sur le vote que la Destinée met
+   * en avant (« Modifier les dates »).
+   *
+   * Story 36.12, AC13 — armée depuis l'Agenda sur une séance précise : on compose pour ELLE, sans regarder la
+   * Destinée. 🚨 Revue de code (36.12) — ne JAMAIS écraser une composition déjà en cours avec des créneaux choisis.
+   */
+  protected startCompose(seanceId?: string): void {
+    if (!this.canCompose()) return;
+    if (seanceId) {
+      if (this.composing() && this.composedCells().length > 0) return;
+      const target = this.composeTargetFor(seanceId);
+      if (target) this.armTarget(target);
+      return;
+    }
+    const target = this.modifiablePoll();
+    if (target) this.armTarget(target);
+  }
+
+  // ─── Story 45.2 — arriver dans l'atelier avec le composer prêt (`?seanceId`) ──────────────────────
+
+  /** Le rendez-vous désigné par `?seanceId`, lu à l'init et pas encore résolu ; `null` une fois appliqué (ou refusé). */
+  private readonly armPending = signal<string | null>(null);
+
+  /** Retire `?seanceId` de l'adresse, sans navigation (comme `?poll`, 44.7) : à l'annulation, à la validation, ou
+   *  quand le lien ne vise plus rien. Tant que le composer est armé, il y reste : un rechargement le réarme. */
+  private clearArmParam(): void {
+    this.writeQuery((params) => params.delete('seanceId'));
+  }
+
+  /** Message écrit une fois, sans rien dire du rendez-vous (EXPERIENCE §5.4). */
+  private noteNoLongerDatable(): void {
+    this.destinyNotice.set(this.theme.tone()['calendar.compose_link_stale']);
+  }
+
+  /** Résout le lien : le composer s'arme pour ce rendez-vous, ou — s'il n'est plus à dater ni modifiable, ou si
+   *  l'on n'en a pas le droit — le calendrier reste normal et le dit. */
+  private applyArming(seanceId: string): void {
+    this.armPending.set(null);
+    const target = this.composeTargetFor(seanceId);
+    if (target) {
+      this.armTarget(target);
+      return;
+    }
+    this.noteNoLongerDatable();
+    this.clearArmParam();
   }
 
   /** AC2 — bascule pure. Aucun appel réseau : rien n'est enregistré avant validation. */
@@ -2047,6 +2074,7 @@ export class CalendarView implements OnInit {
   protected cancelCompose(): void {
     const target = this.composeTarget();
     this.exitCompose();
+    this.clearArmParam();
     // Story 40.5b — renoncer à composer les créneaux d'une conjonction à créer ramène à la fenêtre de
     // création, brouillon intact (le brouillon n'est jamais perdu pour avoir hésité).
     if (target?.kind === 'group-new') {
@@ -2113,27 +2141,24 @@ export class CalendarView implements OnInit {
     );
     const voterCount = removed.reduce((sum, o) => sum + o.votes.length, 0);
 
-    // Le dialogue ne s'ouvre que s'il a quelque chose à demander : une séance (création), ou
-    // l'accord du MJ sur une perte chiffrée (modification). Un retrait sans aucune réponse posée
-    // ne mérite pas d'interruption — l'AC6 ne la demande que « sur laquelle des membres ont voté ».
-    const needsDialog = target.kind === 'new' || voterCount > 0;
-    let seanceId: string | null = null;
-    if (needsDialog) {
+    // ⚠️ Story 45.2 — le rendez-vous a été choisi avant : le dialogue ne s'ouvre plus que pour l'avertissement de
+    // perte de réponses (modification d'un vote dont des créneaux retirés en portent). Créer n'en ouvre aucun.
+    if (target.kind === 'new' && !this.rendezvousRows().some((r) => r.seanceId === target.seanceId)) {
+      // Daté ailleurs pendant la composition (EXPERIENCE §5.5) : rien n'est écrit, le composer se ferme.
+      this.noteNoLongerDatable();
+      this.cancelCompose();
+      return;
+    }
+    if (voterCount > 0) {
       const data: ComposeConfirmData = {
-        mode: target.kind === 'new' ? 'new' : 'poll',
         slotCount: options.length,
         removedCount: removed.length,
         voterCount,
-        seances: this.composeSeanceChoices(),
       };
       const ref = this.dialog.open(ComposeConfirmDialog, { data });
-      const decision = (await firstValueFrom(ref.afterClosed())) as {
-        seanceId: string | null;
-      } | null;
       // AC6 — renoncer ne modifie RIEN, et la composition reste telle quelle : le MJ n'a pas à
       // tout redésigner parce qu'il a hésité une fois.
-      if (!decision) return;
-      seanceId = decision.seanceId;
+      if (!(await firstValueFrom(ref.afterClosed()))) return;
     }
 
     // 🚨 Revue de code — `voterCount` a pu être calculé AVANT l'ouverture du dialogue, qui reste
@@ -2157,18 +2182,23 @@ export class CalendarView implements OnInit {
     this.pollActionPending.set(true);
     this.error.set(null);
     try {
+      let pollId: string | undefined;
       if (target.kind === 'poll') {
         // Même patron que `onClosePoll()` : `PollService` écrit, `loadScenarios()` relit. La
         // notification de domaine est portée par le serveur, qui émet déjà `partieTopic` sur
         // cette mutation (AC15) — `ScenariosService.notifyChanged()` est privé et réservé à ses
         // propres écritures.
         await this.pollSvc.setPollOptions(partieId, target.pollId, { options });
+        pollId = target.pollId;
       } else {
-        if (!seanceId) return;
-        await this.scenariosSvc.createSeancePoll(seanceId, options);
+        // Le vote créé est lu dans le scénario renvoyé par l'écriture (son identifiant n'existait pas avant).
+        const scenario = await this.scenariosSvc.createSeancePoll(target.seanceId, options);
+        pollId = scenario.seances.find((s) => s.id === target.seanceId)?.poll?.id;
       }
       await this.loadScenarios(partieId);
-      this.cancelCompose();
+      this.exitCompose();
+      this.clearArmParam();
+      if (pollId) await this.reactivateDestiny(pollId);
     } catch {
       // 🚨 Le mode NE SE FERME PAS sur une erreur : la composition du MJ est en mémoire et nulle
       // part ailleurs. La perdre l'obligerait à tout redésigner sur la grille.
@@ -2176,6 +2206,17 @@ export class CalendarView implements OnInit {
     } finally {
       this.pollActionPending.set(false);
     }
+  }
+
+  /**
+   * ⚠️ Story 45.2 (AR16) — valider réactive la Destinée sur le vote créé ou modifié : entrée comme depuis la liste
+   * (vue Mois, Semaine en soirée, créneau d'entrée), `?poll` posé par l'effet qui suit la Destinée. Le vote vient
+   * d'être écrit : `GET /me/open-polls` est relu d'abord, sans quoi le plateau n'aurait pas encore son entrée.
+   */
+  private async reactivateDestiny(pollId: string): Promise<void> {
+    await this.openPollsSvc.refresh();
+    if (this.openPollsSvc.entries().some((e) => e.pollId === pollId)) this.chooseDestiny(pollId);
+    else this.enterDestiny(pollId);
   }
 
   // ─── Story 40.5b — composer les créneaux d'une conjonction de groupe ─────────────────────────
@@ -2282,11 +2323,9 @@ export class CalendarView implements OnInit {
 
     if (before.votes > 0) {
       const data: ComposeConfirmData = {
-        mode: 'poll',
         slotCount: options.length,
         removedCount: before.removed,
         voterCount: before.votes,
-        seances: [],
         group: true,
       };
       const ref = this.dialog.open(ComposeConfirmDialog, { data });
@@ -2320,6 +2359,8 @@ export class CalendarView implements OnInit {
       await this.injector.get(EventsApiService).update(partieId, card.id, dto);
       await this.loadGroupEvents(partieId);
       this.exitCompose();
+      this.clearArmParam();
+      await this.reactivateDestiny(current.poll.id);
     } catch (err) {
       // Le mode NE SE FERME PAS : la composition n'existe qu'en mémoire. Le refus du serveur (400 en
       // français) est écrit tel quel.
@@ -2329,10 +2370,6 @@ export class CalendarView implements OnInit {
     }
   }
 
-  protected readonly pollPanelOpen = signal(false);
-  // Story 8.7, AC1/AC2 : renseigné depuis ?seanceId=... (arrivée depuis SeanceList) — verrouille
-  // PollCreationComponent sur cette séance, ouvre automatiquement le panneau sans re-clic du MJ.
-  protected readonly lockedSeanceId = signal<string | null>(null);
   protected readonly members = signal<PartieMemberDto[]>([]);
   /** Story 44.4 — la partie dont un groupe a déjà demandé les membres (pour nommer les absents). */
   private membersRequestedFor: string | null = null;
@@ -2357,13 +2394,6 @@ export class CalendarView implements OnInit {
    *  en haut du document (AC7). */
   private pickerReturnFocus: HTMLElement | null = null;
   protected readonly PICKER_POSITIONS = PICKER_POSITIONS;
-
-  protected readonly mjSlots = computed(() =>
-    // Story 36.8 — `'members' in s` ne discrimine plus : `AggregatedSlotDto` porte désormais un
-    // `members?` optionnel (couche « disponibilité du groupe », MJ seul). Le discriminant est
-    // maintenant l'ABSENCE d'agrégats, écrite une fois dans `available-slots.ts`.
-    this.availableSlots().filter(isNamedSlot),
-  );
 
   private static todayIso(): string {
     return new Date().toISOString().substring(0, 10);
@@ -2499,6 +2529,14 @@ export class CalendarView implements OnInit {
       untracked(() => this.applyLink(pending));
     });
 
+    // Story 45.2 — le rendez-vous désigné par `?seanceId` s'arme dès que les données de l'atelier sont lues (et la
+    // nature de la partie connue : un groupe se lit par ses conjonctions, un JDR par ses scénarios).
+    effect(() => {
+      const pending = this.armPending();
+      if (!pending || !this.partieDataLoaded() || !this.groupResolved()) return;
+      untracked(() => this.applyArming(pending));
+    });
+
     // Story 44.7 — l'adresse suit la Destinée : `poll` posé à l'entrée ou au changement, retiré à la sortie. Un
     // rechargement ramène ainsi au même vote.
     effect(() => {
@@ -2574,15 +2612,11 @@ export class CalendarView implements OnInit {
     if (toParam && CalendarView.ISO_DATE_RE.test(toParam)) this.toDateStr.set(toParam);
     this.hasExplicitRangeParam = !!(fromParam && CalendarView.ISO_DATE_RE.test(fromParam));
 
-    // Story 8.7, AC1/AC2 (corrigé en revue) : un vote de date exige toujours une séance — le
-    // panneau ne s'ouvre que si `id` (partieId) est résolu ET que le mode est MJ (sinon un joueur
-    // pourrait forger l'URL guild-calendar/profile pour voir le panneau MJ-only, même si le
-    // backend bloque déjà l'écriture via getOwned).
+    // ⚠️ Story 45.2 — `?seanceId=<id>` arme le composer pour ce rendez-vous (remplace le panneau 8.7). Lu ICI, une
+    // fois, puis résolu quand les données de la partie sont là (`applyArming`). Seul l'ATELIER arme : sans `:id` de
+    // partie (le calendrier personnel) le paramètre est ignoré. Aucune garde de mode : les droits sont ceux de `can`.
     const seanceIdParam = this.route.snapshot.queryParamMap.get('seanceId');
-    if (seanceIdParam && this.route.snapshot.paramMap.get('id') && this.isMjMode()) {
-      this.lockedSeanceId.set(seanceIdParam);
-      this.pollPanelOpen.set(true);
-    }
+    if (seanceIdParam && this.route.snapshot.paramMap.get('id')) this.armPending.set(seanceIdParam);
 
     // Story 44.7 — `?poll=<pollId>` ouvre la Destinée sur ce vote, `?pollList` la liste ✦. Lus ICI, une fois, puis
     // résolus quand les données sont là (`applyLink`) ; l'adresse n'est pas touchée d'ici là.
@@ -2821,14 +2855,10 @@ export class CalendarView implements OnInit {
   }
 
   // ⚠️ Story 36.10, AC9 — `startVoteFor()` et `noop()` ont été SUPPRIMÉS avec le sélecteur
-  // « Planifier un vote pour : » qui les appelait (patron de la 36.9, qui a retiré
-  // `onChooseDate()` avec son panneau plutôt que de laisser du code mort). Désigner une séance
-  // avant de choisir des dates n'est plus le parcours : on compose les créneaux sur la grille,
-  // et la séance se demande à la validation (`confirmCompose()`).
-  //
-  // 🚨 `eligibleSeances()` reste, et `lockedSeanceId` / `pollPanelOpen` / `<app-poll-creation>`
-  // aussi : ils portent l'arrivée depuis `SeanceList` via `?seanceId=` (story 8.7), qui n'est pas
-  // le sélecteur visé par l'AC9.
+  // « Planifier un vote pour : ». Story 45.2 : le panneau 8.7 (`<app-poll-creation>`, `pollPanelOpen`,
+  // `lockedSeanceId`) l'est aussi — `?seanceId` arme désormais le composer (`applyArming`), la séance est
+  // choisie AVANT et plus jamais demandée à la validation. `eligibleSeances()` reste : l'Agenda en tire ses
+  // lignes « Lancer un vote » (36.12).
 
   /**
    * Story 36.1, AC2 : le rail suit tout toucher de case, « quelle que soit la raison du toucher ».
@@ -3089,18 +3119,6 @@ export class CalendarView implements OnInit {
   protected closePanel(): void {
     this.panelOpen.set(false);
     this.pendingDto.set(null);
-  }
-
-  protected closePollPanel(): void {
-    this.pollPanelOpen.set(false);
-    this.lockedSeanceId.set(null);
-  }
-
-  protected async onPollCreated(_poll: SessionPollDto): Promise<void> {
-    this.pollPanelOpen.set(false);
-    this.lockedSeanceId.set(null);
-    const id = this.partieId();
-    if (id) await this.loadScenarios(id);
   }
 
   /**

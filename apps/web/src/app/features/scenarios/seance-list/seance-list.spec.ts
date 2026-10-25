@@ -88,7 +88,7 @@ async function createComponent(
     closePoll: vi.fn(),
   };
   const authSvc = { currentUser: () => ({ id: currentUserId }) };
-  const router = { navigate: vi.fn() };
+  const router = { navigate: vi.fn(), navigateByUrl: vi.fn() };
 
   await TestBed.configureTestingModule({
     imports: [SeanceList],
@@ -163,9 +163,7 @@ describe('SeanceList', () => {
     ) as HTMLButtonElement;
     btn.click();
 
-    expect(router.navigate).toHaveBeenCalledWith(['/parties', 'p1', 'calendar'], {
-      queryParams: { seanceId: 'seance1' },
-    });
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/calendar?seanceId=seance1');
   });
 
   it('MJ, séance avec poll → app-poll-status + members visibles', async () => {
@@ -500,9 +498,7 @@ describe('SeanceList', () => {
       ) as HTMLButtonElement;
       btn.click();
 
-      expect(router.navigate).toHaveBeenCalledWith(['/parties', 'p1', 'calendar'], {
-        queryParams: { seanceId: 'seance1' },
-      });
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/calendar?seanceId=seance1');
     });
 
     it('MJ, capacité définie + vote OPEN → FillIndicator + app-poll-status + "Clôturer le vote" (Story 8.8, AC2)', async () => {

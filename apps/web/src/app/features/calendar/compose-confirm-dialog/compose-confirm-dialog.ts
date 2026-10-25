@@ -1,54 +1,31 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 
-/** Une séance sans vote encore lancé, telle que le dialogue a besoin de la connaître. */
-export interface ComposeSeanceChoice {
-  seanceId: string;
-  /** « Les Cendres d'Ashal — Séance 2 » : scénario ET séance, sans ambiguïté. */
-  label: string;
-}
-
 export interface ComposeConfirmData {
-  /** `'new'` = créer un vote (il faut lui désigner une séance) · `'poll'` = modifier un vote
-   *  existant (il faut avertir de ce qui va être détruit). Les deux faces sont **exclusives** :
-   *  un vote qui n'existe pas encore ne porte aucune réponse à perdre. */
-  mode: 'new' | 'poll';
   /** Nombre de créneaux que la composition va poser. */
   slotCount: number;
-  /** Mode `poll` : combien de créneaux sont retirés. */
+  /** Combien de créneaux sont retirés. */
   removedCount: number;
-  /** Mode `poll` : combien de RÉPONSES seront supprimées avec eux (AC6 — c'est CE nombre que
-   *  l'écran doit nommer). */
+  /** Combien de RÉPONSES seront supprimées avec eux (AC6 — c'est CE nombre que l'écran doit nommer). */
   voterCount: number;
-  /** Mode `new` : les séances éligibles. Jamais vide — sans séance, la validation n'est pas
-   *  proposée du tout (AC11). */
-  seances: ComposeSeanceChoice[];
   /** Story 40.5b : conjonction d'un groupe — mêmes questions, avec les mots du groupe (créneaux, pas
    *  de séance). Absent pour un vote de JDR, dont les textes ne changent pas. */
   group?: boolean;
 }
 
 /**
- * Story 36.10 — la dernière question avant l'écriture.
+ * Story 36.10 — la dernière question avant l'écriture ; Story 45.2 — réduite à une seule face.
  *
- * Deux faces exclusives, un seul dialogue parce que c'est un seul moment du parcours :
+ * ⚠️ Le rendez-vous se choisit AVANT le composer (« Proposer des dates », `?seanceId`), plus à la validation :
+ * ce dialogue n'a plus de sélecteur de séance et ne s'ouvre qu'à une seule condition — modifier un vote
+ * retire des créneaux qui portent des réponses. Il avertit AVANT, en nommant le nombre de votants concernés,
+ * et laisse renoncer (AC6, Q-22).
  *
- * - **Créer** (`mode: 'new'`) — désigner la séance à laquelle le vote appartiendra. 🚨 Cette
- *   question n'est pas une commodité : un `SessionPoll` sans `Seance` est structurellement
- *   interdit depuis la story 8.8 (votes orphelins jamais nettoyés), et la route de création
- *   générique n'existe plus. La 36.10 retire le sélecteur « Planifier un vote pour : » de
- *   l'Oracle (AC9) : la question est **déplacée après la désignation des créneaux**, pas
- *   supprimée — le premier geste redevient la grille, ce que FR-52 demande.
- * - **Modifier** (`mode: 'poll'`) — avertir AVANT, en nommant le nombre de votants concernés,
- *   et laisser renoncer (AC6, Q-22). Retirer une option supprime les réponses qu'elle portait.
- *
- * Story 40.5b : pour la conjonction d'un groupe (`data.group`), seule la face « modifier » existe (la
- * création n'écrit rien avant la fenêtre de création) ; les textes viennent des clés `ralliement`.
- *
- * Il n'écrit rien : il rend une décision à `CalendarView`, qui émet l'unique appel.
+ * Il n'écrit rien : il rend une décision à `CalendarView` (`true` = continuer, `null` = renoncer), qui émet
+ * l'unique appel.
  */
 @Component({
   selector: 'app-compose-confirm-dialog',
@@ -59,15 +36,9 @@ export interface ComposeConfirmData {
 })
 export class ComposeConfirmDialog {
   private readonly dialogRef =
-    inject<MatDialogRef<ComposeConfirmDialog, { seanceId: string | null } | null>>(MatDialogRef);
+    inject<MatDialogRef<ComposeConfirmDialog, true | null>>(MatDialogRef);
   protected readonly data = inject<ComposeConfirmData>(MAT_DIALOG_DATA);
   protected readonly theme = inject(ThemeToneService);
-
-  /** Mode `new` : la séance retenue. Pré-remplie quand il n'y en a qu'une — la question ne se
-   *  pose alors pas vraiment. */
-  protected readonly seanceId = signal<string | null>(
-    this.data.seances.length === 1 ? this.data.seances[0].seanceId : null,
-  );
 
   /** Clé de texte selon l'origine : JDR (`calendar.compose_confirm_*`) ou groupe. */
   protected tk(suffix: string): string {
@@ -76,16 +47,11 @@ export class ComposeConfirmDialog {
       : `calendar.compose_confirm_${suffix}`;
   }
 
-  /** Titre de la face « modifier ». */
-  protected readonly modifyTitle = computed(
+  protected readonly title = computed(
     () => this.theme.tone()[this.data.group ? this.tk('title') : this.tk('title_modify')],
   );
   /** Note sous l'avertissement : les réponses des créneaux conservés ne sont pas touchées. */
   protected readonly note = computed(() => this.theme.tone()[this.tk('note')]);
-
-  protected readonly canConfirm = computed(
-    () => this.data.mode === 'poll' || this.seanceId() !== null,
-  );
 
   /** AC6 — le nombre de votants est NOMMÉ, jamais résumé en « des réponses seront perdues ». */
   protected readonly warning = computed(() => {
@@ -107,14 +73,8 @@ export class ComposeConfirmDialog {
     return fillTone(this.theme.tone()[key], { n: slotCount });
   });
 
-  protected onSeanceChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.seanceId.set(value === '' ? null : value);
-  }
-
   protected confirm(): void {
-    if (!this.canConfirm()) return;
-    this.dialogRef.close({ seanceId: this.seanceId() });
+    this.dialogRef.close(true);
   }
 
   /** `null` = on renonce. L'appelant garde sa composition intacte (AC6). */

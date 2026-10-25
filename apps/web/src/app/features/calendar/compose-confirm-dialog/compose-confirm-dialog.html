@@ -1,33 +1,9 @@
-<h2 mat-dialog-title>
-  @if (data.mode === 'new') {
-    {{ theme.tone()['common.lancer_le_vote'] }}
-  } @else {
-    {{ modifyTitle() }}
-  }
-</h2>
+<h2 mat-dialog-title>{{ title() }}</h2>
 
 <mat-dialog-content>
   <p class="compose-confirm__summary">{{ summary() }}</p>
 
-  @if (data.mode === 'new') {
-    <!-- AC11 : un vote appartient TOUJOURS à une séance. La question est posée ici, après la
-         désignation des créneaux, et non plus dans un sélecteur en marge du calendrier (AC9). -->
-    <label class="compose-confirm__field">
-      {{ theme.tone()['calendar.compose_confirm_seance_label'] }}
-      <select
-        class="compose-confirm__select"
-        [value]="seanceId() ?? ''"
-        (change)="onSeanceChange($event)"
-      >
-        <option value="">
-          {{ theme.tone()['calendar.compose_confirm_seance_placeholder'] }}
-        </option>
-        @for (s of data.seances; track s.seanceId) {
-          <option [value]="s.seanceId">{{ s.label }}</option>
-        }
-      </select>
-    </label>
-  } @else if (data.voterCount > 0) {
+  @if (data.voterCount > 0) {
     <!-- AC6 : l'avertissement précède l'écriture et NOMME le nombre de réponses supprimées. -->
     <p class="compose-confirm__warning" role="alert">{{ warning() }}</p>
     <p class="compose-confirm__note">
@@ -43,14 +19,9 @@
   <button
     mat-flat-button
     type="button"
-    [color]="data.mode === 'poll' && data.voterCount > 0 ? 'warn' : 'primary'"
-    [disabled]="!canConfirm()"
+    [color]="data.voterCount > 0 ? 'warn' : 'primary'"
     (click)="confirm()"
   >
-    @if (data.mode === 'new') {
-      {{ theme.tone()['common.lancer_le_vote'] }}
-    } @else {
-      {{ theme.tone()['common.enregistrer'] }}
-    }
+    {{ theme.tone()['common.enregistrer'] }}
   </button>
 </mat-dialog-actions>

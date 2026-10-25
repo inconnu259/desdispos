@@ -897,6 +897,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   // Story 45.1 — « Proposer / Modifier les dates » remplace l'armement du composer et les boutons de l'hôte.
   'calendar.view_propose_dates': 'Soumettre des dates',
   'calendar.view_modify_dates': 'Réviser les dates',
+  // Story 45.2 — lien vers un rendez-vous qui n'est plus à dater (ou plus modifiable) : écrit une fois, sans rien dire de la séance.
+  'calendar.compose_link_stale': 'Ce rendez-vous n’est plus à planifier.',
   'calendar.rendezvous_picker_title': 'Rendez-vous à planifier',
   // Nature d'un rendez-vous dans le choix : explication en clair, identique dans les trois thèmes.
   'calendar.rendezvous_nature_seance': 'séance sans date',
@@ -906,16 +908,12 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.view_toggle_week_short': 'Sem.',
   'calendar.view_toggle_agenda_short': 'Agenda',
   'calendar.view_no_poll': 'Aucun scrutin de date en cours.',
-  'calendar.view_locked_seance_hint':
-    'Le scrutin de la séance sélectionnée s’ouvre depuis la fiche de l’opération.',
   'calendar.view_group_label': '{slot} — {available}/{total} membres disponibles',
   'calendar.view_group_unavailable_detail': '{n} indisponible(s)',
   'calendar.view_compose_target_poll': 'Plages du scrutin : {label}',
   'calendar.view_compose_target_new': 'Plages d’un nouveau scrutin',
   'calendar.view_compose_blocked_min': 'Un scrutin demande au moins deux plages.',
   'calendar.view_compose_blocked_max': 'Quarante plages au maximum.',
-  'calendar.view_compose_blocked_no_seance':
-    'Aucune séance n’attend de scrutin : un scrutin se rattache toujours à une séance.',
   'calendar.view_compose_stale_voters':
     'Une nouvelle réponse est parvenue depuis l’avertissement — revalidez pour obtenir le relevé à jour.',
   'calendar.view_compose_save_error': 'Ces plages n’ont pu être consignées. Réessayez.',
@@ -1034,8 +1032,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
     'Les réponses portées par les plages conservées ne sont pas touchées.',
   'calendar.compose_confirm_responses_many': '{n} réponses',
   'calendar.compose_confirm_responses_one': '{n} réponse',
-  'calendar.compose_confirm_seance_label': 'Pour quelle séance d’atelier ?',
-  'calendar.compose_confirm_seance_placeholder': 'Sélectionner une séance…',
   'calendar.compose_confirm_slots_many': '{n} plages',
   'calendar.compose_confirm_slots_one': '{n} plage',
   'calendar.compose_confirm_summary_many': '{n} plages proposées.',
@@ -1105,7 +1101,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'cta.choose_date': "Verrouiller l'engrenage de la date",
   'cta.cancel_poll': 'Purger le registre de vote',
   'cta.restore_default_layers': "Réinitialiser l'affichage par défaut",
-  'success.poll_created': 'Registre de vote activé. Message pneumatique envoyé.',
   'success.vote_cast': 'Réponse enregistrée dans le registre.',
   'cta.confirm_votes': 'Valider dans le registre',
   'cta.withdraw_vote': 'Annuler ma réponse',
@@ -1124,19 +1119,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.answer_menu_aria': 'Répondre au scrutin — {slot}',
   'calendar.answer_withdraw': 'Annuler ma réponse',
   /* — création et suivi du vote — */
-  'pollui.creation_title': 'Ouvrir un scrutin de date',
-  'pollui.creation_computed_title': 'Plages calculées par l’automate',
-  'pollui.creation_computed_empty': 'L’automate ne calcule aucune plage disponible.',
-  'pollui.creation_load_more_one': '{n} plage de plus',
-  'pollui.creation_load_more_many': '{n} plages de plus',
-  'pollui.creation_all_shown': 'Toutes les plages calculées sont affichées',
-  'pollui.creation_custom_title': 'Plages personnalisées',
-  'pollui.creation_add_custom': 'Ajouter une plage personnalisée',
-  'pollui.creation_selected_count': '{n} option(s) sélectionnée(s)',
-  'pollui.creation_submit': 'Ouvrir le scrutin',
-  'pollui.creation_desync_error':
-    'Le scrutin a été ouvert, mais son état n’a pu être rafraîchi ici. Rechargez la page pour le voir plutôt que d’ouvrir un autre scrutin.',
-  'pollui.creation_error': 'Le scrutin n’a pu être ouvert. Réessayez.',
   'pollui.response_not_saved_aria': 'Non consigné',
   'pollui.response_partial_error':
     '{success}/{total} réponse(s) consignée(s). Réessayez pour les autres.',

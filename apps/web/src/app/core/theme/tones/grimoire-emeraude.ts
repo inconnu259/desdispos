@@ -899,6 +899,8 @@ export const grimoireEmeraude = {
   // Story 45.1 — « Proposer / Modifier les dates » remplace l'armement du composer et les boutons de l'hôte.
   'calendar.view_propose_dates': 'Proposer des dates',
   'calendar.view_modify_dates': 'Modifier les dates',
+  // Story 45.2 — lien vers un rendez-vous qui n'est plus à dater (ou plus modifiable) : écrit une fois, sans rien dire de la séance.
+  'calendar.compose_link_stale': 'Ce rendez-vous n’est plus à dater.',
   'calendar.rendezvous_picker_title': 'Quel rendez-vous dater ?',
   // Nature d'un rendez-vous dans le choix : explication en clair, identique dans les trois thèmes.
   'calendar.rendezvous_nature_seance': 'séance sans date',
@@ -908,16 +910,12 @@ export const grimoireEmeraude = {
   'calendar.view_toggle_week_short': 'Sem.',
   'calendar.view_toggle_agenda_short': 'Agenda',
   'calendar.view_no_poll': 'Aucun conseil de date en cours.',
-  'calendar.view_locked_seance_hint':
-    'Le conseil de la séance sélectionnée se convoque depuis la fiche du chapitre.',
   'calendar.view_group_label': '{slot} — {available}/{total} compagnons disponibles',
   'calendar.view_group_unavailable_detail': '{n} indisponible(s)',
   'calendar.view_compose_target_poll': 'Fenêtres du conseil : {label}',
   'calendar.view_compose_target_new': 'Fenêtres d’un nouveau conseil',
   'calendar.view_compose_blocked_min': 'Un conseil demande au moins deux fenêtres.',
   'calendar.view_compose_blocked_max': 'Quarante fenêtres au maximum.',
-  'calendar.view_compose_blocked_no_seance':
-    'Aucune séance n’attend de conseil : un conseil se rattache toujours à une séance.',
   'calendar.view_compose_stale_voters':
     'Une nouvelle réponse est venue s’inscrire depuis l’avertissement — revalidez pour voir le chiffre à jour.',
   'calendar.view_compose_save_error': 'Ces fenêtres n’ont pu être inscrites. Réessayez.',
@@ -1035,8 +1033,6 @@ export const grimoireEmeraude = {
     'Les réponses portées par les fenêtres conservées ne sont pas touchées.',
   'calendar.compose_confirm_responses_many': '{n} réponses',
   'calendar.compose_confirm_responses_one': '{n} réponse',
-  'calendar.compose_confirm_seance_label': 'Pour quelle séance du grimoire ?',
-  'calendar.compose_confirm_seance_placeholder': 'Désigner une séance…',
   'calendar.compose_confirm_slots_many': '{n} fenêtres',
   'calendar.compose_confirm_slots_one': '{n} fenêtre',
   'calendar.compose_confirm_summary_many': '{n} fenêtres proposées.',
@@ -1106,7 +1102,6 @@ export const grimoireEmeraude = {
   'cta.choose_date': 'Sceller ce créneau',
   'cta.cancel_poll': 'Brûler le parchemin de vote',
   'cta.restore_default_layers': 'Rétablir mon grimoire par défaut',
-  'success.poll_created': 'Conseil convoqué. Les compagnons ont été avertis.',
   'success.vote_cast': 'Réponse inscrite dans le grimoire.',
   'cta.confirm_votes': 'Sceller mes réponses',
   'cta.withdraw_vote': 'Reprendre ma réponse',
@@ -1125,19 +1120,6 @@ export const grimoireEmeraude = {
   'calendar.answer_menu_aria': 'Répondre à l’appel du conseil — {slot}',
   'calendar.answer_withdraw': 'Reprendre ma réponse',
   /* — création et suivi du vote — */
-  'pollui.creation_title': 'Convoquer un conseil de date',
-  'pollui.creation_computed_title': 'Fenêtres calculées par l’oracle',
-  'pollui.creation_computed_empty': 'L’oracle ne calcule aucune fenêtre disponible.',
-  'pollui.creation_load_more_one': '{n} fenêtre de plus',
-  'pollui.creation_load_more_many': '{n} fenêtres de plus',
-  'pollui.creation_all_shown': 'Toutes les fenêtres calculées sont affichées',
-  'pollui.creation_custom_title': 'Fenêtres à votre façon',
-  'pollui.creation_add_custom': 'Ajouter une fenêtre à votre façon',
-  'pollui.creation_selected_count': '{n} option(s) retenue(s)',
-  'pollui.creation_submit': 'Convoquer le conseil',
-  'pollui.creation_desync_error':
-    'Le conseil a été convoqué, mais son état n’a pu être rafraîchi ici. Rechargez la page pour le voir plutôt que de convoquer un autre conseil.',
-  'pollui.creation_error': 'Le conseil n’a pu être convoqué. Réessayez.',
   'pollui.response_not_saved_aria': 'Non inscrit',
   'pollui.response_partial_error':
     '{success}/{total} réponse(s) inscrite(s). Réessayez pour les autres.',

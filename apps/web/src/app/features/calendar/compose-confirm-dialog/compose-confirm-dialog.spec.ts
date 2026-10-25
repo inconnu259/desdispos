@@ -11,11 +11,9 @@ const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function makeData(overrides: Partial<ComposeConfirmData> = {}): ComposeConfirmData {
   return {
-    mode: 'poll',
     slotCount: 3,
     removedCount: 2,
     voterCount: 4,
-    seances: [],
     ...overrides,
   };
 }
@@ -42,7 +40,7 @@ const text = (el: HTMLElement, selector: string) =>
 describe('ComposeConfirmDialog — textes du registre (Story 35.2)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('mode « modifier », pluriel : avertissement nommant créneaux et réponses perdus', async () => {
+  it('pluriel : avertissement nommant créneaux et réponses perdus', async () => {
     const el = await createComponent(makeData({ removedCount: 2, voterCount: 4 }));
 
     expect(text(el, '.compose-confirm__warning')).toBe(
@@ -54,7 +52,7 @@ describe('ComposeConfirmDialog — textes du registre (Story 35.2)', () => {
     expect(text(el, 'h2')).toBe(GRIMOIRE_TONE['calendar.compose_confirm_title_modify']);
   });
 
-  it('mode « modifier », singulier : « 1 créneau » et « 1 réponse déjà posée »', async () => {
+  it('singulier : « 1 créneau » et « 1 réponse déjà posée »', async () => {
     const el = await createComponent(makeData({ removedCount: 1, voterCount: 1 }));
 
     expect(text(el, '.compose-confirm__warning')).toBe(
@@ -65,7 +63,7 @@ describe('ComposeConfirmDialog — textes du registre (Story 35.2)', () => {
     );
   });
 
-  it('mode « modifier » sans votant : aucun avertissement', async () => {
+  it('sans votant : aucun avertissement', async () => {
     const el = await createComponent(makeData({ voterCount: 0 }));
 
     expect(el.querySelector('.compose-confirm__warning')).toBeNull();
@@ -84,25 +82,11 @@ describe('ComposeConfirmDialog — textes du registre (Story 35.2)', () => {
     );
   });
 
-  it('mode « créer » : titre et question de la séance, sans avertissement', async () => {
-    const el = await createComponent(
-      makeData({
-        mode: 'new',
-        seances: [
-          { seanceId: 's1', label: 'Scénario — Séance 1' },
-          { seanceId: 's2', label: 'Scénario — Séance 2' },
-        ],
-      }),
-    );
+  it('Story 45.2 — plus de sélecteur de séance : le rendez-vous se choisit avant le composer', async () => {
+    const el = await createComponent(makeData());
 
-    expect(text(el, 'h2')).toBe(GRIMOIRE_TONE['common.lancer_le_vote']);
-    expect(text(el, '.compose-confirm__field')).toContain(
-      GRIMOIRE_TONE['calendar.compose_confirm_seance_label'],
-    );
-    expect(text(el, '.compose-confirm__select option')).toBe(
-      GRIMOIRE_TONE['calendar.compose_confirm_seance_placeholder'],
-    );
-    expect(el.querySelector('.compose-confirm__warning')).toBeNull();
+    expect(el.querySelector('.compose-confirm__field')).toBeNull();
+    expect(el.querySelector('.compose-confirm__select')).toBeNull();
   });
 });
 
@@ -117,7 +101,9 @@ describe('ComposeConfirmDialog — conjonction d’un groupe (Story 40.5b)', () 
     expect(text(el, '.compose-confirm__warning')).toBe(
       fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_warning_many'], {
         slots: fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_slots_many'], { n: 2 }),
-        votes: fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_responses_many'], { n: 4 }),
+        votes: fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_responses_many'], {
+          n: 4,
+        }),
       }),
     );
     expect(text(el, '.compose-confirm__note')).toBe(
@@ -132,7 +118,9 @@ describe('ComposeConfirmDialog — conjonction d’un groupe (Story 40.5b)', () 
     expect(text(el, '.compose-confirm__warning')).toBe(
       fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_warning_one'], {
         slots: fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_slots_one'], { n: 1 }),
-        votes: fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_responses_one'], { n: 1 }),
+        votes: fillTone(GRIMOIRE_TONE['partie.ralliement_calendar_confirm_responses_one'], {
+          n: 1,
+        }),
       }),
     );
     expect(text(el, '.compose-confirm__summary')).toBe(

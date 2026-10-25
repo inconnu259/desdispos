@@ -152,12 +152,13 @@ function makePartiesService(members: unknown[] = []) {
 }
 
 // Story 45.1 — une séance du serveur porte toujours `can` et `dateValidee` ; les fixtures historiques de ce fichier
-// n'en disent rien : par défaut, aucun droit d'organisateur et aucune date (une fixture qui en veut les écrit).
+// n'en disent rien : par défaut, tous les droits d'organisateur (le MJ de ces fixtures) et aucune date. Une fixture
+// qui veut un refus écrit `can` (Story 45.2 : les droits viennent de `can`, jamais du mode de la route).
 function withOrganizerDefaults(scenarios: any[]): any[] {
   return scenarios.map((s) => ({
     ...s,
     seances: (s.seances ?? []).map((se: any) => ({
-      can: { propose: false, edit: false, choose: false, extend: false },
+      can: { propose: true, edit: true, choose: true, extend: false },
       dateValidee: null,
       ...se,
     })),
@@ -166,7 +167,7 @@ function withOrganizerDefaults(scenarios: any[]): any[] {
 
 function makeScenariosService(scenarios: any[] = []) {
   return {
-    createSeancePoll: vi.fn(),
+    createSeancePoll: vi.fn().mockResolvedValue({ seances: [] }),
     listAll: vi.fn().mockResolvedValue(withOrganizerDefaults(scenarios)),
     changed: signal<{ partieId: string } | null>(null),
   };
@@ -391,86 +392,254 @@ describe('CalendarView — bouton retour (Story 8.8, AC6)', () => {
   });
 });
 
-// ─── Pré-sélection de séance depuis SeanceList (Story 8.7, AC1/AC2) ──────────
+// ─── Arrivée avec le composer prêt (Story 8.7 → 45.2) ──────────────────────────
 
-describe('CalendarView — pré-sélection de séance (?seanceId=...)', () => {
-  afterEach(() => TestBed.resetTestingModule());
+describe('CalendarView — arriver dans l’atelier avec le composer prêt (Story 45.2)', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((n) => n.remove());
+    window.history.replaceState({}, '', '/');
+  });
 
-  it('?seanceId=xxx → ouvre pollPanelOpen automatiquement et transmet lockedSeanceId', async () => {
+  /** L'adresse d'ARRIVÉE, posée avant le montage : le paramètre est lu à l'init et nettoyé quand il a servi. */
+  const arriveAt = (query: string) =>
+    window.history.replaceState({}, '', `/parties/partie-1/calendar?${query}`);
+
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+  const NOBODY = { propose: false, edit: false, choose: false, extend: false };
+
+  function cell(iso: string, slot: string) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return { date: new Date(y, m - 1, d), slot };
+  }
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  /** Un scénario à une séance (`id-s1`) ; `over` règle la séance, `scenarioOver` le scénario. */
+  function scenario(
+    id: string,
+    over: Record<string, unknown> = {},
+    scenarioOver: Record<string, unknown> = {},
+  ) {
+    return {
+      id,
+      partieId: 'partie-1',
+      title: `Chapitre ${id}`,
+      description: null,
+      status: 'COURANT',
+      dureeHeures: null,
+      dureeSeances: null,
+      resumeFin: null,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      closedAt: null,
+      seances: [
+        {
+          id: `${id}-s1`,
+          scenarioId: id,
+          compteRendu: null,
+          createdAt: '2026-07-13T00:00:00.000Z',
+          can: ORGANIZER,
+          ...over,
+        },
+      ],
+      ...scenarioOver,
+    };
+  }
+
+  const openPoll = (pollId: string, extra: Record<string, unknown> = {}) => ({
+    id: pollId,
+    partieId: 'partie-1',
+    status: 'OPEN',
+    scenarioRef: null,
+    expiresAt: null,
+    chosenDate: null,
+    chosenSlot: null,
+    membersCount: 2,
+    options: [
+      { id: `${pollId}-a`, date: '2026-08-01T00:00:00.000Z', slot: 'EVENING', votes: [] },
+      { id: `${pollId}-b`, date: '2026-08-02T00:00:00.000Z', slot: 'MORNING', votes: [] },
+    ],
+    ...extra,
+  });
+
+  const notice = (fixture: any) =>
+    (fixture.nativeElement as HTMLElement).querySelector('.calendar-notice span')?.textContent?.trim() ?? null;
+
+  it('?seanceId arme un vote NEUF pour ce rendez-vous, sans panneau 8.7, la barre le nomme', async () => {
+    arriveAt('seanceId=sc1-s1');
+    const { fixture, location } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      queryParams: { seanceId: 'sc1-s1' },
+      scenarios: [scenario('sc1')],
+      partie: { name: 'La Tour' },
+    });
+    const replaceState = vi.spyOn(location, 'replaceState');
+    const comp = fixture.componentInstance as any;
+    await tick(fixture);
+
+    expect(comp.composing()).toBe(true);
+    expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
+    expect(comp.composedCells()).toEqual([]);
+    expect(comp.composeTargetLabel()).toContain('Chapitre sc1');
+    expect(fixture.nativeElement.querySelector('app-compose-bar')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-poll-creation')).toBeNull();
+    expect(notice(fixture)).toBeNull();
+    // Tant que le composer est armé, rien ne retire le paramètre (un rechargement le réarme) : seul le lien périmé,
+    // l'annulation et la validation le nettoient (testés plus bas).
+    expect(replaceState).not.toHaveBeenCalled();
+  });
+
+  it('?seanceId d’une séance qui porte un vote OUVERT modifiable : le composer part de ses créneaux', async () => {
     const { fixture } = await createCalendarView({
       mode: 'mj',
       partieId: 'partie-1',
-      queryParams: { seanceId: 'seance1' },
+      queryParams: { seanceId: 'sc1-s1' },
+      scenarios: [scenario('sc1', { poll: openPoll('poll1') })],
     });
     const comp = fixture.componentInstance as any;
+    await tick(fixture);
 
-    expect(comp.pollPanelOpen()).toBe(true);
-    expect(comp.lockedSeanceId()).toBe('seance1');
-
-    const pollCreation = fixture.nativeElement.querySelector('app-poll-creation');
-    expect(pollCreation).toBeTruthy();
+    expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll1' });
+    expect([...comp.composedKeys()].sort()).toEqual(['2026-08-01|EVENING', '2026-08-02|MORNING']);
   });
 
-  it('sans seanceId → pollPanelOpen fermé par défaut', async () => {
-    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1' });
-    const comp = fixture.componentInstance as any;
-
-    expect(comp.pollPanelOpen()).toBe(false);
-    expect(comp.lockedSeanceId()).toBeNull();
-  });
-
-  it('closePollPanel() réinitialise lockedSeanceId', async () => {
-    const { fixture } = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      queryParams: { seanceId: 'seance1' },
-    });
-    const comp = fixture.componentInstance as any;
-
-    comp.closePollPanel();
-
-    expect(comp.lockedSeanceId()).toBeNull();
-    expect(comp.pollPanelOpen()).toBe(false);
-  });
-
-  it('?seanceId=xxx sans partieId (route :id absente) → panneau non ouvert (revue de code)', async () => {
-    const { fixture } = await createCalendarView({
-      mode: 'mj',
-      queryParams: { seanceId: 'seance1' },
-    });
-    const comp = fixture.componentInstance as any;
-
-    expect(comp.pollPanelOpen()).toBe(false);
-    expect(comp.lockedSeanceId()).toBeNull();
-  });
-
-  it('?seanceId=xxx en mode personal (non-MJ) → panneau MJ-only non ouvert, non exposé à un joueur (revue de code)', async () => {
+  it('les droits viennent de `can`, jamais du mode de la route : un calendrier « personnel » d’une partie arme aussi', async () => {
     const { fixture } = await createCalendarView({
       mode: 'personal',
       partieId: 'partie-1',
-      queryParams: { seanceId: 'seance1' },
+      queryParams: { seanceId: 'sc1-s1' },
+      scenarios: [scenario('sc1')],
     });
-    const comp = fixture.componentInstance as any;
+    await tick(fixture);
 
-    expect(comp.pollPanelOpen()).toBe(false);
-    expect(comp.lockedSeanceId()).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-poll-creation')).toBeNull();
+    expect((fixture.componentInstance as any).composing()).toBe(true);
   });
 
-  it('onPollCreated() ferme le panneau et recharge la liste des votes actifs', async () => {
-    const { fixture, scenariosSvc } = await createCalendarView({
+  it.each([
+    ['séance datée', scenario('sc1', { dateValidee: '2099-01-01' }), 'sc1-s1'],
+    ['vote déjà lancé et clos', scenario('sc1', { poll: openPoll('p', { status: 'CLOSED' }) }), 'sc1-s1'],
+    ['scénario clôturé', scenario('sc1', {}, { status: 'PASSE' }), 'sc1-s1'],
+    ['pas le droit de proposer', scenario('sc1', { can: NOBODY }), 'sc1-s1'],
+    ['pas le droit de modifier le vote', scenario('sc1', { poll: openPoll('p'), can: NOBODY }), 'sc1-s1'],
+    ['rendez-vous inconnu ou d’une autre partie', scenario('sc1'), 'ailleurs-s1'],
+  ])('lien périmé (%s) : calendrier normal, message une fois, paramètre retiré', async (_label, sc, seanceId) => {
+    arriveAt(`seanceId=${seanceId}`);
+    const { fixture, location } = await createCalendarView({
       mode: 'mj',
       partieId: 'partie-1',
-      queryParams: { seanceId: 'seance1' },
+      queryParams: { seanceId },
+      scenarios: [sc],
     });
-    const comp = fixture.componentInstance as any;
-    const callsBefore = scenariosSvc.listAll.mock.calls.length;
+    await tick(fixture);
 
-    await comp.onPollCreated({ id: 'poll1' });
+    expect((fixture.componentInstance as any).composing()).toBe(false);
+    expect(notice(fixture)).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
+    expect(location.path()).not.toContain('seanceId');
+  });
 
-    expect(comp.pollPanelOpen()).toBe(false);
-    expect(comp.lockedSeanceId()).toBeNull();
-    expect(scenariosSvc.listAll.mock.calls.length).toBe(callsBefore + 1);
+  it('la vitrine n’arme jamais de composer : sans partie dans la route, `?seanceId` est ignoré', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      queryParams: { seanceId: 'sc1-s1' },
+    });
+    await tick(fixture);
+
+    expect((fixture.componentInstance as any).composing()).toBe(false);
+    expect(notice(fixture)).toBeNull();
+  });
+
+  describe('composer et Destinée', () => {
+    const withDestiny = () =>
+      createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [scenario('sc1', { poll: openPoll('pollX') }), scenario('sc2')],
+      });
+
+    it('armer SUSPEND la Destinée (estompe retirée, vote conservé) ; annuler rend l’état d’avant et nettoie l’adresse', async () => {
+      const { fixture, location } = await withDestiny();
+      const comp = fixture.componentInstance as any;
+      comp.destinyPollId.set('pollX');
+      await tick(fixture);
+      expect(comp.destinyDates()).not.toBeNull();
+
+      location.replaceState('/parties/partie-1/calendar', 'poll=pollX&seanceId=sc2-s1');
+      comp.startCompose('sc2-s1');
+      await tick(fixture);
+
+      expect(comp.composing()).toBe(true);
+      expect(comp.destinyDates()).toBeNull();
+      expect(comp.destinyBoardShown()).toBe(false);
+      expect(comp.destinyPollId()).toBe('pollX');
+      expect(location.path()).toContain('poll=pollX');
+
+      comp.cancelCompose();
+      await tick(fixture);
+
+      expect(comp.composing()).toBe(false);
+      expect(comp.destinyPollId()).toBe('pollX');
+      expect(comp.destinyDates()).not.toBeNull();
+      expect(location.path()).not.toContain('seanceId');
+      expect(location.path()).toContain('poll=pollX');
+    });
+
+    it('valider une CRÉATION : un seul appel, aucun dialogue, la Destinée s’active sur le vote créé, `?poll` posé et `?seanceId` retiré', async () => {
+      const { fixture, location, scenariosSvc, dialog, openPollsSvc } = await withDestiny();
+      const comp = fixture.componentInstance as any;
+      comp.destinyPollId.set('pollX');
+      location.replaceState('/parties/partie-1/calendar', 'poll=pollX&seanceId=sc2-s1');
+      comp.startCompose('sc2-s1');
+      comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
+      comp.onComposeToggled(cell('2026-09-05', 'MORNING'));
+      // Le serveur renvoie le scénario avec son vote ; la relecture le montre aussi.
+      const created = openPoll('pollNew', {
+        options: [
+          { id: 'n1', date: '2026-09-04T00:00:00.000Z', slot: 'EVENING', votes: [] },
+          { id: 'n2', date: '2026-09-05T00:00:00.000Z', slot: 'MORNING', votes: [] },
+        ],
+      });
+      const after = [scenario('sc1', { poll: openPoll('pollX') }), scenario('sc2', { poll: created })];
+      scenariosSvc.createSeancePoll.mockResolvedValue(after[1]);
+      scenariosSvc.listAll.mockResolvedValue(after);
+
+      await comp.confirmCompose();
+      await tick(fixture);
+
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(scenariosSvc.createSeancePoll).toHaveBeenCalledTimes(1);
+      expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith('sc2-s1', [
+        { date: '2026-09-04', slot: 'EVENING' },
+        { date: '2026-09-05', slot: 'MORNING' },
+      ]);
+      expect(openPollsSvc.refresh).toHaveBeenCalled();
+      expect(comp.composing()).toBe(false);
+      expect(comp.destinyPollId()).toBe('pollNew');
+      expect(location.path()).toContain('poll=pollNew');
+      expect(location.path()).not.toContain('seanceId');
+    });
+
+    it('rendez-vous daté ailleurs pendant la composition : à la validation, message, composer fermé, rien d’écrit', async () => {
+      const { fixture, scenariosSvc } = await withDestiny();
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('sc2-s1');
+      comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
+      comp.onComposeToggled(cell('2026-09-05', 'MORNING'));
+      // Un autre appareil date la séance (temps réel) : elle n'est plus à dater.
+      comp.scenarios.set(withOrganizerDefaults([scenario('sc2', { dateValidee: '2099-01-01' })]));
+
+      await comp.confirmCompose();
+      await tick(fixture);
+
+      expect(scenariosSvc.createSeancePoll).not.toHaveBeenCalled();
+      expect(comp.composing()).toBe(false);
+      expect(notice(fixture)).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
+    });
   });
 });
 
@@ -662,13 +831,6 @@ describe('CalendarView — activePolls() (Story 8.8, AC7 : plusieurs votes actif
 
     expect(comp.eligibleSeances()).toHaveLength(1);
     expect(comp.eligibleSeances()[0].seance.id).toBe('seanceX');
-    // ⚠️ Story 36.10, AC9 — l'étiquette n'est plus lue dans le `<option>` du sélecteur de
-    // l'Oracle (retiré) mais dans le choix proposé à la validation d'une composition, qui est le
-    // seul endroit où l'on désigne encore une séance. Le libellé, lui, n'a pas changé : scénario
-    // ET séance, sans ambiguïté.
-    expect(comp.composeSeanceChoices()).toEqual([
-      { seanceId: 'seanceX', label: 'Chapitre 1 — Séance 1' },
-    ]);
   });
 
   it('scénario PASSE → ses séances sont exclues (séance passée)', async () => {
@@ -3314,10 +3476,19 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC10 — aucun point d’entrée pour un membre non-MJ, même sur une partie', async () => {
+    const noRight = {
+      ...FREE_SEANCE_SCENARIO,
+      seances: [
+        {
+          ...FREE_SEANCE_SCENARIO.seances[0],
+          can: { propose: false, edit: false, choose: false, extend: false },
+        },
+      ],
+    };
     const { fixture } = await createCalendarView({
       mode: 'personal',
       partieId: 'partie-1',
-      scenarios: [FREE_SEANCE_SCENARIO],
+      scenarios: [noRight],
     });
     const comp = fixture.componentInstance as any;
     expect(comp.canCompose()).toBe(false);
@@ -3360,16 +3531,16 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     expect([...comp.composedKeys()].sort()).toEqual(['2026-08-01|EVENING', '2026-08-02|MORNING']);
   });
 
-  it('AC4 — armée sans vote mis en avant, la composition vise un vote NEUF et part vide', async () => {
+  it('AC4 — armée sur un rendez-vous sans vote, la composition vise un vote NEUF et part vide', async () => {
     const { fixture } = await createCalendarView({
       mode: 'mj',
       partieId: 'partie-1',
       scenarios: [FREE_SEANCE_SCENARIO],
     });
     const comp = fixture.componentInstance as any;
-    comp.startCompose();
+    comp.startCompose('seanceX');
 
-    expect(comp.composeTarget()).toEqual({ kind: 'new' });
+    expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'seanceX' });
     expect(comp.composedCells()).toEqual([]);
   });
 
@@ -3382,7 +3553,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
       scenarios: [FREE_SEANCE_SCENARIO],
     });
     const comp = fixture.componentInstance as any;
-    comp.startCompose();
+    comp.startCompose('seanceX');
 
     comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
     expect(comp.composedCells()).toHaveLength(1);
@@ -3435,29 +3606,13 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
       scenarios: [FREE_SEANCE_SCENARIO],
     });
     const comp = fixture.componentInstance as any;
-    comp.startCompose();
+    comp.startCompose('seanceX');
     comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
     fixture.detectChanges();
 
     expect(comp.composeCanConfirm()).toBe(false);
     expect(comp.composeBlockedReason()).toContain('au moins deux');
     expect(fixture.nativeElement.querySelector('.compose-bar__blocked')).not.toBeNull();
-  });
-
-  it('AC11 — aucune séance éligible : la création n’est pas validable, et l’écran le dit', async () => {
-    // Le seul scénario n'a qu'une séance, déjà liée à un vote OPEN ⇒ `eligibleSeances()` est vide.
-    const { fixture } = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      scenarios: [POLL_WITH_OPTIONS],
-    });
-    const comp = fixture.componentInstance as any;
-    comp.composing.set(true);
-    comp.composeTarget.set({ kind: 'new' });
-    comp.composedCells.set([cell('2026-09-04', 'EVENING'), cell('2026-09-05', 'EVENING')]);
-
-    expect(comp.composeCanConfirm()).toBe(false);
-    expect(comp.composeBlockedReason()).toContain('séance');
   });
 
   // ── AC5 / AC6 / AC7 : la validation d'un vote existant ──
@@ -3502,7 +3657,8 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
 
     expect(dialog.open).toHaveBeenCalledTimes(1);
     const data = dialog.open.mock.calls[0][1]!.data;
-    expect(data.mode).toBe('poll');
+    expect(data).not.toHaveProperty('mode');
+    expect(data).not.toHaveProperty('seances');
     expect(data.removedCount).toBe(1);
     expect(data.voterCount).toBe(1);
     // 🚨 Le dialogue est ANNULÉ par défaut dans ce harnais : rien ne doit être écrit.
@@ -3535,7 +3691,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
       scenarios: [POLL_WITH_OPTIONS],
     });
     const comp = fixture.componentInstance as any;
-    dialog.__result = { seanceId: null };
+    dialog.__result = true;
     comp.destinyPollId.set('poll1');
     comp.startCompose();
     comp.onComposeToggled(cell('2026-08-01', 'EVENING'));
@@ -3554,44 +3710,26 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
 
   // ── AC4 / AC11 : la création passe TOUJOURS par une séance ──
 
-  it('AC4/AC11 — créer appelle createSeancePoll() sur la séance désignée, JAMAIS setPollOptions()', async () => {
+  it('AC4/AC11 — créer appelle createSeancePoll() sur la séance choisie AVANT, JAMAIS setPollOptions()', async () => {
     const { fixture, pollSvc, scenariosSvc, dialog } = await createCalendarView({
       mode: 'mj',
       partieId: 'partie-1',
       scenarios: [FREE_SEANCE_SCENARIO],
     });
     const comp = fixture.componentInstance as any;
-    dialog.__result = { seanceId: 'seanceX' };
-    comp.startCompose();
+    comp.startCompose('seanceX');
     comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
     comp.onComposeToggled(cell('2026-09-05', 'MORNING'));
 
     await comp.confirmCompose();
 
-    expect(dialog.open).toHaveBeenCalledTimes(1);
-    expect(dialog.open.mock.calls[0][1]!.data.mode).toBe('new');
+    // ⚠️ Story 45.2 — le rendez-vous est choisi avant : créer n'ouvre AUCUN dialogue.
+    expect(dialog.open).not.toHaveBeenCalled();
     expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith('seanceX', [
       { date: '2026-09-04', slot: 'EVENING' },
       { date: '2026-09-05', slot: 'MORNING' },
     ]);
     expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
-  });
-
-  it('AC11 — renoncer à la désignation de séance n’écrit rien', async () => {
-    const { fixture, scenariosSvc } = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      scenarios: [FREE_SEANCE_SCENARIO],
-    });
-    const comp = fixture.componentInstance as any;
-    comp.startCompose();
-    comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
-    comp.onComposeToggled(cell('2026-09-05', 'MORNING'));
-
-    await comp.confirmCompose();
-
-    expect(scenariosSvc.createSeancePoll).not.toHaveBeenCalled();
-    expect(comp.composing()).toBe(true);
   });
 
   // ── Robustesse : le mode doit savoir mourir, sans écrire ──
@@ -3643,7 +3781,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
       scenarios: [FREE_SEANCE_SCENARIO],
     });
     const comp = fixture.componentInstance as any;
-    comp.startCompose();
+    comp.startCompose('seanceX');
     fixture.detectChanges();
 
     expect(comp.composedCells()).toEqual([]);
@@ -4236,30 +4374,6 @@ describe('CalendarView — « Lancer un vote » depuis l’Agenda (Story 36.12, 
     expect(fixture.nativeElement.querySelector('app-compose-bar')).not.toBeNull();
   });
 
-  it('AC13 — 🚨 la séance n’est plus redemandée : un seul choix, donc pré-rempli', async () => {
-    const { fixture } = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      scenarios: [SCENARIO_MJ_AGENDA],
-    });
-    const comp = fixture.componentInstance as any;
-    comp.onPollLaunchRequested('seanceLibre');
-    expect(comp.composeSeanceChoices()).toEqual([
-      { seanceId: 'seanceLibre', label: 'Chapitre 1 — Séance 2' },
-    ]);
-  });
-
-  it('🚨 armée sans séance (« Ajouter des dates »), la liste reste complète', async () => {
-    const { fixture } = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      scenarios: [SCENARIO_MJ_AGENDA],
-    });
-    const comp = fixture.componentInstance as any;
-    comp.startCompose();
-    expect(comp.composeTarget()).toEqual({ kind: 'new' });
-    expect(comp.composeSeanceChoices()).toHaveLength(1);
-  });
 });
 
 describe('CalendarView — le regroupement ne touche PAS les grilles (Story 36.12, AC7)', () => {
@@ -4829,13 +4943,12 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     // o1 porte 2 réponses (HOST oui, OTHER peut-être), o2 une (OTHER non) : on retire o1.
     comp.onComposeToggled(cell('2099-11-24', 'EVENING'));
 
-    dialog.__result = { seanceId: null };
+    dialog.__result = true;
     await comp.confirmCompose();
 
     expect(dialog.open).toHaveBeenCalledTimes(1);
     const data = dialog.open.mock.calls[0][1]!.data;
     expect(data).toMatchObject({
-      mode: 'poll',
       group: true,
       slotCount: 2,
       removedCount: 1,
@@ -4862,7 +4975,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
           { votes: [...base.poll.votes, { optionId: 'o1', userId: ME, answer: 'YES' }] },
         ),
       ]);
-      return { component, config, afterClosed: () => of({ seanceId: null }) } as any;
+      return { component, config, afterClosed: () => of(true) } as any;
     });
     await comp.confirmCompose();
 
@@ -4883,7 +4996,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
           seance: { ...base.seance, lieu: 'Chez Max', heureRdv: '20:00', notePratique: null, capacity: 8 },
         }),
       ]);
-      return { component, config, afterClosed: () => of({ seanceId: null }) } as any;
+      return { component, config, afterClosed: () => of(true) } as any;
     });
     await comp.confirmCompose();
 
@@ -6645,7 +6758,7 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
 
   it('une composition en cours masque le bouton', async () => {
     const { fixture } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
-    (fixture.componentInstance as any).startCompose();
+    (fixture.componentInstance as any).startCompose('sc1-s1');
     fixture.detectChanges();
     expect(button(fixture)).toBeNull();
   });

@@ -894,6 +894,8 @@ export const foretAncienne: Record<ToneKey, string> = {
   // Story 45.1 — « Proposer / Modifier les dates » remplace l'armement du composer et les boutons de l'hôte.
   'calendar.view_propose_dates': 'Propose des dates',
   'calendar.view_modify_dates': 'Modifie les dates',
+  // Story 45.2 — lien vers un rendez-vous qui n'est plus à dater (ou plus modifiable) : écrit une fois, sans rien dire de la séance.
+  'calendar.compose_link_stale': 'Ce moment n’est plus à dater.',
   'calendar.rendezvous_picker_title': 'Que veux-tu dater ?',
   // Nature d'un rendez-vous dans le choix : explication en clair, identique dans les trois thèmes.
   'calendar.rendezvous_nature_seance': 'séance sans date',
@@ -903,16 +905,12 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.view_toggle_week_short': 'Sem.',
   'calendar.view_toggle_agenda_short': 'Agenda',
   'calendar.view_no_poll': 'Aucun cercle de date en cours.',
-  'calendar.view_locked_seance_hint':
-    'L’appel de la séance sélectionnée se lance depuis la fiche de l’étape.',
   'calendar.view_group_label': '{slot} — {available}/{total} voyageurs disponibles',
   'calendar.view_group_unavailable_detail': '{n} indisponible(s)',
   'calendar.view_compose_target_poll': 'Clairières du cercle : {label}',
   'calendar.view_compose_target_new': 'Clairières d’un nouveau cercle',
   'calendar.view_compose_blocked_min': 'Un cercle demande au moins deux clairières.',
   'calendar.view_compose_blocked_max': 'Quarante clairières au maximum.',
-  'calendar.view_compose_blocked_no_seance':
-    'Aucune séance n’attend de cercle : un cercle se rattache toujours à une séance.',
   'calendar.view_compose_stale_voters':
     'Une nouvelle réponse est arrivée depuis l’avertissement — revalide pour voir le chiffre à jour.',
   'calendar.view_compose_save_error': 'Ces clairières n’ont pas pu être marquées. Réessaie.',
@@ -1030,8 +1028,6 @@ export const foretAncienne: Record<ToneKey, string> = {
     'Les réponses portées par les clairières conservées ne sont pas touchées.',
   'calendar.compose_confirm_responses_many': '{n} réponses',
   'calendar.compose_confirm_responses_one': '{n} réponse',
-  'calendar.compose_confirm_seance_label': 'Pour quelle séance ?',
-  'calendar.compose_confirm_seance_placeholder': 'Choisir une séance…',
   'calendar.compose_confirm_slots_many': '{n} clairières',
   'calendar.compose_confirm_slots_one': '{n} clairière',
   'calendar.compose_confirm_summary_many': '{n} clairières proposées.',
@@ -1102,7 +1098,6 @@ export const foretAncienne: Record<ToneKey, string> = {
   'cta.choose_date': 'Planter le drapeau de la clairière',
   'cta.cancel_poll': 'Disperser les feuilles du vote',
   'cta.restore_default_layers': 'Revenir à la clairière par défaut',
-  'success.poll_created': "L'écureuil a transmis l'appel du vote.",
   'success.vote_cast': "L'écureuil a transmis ta réponse.",
   'cta.confirm_votes': 'Transmettre mes réponses',
   'cta.withdraw_vote': 'Effacer ma réponse',
@@ -1121,19 +1116,6 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.answer_menu_aria': 'Répondre à l’appel — {slot}',
   'calendar.answer_withdraw': 'Effacer ma réponse',
   /* — création et suivi du vote — */
-  'pollui.creation_title': 'Réunir un cercle de date',
-  'pollui.creation_computed_title': 'Clairières repérées',
-  'pollui.creation_computed_empty': 'Aucune clairière repérée pour l’instant.',
-  'pollui.creation_load_more_one': '{n} clairière de plus',
-  'pollui.creation_load_more_many': '{n} clairières de plus',
-  'pollui.creation_all_shown': 'Toutes les clairières repérées sont affichées',
-  'pollui.creation_custom_title': 'Clairières à ta façon',
-  'pollui.creation_add_custom': 'Ajouter une clairière à ta façon',
-  'pollui.creation_selected_count': '{n} option(s) cueillie(s)',
-  'pollui.creation_submit': 'Réunir le cercle',
-  'pollui.creation_desync_error':
-    'Le cercle a été réuni, mais son état n’a pas pu être rafraîchi ici. Recharge la page pour le voir plutôt que de réunir un autre cercle.',
-  'pollui.creation_error': 'Le cercle n’a pas pu être réuni. Réessaie.',
   'pollui.response_not_saved_aria': 'Non gravé',
   'pollui.response_partial_error':
     '{success}/{total} réponse(s) gravée(s). Réessaie pour les autres.',

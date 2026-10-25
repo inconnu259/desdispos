@@ -554,6 +554,76 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     expect(notice(fixture)).toBeNull();
   });
 
+  describe('désigner des créneaux par le geste des dispos (Story 45.3)', () => {
+    const armed = async () => {
+      const r = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [scenario('sc1')],
+      });
+      (r.fixture.componentInstance as any).startCompose('sc1-s1');
+      await tick(r.fixture);
+      return r;
+    };
+    const keysOf = (comp: any) => comp.composedCells().map((c: any) => `${c.date.getDate()}|${c.slot}`);
+
+    it('« Ajouter au vote » CUMULE : l’union avec les créneaux existants, sans doublon, l’ordre gardé', async () => {
+      const { fixture } = await armed();
+      const comp = fixture.componentInstance as any;
+      comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
+
+      comp.onComposeAdded([
+        cell('2026-09-04', 'EVENING'),
+        cell('2026-09-11', 'EVENING'),
+        cell('2026-09-18', 'EVENING'),
+      ]);
+      comp.onComposeAdded([cell('2026-09-25', 'AFTERNOON'), cell('2026-09-18', 'EVENING')]);
+
+      expect(keysOf(comp)).toEqual(['4|EVENING', '11|EVENING', '18|EVENING', '25|AFTERNOON']);
+    });
+
+    it('en JDR la journée entière est permise ; la barre la propose et rien n’est refusé', async () => {
+      const { fixture } = await armed();
+      const comp = fixture.componentInstance as any;
+      expect(comp.composeAllowsFullDay()).toBe(true);
+
+      comp.onComposeAdded([cell('2026-09-04', 'FULL_DAY'), cell('2026-09-05', 'FULL_DAY')]);
+
+      expect(keysOf(comp)).toEqual(['4|FULL_DAY', '5|FULL_DAY']);
+      expect(comp.composeRefusal()).toBeNull();
+    });
+
+    it('« Retirer » ôte ces créneaux de la composition ; ceux qui n’y étaient pas ne changent rien', async () => {
+      const { fixture } = await armed();
+      const comp = fixture.componentInstance as any;
+      comp.onComposeAdded([cell('2026-09-04', 'EVENING'), cell('2026-09-11', 'EVENING')]);
+
+      comp.onComposeRemoved([cell('2026-09-04', 'EVENING'), cell('2026-09-30', 'MORNING')]);
+
+      expect(keysOf(comp)).toEqual(['11|EVENING']);
+    });
+
+    it('rien n’est écrit tant qu’on ne valide pas, et hors composition ces événements sont sans effet', async () => {
+      const { fixture, scenariosSvc, pollSvc } = await armed();
+      const comp = fixture.componentInstance as any;
+      comp.onComposeAdded([cell('2026-09-04', 'EVENING'), cell('2026-09-11', 'EVENING')]);
+      expect(scenariosSvc.createSeancePoll).not.toHaveBeenCalled();
+      expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
+
+      comp.cancelCompose();
+      comp.onComposeAdded([cell('2026-09-18', 'EVENING')]);
+      expect(comp.composedCells()).toEqual([]);
+    });
+
+    it('les deux grilles reçoivent la barre en version composition et l’autorisation de journée', async () => {
+      const { fixture } = await armed();
+      const comp = fixture.componentInstance as any;
+      const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+      expect(month.composing()).toBe(true);
+      expect(month.composeFullDay()).toBe(comp.composeAllowsFullDay());
+    });
+  });
+
   describe('composer et Destinée', () => {
     const withDestiny = () =>
       createCalendarView({
@@ -4862,6 +4932,26 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     // Aujourd'hui n'est pas en 2099 : sans déplacement, la semaine affichée serait vide.
     comp.startGroupCompose('e1');
     expect(comp.sharedDate().toISOString().substring(0, 10)).toBe('2099-11-24');
+  });
+
+  it('Story 45.3 — « Ajouter au vote » : la journée entière est refusée avec sa raison écrite, les créneaux précis sont ajoutés', async () => {
+    const { comp, fixture } = await createGroupView({ userId: HOST });
+    comp.startGroupCompose('e1');
+    const before = comp.composedCells().length;
+    expect(comp.composeAllowsFullDay()).toBe(false);
+
+    comp.onComposeAdded([cell('2099-11-27', 'FULL_DAY'), cell('2099-11-28', 'EVENING')]);
+    fixture.detectChanges();
+
+    expect(comp.composedCells()).toHaveLength(before + 1);
+    expect(comp.composedCells().some((c: any) => c.slot === 'FULL_DAY')).toBe(false);
+    expect(fixture.nativeElement.querySelector('.calendar-error--compose')?.textContent?.trim()).toBe(
+      GRIMOIRE_TONE['partie.ralliement_calendar_compose_full_day'],
+    );
+
+    comp.onComposeAdded([cell('2099-11-29', 'MORNING')]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.calendar-error--compose')).toBeNull();
   });
 
   it('la journée entière est refusée avec sa raison écrite ; un créneau précis est accepté', async () => {

@@ -1079,6 +1079,114 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
     expect(el.querySelector('app-selection-bar')).toBeNull();
   });
 
+  // ── Story 45.3 — le geste des dispos en composition (bloc JUMEAU de la vue Mois) ──
+
+  const barEl = () => el.querySelector('app-selection-bar');
+  const barButton = (text: string) =>
+    Array.from(el.querySelectorAll('app-selection-bar button')).find(
+      (b) => b.textContent?.trim() === text,
+    ) as HTMLButtonElement;
+  const gridEl = () => el.querySelector('.week-grid') as HTMLElement;
+
+  /** Appui maintenu sur une cellule, relâché : arme une sélection sur la ligne de cette cellule. */
+  function longPressCell(cell: HTMLElement): void {
+    cell.dispatchEvent(pointer('pointerdown'));
+    vi.advanceTimersByTime(LONG_PRESS_MS);
+    gridEl().dispatchEvent(pointer('pointerup'));
+    fixture.detectChanges();
+  }
+
+  it('Story 45.3 — en composition, l’appui maintenu arme une sélection ET ouvre la barre en version composition', () => {
+    vi.useFakeTimers();
+    create({ composing: true, composedKeys: new Set<string>() });
+    const toggled = vi.fn();
+    fixture.componentInstance.composeToggled.subscribe(toggled);
+
+    longPressCell(cellAt('EVENING', 2));
+
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(1);
+    expect(barEl()).not.toBeNull();
+    expect(barButton(GRIMOIRE_TONE['calendar.selbar_compose_add'])).toBeTruthy();
+    expect(barButton(GRIMOIRE_TONE['common.indisponible'])).toBeUndefined();
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('Story 45.3 — « Ajouter au vote » émet la sélection et ferme la barre ; « Retirer » émet composeRemoved', () => {
+    vi.useFakeTimers();
+    create({ composing: true, composedKeys: new Set<string>() });
+    const added = vi.fn();
+    const removed = vi.fn();
+    fixture.componentInstance.composeAdded.subscribe(added);
+    fixture.componentInstance.composeRemoved.subscribe(removed);
+
+    longPressCell(cellAt('EVENING', 2));
+    barButton(GRIMOIRE_TONE['calendar.selbar_compose_add']).click();
+    fixture.detectChanges();
+    expect(added).toHaveBeenCalledTimes(1);
+    expect(added.mock.calls[0][0].map((c: { slot: string }) => c.slot)).toEqual(['EVENING']);
+    expect(barEl()).toBeNull();
+
+    longPressCell(cellAt('MORNING', 3));
+    barButton(GRIMOIRE_TONE['calendar.selbar_compose_remove']).click();
+    expect(removed).toHaveBeenCalledTimes(1);
+    expect(removed.mock.calls[0][0].map((c: { slot: string }) => c.slot)).toEqual(['MORNING']);
+  });
+
+  it('Story 45.3 — barre ouverte, un tap bascule la cellule dans la SÉLECTION, jamais dans la composition', () => {
+    vi.useFakeTimers();
+    create({ composing: true, composedKeys: new Set<string>() });
+    const toggled = vi.fn();
+    fixture.componentInstance.composeToggled.subscribe(toggled);
+
+    longPressCell(cellAt('EVENING', 2));
+    tap(cellAt('EVENING', 4));
+
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(2);
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('Story 45.3 — `Échap` ferme d’abord la barre, puis quitte le composer', () => {
+    vi.useFakeTimers();
+    create({ composing: true, composedKeys: new Set<string>() });
+    const cancelled = vi.fn();
+    fixture.componentInstance.composeCancelled.subscribe(cancelled);
+    const escape = () =>
+      gridEl().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    longPressCell(cellAt('EVENING', 2));
+    escape();
+    fixture.detectChanges();
+    expect(barEl()).toBeNull();
+    expect(cancelled).not.toHaveBeenCalled();
+
+    escape();
+    expect(cancelled).toHaveBeenCalledTimes(1);
+  });
+
+  it('Story 45.3 — quitter le composer efface la sélection', () => {
+    vi.useFakeTimers();
+    create({ composing: true, composedKeys: new Set<string>() });
+    longPressCell(cellAt('EVENING', 2));
+    expect(barEl()).not.toBeNull();
+
+    fixture.componentRef.setInput('composing', false);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('Story 45.3 — sans journée entière (groupe), la barre ne propose pas « Journée »', () => {
+    vi.useFakeTimers();
+    create({ composing: true, composedKeys: new Set<string>(), composeFullDay: false });
+    longPressCell(cellAt('EVENING', 2));
+
+    const labels = Array.from(el.querySelectorAll('app-selection-bar .scope-seg')).map((b) =>
+      b.textContent!.trim(),
+    );
+    expect(labels).toEqual(['Matin', 'Après-m.', 'Soir']);
+  });
+
   it('🚨 AC12 — une cellule portant un VOTE n’ouvre pas le sélecteur de réponse en composition', () => {
     create({
       entries: [voteEntry(2)],

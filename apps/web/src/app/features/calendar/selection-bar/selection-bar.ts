@@ -61,6 +61,12 @@ export class SelectionBar {
    *  vers `PollService.chooseDate()` via `CalendarView.onSealRequested()` (36.12), jamais
    *  l'appeler lui-même. */
   readonly sealCandidate = input<AgendaSealRequest | null>(null);
+  /** ⚠️ Story 45.3 — version COMPOSITION : la barre ne déclare plus rien, elle désigne des créneaux du vote.
+   *  Elle perd Sceller, Disponible, Indisponible et « Autre… » ; elle gagne « Ajouter au vote » et « Retirer ». */
+  readonly composeMode = input(false);
+  /** Story 45.3 — la journée entière est-elle permise ici ? Vrai en JDR ; faux pour une conjonction ou une
+   *  soirée, où le segment « Journée » n'est pas proposé (40.5b). Sans effet hors composition. */
+  readonly fullDayAllowed = input(true);
 
   readonly scopeChange = output<DaySlot>();
   readonly armedKindChange = output<AvailKind>();
@@ -71,8 +77,23 @@ export class SelectionBar {
   /** Story 36.15, AC5 — même contrat que `CalendarAgendaView.sealRequested` : aucune écriture
    *  ici, `CalendarView.onSealRequested()` porte la confirmation et l'appel. */
   readonly sealRequested = output<AgendaSealRequest>();
+  /** Story 45.3 — « Ajouter au vote » / « Retirer » : la sélection rejoint ou quitte la composition. Aucune
+   *  écriture ici, comme pour le reste de la barre. */
+  readonly composeAdd = output<void>();
+  readonly composeRemove = output<void>();
 
-  protected readonly SCOPE_OPTIONS = SCOPE_OPTIONS;
+  /** Les portées proposées : sans « Journée » quand elle est refusée (Story 45.3). Hors composition, les quatre. */
+  protected readonly scopeOptions = computed(() =>
+    this.composeMode() && !this.fullDayAllowed()
+      ? SCOPE_OPTIONS.filter((o) => o.slot !== 'FULL_DAY')
+      : SCOPE_OPTIONS,
+  );
+
+  /** Story 45.3 — « Ajouter au vote » n'est pas proposable tant que la portée est une journée refusée : le moment
+   *  se choisit d'abord, et le bouton le dit en toutes lettres plutôt que de rester inerte. */
+  protected readonly addBlocked = computed(
+    () => this.composeMode() && !this.fullDayAllowed() && this.scope() === 'FULL_DAY',
+  );
   protected readonly theme = inject(ThemeToneService);
 
   /** Même clé de thème que le bouton *Sceller* de l'Agenda (36.12) — la même action mérite le
@@ -99,9 +120,11 @@ export class SelectionBar {
     return fillTone(this.theme.tone()[key], { n });
   });
 
-  /** AC14 — l'état de la barre en toutes lettres : la portée, et ce que `Entrée` validera. */
+  /** AC14 — l'état de la barre en toutes lettres : la portée, et ce que `Entrée` validera (en composition : la
+   *  portée seule, la barre ne valide aucune déclaration). */
   protected readonly announcement = computed(() => {
     const tone = this.theme.tone();
+    if (this.composeMode()) return this.scopeLabel();
     return fillTone(tone['calendar.selbar_announcement'], {
       scope: this.scopeLabel(),
       kind:
@@ -119,12 +142,13 @@ export class SelectionBar {
     const dir = forward ? 1 : -1;
     event.preventDefault();
     // Portée `null` (créneaux mélangés) : aucun segment n'est retenu, on repart du premier.
-    const idx = SCOPE_OPTIONS.findIndex((o) => o.slot === this.scope());
+    const options = this.scopeOptions();
+    const idx = options.findIndex((o) => o.slot === this.scope());
     if (idx === -1) {
-      this.scopeChange.emit(SCOPE_OPTIONS[forward ? 0 : SCOPE_OPTIONS.length - 1].slot);
+      this.scopeChange.emit(options[forward ? 0 : options.length - 1].slot);
       return;
     }
-    const next = (idx + dir + SCOPE_OPTIONS.length) % SCOPE_OPTIONS.length;
-    this.scopeChange.emit(SCOPE_OPTIONS[next].slot);
+    const next = (idx + dir + options.length) % options.length;
+    this.scopeChange.emit(options[next].slot);
   }
 }

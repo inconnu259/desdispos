@@ -82,3 +82,9 @@
     box-shadow: inset 0 0 0 1px var(--mat-sys-primary);
   }
 }
+
+/* Story 45.3 — l'indication écrite qui accompagne « Ajouter au vote » désactivé (jamais un bouton muet). */
+.selection-bar__hint {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+}

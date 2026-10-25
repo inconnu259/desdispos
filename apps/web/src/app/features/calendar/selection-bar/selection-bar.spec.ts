@@ -188,4 +188,86 @@ describe('SelectionBar', () => {
     (el.querySelector('.seal-btn') as HTMLButtonElement).click();
     expect(spy).toHaveBeenCalledWith(SEAL_CANDIDATE);
   });
+
+  // ── Story 45.3 — la barre en version composition ──
+
+  describe('version composition (Story 45.3)', () => {
+    function createCompose(scope: DaySlot | null = 'EVENING', fullDayAllowed = true): void {
+      fixture = TestBed.createComponent(SelectionBar);
+      fixture.componentRef.setInput('count', 3);
+      fixture.componentRef.setInput('scope', scope);
+      fixture.componentRef.setInput('composeMode', true);
+      fixture.componentRef.setInput('fullDayAllowed', fullDayAllowed);
+      // Un candidat à sceller ne doit JAMAIS s'afficher en composition.
+      fixture.componentRef.setInput('sealCandidate', SEAL_CANDIDATE);
+      fixture.detectChanges();
+      el = fixture.nativeElement;
+    }
+
+    it('perd Sceller, Disponible, Indisponible et « Autre… » ; garde le compte, la portée et Annuler', () => {
+      createCompose();
+      expect(el.querySelector('.seal-btn')).toBeNull();
+      expect(el.querySelector('.kind-btn')).toBeNull();
+      expect(el.querySelector('.other-btn')).toBeNull();
+      expect(el.querySelectorAll('.scope-seg')).toHaveLength(4);
+      expect(buttonByText(GRIMOIRE_TONE['common.annuler'])).toBeTruthy();
+    });
+
+    it('« Ajouter au vote » et « Retirer » émettent composeAdd et composeRemove', () => {
+      createCompose();
+      const add = vi.fn();
+      const remove = vi.fn();
+      fixture.componentInstance.composeAdd.subscribe(add);
+      fixture.componentInstance.composeRemove.subscribe(remove);
+
+      buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_add']).click();
+      buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_remove']).click();
+
+      expect(add).toHaveBeenCalledTimes(1);
+      expect(remove).toHaveBeenCalledTimes(1);
+    });
+
+    it('« Annuler » émet cancelled (la sélection, pas le composer)', () => {
+      createCompose();
+      const cancelled = vi.fn();
+      fixture.componentInstance.cancelled.subscribe(cancelled);
+      buttonByText(GRIMOIRE_TONE['common.annuler']).click();
+      expect(cancelled).toHaveBeenCalledTimes(1);
+    });
+
+    it('sans journée entière (groupe, soirée) : le segment « Journée » n’est pas proposé', () => {
+      createCompose('EVENING', false);
+      const labels = Array.from(el.querySelectorAll('.scope-seg')).map((b) =>
+        b.textContent!.trim(),
+      );
+      expect(labels).toEqual(['Matin', 'Après-m.', 'Soir']);
+    });
+
+    it('sans journée entière et portée « journée » : « Ajouter au vote » est désactivé et la raison est ÉCRITE', () => {
+      createCompose('FULL_DAY', false);
+      const add = buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_add']);
+      expect(add.disabled).toBe(true);
+      expect(el.querySelector('.selection-bar__hint')?.textContent?.trim()).toBe(
+        GRIMOIRE_TONE['calendar.selbar_compose_pick_moment'],
+      );
+      expect(add.getAttribute('aria-describedby')).toBe('selbar-compose-hint');
+    });
+
+    it('en JDR (journée permise), « Journée » est proposée et « Ajouter » reste actif', () => {
+      createCompose('FULL_DAY', true);
+      expect(el.querySelectorAll('.scope-seg')).toHaveLength(4);
+      expect(buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_add']).disabled).toBe(false);
+      expect(el.querySelector('.selection-bar__hint')).toBeNull();
+    });
+
+    it('les flèches ne circulent que sur les portées proposées', () => {
+      createCompose('EVENING', false);
+      const changed: DaySlot[] = [];
+      fixture.componentInstance.scopeChange.subscribe((s) => changed.push(s));
+      el.querySelector('.selection-bar__scope')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+      );
+      expect(changed).toEqual(['MORNING']);
+    });
+  });
 });

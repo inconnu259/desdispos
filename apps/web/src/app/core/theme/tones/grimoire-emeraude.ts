@@ -974,6 +974,10 @@ export const grimoireEmeraude = {
   'calendar.selbar_count_many': '{n} fenêtres sélectionnées',
   'calendar.selbar_count_one': '{n} fenêtre sélectionnée',
   'calendar.selbar_other': 'Autrement…',
+  // Story 45.3 — la barre de sélection en version composition (désigner des créneaux du vote).
+  'calendar.selbar_compose_add': 'Ajouter au vote',
+  'calendar.selbar_compose_remove': 'Retirer',
+  'calendar.selbar_compose_pick_moment': 'Choisissez d’abord un moment (matin, après-midi ou soir).',
   'calendar.selbar_scope_aria': 'Étendue de la sélection',
   'calendar.selbar_toolbar_aria': 'Actions du grimoire sur la sélection',
   /* — panneau de contraintes — */

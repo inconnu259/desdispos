@@ -1684,25 +1684,152 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
     expect(voteActivated).toHaveBeenCalledTimes(1);
   });
 
-  it('AC12 — en composition, l’appui maintenu n’arme plus la sélection', async () => {
-    const f = await createWith({
-      entries: [VOTE_ENTRY],
-      composing: true,
-      composedKeys: new Set<string>(),
-    });
+  // ── Story 45.3 — le geste des dispos en composition (bloc JUMEAU de la vue Semaine) ──
 
-    bandOf(20, 2).dispatchEvent(
-      new PointerEvent('pointerdown', {
-        clientX: 5,
-        clientY: 5,
-        pointerType: 'mouse',
-        bubbles: true,
-      }),
-    );
+  const pointerAt = (type: string, x = 5, y = 5) =>
+    new PointerEvent(type, { clientX: x, clientY: y, pointerType: 'mouse', bubbles: true });
+  const gridEl = () => el.querySelector('.calendar-grid') as HTMLElement;
+  const barEl = () => el.querySelector('app-selection-bar');
+  const barButton = (text: string) =>
+    Array.from(el.querySelectorAll('app-selection-bar button')).find(
+      (b) => b.textContent?.trim() === text,
+    ) as HTMLButtonElement;
+
+  /** Un glissement de la case `from` à la case `to`, relâché. */
+  function dragDays(from: number, to: number): void {
+    cellOf(from).dispatchEvent(pointerAt('pointerdown', 0, 0));
+    document.elementFromPoint = vi.fn().mockReturnValue(cellOf(to));
+    gridEl().dispatchEvent(pointerAt('pointermove', 60, 0));
+    gridEl().dispatchEvent(pointerAt('pointerup', 60, 0));
+  }
+
+  it('Story 45.3 — en composition, l’appui maintenu arme une sélection de jours ET ouvre la barre en version composition', async () => {
+    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const toggled = vi.fn();
+    f.componentInstance.composeToggled.subscribe(toggled);
+
+    uniformBandOf(20).dispatchEvent(pointerAt('pointerdown'));
     vi.advanceTimersByTime(LONG_PRESS_MS);
+    gridEl().dispatchEvent(pointerAt('pointerup'));
+    f.detectChanges();
+    // Le `click` que le navigateur émet derrière le geste est AVALÉ : il ne compose pas la case sélectionnée.
+    uniformBandOf(20).dispatchEvent(new MouseEvent('click', { bubbles: true }));
     f.detectChanges();
 
-    expect(el.querySelector('app-selection-bar')).toBeNull();
+    expect(f.componentInstance['selectedDays']()).toHaveLength(1);
+    expect(barEl()).not.toBeNull();
+    expect(barButton(GRIMOIRE_TONE['calendar.selbar_compose_add'])).toBeTruthy();
+    expect(barButton(GRIMOIRE_TONE['common.disponible'])).toBeUndefined();
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('Story 45.3 — un glissement sélectionne plusieurs jours ; choisir « Soir » puis « Ajouter au vote » émet CES créneaux, sans rien composer par la vue', async () => {
+    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const added = vi.fn();
+    const toggled = vi.fn();
+    f.componentInstance.composeAdded.subscribe(added);
+    f.componentInstance.composeToggled.subscribe(toggled);
+
+    dragDays(20, 22);
+    f.detectChanges();
+    expect(f.componentInstance['selectedDays']()).toHaveLength(3);
+
+    (el.querySelector('app-selection-bar .scope-seg[aria-label="Soir"]') as HTMLButtonElement).click();
+    f.detectChanges();
+    barButton(GRIMOIRE_TONE['calendar.selbar_compose_add']).click();
+    f.detectChanges();
+
+    expect(added).toHaveBeenCalledTimes(1);
+    const cells = added.mock.calls[0][0] as { date: Date; slot: string }[];
+    expect(cells.map((c) => [c.date.getDate(), c.slot])).toEqual([
+      [20, 'EVENING'],
+      [21, 'EVENING'],
+      [22, 'EVENING'],
+    ]);
+    expect(barEl()).toBeNull();
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('Story 45.3 — « Retirer » émet composeRemoved avec la sélection', async () => {
+    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const removed = vi.fn();
+    f.componentInstance.composeRemoved.subscribe(removed);
+
+    dragDays(20, 21);
+    f.detectChanges();
+    barButton(GRIMOIRE_TONE['calendar.selbar_compose_remove']).click();
+    f.detectChanges();
+
+    expect(removed).toHaveBeenCalledTimes(1);
+    expect(removed.mock.calls[0][0]).toHaveLength(2);
+    expect(barEl()).toBeNull();
+  });
+
+  it('Story 45.3 — barre ouverte, un tap bascule la case dans la SÉLECTION (jamais dans la composition)', async () => {
+    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const toggled = vi.fn();
+    f.componentInstance.composeToggled.subscribe(toggled);
+
+    dragDays(20, 21);
+    f.detectChanges();
+    expect(f.componentInstance['selectedDays']()).toHaveLength(2);
+
+    // Un vrai tap : le `pointerdown` remet à zéro l'avalement du clic du geste précédent.
+    uniformBandOf(25).dispatchEvent(pointerAt('pointerdown'));
+    gridEl().dispatchEvent(pointerAt('pointerup'));
+    uniformBandOf(25).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    f.detectChanges();
+
+    expect(f.componentInstance['selectedDays']()).toHaveLength(3);
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('Story 45.3 — `Échap` ferme d’abord la barre de sélection, puis (sans barre) quitte le composer', async () => {
+    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const cancelled = vi.fn();
+    f.componentInstance.composeCancelled.subscribe(cancelled);
+    const escape = () =>
+      gridEl().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    dragDays(20, 21);
+    f.detectChanges();
+    escape();
+    f.detectChanges();
+    expect(barEl()).toBeNull();
+    expect(cancelled).not.toHaveBeenCalled();
+
+    escape();
+    expect(cancelled).toHaveBeenCalledTimes(1);
+  });
+
+  it('Story 45.3 — quitter le composer efface la sélection : une barre de composition ne devient pas une barre de déclaration', async () => {
+    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    dragDays(20, 21);
+    f.detectChanges();
+    expect(barEl()).not.toBeNull();
+
+    f.componentRef.setInput('composing', false);
+    f.detectChanges();
+
+    expect(f.componentInstance['selectedDays']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('Story 45.3 — sans journée entière (groupe), la barre ne propose pas « Journée »', async () => {
+    const f = await createWith({
+      composing: true,
+      composedKeys: new Set<string>(),
+      composeFullDay: false,
+    });
+    dragDays(20, 21);
+    f.detectChanges();
+
+    const labels = Array.from(el.querySelectorAll('app-selection-bar .scope-seg')).map((b) =>
+      b.textContent!.trim(),
+    );
+    expect(labels).not.toContain('Journée');
+    // La sélection part d'une journée entière : « Ajouter » attend qu'on choisisse un moment.
+    expect(barButton(GRIMOIRE_TONE['calendar.selbar_compose_add']).disabled).toBe(true);
   });
 
   it('AC12/AC16 — au clavier aussi : `1` compose au lieu d’armer une sélection', async () => {

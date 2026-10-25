@@ -335,6 +335,14 @@ export class CalendarMonthView {
    *  annule la SÉLECTION : les deux ne peuvent pas être actifs en même temps, c'est le mode qui
    *  décide lequel s'applique. */
   readonly composeCancelled = output<void>();
+  /** ⚠️ Story 45.3 — la sélection (appui maintenu ou glissement) rejoint la composition : « Ajouter au vote ».
+   *  La vue ne change JAMAIS les créneaux composés, elle les émet ; `CalendarView` en fait l'union. */
+  readonly composeAdded = output<SelectedCell[]>();
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  readonly composeRemoved = output<SelectedCell[]>();
+  /** Story 45.3 — la journée entière est-elle permise dans cette composition ? Faux pour une conjonction ou une
+   *  soirée : la barre ne propose alors pas « Journée ». */
+  readonly composeFullDay = input(true);
 
   protected readonly displayDate = signal(new Date());
 
@@ -506,6 +514,12 @@ export class CalendarMonthView {
   });
 
   constructor() {
+    // Story 45.3 — la sélection ne survit pas à l'entrée ni à la sortie du composer : une barre de déclaration
+    // ne devient pas une barre de composition (ni l'inverse) sous les doigts.
+    effect(() => {
+      this.composing();
+      untracked(() => this.onSelectionCancelled());
+    });
     const init = this.initialDate();
     if (init) {
       this.displayDate.set(new Date(init.getFullYear(), init.getMonth(), 1));
@@ -591,16 +605,21 @@ export class CalendarMonthView {
     // 🚨 Story 36.10, AC2/AC12 — LE MODE DE COMPOSITION RÉASSIGNE LE TAP, et il le fait ICI :
     // avant la bascule de sélection, avant l'ouverture du sélecteur de réponse. Le rail a déjà
     // reçu son `slotSelected` juste au-dessus (principe 2) ; tout le reste est neutralisé.
-    if (this.composing()) {
-      this.composeToggled.emit({ date, slot });
-      return;
-    }
     // Un geste armé (appui maintenu ou glissement) se termine par un `click` que le navigateur
     // émet de lui-même. Sans cette garde il rebasculerait aussitôt la case qu'on vient de
     // sélectionner — et un appui maintenu simple ressortait donc du mode modification à la
     // relâche. Défaut constaté à l'écran ; la vue Semaine y échappait faute de (click).
+    // ⚠️ Story 45.3 — avalé AVANT la composition : le geste y existe maintenant, et son `click` ne doit pas
+    // composer la case qu'on vient de sélectionner.
     if (this.suppressNextClick) {
       this.suppressNextClick = false;
+      return;
+    }
+    if (this.composing()) {
+      // Story 45.3 — barre ouverte : le tap bascule la case dans la SÉLECTION (règle des disponibilités) ; sinon il
+      // ajoute ou retire UNE bande de la composition (36.10, inchangé).
+      if (this.selectedCells().length > 0) this.toggleCell(date, slot);
+      else this.composeToggled.emit({ date, slot });
       return;
     }
     // AC17/AC18 — une fois la barre ouverte, le même clic BASCULE le créneau touché. Le geste ne
@@ -633,10 +652,9 @@ export class CalendarMonthView {
    *  La portée part du créneau visé : c'est la seule valeur qui rende la collision 8 vraie sans
    *  que l'utilisateur ait à toucher la barre. */
   private armSelection(date: Date, slot: DaySlot): void {
-    // 🚨 Story 36.10, AC12 — POINT D'ÉTRANGLEMENT UNIQUE. Appui maintenu, glissement et
-    // `Espace`/`1`/`2`/`3` passent tous par ici : une seule garde neutralise donc les trois
-    // pendant la composition, et aucun chemin d'armement ne peut lui échapper par oubli.
-    if (this.composing()) return;
+    // ⚠️ Story 45.3 — la garde de la 36.10 (AC12) tombe pour l'appui maintenu et le glissement : en composition ils
+    // sélectionnent des jours, que la barre verse au vote. Le clavier, lui, compose directement AVANT d'arriver ici
+    // (`onCellKeySelect`), et `Maj`+flèches reste inerte pendant la composition (`onShiftArrow`).
     this.selectionAnchor.set({ date, slot });
     this.selectionCurrent.set({ date, slot });
     this.selectedCells.set([{ date, slot }]);
@@ -941,6 +959,12 @@ export class CalendarMonthView {
    *  composition il quitte le mode sans rien écrire, sinon il annule la sélection comme avant. */
   protected onEscape(): void {
     if (this.composing()) {
+      // Story 45.3 — une barre de sélection ouverte se ferme d'abord : `Échap` n'a qu'UN sens à la fois, celui de la
+      // couche la plus proche. Sans barre, il quitte le composer.
+      if (this.selectedCells().length > 0) {
+        this.onSelectionCancelled();
+        return;
+      }
       this.composeCancelled.emit();
       return;
     }
@@ -967,6 +991,23 @@ export class CalendarMonthView {
     const target = this.selectedCells()[0] ?? this.selectionAnchor();
     if (!target) return;
     this.declarationPanelRequested.emit({ date: target.date, slot: target.slot });
+    this.onSelectionCancelled();
+  }
+
+  /** ⚠️ Story 45.3 — « Ajouter au vote » : la sélection rejoint les créneaux composés (cumul, sans touche de
+   *  modification), puis la barre se ferme. Rien n'est écrit : seul « Valider » écrit. */
+  protected onComposeAdd(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeAdded.emit(cells);
+    this.onSelectionCancelled();
+  }
+
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  protected onComposeRemove(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeRemoved.emit(cells);
     this.onSelectionCancelled();
   }
 

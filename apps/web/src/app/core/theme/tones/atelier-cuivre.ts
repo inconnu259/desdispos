@@ -973,6 +973,10 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.selbar_count_many': '{n} plages sélectionnées',
   'calendar.selbar_count_one': '{n} plage sélectionnée',
   'calendar.selbar_other': 'Autre réglage…',
+  // Story 45.3 — la barre de sélection en version composition (désigner des créneaux du vote).
+  'calendar.selbar_compose_add': 'Verser au vote',
+  'calendar.selbar_compose_remove': 'Écarter',
+  'calendar.selbar_compose_pick_moment': 'Précisez d’abord un moment (matin, après-midi ou soir).',
   'calendar.selbar_scope_aria': 'Portée de la sélection',
   'calendar.selbar_toolbar_aria': 'Commandes de la sélection',
   /* — panneau de contraintes — */

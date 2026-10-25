@@ -322,6 +322,14 @@ export class CalendarWeekView {
   readonly composeToggled = output<SlotSelectedEvent>();
   /** Story 36.10, AC3 — `Échap` pendant la composition. */
   readonly composeCancelled = output<void>();
+  /** ⚠️ Story 45.3 — la sélection (appui maintenu ou glissement) rejoint la composition : « Ajouter au vote ».
+   *  La vue ne change JAMAIS les créneaux composés, elle les émet ; `CalendarView` en fait l'union. */
+  readonly composeAdded = output<SelectedCell[]>();
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  readonly composeRemoved = output<SelectedCell[]>();
+  /** Story 45.3 — la journée entière est-elle permise dans cette composition ? Faux pour une conjonction ou une
+   *  soirée : la barre ne propose alors pas « Journée ». */
+  readonly composeFullDay = input(true);
   readonly displayDateChange = output<Date>();
   /** Story 30.3 : lot construit par un glissement (souris/tactile) ou une validation clavier —
    *  CalendarView construit les items et appelle createDeclarationBatch(), jamais cette vue. */
@@ -554,6 +562,11 @@ export class CalendarWeekView {
   });
 
   constructor() {
+    // Story 45.3 — bloc JUMEAU de la vue Mois : la sélection ne survit pas à l'entrée ni à la sortie du composer.
+    effect(() => {
+      this.composing();
+      untracked(() => this.onSelectionCancelled());
+    });
     effect(() => {
       const d = this.startDate();
       untracked(() => this.displayWeekStart.set(getWeekStart(d)));
@@ -602,14 +615,16 @@ export class CalendarWeekView {
     // 🚨 Story 36.10, AC2/AC12 — le mode de composition réassigne le tap, ICI, avant tout le
     // reste. Le rail a déjà suivi juste au-dessus (principe 2) ; sélection et sélecteur de
     // réponse sont neutralisés.
-    if (this.composing()) {
-      this.composeToggled.emit({ date, slot });
-      return;
-    }
     // Un geste armé se termine par un `click` spontané du navigateur : l'avaler, sinon il
     // rebasculerait la cellule qu'on vient de sélectionner (même garde qu'en vue Mois).
+    // ⚠️ Story 45.3 — avalé AVANT la composition (bloc JUMEAU de la vue Mois).
     if (this.suppressNextClick) {
       this.suppressNextClick = false;
+      return;
+    }
+    if (this.composing()) {
+      if (this.selectedCells().length > 0) this.toggleCell(date, slot);
+      else this.composeToggled.emit({ date, slot });
       return;
     }
     // AC17/AC18 — une fois la barre ouverte, le même clic BASCULE le créneau touché, quelle que
@@ -633,9 +648,9 @@ export class CalendarWeekView {
   /** Sélection d'une seule cellule, armée au clavier (AC7, AC15). La portée part du créneau visé
    *  — la ligne de la grille Semaine EST un créneau. */
   private armSelection(date: Date, slot: DaySlot): void {
-    // 🚨 Story 36.10, AC12 — point d'étranglement unique (appui maintenu, glissement, clavier),
-    // exactement comme en vue Mois.
-    if (this.composing()) return;
+    // ⚠️ Story 45.3 — la garde de la 36.10 (AC12) tombe pour l'appui maintenu et le glissement : en composition ils
+    // sélectionnent des jours, que la barre verse au vote. Le clavier, lui, compose directement AVANT d'arriver ici
+    // (`onCellKeySelect`), et `Maj`+flèches reste inerte pendant la composition (`onShiftArrow`).
     this.selectionAnchor.set({ date, slot });
     this.selectionCurrent.set({ date, slot });
     this.selectedCells.set([{ date, slot }]);
@@ -940,6 +955,12 @@ export class CalendarWeekView {
   /** Story 36.10, AC3 — `Échap` : une seule signification à un instant donné. */
   protected onEscape(): void {
     if (this.composing()) {
+      // Story 45.3 — une barre de sélection ouverte se ferme d'abord : `Échap` n'a qu'UN sens à la fois, celui de la
+      // couche la plus proche. Sans barre, il quitte le composer.
+      if (this.selectedCells().length > 0) {
+        this.onSelectionCancelled();
+        return;
+      }
       this.composeCancelled.emit();
       return;
     }
@@ -966,6 +987,23 @@ export class CalendarWeekView {
     const target = this.selectedCells()[0] ?? this.selectionAnchor();
     if (!target) return;
     this.declarationPanelRequested.emit({ date: target.date, slot: target.slot });
+    this.onSelectionCancelled();
+  }
+
+  /** ⚠️ Story 45.3 — « Ajouter au vote » : la sélection rejoint les créneaux composés (cumul, sans touche de
+   *  modification), puis la barre se ferme. Rien n'est écrit : seul « Valider » écrit. */
+  protected onComposeAdd(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeAdded.emit(cells);
+    this.onSelectionCancelled();
+  }
+
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  protected onComposeRemove(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeRemoved.emit(cells);
     this.onSelectionCancelled();
   }
 

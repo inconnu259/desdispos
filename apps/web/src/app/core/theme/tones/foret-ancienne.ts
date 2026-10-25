@@ -969,6 +969,10 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.selbar_count_many': '{n} clairières sélectionnées',
   'calendar.selbar_count_one': '{n} clairière sélectionnée',
   'calendar.selbar_other': 'Autre chemin…',
+  // Story 45.3 — la barre de sélection en version composition (désigner des créneaux du vote).
+  'calendar.selbar_compose_add': 'Ajoute au vote',
+  'calendar.selbar_compose_remove': 'Retire',
+  'calendar.selbar_compose_pick_moment': 'Choisis d’abord un moment (matin, après-midi ou soir).',
   'calendar.selbar_scope_aria': 'Étendue de la sélection dans la forêt',
   'calendar.selbar_toolbar_aria': 'Actions de la forêt sur la sélection',
   /* — panneau de contraintes — */

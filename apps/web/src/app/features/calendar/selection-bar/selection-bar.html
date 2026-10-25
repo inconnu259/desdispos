@@ -20,7 +20,7 @@
     tabindex="0"
     (keydown)="onScopeKeydown($event)"
   >
-    @for (opt of SCOPE_OPTIONS; track opt.slot) {
+    @for (opt of scopeOptions(); track opt.slot) {
       <button
         type="button"
         class="scope-seg"
@@ -42,7 +42,7 @@
        option d'un vote OPEN dont l'utilisateur est MJ. Placé avant Disponible/Indisponible,
        comme dans le contrat d'UI (`contrat-ui-calendrier.html:376`). Aucune écriture ici : le
        clic route vers `CalendarView.onSealRequested()` (confirmation + appel), 36.12. -->
-  @if (sealCandidate(); as candidate) {
+  @if (!composeMode() && sealCandidate(); as candidate) {
     <button
       mat-flat-button
       type="button"
@@ -55,69 +55,99 @@
     </button>
   }
 
-  <!--
-    Intention armée (AC6) : c'est ce que `Entrée` validera. Marquée par la FORME du bouton —
-    `mat-flat-button` (armé) contre `mat-stroked-button` (non armé) — et par `aria-pressed`,
-    jamais par la couleur seule (P-1). La couleur sémantique (primary/warn) reste affichée dans
-    les deux états, conformément au contrat d'UI. Un clic arme ET valide dans le même geste : le
-    chemin pointeur est identique à celui de la story 30.3.
-  -->
-  @if (armedKind() === 'AVAILABLE') {
+  @if (composeMode()) {
+    <!-- ⚠️ Story 45.3 — version composition : la sélection désigne des créneaux du vote, elle ne déclare rien.
+         « Ajouter au vote » est désactivé tant que la portée est une journée refusée, et la raison est écrite. -->
+    @if (addBlocked()) {
+      <span class="selection-bar__hint" id="selbar-compose-hint">{{
+        theme.tone()['calendar.selbar_compose_pick_moment']
+      }}</span>
+    }
     <button
       mat-flat-button
       type="button"
       color="primary"
-      class="kind-btn kind-btn--available"
-      aria-pressed="true"
-      (focus)="armedKindChange.emit('AVAILABLE')"
-      (click)="markAvailable.emit()"
+      class="compose-add-btn"
+      [disabled]="addBlocked()"
+      [attr.aria-describedby]="addBlocked() ? 'selbar-compose-hint' : null"
+      (click)="composeAdd.emit()"
     >
-      {{ theme.tone()['common.disponible'] }}
+      {{ theme.tone()['calendar.selbar_compose_add'] }}
     </button>
-  } @else {
     <button
       mat-stroked-button
       type="button"
-      color="primary"
-      class="kind-btn kind-btn--available"
-      aria-pressed="false"
-      (focus)="armedKindChange.emit('AVAILABLE')"
-      (click)="markAvailable.emit()"
+      class="compose-remove-btn"
+      (click)="composeRemove.emit()"
     >
-      {{ theme.tone()['common.disponible'] }}
-    </button>
-  }
-  @if (armedKind() === 'UNAVAILABLE') {
-    <button
-      mat-flat-button
-      type="button"
-      color="warn"
-      class="kind-btn kind-btn--unavailable"
-      aria-pressed="true"
-      (focus)="armedKindChange.emit('UNAVAILABLE')"
-      (click)="markUnavailable.emit()"
-    >
-      {{ theme.tone()['common.indisponible'] }}
+      {{ theme.tone()['calendar.selbar_compose_remove'] }}
     </button>
   } @else {
-    <button
-      mat-stroked-button
-      type="button"
-      color="warn"
-      class="kind-btn kind-btn--unavailable"
-      aria-pressed="false"
-      (focus)="armedKindChange.emit('UNAVAILABLE')"
-      (click)="markUnavailable.emit()"
-    >
-      {{ theme.tone()['common.indisponible'] }}
+    <!--
+      Intention armée (AC6) : c'est ce que `Entrée` validera. Marquée par la FORME du bouton —
+      `mat-flat-button` (armé) contre `mat-stroked-button` (non armé) — et par `aria-pressed`,
+      jamais par la couleur seule (P-1). La couleur sémantique (primary/warn) reste affichée dans
+      les deux états, conformément au contrat d'UI. Un clic arme ET valide dans le même geste : le
+      chemin pointeur est identique à celui de la story 30.3.
+    -->
+    @if (armedKind() === 'AVAILABLE') {
+      <button
+        mat-flat-button
+        type="button"
+        color="primary"
+        class="kind-btn kind-btn--available"
+        aria-pressed="true"
+        (focus)="armedKindChange.emit('AVAILABLE')"
+        (click)="markAvailable.emit()"
+      >
+        {{ theme.tone()['common.disponible'] }}
+      </button>
+    } @else {
+      <button
+        mat-stroked-button
+        type="button"
+        color="primary"
+        class="kind-btn kind-btn--available"
+        aria-pressed="false"
+        (focus)="armedKindChange.emit('AVAILABLE')"
+        (click)="markAvailable.emit()"
+      >
+        {{ theme.tone()['common.disponible'] }}
+      </button>
+    }
+    @if (armedKind() === 'UNAVAILABLE') {
+      <button
+        mat-flat-button
+        type="button"
+        color="warn"
+        class="kind-btn kind-btn--unavailable"
+        aria-pressed="true"
+        (focus)="armedKindChange.emit('UNAVAILABLE')"
+        (click)="markUnavailable.emit()"
+      >
+        {{ theme.tone()['common.indisponible'] }}
+      </button>
+    } @else {
+      <button
+        mat-stroked-button
+        type="button"
+        color="warn"
+        class="kind-btn kind-btn--unavailable"
+        aria-pressed="false"
+        (focus)="armedKindChange.emit('UNAVAILABLE')"
+        (click)="markUnavailable.emit()"
+      >
+        {{ theme.tone()['common.indisponible'] }}
+      </button>
+    }
+
+    <!-- AC4 : SEUL chemin vers ConstraintPanel, donc vers la contrainte récurrente (story 1.7),
+         la modification, la suppression et la découpe. -->
+    <button mat-stroked-button type="button" class="other-btn" (click)="otherRequested.emit()">
+      {{ theme.tone()['calendar.selbar_other'] }}
     </button>
   }
 
-  <!-- AC4 : SEUL chemin vers ConstraintPanel, donc vers la contrainte récurrente (story 1.7),
-       la modification, la suppression et la découpe. -->
-  <button mat-stroked-button type="button" class="other-btn" (click)="otherRequested.emit()">
-    {{ theme.tone()['calendar.selbar_other'] }}
-  </button>
   <button mat-button type="button" (click)="cancelled.emit()">
     {{ theme.tone()['common.annuler'] }}
   </button>

@@ -2070,6 +2070,50 @@ export class CalendarView implements OnInit {
     });
   }
 
+  /** ⚠️ Story 45.3 — la journée entière est-elle permise dans cette composition ? En JDR oui ; une conjonction ou une
+   *  soirée (cibles de groupe) se propose sur un créneau précis. */
+  protected readonly composeAllowsFullDay = computed(() => !this.isGroupTarget());
+
+  /** ⚠️ Story 45.3 — « Ajouter au vote » : la sélection (appui maintenu ou glissement, puis un moment) rejoint les
+   *  créneaux déjà désignés. CUMUL : l'union, sans doublon, l'ordre existant gardé — jamais un remplacement.
+   *  Une journée entière refusée l'est avec sa raison écrite (comme pour un tap), jamais en silence. */
+  protected onComposeAdded(cells: SelectedCell[]): void {
+    if (!this.composing()) return;
+    let toAdd = cells;
+    if (this.isGroupTarget()) {
+      const kept = cells.filter((c) => c.slot !== 'FULL_DAY');
+      this.composeRefusal.set(
+        kept.length < cells.length
+          ? this.theme.tone()['partie.ralliement_calendar_compose_full_day']
+          : null,
+      );
+      toAdd = kept;
+    } else {
+      this.composeRefusal.set(null);
+    }
+    this.composedCells.update((current) => {
+      const seen = new Set(current.map((c) => composeCellKey(c.date, c.slot)));
+      const added: SelectedCell[] = [];
+      for (const c of toAdd) {
+        const key = composeCellKey(c.date, c.slot);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        added.push({ date: c.date, slot: c.slot });
+      }
+      return [...current, ...added];
+    });
+  }
+
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition (ceux qui n'y étaient pas ne changent rien). */
+  protected onComposeRemoved(cells: SelectedCell[]): void {
+    if (!this.composing()) return;
+    const drop = new Set(cells.map((c) => composeCellKey(c.date, c.slot)));
+    this.composeRefusal.set(null);
+    this.composedCells.update((current) =>
+      current.filter((c) => !drop.has(composeCellKey(c.date, c.slot))),
+    );
+  }
+
   /** AC3 — `Échap` et « Annuler » font la MÊME chose : sortir sans rien écrire. */
   protected cancelCompose(): void {
     const target = this.composeTarget();

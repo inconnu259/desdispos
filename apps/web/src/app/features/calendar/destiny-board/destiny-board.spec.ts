@@ -144,3 +144,60 @@ describe("DestinyBoard — actions d'organisateur (Story 44.6)", () => {
     expect(root.querySelector('.destiny-board__extend')).toBeNull();
   });
 });
+
+describe('DestinyBoard — modifier et proposer ailleurs (Story 45.6)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const WITH = {
+    ...MODEL,
+    actions: {
+      fixLabel: null,
+      extendLabel: null,
+      modifyLabel: 'Modifier les dates',
+      otherLabel: 'Proposer des dates pour un autre rendez-vous',
+    },
+  };
+
+  it('montre « Modifier les dates » et, SOUS les actions, le lien « autre rendez-vous » — deux vrais boutons', async () => {
+    const root: HTMLElement = (await createBoard(WITH)).nativeElement;
+    const modify = root.querySelector<HTMLButtonElement>('.destiny-board__modify')!;
+    const other = root.querySelector<HTMLButtonElement>('.destiny-board__other')!;
+    expect(modify.textContent?.trim()).toBe('Modifier les dates');
+    expect(other.textContent?.trim()).toBe('Proposer des dates pour un autre rendez-vous');
+    expect(other.tagName).toBe('BUTTON');
+    // Le lien n'est pas dans la rangée des boutons : il est sous elle.
+    expect(root.querySelector('.destiny-board__actions')!.contains(other)).toBe(false);
+  });
+
+  it('chacun demande son action, sans rien écrire lui-même', async () => {
+    const fixture = await createBoard(WITH);
+    const modify = vi.fn();
+    const other = vi.fn();
+    fixture.componentInstance.modifyRequested.subscribe(modify);
+    fixture.componentInstance.otherRequested.subscribe(other);
+    const root: HTMLElement = fixture.nativeElement;
+
+    root.querySelector<HTMLButtonElement>('.destiny-board__modify')!.click();
+    root.querySelector<HTMLButtonElement>('.destiny-board__other')!.click();
+
+    expect(modify).toHaveBeenCalledTimes(1);
+    expect(other).toHaveBeenCalledTimes(1);
+  });
+
+  it('sans libellé, aucun des deux : absents, jamais désactivés', async () => {
+    const root: HTMLElement = (
+      await createBoard({
+        ...MODEL,
+        actions: {
+          fixLabel: 'Fixer la date…',
+          extendLabel: null,
+          modifyLabel: null,
+          otherLabel: null,
+        },
+      })
+    ).nativeElement;
+    expect(root.querySelector('.destiny-board__modify')).toBeNull();
+    expect(root.querySelector('.destiny-board__other')).toBeNull();
+    expect(root.querySelector('.destiny-board__fix')).not.toBeNull();
+  });
+});

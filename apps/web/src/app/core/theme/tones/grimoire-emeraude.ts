@@ -981,6 +981,8 @@ export const grimoireEmeraude = {
   // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
   // Story 45.5 — la cible « soirée sans date » : aucun mot du JDR ni « partie ».
   'calendar.compose_target_evening': 'Dates à proposer : {title}',
+  // Story 45.6 — le lien du plateau (hors du préfixe `calendar.destiny_board_` : le test 44.4 le compte).
+  'calendar.destiny_other_rendezvous': 'Proposer des dates pour un autre rendez-vous',
   'calendar.compose_deadline_field': 'Fin du vote : {date}',
   'calendar.compose_deadline_edit_aria': 'Modifier la fin du vote',
   'calendar.compose_deadline_hint_14': 'Proposé : dans 14 jours.',

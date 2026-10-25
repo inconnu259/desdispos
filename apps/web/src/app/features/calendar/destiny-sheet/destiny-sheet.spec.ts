@@ -182,3 +182,39 @@ describe('DestinySheet — fixer la date (Story 44.6)', () => {
     expect([fix, extend]).toEqual([1, 1]);
   });
 });
+
+describe('DestinySheet — transmet modifier et « autre rendez-vous » (Story 45.6)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('déplié, les deux actions du plateau remontent ; replié, il ne garde que « Fixer la date… »', async () => {
+    await TestBed.configureTestingModule({ imports: [DestinySheet] }).compileComponents();
+    const fixture = TestBed.createComponent(DestinySheet);
+    const board: DestinyBoardModel = {
+      ...BOARD,
+      actions: {
+        fixLabel: 'Fixer la date…',
+        extendLabel: null,
+        modifyLabel: 'Modifier les dates',
+        otherLabel: 'Proposer des dates pour un autre rendez-vous',
+      },
+    };
+    fixture.componentRef.setInput('model', { ...MODEL, fixLabel: 'Fixer la date…', board });
+    fixture.componentRef.setInput('expanded', false);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('.destiny-board__modify')).toBeNull();
+    expect(root.querySelector('.destiny-sheet__fix')).not.toBeNull();
+
+    const modify = vi.fn();
+    const other = vi.fn();
+    fixture.componentInstance.modifyRequested.subscribe(modify);
+    fixture.componentInstance.otherRequested.subscribe(other);
+    fixture.componentRef.setInput('expanded', true);
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('.destiny-board__modify')!.click();
+    root.querySelector<HTMLButtonElement>('.destiny-board__other')!.click();
+
+    expect(modify).toHaveBeenCalledTimes(1);
+    expect(other).toHaveBeenCalledTimes(1);
+  });
+});

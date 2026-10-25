@@ -781,6 +781,167 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     });
   });
 
+  describe('modifier et proposer ailleurs depuis la Destinée (Story 45.6)', () => {
+    const MODIFY = () => GRIMOIRE_TONE['calendar.view_modify_dates'];
+    const OTHER = () => GRIMOIRE_TONE['calendar.destiny_other_rendezvous'];
+
+    /** L'atelier du MJ : un vote ouvert (`sc1`) mis en avant, et `free` séances encore à dater. */
+    const atelierWith = async (free: number, canEdit = true) => {
+      // Les droits de la séance et ceux de l'entrée servie viennent du même serveur : ils vont ensemble.
+      const open = scenario('sc1', { poll: openPoll('poll1'), can: canEdit ? ORGANIZER : NOBODY });
+      const frees = Array.from({ length: free }, (_, i) => scenario(`f${i}`));
+      const r = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [open, ...frees],
+        partie: { name: 'La Tour' },
+        openPolls: [
+          openPollEntry({
+            pollId: 'poll1',
+            partieId: 'partie-1',
+            family: 'jdr',
+            seanceId: 'sc1-s1',
+            title: 'Chapitre sc1',
+            can: canEdit ? ORGANIZER : NOBODY,
+            options: [
+              { optionId: 'poll1-a', date: '2026-08-01', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+              { optionId: 'poll1-b', date: '2026-08-02', slot: 'MORNING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+            ],
+          }),
+        ],
+      });
+      const comp = r.fixture.componentInstance as any;
+      comp.destinyPollId.set('poll1');
+      await tick(r.fixture);
+      return { ...r, comp };
+    };
+
+    it('atelier : le plateau offre « Modifier les dates » et le lien, et « Modifier » arme le composer prérempli', async () => {
+      const { comp } = await atelierWith(2);
+      expect(comp.destinyBoard().actions).toMatchObject({ modifyLabel: MODIFY(), otherLabel: OTHER() });
+
+      comp.openDestinyModify();
+
+      expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll1' });
+      expect([...comp.composedKeys()].sort()).toEqual(['2026-08-01|EVENING', '2026-08-02|MORNING']);
+      // La Destinée est suspendue, pas quittée : annuler la rend.
+      expect(comp.destinyPollId()).toBe('poll1');
+    });
+
+    it('atelier : le lien ouvre le choix du rendez-vous (plusieurs) ; un seul le saute et arme le composer', async () => {
+      const several = await atelierWith(2);
+      several.comp.proposeOther();
+      expect(several.comp.rendezvousPickerOpen()).toBe(true);
+      expect(several.comp.composing()).toBe(false);
+      TestBed.resetTestingModule();
+
+      const one = await atelierWith(1);
+      one.comp.proposeOther();
+      expect(one.comp.rendezvousPickerOpen()).toBe(false);
+      expect(one.comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'f0-s1' });
+    });
+
+    it('atelier : sans rien à proposer, « Modifier » seulement — jamais un lien vers un choix vide', async () => {
+      const { comp } = await atelierWith(0);
+      expect(comp.destinyBoard().actions).toMatchObject({ modifyLabel: MODIFY(), otherLabel: null });
+    });
+
+    it('pas organisateur : ni « Modifier » ni lien, et rien ne s’arme', async () => {
+      const { comp } = await atelierWith(2, false);
+      expect(comp.destinyBoard().actions?.modifyLabel ?? null).toBeNull();
+      expect(comp.destinyBoard().actions?.otherLabel ?? null).toBeNull();
+      comp.openDestinyModify();
+      expect(comp.composing()).toBe(false);
+    });
+
+    it('le bouton de la ligne de contrôles et l’action du plateau sont UN comportement', async () => {
+      const { comp, fixture } = await atelierWith(2);
+      const button = fixture.nativeElement.querySelector('.compose-arm') as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe(MODIFY());
+      button.click();
+      await tick(fixture);
+      expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll1' });
+    });
+
+    // ── la vitrine : jamais de composer, l'atelier s'ouvre ──
+    const vitrine = async (over: Partial<OpenPollEntry>, datable: DatableSeanceEntry[] = []) => {
+      const r = await createCalendarView({
+        mode: 'personal',
+        datable,
+        openPolls: [
+          openPollEntry({
+            pollId: 'poll-j',
+            partieId: 'partie-J',
+            family: 'jdr',
+            seanceId: 'seance-j',
+            title: 'Chapitre 4',
+            can: ORGANIZER,
+            options: [
+              { optionId: 'a1', date: '2099-03-04', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+              { optionId: 'a2', date: '2099-03-06', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+            ],
+            ...over,
+          }),
+        ],
+      });
+      const comp = r.fixture.componentInstance as any;
+      comp.destinyPollId.set('poll-j');
+      r.fixture.detectChanges();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      return { ...r, comp, navigate };
+    };
+    const row = (id: string) =>
+      ({
+        seanceId: id,
+        partieId: `p-${id}`,
+        partieName: `Partie ${id}`,
+        family: 'jdr',
+        kind: 'CAMPAGNE_LINEAIRE',
+        title: `Titre ${id}`,
+        seanceRank: 1,
+        seanceCount: 1,
+        can: ORGANIZER,
+      }) as DatableSeanceEntry;
+
+    it('vitrine : « Modifier les dates » (plateau ET bouton) ouvre l’atelier de CE vote, `?seanceId` et `?poll` ; aucun composer', async () => {
+      const { comp, fixture, navigate } = await vitrine({}, [row('x')]);
+      expect(comp.destinyBoard().actions).toMatchObject({ modifyLabel: MODIFY(), otherLabel: OTHER() });
+      const button = fixture.nativeElement.querySelector('.compose-arm') as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe(MODIFY());
+
+      comp.openDestinyModify();
+      expect(navigate).toHaveBeenLastCalledWith('/parties/partie-J/calendar?poll=poll-j&seanceId=seance-j');
+      button.click();
+      expect(navigate).toHaveBeenCalledTimes(2);
+      expect(comp.composing()).toBe(false);
+    });
+
+    it('vitrine, vote de groupe : l’atelier du groupe (`/guild-calendar`)', async () => {
+      const { comp, navigate } = await vitrine({ family: 'ralliement', partieId: 'partie-G' });
+      comp.openDestinyModify();
+      expect(navigate).toHaveBeenCalledWith('/parties/partie-G/guild-calendar?poll=poll-j&seanceId=seance-j');
+    });
+
+    it('vitrine : le lien « autre rendez-vous » ouvre le choix (plusieurs) ou passe directement à l’atelier (un seul)', async () => {
+      const several = await vitrine({}, [row('x'), row('y')]);
+      several.comp.proposeOther();
+      expect(several.comp.rendezvousPickerOpen()).toBe(true);
+      TestBed.resetTestingModule();
+
+      const one = await vitrine({}, [row('x')]);
+      one.comp.proposeOther();
+      expect(one.navigate).toHaveBeenCalledWith('/parties/p-x/calendar?seanceId=x');
+    });
+
+    it('vitrine, pas organisateur : « Proposer des dates » comme avant, ni « Modifier » ni lien', async () => {
+      const { comp, fixture } = await vitrine({ can: NOBODY }, [row('x')]);
+      expect(comp.destinyBoard().actions?.modifyLabel ?? null).toBeNull();
+      expect(comp.destinyBoard().actions?.otherLabel ?? null).toBeNull();
+      const button = fixture.nativeElement.querySelector('.compose-arm') as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe(GRIMOIRE_TONE['calendar.view_propose_dates']);
+    });
+  });
+
   describe('composer et Destinée', () => {
     const withDestiny = () =>
       createCalendarView({

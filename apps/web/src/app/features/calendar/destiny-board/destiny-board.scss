@@ -168,3 +168,31 @@
   font-size: 0.8rem;
   color: var(--mat-sys-on-surface-variant, #666);
 }
+
+/* Story 45.6 — « Modifier les dates » (bouton au doigt, filet) et le lien « autre rendez-vous » (un vrai bouton, rendu
+   en texte, 44 px de haut). */
+.destiny-board__modify {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--mat-sys-outline, #888);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.destiny-board__other {
+  display: block;
+  min-height: 44px;
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mat-sys-primary, inherit);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}

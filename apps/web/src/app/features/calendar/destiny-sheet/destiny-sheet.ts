@@ -49,4 +49,7 @@ export class DestinySheet {
   readonly whoRequested = output<void>();
   readonly fixRequested = output<void>();
   readonly extendRequested = output<void>();
+  /** Story 45.6 — transmis du plateau déplié. */
+  readonly modifyRequested = output<void>();
+  readonly otherRequested = output<void>();
 }

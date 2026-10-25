@@ -26,6 +26,11 @@ export interface DestinyBoardAbsent {
 export interface DestinyBoardActions {
   fixLabel: string | null;
   extendLabel: string | null;
+  /** Story 45.6 — « Modifier les dates » : l'organisateur du vote (`can.edit`). Absent : pas de bouton. */
+  modifyLabel?: string | null;
+  /** Story 45.6 — le lien « Proposer des dates pour un autre rendez-vous », seulement s'il reste quelque chose à
+   *  proposer. Absent : pas de lien. */
+  otherLabel?: string | null;
 }
 
 export interface DestinyBoardModel {
@@ -72,4 +77,7 @@ export class DestinyBoard {
   readonly whoRequested = output<void>();
   readonly fixRequested = output<void>();
   readonly extendRequested = output<void>();
+  /** Story 45.6 — « Modifier les dates » et le lien « autre rendez-vous » : `CalendarView` arme ou ouvre l'atelier. */
+  readonly modifyRequested = output<void>();
+  readonly otherRequested = output<void>();
 }

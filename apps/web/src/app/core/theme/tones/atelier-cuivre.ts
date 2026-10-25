@@ -980,6 +980,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
   // Story 45.5 — la cible « soirée sans date » : aucun mot du JDR ni « partie ».
   'calendar.compose_target_evening': 'Dates à soumettre : {title}',
+  // Story 45.6 — le lien du plateau (hors du préfixe `calendar.destiny_board_` : le test 44.4 le compte).
+  'calendar.destiny_other_rendezvous': 'Soumettre des dates pour un autre rendez-vous',
   'calendar.compose_deadline_field': 'Clôture du scrutin : {date}',
   'calendar.compose_deadline_edit_aria': 'Réviser la clôture du scrutin',
   'calendar.compose_deadline_hint_14': 'Par défaut : dans 14 jours.',

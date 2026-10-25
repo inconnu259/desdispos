@@ -54,7 +54,18 @@
           {{ actions.extendLabel }}
         </button>
       }
+      @if (actions.modifyLabel) {
+        <button type="button" class="destiny-board__modify" (click)="modifyRequested.emit()">
+          {{ actions.modifyLabel }}
+        </button>
+      }
     </div>
+    <!-- Story 45.6 — sous les actions : proposer des dates pour un AUTRE rendez-vous (le nouveau vote devient la destinée). -->
+    @if (actions.otherLabel) {
+      <button type="button" class="destiny-board__other" (click)="otherRequested.emit()">
+        {{ actions.otherLabel }}
+      </button>
+    }
   }
 
   @if (model().reopenHint; as hint) {

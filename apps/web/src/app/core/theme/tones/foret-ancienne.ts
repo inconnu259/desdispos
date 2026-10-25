@@ -976,6 +976,8 @@ export const foretAncienne: Record<ToneKey, string> = {
   // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
   // Story 45.5 — la cible « soirée sans date » : aucun mot du JDR ni « partie ».
   'calendar.compose_target_evening': 'Propose des dates : {title}',
+  // Story 45.6 — le lien du plateau (hors du préfixe `calendar.destiny_board_` : le test 44.4 le compte).
+  'calendar.destiny_other_rendezvous': 'Propose des dates pour un autre événement',
   'calendar.compose_deadline_field': 'Fin du vote : {date}',
   'calendar.compose_deadline_edit_aria': 'Modifie la fin du vote',
   'calendar.compose_deadline_hint_14': 'Proposé : dans 14 jours.',

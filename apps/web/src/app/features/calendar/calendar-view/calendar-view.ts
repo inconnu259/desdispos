@@ -1385,7 +1385,16 @@ export class CalendarView implements OnInit {
       entry.can.extend && entry.family === 'ralliement'
         ? tone['partie.ralliement_event_extend_btn']
         : null;
-    return fixLabel || extendLabel ? { fixLabel, extendLabel } : null;
+    // Story 45.6 — l'organisateur du vote (`can.edit`) modifie ses dates et, s'il reste un rendez-vous à proposer,
+    // en propose pour un autre. Jamais un bouton pour qui n'a pas le droit.
+    const modifyLabel = entry.can.edit ? tone['calendar.view_modify_dates'] : null;
+    const otherLabel =
+      entry.can.edit && this.rendezvousRows().length > 0
+        ? tone['calendar.destiny_other_rendezvous']
+        : null;
+    return fixLabel || extendLabel || modifyLabel || otherLabel
+      ? { fixLabel, extendLabel, modifyLabel, otherLabel }
+      : null;
   }
 
   private destinyAbsent(entry: OpenPollEntry): DestinyBoardAbsent | null {
@@ -1943,6 +1952,8 @@ export class CalendarView implements OnInit {
   protected readonly proposeButton = computed<'propose' | 'modify' | null>(() => {
     if (this.composing()) return null;
     if (this.modifiablePoll()) return 'modify';
+    // Story 45.6 — dans la vitrine, la destinée active dont j'ai `can.edit` : « Modifier les dates » ouvre son atelier.
+    if (this.partieId() === null && this.destinyEntry()?.can.edit) return 'modify';
     return this.rendezvousRows().length > 0 ? 'propose' : null;
   });
 
@@ -1954,13 +1965,43 @@ export class CalendarView implements OnInit {
   protected onProposeClicked(): void {
     const mode = this.proposeButton();
     if (mode === 'modify') {
+      this.openDestinyModify();
+      return;
+    }
+    if (mode === 'propose') this.proposeOther();
+  }
+
+  /**
+   * ⚠️ Story 45.6 — « Modifier les dates » du vote que la Destinée met en avant : UN comportement pour le bouton de la
+   * ligne de contrôles et pour le plateau. À l'atelier il arme le composer prérempli (créneaux et fin du vote) ; dans
+   * la vitrine il ouvre l'atelier de ce vote (`?seanceId` arme le composer, `?poll` garde la Destinée) — la vitrine
+   * n'arme jamais de composer.
+   */
+  protected openDestinyModify(): void {
+    if (this.composing()) return;
+    if (this.partieId() !== null) {
       const target = this.modifiablePoll();
       if (target) this.armTarget(target);
       return;
     }
-    if (mode !== 'propose') return;
+    const entry = this.destinyEntry();
+    if (!entry?.can.edit) return;
+    // Seul le MJ d'un JDR a `can.edit` sur une séance de JDR : son atelier vit à `/calendar`.
+    const role = entry.family === 'jdr' ? 'mj' : 'player';
+    void this.router.navigateByUrl(
+      atelierUrl(
+        { partieId: entry.partieId, family: entry.family, role },
+        { seanceId: entry.seanceId, poll: entry.pollId },
+      ),
+    );
+  }
+
+  /** Proposer des dates pour un rendez-vous À DATER (le bouton, ou le lien « autre rendez-vous » du plateau) : un seul
+   *  rendez-vous saute l'étape du choix ; le nouveau vote deviendra la destinée active (45.2). */
+  protected proposeOther(): void {
+    if (this.composing()) return;
     const rows = this.rendezvousRows();
-    // Un seul rendez-vous : l'étape du choix est sautée.
+    if (rows.length === 0) return;
     if (rows.length === 1) this.pickRendezvous(rows[0]);
     else this.rendezvousPickerOpen.set(true);
   }

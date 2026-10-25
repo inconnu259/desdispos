@@ -23,6 +23,7 @@ import { OpenPollsService } from '../../../core/poll/open-polls.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { CALENDAR_LAYER_KEYS, DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
+import { toDateKey } from '../day-detail.utils';
 import { RealtimeService, partieTopic, userTopic } from '../../../core/realtime/realtime.service';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';
@@ -30,6 +31,7 @@ import { TONE_MAP } from '../../../core/theme/tones';
 import { CalendarSessionLayersService } from '../calendar-session-layers.service';
 import { ConjonctionDraftService } from '../../events/conjonction-draft.service';
 import { EventsApiService } from '../../events/events-api.service';
+import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
 import { DateFixDialog } from '../../events/date-fix-dialog/date-fix-dialog';
 import { ExtendVoteDialog } from '../../events/extend-vote-dialog/extend-vote-dialog';
 import { SealConfirmDialog } from '../seal-confirm-dialog/seal-confirm-dialog';
@@ -52,6 +54,8 @@ interface CreateOptions {
   members?: unknown[];
   /** Story 44.2 — mes sondages ouverts tels que `GET /me/open-polls` les sert (calendrier personnel). */
   openPolls?: OpenPollEntry[];
+  /** Story 44.8 — mes parties (`MyPartiesService`), source du filtre par partie. */
+  myParties?: { id: string; name: string; status: string }[];
 }
 
 /** Même forme que les mocks de `partie-detail.spec.ts` / `list-control-bar.spec.ts` :
@@ -260,6 +264,14 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
       { provide: RealtimeService, useValue: realtimeSvc },
       { provide: BreakpointObserver, useValue: makeBreakpointObserver(opts.desktop ?? true) },
       { provide: OpenPollsService, useValue: openPollsSvc },
+      ...(opts.myParties
+        ? [
+            {
+              provide: MyPartiesService,
+              useValue: { allParties: signal(opts.myParties), loaded: signal(true) },
+            },
+          ]
+        : []),
     ],
   }).compileComponents();
 
@@ -6219,5 +6231,206 @@ describe('CalendarView — arriver en Destinée par un lien (Story 44.7)', () =>
     expect(location.path()).toContain('from=2030-03-01');
     expect(location.path()).toContain('to=2030-03-31');
     expect(location.path()).toContain('poll=poll-a');
+  });
+});
+
+// ─── Story 44.8 — filtrer mon calendrier personnel par partie ─────────────────
+
+describe('CalendarView — filtrer par partie (Story 44.8)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const TODAY = toDateKey(new Date());
+  const PARTIES = [
+    { id: 'pA', name: 'Les Cendres', status: 'EN_COURS' },
+    { id: 'pB', name: 'La Bande', status: 'A_VENIR' },
+    { id: 'pC', name: 'Soirée jeux', status: 'A_VENIR' },
+    { id: 'pZ', name: 'Finie', status: 'TERMINEE' },
+  ];
+
+  const vote = (pollId: string, partieId: string, partieName: string) =>
+    openPollEntry({
+      pollId,
+      partieId,
+      partieName,
+      title: `Vote ${partieName}`,
+      expiresAt: null,
+      options: [
+        { optionId: `${pollId}-o`, date: TODAY, slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
+      ],
+    });
+
+  function seanceOf(partieId: string, name: string) {
+    return {
+      seanceId: `s-${partieId}`,
+      partieId,
+      partieName: name,
+      scenarioId: `sc-${partieId}`,
+      scenarioTitle: 'Chapitre',
+      date: TODAY,
+      slot: 'MORNING',
+    };
+  }
+
+  async function create(over: Record<string, unknown> = {}) {
+    const availabilitySvc = makeAvailabilityService();
+    availabilitySvc.getMyCalendar.mockResolvedValue({
+      'mes-indisponibilites': [],
+      'mes-disponibilites': [],
+      'mes-seances': [seanceOf('pA', 'Les Cendres'), seanceOf('pB', 'La Bande')],
+      'votes-en-cours': [],
+      'inscriptions-ouvertes': [],
+    });
+    const ctx = await createCalendarView({
+      mode: 'personal',
+      availabilitySvc,
+      myParties: PARTIES,
+      openPolls: [vote('poll-a', 'pA', 'Les Cendres'), vote('poll-b', 'pB', 'La Bande')],
+      ...over,
+    });
+    await tick(ctx.fixture);
+    return ctx;
+  }
+
+  const partiesIn = (entries: any[]) =>
+    new Set(entries.map((e: any) => e.partieId ?? e.vote?.partieId).filter(Boolean));
+
+  it('liste mes parties actives par leur nom, sans la terminée ; section absente avec une seule partie', async () => {
+    const { fixture } = await create();
+    const comp = fixture.componentInstance as any;
+    expect(comp.filterParties().map((p: any) => p.name)).toEqual([
+      'La Bande',
+      'Les Cendres',
+      'Soirée jeux',
+    ]);
+    expect(comp.isOverridden()).toBe(false);
+    TestBed.resetTestingModule();
+
+    const one = await create({ myParties: [PARTIES[0]] });
+    expect((one.fixture.componentInstance as any).filterParties()).toEqual([]);
+  });
+
+  it('décocher une partie retire ses séances et ses votes de l’Agenda, pas ceux des autres ; les dispos restent', async () => {
+    const { fixture } = await create();
+    const comp = fixture.componentInstance as any;
+    expect(partiesIn(comp.agendaEntries())).toEqual(new Set(['pA', 'pB']));
+
+    comp.togglePartie('pB');
+    await tick(fixture);
+
+    expect(partiesIn(comp.agendaEntries())).toEqual(new Set(['pA']));
+    expect(comp.agendaEntries().some((e: any) => e.type === 'mes-seances')).toBe(true);
+    expect(comp.agendaEntries().some((e: any) => e.type === 'votes-en-cours')).toBe(true);
+
+    comp.togglePartie('pB');
+    expect(partiesIn(comp.agendaEntries())).toEqual(new Set(['pA', 'pB']));
+  });
+
+  it('le filtre est en aval : la liste complète, la liste ✦, la puce et le rail restent complets', async () => {
+    const { fixture } = await create();
+    const comp = fixture.componentInstance as any;
+    comp.togglePartie('pB');
+    await tick(fixture);
+
+    expect(partiesIn(comp.calendarEntries())).toEqual(new Set(['pA', 'pB']));
+    expect(comp.destinyPolls().map((p: any) => p.pollId).sort()).toEqual(['poll-a', 'poll-b']);
+    expect(comp.destinyListItems().map((i: any) => i.pollId).sort()).toEqual(['poll-a', 'poll-b']);
+    comp.railDate.set(new Date());
+    expect(comp.railDetail().slots.some((s: any) => s.status === 'UNAVAILABLE')).toBe(true);
+  });
+
+  it('la grille : la séance d’une partie masquée reste indisponible sans nom, le vote qui la couvrait disparaît', async () => {
+    const { fixture } = await create();
+    const comp = fixture.componentInstance as any;
+    const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+    const todayBands = () =>
+      month
+        .weeks()
+        .flat()
+        .find((c: any) => c.isToday).bands as { slot: string; winner: string; status: string; text: string | null }[];
+    // Le matin d'aujourd'hui : la séance de pA et celle de pB (nommée) ; le soir : un vote par partie.
+    const named = () => todayBands().filter((b) => b.text).map((b) => b.text);
+    const namedBefore = named().length;
+    expect(namedBefore).toBeGreaterThan(0);
+
+    comp.togglePartie('pB');
+    comp.togglePartie('pA');
+    await tick(fixture);
+
+    // Plus rien n'est nommé, mais le créneau de la séance reste pris (FR-50).
+    expect(named()).toEqual([]);
+    expect(todayBands().some((b) => b.slot === 'MORNING' && b.status === 'UNAVAILABLE')).toBe(true);
+    expect(todayBands().every((b) => b.winner !== 'vote')).toBe(true);
+    expect(comp.hiddenForViews()!.size).toBe(2);
+
+    comp.togglePartie('pA');
+    comp.togglePartie('pB');
+    await tick(fixture);
+    expect(comp.hiddenForViews()).toBeNull();
+    expect(named().length).toBe(namedBefore);
+  });
+
+  it('la pastille annonce les parties, rétablir remet couches ET parties', async () => {
+    const { fixture } = await create();
+    const comp = fixture.componentInstance as any;
+    comp.togglePartie('pB');
+    await tick(fixture);
+
+    expect(comp.isOverridden()).toBe(true);
+    expect(comp.layerSummaryLabel()).toBe('Affichage filtré · 2 sur 3 · Rétablir');
+    const pill = (fixture.nativeElement as HTMLElement).querySelector('.display-summary');
+    expect(pill!.textContent).toContain('2 sur 3');
+
+    comp.toggleLayer('mes-seances');
+    expect(comp.layerSummaryLabel()).toMatch(/^Affichage filtré · \d sur \d · 2 sur 3 · Rétablir$/);
+
+    comp.resetToDefault();
+    await tick(fixture);
+    expect(comp.hiddenPartieIds().size).toBe(0);
+    expect(comp.isOverridden()).toBe(false);
+  });
+
+  it('le filtre n’entre ni dans activeLayers ni dans la mémoire de session', async () => {
+    const { fixture } = await create();
+    const comp = fixture.componentInstance as any;
+    const before = [...comp.activeLayers()];
+    comp.togglePartie('pB');
+    await tick(fixture);
+
+    expect(comp.activeLayers()).toEqual(before);
+    expect(JSON.stringify(comp.activeLayers())).not.toContain('pB');
+    expect(CALENDAR_LAYER_KEYS as readonly string[]).not.toContain('pB');
+  });
+
+  it('entrer en Destinée sur une partie décochée la recoche', async () => {
+    const { fixture } = await create();
+    const comp = fixture.componentInstance as any;
+    comp.togglePartie('pB');
+    await tick(fixture);
+    expect(partiesIn(comp.agendaEntries())).toEqual(new Set(['pA']));
+
+    comp.chooseDestiny('poll-b');
+    await tick(fixture);
+
+    expect(comp.hiddenPartieIds().has('pB')).toBe(false);
+    expect(comp.destinyPollId()).toBe('poll-b');
+    expect(comp.activeLayers()).toContain('votes-en-cours');
+  });
+
+  it('l’atelier ne connaît pas le filtre', async () => {
+    const { fixture } = await create({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [TWO_OPTION_POLL_SCENARIO],
+    });
+    const comp = fixture.componentInstance as any;
+    expect(comp.filterParties()).toEqual([]);
+    expect(comp.hiddenForViews()).toBeNull();
   });
 });

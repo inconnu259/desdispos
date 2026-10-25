@@ -162,6 +162,14 @@ export function toDateKey(date: Date): string {
 }
 
 /**
+ * La partie à laquelle appartient une entrée du calendrier personnel (Story 44.8) : `partieId` pour une séance ou
+ * une inscription, `vote.partieId` pour un vote ; `null` pour ce qui n'appartient à aucune (déclarations).
+ */
+export function entryPartieId(entry: AgendaEntry): string | null {
+  return entry.partieId ?? entry.vote?.partieId ?? null;
+}
+
+/**
  * Construit le détail d'UN jour pour le rail.
  *
  * @param dateKey      Jour à détailler, `YYYY-MM-DD`.
@@ -180,8 +188,13 @@ export function buildDayDetail(
   activeLayers: readonly CalendarLayerKey[],
   declarations: AvailabilityDeclarationDto[],
   now: Date = new Date(),
+  hiddenPartieIds: ReadonlySet<string> | null = null,
 ): DayDetail {
   const active = new Set(activeLayers);
+  const hiddenParty = (e: AgendaEntry): boolean => {
+    const id = entryPartieId(e);
+    return id !== null && !!hiddenPartieIds?.has(id);
+  };
   const utcDate = dateKeyToUtcMidnight(dateKey);
   const sameDay = entries.filter((e) => e.date === dateKey);
 
@@ -189,13 +202,18 @@ export function buildDayDetail(
     // Plusieurs entrées peuvent partager le même jour/créneau (ex. deux séances de deux parties
     // distinctes). On n'en agrège pas la liste complète (hors périmètre de la story) mais on ne
     // fait jamais disparaître silencieusement les suivantes : un indicateur minimal les signale.
-    const seanceMatches = sameDay.filter(
+    const allSeanceMatches = sameDay.filter(
       (e) => e.type === 'mes-seances' && entryCoversSlot(e.slot, slot),
     );
+    // Story 44.8 — le filtre par partie. Une séance d'une partie masquée garde le créneau INDISPONIBLE (FR-50,
+    // comme une couche éteinte) mais n'est jamais nommée ; ses votes, eux, disparaissent comme s'ils n'existaient
+    // pas. Les entrées visibles passent d'abord, pour qu'une séance nommée ne soit pas masquée par une autre.
+    const seanceMatches = allSeanceMatches.filter((e) => !hiddenParty(e));
     const pollMatches = sameDay.filter(
-      (e) => e.type === 'votes-en-cours' && entryCoversSlot(e.slot, slot),
+      (e) => e.type === 'votes-en-cours' && entryCoversSlot(e.slot, slot) && !hiddenParty(e),
     );
     const seance = seanceMatches[0];
+    const blockingSeance = seance ?? allSeanceMatches[0];
     const poll = pollMatches[0];
     // Story 36.8 — le CANAL SÉPARÉ. Résolu ici, avec les autres, pour que grille et rail ne se
     // contredisent jamais (AC16) — mais volontairement HORS de la chaîne `winner` ci-dessous.
@@ -205,7 +223,7 @@ export function buildDayDetail(
 
     // AC6 / FR-50 : une séance confirmée rend le créneau indisponible INDÉPENDAMMENT de
     // l'affichage. La couche retire le texte, jamais le fait d'être pris.
-    const status: SlotStatus = seance
+    const status: SlotStatus = blockingSeance
       ? 'UNAVAILABLE'
       : computeDisplayStatus(utcDate, slot, declarations, now);
 
@@ -215,7 +233,7 @@ export function buildDayDetail(
     // persiste couche éteinte), le rang « vote » est GOUVERNÉ par la couche `votes-en-cours` — la
     // retirer fait retomber le créneau sur le statut déclaré, comme si le vote n'existait pas.
     const voteActive = poll != null && active.has('votes-en-cours');
-    const winner: SlotWinner = seance
+    const winner: SlotWinner = blockingSeance
       ? 'seance'
       : voteActive
         ? 'vote'
@@ -331,10 +349,11 @@ export function buildMonthDetails(
   activeLayers: readonly CalendarLayerKey[],
   declarations: AvailabilityDeclarationDto[],
   now: Date = new Date(),
+  hiddenPartieIds: ReadonlySet<string> | null = null,
 ): Map<string, DayDetail> {
   const out = new Map<string, DayDetail>();
   for (const key of dateKeys) {
-    out.set(key, buildDayDetail(key, entries, activeLayers, declarations, now));
+    out.set(key, buildDayDetail(key, entries, activeLayers, declarations, now, hiddenPartieIds));
   }
   return out;
 }

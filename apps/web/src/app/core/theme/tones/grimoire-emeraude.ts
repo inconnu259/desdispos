@@ -845,6 +845,8 @@ export const grimoireEmeraude = {
   // pronom impose le vouvoiement ou le tutoiement du thème.
   'calendar.display.trigger': 'Affichage',
   'calendar.display.trigger_aria': 'Régler l’affichage de l’almanach',
+  // Story 44.8 — le filtre par partie de la vitrine : les parties actives, en cases à cocher.
+  'calendar.display.section_parties': 'Seulement ces rendez-vous',
   'calendar.display.section_visible': 'Ce que je vois',
   'calendar.display.show_legend': 'Afficher la légende',
   'calendar.display.filtered_badge': 'Affichage filtré · {n} sur {total} · Rétablir',

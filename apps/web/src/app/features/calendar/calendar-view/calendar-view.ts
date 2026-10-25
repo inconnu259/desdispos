@@ -58,6 +58,7 @@ import {
   destinyEntryOption,
   familyOf,
   hasAnswered,
+  isPartieActive,
   sortOptionsChronologically,
 } from '@master-jdr/shared';
 import {
@@ -66,6 +67,7 @@ import {
 } from '../../../core/availability/availability.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
+import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
 import { OpenPollsService } from '../../../core/poll/open-polls.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { getMissingVoters } from '../../../core/poll/poll.util';
@@ -94,6 +96,7 @@ import {
   buildDayDetail,
   dateKeyToLocalMidnight,
   entryCoversSlot,
+  entryPartieId,
   nextMeaningfulDate,
   toDateKey,
 } from '../day-detail.utils';
@@ -277,6 +280,7 @@ export class CalendarView implements OnInit {
   private readonly partiesSvc = inject(PartiesService);
   private readonly pollSvc = inject(PollService);
   private readonly openPollsSvc = inject(OpenPollsService);
+  private readonly myPartiesSvc = inject(MyPartiesService);
   private readonly scenariosSvc = inject(ScenariosService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -398,13 +402,59 @@ export class CalendarView implements OnInit {
 
   /** AC4/AC7 : comparaison d'ensemble complète (ajouts ET retraits), pas seulement les couches
    *  ajoutées — un retrait doit rester détecté (encadré n°2). */
-  protected readonly isOverridden = computed(() => {
+  protected readonly layersOverridden = computed(() => {
     const current = this.activeLayers();
     const def = this.defaultLayersForContext(!!this.partieId());
     if (current.length !== def.length) return true;
     const defSet = new Set(def);
     return current.some((k) => !defSet.has(k));
   });
+
+  // ─── Story 44.8 — filtrer mon calendrier personnel par partie ─────────────────────────────────
+  //
+  // Un SIGNAL DE LA PAGE : jamais dans `activeLayers` ni dans `CALENDAR_LAYER_KEYS` (persistés dans le compte, ils en
+  // feraient un réglage durable), jamais dans la mémoire de session des couches, perdu au rechargement. Il s'applique
+  // EN AVAL d'`allCalendarEntries()` : le rail, l'estompe de la Destinée, la liste ✦, la puce et le plateau lisent
+  // la liste complète.
+
+  /** Les parties décochées. Vide hors du calendrier personnel. */
+  protected readonly hiddenPartieIds = signal<ReadonlySet<string>>(new Set());
+
+  /** Mes parties actives (JDR et groupes), par leur nom — seulement dans le calendrier personnel, et à partir de
+   *  deux : un filtre sur une seule partie n'a rien à choisir. */
+  protected readonly filterParties = computed<{ id: string; name: string }[]>(() => {
+    if (this.partieId() !== null) return [];
+    const active = this.myPartiesSvc
+      .allParties()
+      .filter((p) => isPartieActive(p.status))
+      .map((p) => ({ id: p.id, name: p.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    return active.length >= 2 ? active : [];
+  });
+
+  /** Combien de parties de la liste sont décochées (un identifiant resté dans l'ensemble après la fin d'une partie
+   *  ne compte pas). */
+  private readonly hiddenPartieCount = computed(
+    () => this.filterParties().filter((p) => this.hiddenPartieIds().has(p.id)).length,
+  );
+
+  /** L'ensemble transmis aux grilles : `null` sans filtre actif. */
+  protected readonly hiddenForViews = computed<ReadonlySet<string> | null>(() =>
+    this.hiddenPartieCount() > 0 ? this.hiddenPartieIds() : null,
+  );
+
+  protected togglePartie(partieId: string): void {
+    this.hiddenPartieIds.update((hidden) => {
+      const next = new Set(hidden);
+      if (!next.delete(partieId)) next.add(partieId);
+      return next;
+    });
+  }
+
+  /** L'affichage s'écarte du défaut : des couches changées, ou des parties décochées. */
+  protected readonly isOverridden = computed(
+    () => this.layersOverridden() || this.hiddenPartieCount() > 0,
+  );
 
   // ─── Story 36.14 — la barre repliée : le panneau « Affichage », sa pastille, sa légende ───
 
@@ -478,15 +528,23 @@ export class CalendarView implements OnInit {
   protected readonly layerSummaryLabel = computed(() => {
     const shown = this.availableLayerKeys();
     const active = new Set(this.activeLayers());
-    const n = shown.filter((k) => active.has(k)).length;
-    return this.theme
-      .tone()
-      ['calendar.display.filtered_badge'].replace('{n}', String(n))
-      .replace('{total}', String(shown.length));
+    const layers = `${shown.filter((k) => active.has(k)).length} sur ${shown.length}`;
+    const parties = `${this.filterParties().length - this.hiddenPartieCount()} sur ${this.filterParties().length}`;
+    // Story 44.8 — un seul texte, quelle que soit la voix du thème : couches seules, parties seules, ou les deux
+    // (« Affichage filtré · 3 sur 4 · 2 sur 3 · Rétablir »).
+    const counts =
+      this.layersOverridden() && this.hiddenPartieCount() > 0
+        ? `${layers} · ${parties}`
+        : this.hiddenPartieCount() > 0
+          ? parties
+          : layers;
+    return this.theme.tone()['calendar.display.filtered_badge'].replace('{n} sur {total}', counts);
   });
 
   /** Aucun appel réseau : réaffecte l'état local depuis le défaut du compte (encadré n°2). */
   protected resetToDefault(): void {
+    // Story 44.8 — la pastille rétablit AUSSI les parties décochées.
+    this.hiddenPartieIds.set(new Set());
     this.activeLayers.set(this.defaultLayersForContext(!!this.partieId()));
     // 🚨 On ÉCRIT le défaut, on n'efface pas l'entrée : une entrée effacée dirait « jamais
     // visité », et un retour en session rejouerait un défaut de compte que le lecteur vient
@@ -943,8 +1001,11 @@ export class CalendarView implements OnInit {
         }
       }
     }
+    const hidden = this.hiddenForViews();
     return this.allCalendarEntries().filter(
       (e) =>
+        // Story 44.8 — les séances, votes et inscriptions d'une partie décochée quittent l'Agenda.
+        (hidden === null || !hidden.has(entryPartieId(e) ?? '')) &&
         (!personal ||
           e.type !== 'votes-en-cours' ||
           (e.vote && pollsInPeriod.has(e.vote.pollId))) &&
@@ -1110,6 +1171,16 @@ export class CalendarView implements OnInit {
     this.destinyPollId.set(pollId);
     // Le créneau courant appartenait au vote précédent ; `chooseDestiny` pose celui du nouveau.
     this.destinyOptionId.set(null);
+    // Story 44.8 — entrer en Destinée sur une partie décochée la recoche : on ne regarde pas un vote que la grille
+    // cache.
+    const partieOfPoll = this.openPollsSvc.entries().find((e) => e.pollId === pollId)?.partieId;
+    if (partieOfPoll && this.hiddenPartieIds().has(partieOfPoll)) {
+      this.hiddenPartieIds.update((hidden) => {
+        const next = new Set(hidden);
+        next.delete(partieOfPoll);
+        return next;
+      });
+    }
     // Le tiroir (44.5) s'ouvre toujours replié : la grille d'abord.
     this.destinySheetExpanded.set(false);
     this.destinyNotice.set(null);
@@ -2424,6 +2495,8 @@ export class CalendarView implements OnInit {
     // plus tard sur un « Ce vote est clos. » qui ne concerne pas la partie affichée.
     this.exitDestiny();
     this.destinyNotice.set(null);
+    // Story 44.8 — le filtre est celui du calendrier personnel : il ne suit pas dans une autre page.
+    this.hiddenPartieIds.set(new Set());
 
     // Story 30.6, Task 1 : état des couches actives, initialisé depuis le défaut du compte —
     // jamais persisté par la bascule elle-même (encadré n°2). `disponibilite-groupe` retirée hors

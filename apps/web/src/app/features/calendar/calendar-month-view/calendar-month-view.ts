@@ -140,6 +140,7 @@ export function buildMonth(
   activeLayers: readonly CalendarLayerKey[],
   decls: AvailabilityDeclarationDto[],
   pendingDecl: AvailabilityDeclarationDto | null,
+  hiddenPartieIds: ReadonlySet<string> | null = null,
 ): DayCell[][] {
   const year = display.getFullYear();
   const month = display.getMonth();
@@ -166,9 +167,10 @@ export function buildMonth(
   }
   const dateKeys = cellDates.map(toDateKey);
 
-  const details = buildMonthDetails(dateKeys, entries, activeLayers, decls);
+  const now = new Date();
+  const details = buildMonthDetails(dateKeys, entries, activeLayers, decls, now, hiddenPartieIds);
   const previewDetails = pendingDecl
-    ? buildMonthDetails(dateKeys, entries, activeLayers, declsWithPending)
+    ? buildMonthDetails(dateKeys, entries, activeLayers, declsWithPending, now, hiddenPartieIds)
     : null;
 
   const weeks: DayCell[][] = [];
@@ -278,6 +280,9 @@ export class CalendarMonthView {
   readonly entries = input<AgendaEntry[]>([]);
   /** Couches actives : gouvernent le TEXTE des bandes, jamais leur rang ni l'indisponibilité. */
   readonly activeLayers = input<readonly CalendarLayerKey[]>([]);
+  /** Story 44.8 — les parties masquées par le filtre du calendrier personnel : leurs votes quittent la case, leurs
+   *  séances y restent en indisponibilité SANS nom (comme une couche éteinte). `null` : aucun filtre. */
+  readonly hiddenPartieIds = input<ReadonlySet<string> | null>(null);
   /**
    * Story 36.9 — les jours que le mode Destinée met en avant (clés `YYYY-MM-DD`), ou `null` hors
    * mode.
@@ -349,6 +354,7 @@ export class CalendarMonthView {
       this.activeLayers(),
       this.declarations(),
       this.pendingDecl(),
+      this.hiddenPartieIds(),
     ),
   );
 

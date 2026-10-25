@@ -59,3 +59,27 @@
   font-size: 0.85rem;
   color: var(--mat-sys-error, #b00020);
 }
+
+/* Story 44.8 — le filtre par partie : une case par partie, cible de 44 px au doigt. */
+.display-panel__parties {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.display-panel__partie {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+
+  input {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+  }
+}

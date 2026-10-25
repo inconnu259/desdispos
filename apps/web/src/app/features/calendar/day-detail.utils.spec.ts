@@ -9,6 +9,7 @@ import {
   composeSeanceInfo,
   buildMonthDetails,
   dateKeyToUtcMidnight,
+  entryPartieId,
   nextMeaningfulDate,
   toDateKey,
 } from './day-detail.utils';
@@ -872,5 +873,98 @@ describe('buildDayDetail — la disponibilité du groupe, canal séparé (Story 
   it('ne rend pas un jour « porteur » : le groupe DÉCRIT un créneau, il n’y ajoute rien à faire', () => {
     const detail = buildDayDetail('2026-08-20', [groupEntry()], ALL_LAYERS, [], NOW);
     expect(detail.isEmpty).toBe(true);
+  });
+});
+
+describe('buildDayDetail — le filtre par partie (Story 44.8)', () => {
+  const vote = (partieId: string, key: string, label: string): AgendaEntry => ({
+    key,
+    type: 'votes-en-cours',
+    date: '2026-08-20',
+    label,
+    slot: 'EVENING',
+    vote: {
+      partieId,
+      pollId: key,
+      optionId: 'o1',
+      yes: 1,
+      maybe: 0,
+      no: 0,
+      total: 3,
+      myAnswer: null,
+    },
+  });
+  const HIDDEN = new Set(['p1']);
+
+  it('sans filtre ou avec un ensemble vide, rien ne change', () => {
+    const entries = [seanceEntry(), vote('p2', 'v2', 'Vote B')];
+    const base = buildDayDetail('2026-08-20', entries, ALL_LAYERS, [], NOW);
+    expect(buildDayDetail('2026-08-20', entries, ALL_LAYERS, [], NOW, null)).toEqual(base);
+    expect(buildDayDetail('2026-08-20', entries, ALL_LAYERS, [], NOW, new Set())).toEqual(base);
+  });
+
+  it('le vote d’une partie masquée disparaît du créneau, comme s’il n’existait pas', () => {
+    const detail = buildDayDetail(
+      '2026-08-20',
+      [vote('p1', 'v1', 'Vote A')],
+      ALL_LAYERS,
+      [],
+      NOW,
+      HIDDEN,
+    );
+    expect(detail.slots[2].pollLabel).toBeNull();
+    expect(detail.slots[2].pollVote).toBeNull();
+    expect(detail.slots[2].winner).not.toBe('vote');
+  });
+
+  it('la séance d’une partie masquée garde le créneau INDISPONIBLE mais n’est jamais nommée (FR-50)', () => {
+    const detail = buildDayDetail('2026-08-20', [seanceEntry()], ALL_LAYERS, [decl()], NOW, HIDDEN);
+    expect(detail.slots[2].seanceLabel).toBeNull();
+    expect(detail.slots[2].seanceTarget).toBeNull();
+    expect(detail.slots[2].status).toBe('UNAVAILABLE');
+    expect(detail.slots[2].winner).toBe('seance');
+  });
+
+  it('une séance visible et une masquée sur le même créneau : la visible est nommée, sans « +1 autre »', () => {
+    const hidden = seanceEntry({
+      key: 'seance-s2',
+      seanceId: 's2',
+      label: 'Caché',
+      partieId: 'p1',
+    });
+    const visible = seanceEntry({
+      key: 'seance-s3',
+      seanceId: 's3',
+      label: 'Visible',
+      partieId: 'p2',
+    });
+    const detail = buildDayDetail('2026-08-20', [hidden, visible], ALL_LAYERS, [], NOW, HIDDEN);
+    expect(detail.slots[2].seanceLabel).toBe('Visible');
+  });
+
+  it('les parties non masquées et les déclarations ne sont pas touchées', () => {
+    const detail = buildDayDetail(
+      '2026-08-20',
+      [vote('p2', 'v2', 'Vote B')],
+      ALL_LAYERS,
+      [decl()],
+      NOW,
+      HIDDEN,
+    );
+    expect(detail.slots[2].pollLabel).toBe('Vote B');
+    expect(detail.slots[0].status).toBe('AVAILABLE');
+  });
+
+  it('buildMonthDetails transmet le filtre', () => {
+    const map = buildMonthDetails(['2026-08-20'], [seanceEntry()], ALL_LAYERS, [], NOW, HIDDEN);
+    expect(map.get('2026-08-20')!.slots[2].seanceLabel).toBeNull();
+  });
+
+  it('entryPartieId lit la partie d’une séance, d’un vote, et rien pour une déclaration', () => {
+    expect(entryPartieId(seanceEntry())).toBe('p1');
+    expect(entryPartieId(vote('p9', 'v', 'x'))).toBe('p9');
+    expect(
+      entryPartieId({ key: 'd', type: 'mes-disponibilites', date: '2026-08-20', label: '' }),
+    ).toBeNull();
   });
 });

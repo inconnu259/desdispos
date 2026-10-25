@@ -176,6 +176,9 @@
             [active]="activeLayers()"
             [legendVisible]="legendVisible()"
             (layerToggled)="toggleLayer($event)"
+            [parties]="filterParties()"
+            [hiddenPartieIds]="hiddenPartieIds()"
+            (partieToggled)="togglePartie($event)"
             (legendToggled)="toggleLegend()"
             (resetRequested)="resetToDefault()"
           />
@@ -200,6 +203,9 @@
           [active]="activeLayers()"
           [legendVisible]="legendVisible()"
           (layerToggled)="toggleLayer($event)"
+            [parties]="filterParties()"
+            [hiddenPartieIds]="hiddenPartieIds()"
+            (partieToggled)="togglePartie($event)"
           (legendToggled)="toggleLegend()"
           (resetRequested)="resetToDefault()"
         />
@@ -271,6 +277,7 @@
         [initialDate]="sharedDate()"
         [entries]="calendarEntries()"
         [activeLayers]="activeLayers()"
+        [hiddenPartieIds]="hiddenForViews()"
         [destinyDates]="destinyDates()"
         [composing]="composing()"
         [composedKeys]="composedKeys()"

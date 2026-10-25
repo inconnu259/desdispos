@@ -2153,3 +2153,18 @@ describe('Tones — la fermeture de la Destinée (Story 44.6)', () => {
     expect(tone['calendar.destiny_closed_gone']).toBe('Ce vote n’est plus ouvert.');
   });
 });
+
+// Story 44.8 — le filtre par partie de « Affichage ». Le mode soirée l'affiche : aucun mot du JDR, ni « partie ».
+describe('Tones — le filtre par partie (Story 44.8)', () => {
+  it('le titre de la section a une voix par thème, sans mot du JDR ni « partie »', () => {
+    const voices = new Set<string>();
+    for (const theme of THEMES) {
+      const value = TONE_MAP[theme]['calendar.display.section_parties'];
+      expect(value, theme).toBeTruthy();
+      expect(value, theme).not.toMatch(NON_JDR_BANNED_WORDS);
+      expect(value.toLowerCase(), theme).not.toContain('partie');
+      voices.add(value);
+    }
+    expect(voices.size).toBe(3);
+  });
+});

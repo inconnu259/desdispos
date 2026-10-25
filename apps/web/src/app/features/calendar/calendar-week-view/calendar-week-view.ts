@@ -293,6 +293,8 @@ export class CalendarWeekView {
   readonly entries = input<AgendaEntry[]>([]);
   /** Couches actives : gouvernent ce qui est NOMMÉ dans la cellule, jamais l'indisponibilité. */
   readonly activeLayers = input<readonly CalendarLayerKey[]>([]);
+  /** Story 44.8 — les parties masquées par le filtre du calendrier personnel (voir la vue Mois). */
+  readonly hiddenPartieIds = input<ReadonlySet<string> | null>(null);
   /**
    * Story 36.9 — les jours que le mode Destinée met en avant (clés `YYYY-MM-DD`), ou `null` hors
    * mode. **Exactement l'ensemble que reçoit la vue Mois**, dérivé une seule fois par
@@ -351,6 +353,8 @@ export class CalendarWeekView {
       this.entries(),
       this.activeLayers(),
       this.declarations(),
+      new Date(),
+      this.hiddenPartieIds(),
     ),
   );
 
@@ -366,6 +370,8 @@ export class CalendarWeekView {
       this.entries(),
       this.activeLayers(),
       [...this.declarations(), pending],
+      new Date(),
+      this.hiddenPartieIds(),
     );
   });
 

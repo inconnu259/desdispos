@@ -107,7 +107,6 @@ import { DestinyControl, type DestinyPollRef } from '../destiny-control/destiny-
 import { DestinyList, type DestinyListItem, type DestinyState } from '../destiny-list/destiny-list';
 import { RendezvousPicker } from '../rendezvous-picker/rendezvous-picker';
 import {
-  armableRendezvous,
   groupRendezvous,
   jdrRendezvous,
   rowFromEntry,
@@ -230,6 +229,10 @@ export type ComposeTarget =
   // ou ceux d'une conjonction qui n'existe pas encore (aucun appel au serveur : le brouillon de la
   // fenêtre de création les reçoit au retour).
   | { kind: 'group-poll'; eventId: string }
+  // Story 45.5 — les créneaux d'une soirée isolée encore SANS date ni vote : la composition CRÉE son sondage (écrit par
+  // `PATCH …/events/:eventId`, 41.2). Distincte de « vote ouvert » (on le modifie) et de « nouvelle conjonction »
+  // (rien n'existe, rien n'est écrit avant le retour à la fenêtre de création).
+  | { kind: 'evening-poll'; eventId: string }
   | { kind: 'group-new' };
 
 /** Story 40.5b — un sondage de dates de conjonction ouvert (statut `OPEN`, séance sans date). */
@@ -1769,6 +1772,11 @@ export class CalendarView implements OnInit {
       });
     }
     if (group?.kind === 'group-new') return tone['partie.ralliement_calendar_compose_target_new'];
+    if (group?.kind === 'evening-poll') {
+      return fillTone(tone['calendar.compose_target_evening'], {
+        title: this.groupEvents().find((c) => c.id === group.eventId)?.title ?? '',
+      });
+    }
     const entry = this.composedPollEntry();
     if (entry) {
       return fillTone(tone['calendar.view_compose_target_poll'], {
@@ -1798,7 +1806,7 @@ export class CalendarView implements OnInit {
   /** Story 40.5b — la composition vise la conjonction d'un groupe (ouverte, ou à créer). */
   private isGroupTarget(): boolean {
     const kind = this.composeTarget()?.kind;
-    return kind === 'group-poll' || kind === 'group-new';
+    return kind === 'group-poll' || kind === 'group-new' || kind === 'evening-poll';
   }
 
   // ─── Story 45.4 — la fin du vote dans le composer ─────────────────────────────────────────────
@@ -1812,7 +1820,7 @@ export class CalendarView implements OnInit {
    *  d'une conjonction à créer n'écrit rien : sa fin se règle dans la fenêtre de création. */
   protected readonly composeHasDeadline = computed(() => {
     const kind = this.composeTarget()?.kind;
-    return kind === 'new' || kind === 'poll' || kind === 'group-poll';
+    return kind === 'new' || kind === 'poll' || kind === 'group-poll' || kind === 'evening-poll';
   });
 
   /** LA fin du vote : celle de l'organisateur, sinon la proposée (`defaultPollDeadline`), qui suit les créneaux. */
@@ -1907,9 +1915,7 @@ export class CalendarView implements OnInit {
   protected readonly rendezvousRows = computed<RendezvousRow[]>(() => {
     const id = this.partieId();
     if (id === null) {
-      return armableRendezvous(
-        this.datableSvc.entries().map((e) => rowFromEntry(e, this.rendezvousTitle)),
-      );
+      return this.datableSvc.entries().map((e) => rowFromEntry(e, this.rendezvousTitle));
     }
     const meta = this.partieMeta();
     const partie = { id, name: meta?.name ?? '' };
@@ -1917,7 +1923,7 @@ export class CalendarView implements OnInit {
     const rows = this.isGroup()
       ? groupRendezvous(this.groupEvents(), partie, frozen)
       : jdrRendezvous(this.scenarios(), partie, frozen, this.rendezvousTitle);
-    return armableRendezvous(rows);
+    return rows;
   });
 
   /** La destinée active est un vote que l'organisateur peut modifier DEPUIS CET ATELIER (`can.edit`), ou `null`. */
@@ -1987,7 +1993,7 @@ export class CalendarView implements OnInit {
       );
       return;
     }
-    if (row.nature === 'seance') this.startCompose(row.seanceId);
+    this.startCompose(row.seanceId);
   }
 
   /** Lit le nom et l'état de la partie de l'atelier (le mode MJ ne lit pas la partie par ailleurs). Un échec
@@ -2014,7 +2020,10 @@ export class CalendarView implements OnInit {
   private composeTargetFor(seanceId: string): ComposeTarget | null {
     if (this.isGroup()) {
       const entry = this.groupPolls().find((e) => e.card.seance?.id === seanceId);
-      return entry?.card.can.edit ? { kind: 'group-poll', eventId: entry.card.id } : null;
+      if (entry) return entry.card.can.edit ? { kind: 'group-poll', eventId: entry.card.id } : null;
+      // Story 45.5 — une soirée isolée sans date ni vote que je peux proposer (la ligne vient du prédicat partagé).
+      const row = this.rendezvousRows().find((r) => r.seanceId === seanceId);
+      return row?.eventId ? { kind: 'evening-poll', eventId: row.eventId } : null;
     }
     const open = this.activePolls().find((e) => e.seance.id === seanceId);
     if (open) return open.seance.can.edit ? { kind: 'poll', pollId: open.poll.id } : null;
@@ -2064,7 +2073,7 @@ export class CalendarView implements OnInit {
     this.composeDeadlineFixed.set(!!existingEnd);
     this.composing.set(true);
     // Un groupe se compose en vue Semaine (règle 40.5b) ; la vue Agenda n'a ni grille ni barre de composition.
-    if (target.kind === 'group-poll') this.showGridForCompose();
+    if (target.kind === 'group-poll' || target.kind === 'evening-poll') this.showGridForCompose();
     else if (this.view() === 'agenda') this.onViewChange('month');
   }
 
@@ -2237,6 +2246,10 @@ export class CalendarView implements OnInit {
       await this.confirmGroupPoll(partieId, target.eventId);
       return;
     }
+    if (target.kind === 'evening-poll') {
+      await this.confirmEveningPoll(partieId, target.eventId);
+      return;
+    }
 
     const options = this.composedCells().map((c) => ({
       date: toDateKey(c.date),
@@ -2396,6 +2409,48 @@ export class CalendarView implements OnInit {
     this.exitCompose();
     this.drafts.finishCompose(partieId, options);
     void this.returnToGroupPage(partieId);
+  }
+
+  /**
+   * ⚠️ Story 45.5 — valider les créneaux d'une soirée isolée sans date : le sondage naît par `PATCH …/events/:eventId`
+   * (41.2, remplacement complet). Les autres champs sont RELUS de la carte chargée — jamais d'un état du composer —
+   * avec les créneaux et la fin du vote du composer. Aucune perte de réponses à avertir : la soirée n'a pas de vote.
+   * La soirée a pu être datée ou lancée ailleurs pendant la composition : rien n'est alors écrit.
+   */
+  private async confirmEveningPoll(partieId: string, eventId: string): Promise<void> {
+    const card = this.groupEvents().find((c) => c.id === eventId);
+    if (!card || !this.rendezvousRows().some((r) => r.eventId === eventId)) {
+      this.noteNoLongerDatable();
+      this.cancelCompose();
+      return;
+    }
+    const dto: UpdateEventDto = {
+      title: card.title,
+      lieu: card.seance?.lieu ?? null,
+      heureRdv: card.seance?.heureRdv ?? null,
+      notePratique: card.seance?.notePratique ?? null,
+      capacity: card.seance?.capacity ?? null,
+      pollOptions: this.composedSlots(),
+      pollDeadline: this.composeDeadline(),
+    };
+    this.pollActionPending.set(true);
+    this.error.set(null);
+    try {
+      await this.injector.get(EventsApiService).update(partieId, card.id, dto);
+      await this.loadGroupEvents(partieId);
+      const pollId = this.groupEvents().find((c) => c.id === eventId)?.poll?.id;
+      this.exitCompose();
+      this.clearArmParam();
+      if (pollId) await this.reactivateDestiny(pollId);
+    } catch (err) {
+      // Le mode NE SE FERME PAS : la composition n'existe qu'en mémoire. Le refus du serveur (400 en français) est
+      // écrit tel quel.
+      this.error.set(
+        refusalMessage(err, this.theme.tone()['partie.ralliement_calendar_compose_save_error']),
+      );
+    } finally {
+      this.pollActionPending.set(false);
+    }
   }
 
   /** Valider la composition d'une conjonction ouverte : `PATCH …/events/:eventId`, remplacement

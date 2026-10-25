@@ -1,13 +1,5 @@
 import type { DatableSeanceEntry, EventCardDto, ScenarioDto } from '@master-jdr/shared';
-import {
-  armableRendezvous,
-  groupRendezvous,
-  jdrRendezvous,
-  natureOf,
-  rowFromEntry,
-  SOIREE_ROWS_ARMABLE,
-  type RendezvousRow,
-} from './rendezvous.utils';
+import { groupRendezvous, jdrRendezvous, natureOf, rowFromEntry } from './rendezvous.utils';
 
 // Story 45.1 — les rendez-vous « à dater » de l'atelier se dérivent de la charge utile déjà chargée, avec le
 // MÊME prédicat que le serveur (`isDatableSeance`) ; la vitrine les reçoit de `GET /me/datable-seances`.
@@ -77,6 +69,7 @@ describe('groupRendezvous', () => {
         partieName: 'La Tour',
         family: 'ralliement',
         nature: 'soiree',
+        eventId: 'e1',
         title: 'Apéro',
       },
     ]);
@@ -93,7 +86,7 @@ describe('groupRendezvous', () => {
   });
 });
 
-describe('vitrine et seam de la Story 45.5', () => {
+describe('vitrine (Story 45.1, 45.5)', () => {
   const entry = (over: Partial<DatableSeanceEntry>): DatableSeanceEntry => ({
     seanceId: 's1',
     partieId: 'p1',
@@ -107,20 +100,19 @@ describe('vitrine et seam de la Story 45.5', () => {
     ...over,
   });
 
+  it('Story 45.5 — une soirée sans date est une ligne comme une autre : la nature « soirée », aucune passerelle', () => {
+    const row = rowFromEntry(
+      entry({ seanceId: 's2', family: 'ralliement', kind: 'ONE_SHOT' }),
+      title,
+    );
+    expect(row).toMatchObject({ seanceId: 's2', nature: 'soiree' });
+  });
+
   it('rowFromEntry nomme la séance et déduit la nature de la famille', () => {
     expect(rowFromEntry(entry({}), title)).toMatchObject({
       title: 'Chapitre — Séance 2',
       nature: 'seance',
     });
     expect(natureOf('ralliement')).toBe('soiree');
-  });
-
-  it('le web masque les soirées tant que la 45.5 n’a pas livré leur cible de composer', () => {
-    const rows: RendezvousRow[] = [
-      rowFromEntry(entry({}), title),
-      rowFromEntry(entry({ seanceId: 's2', family: 'ralliement', kind: 'ONE_SHOT' }), title),
-    ];
-    expect(SOIREE_ROWS_ARMABLE).toBe(false);
-    expect(armableRendezvous(rows).map((r) => r.seanceId)).toEqual(['s1']);
   });
 });

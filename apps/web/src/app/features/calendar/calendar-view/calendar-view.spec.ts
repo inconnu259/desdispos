@@ -5122,6 +5122,168 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     expect(fixture.nativeElement.querySelector('.calendar-error--compose')).toBeNull();
   });
 
+  // ── Story 45.5 — proposer des dates pour une soirée encore sans date ──
+
+  describe('soirée sans date (Story 45.5)', () => {
+    // Une soirée isolée : famille ralliement, partie active (le statut vient du serveur).
+    const EVENING_PARTY = { ...GROUP_PARTY, name: 'Apéro', kind: 'ONE_SHOT', status: 'A_VENIR' };
+    const SEANCE = {
+      id: 's1',
+      date: null as string | null,
+      slot: null as string | null,
+      lieu: 'Chez Léa',
+      heureRdv: '19:30',
+      notePratique: 'Apportez à boire',
+      capacity: null as number | null,
+      placesTaken: 1,
+    };
+    const dateless = (over: Record<string, unknown> = {}) =>
+      groupCard({ poll: null, seance: SEANCE, can: HOST_CAN, ...over });
+    const dayIn = (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return toDateKey(d);
+    };
+
+    it('la soirée sans date est proposée ; la composer l’arme en vue Semaine, sans journée entière, avec une fin proposée', async () => {
+      const { comp, fixture } = await createGroupView({
+        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+      expect(comp.rendezvousRows().map((r: any) => r.seanceId)).toEqual(['s1']);
+
+      comp.startCompose('s1');
+      fixture.detectChanges();
+
+      expect(comp.composeTarget()).toEqual({ kind: 'evening-poll', eventId: 'e1' });
+      expect(comp.view()).toBe('week');
+      expect(comp.composeAllowsFullDay()).toBe(false);
+      expect(comp.composeHasDeadline()).toBe(true);
+      expect(comp.composeDeadline()).toBe(dayIn(14));
+      expect(comp.composeTargetLabel()).toBe('Dates à proposer : Soirée plateaux');
+    });
+
+    it('arriver par ?seanceId arme le composer pour cette soirée', async () => {
+      const { comp, tick } = await createGroupView({
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless()],
+        queryParams: { seanceId: 's1' },
+      });
+      await tick();
+      expect(comp.composeTarget()).toEqual({ kind: 'evening-poll', eventId: 'e1' });
+    });
+
+    it('valider : UN PATCH avec les champs RELUS de la carte, les créneaux triés et la fin du composer ; la Destinée s’active sur le vote', async () => {
+      const opened = groupCard({ can: HOST_CAN });
+      const { comp, eventsApi, dialog } = await createGroupView({
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless()],
+        openPolls: [
+          openPollEntry({ pollId: 'p1', partieId: 'g1', family: 'ralliement', title: 'Soirée plateaux' }),
+        ],
+      });
+      comp.startCompose('s1');
+      comp.onComposeAdded([cell('2099-11-27', 'EVENING'), cell('2099-11-20', 'EVENING')]);
+      comp.onComposeAdded([cell('2099-11-21', 'AFTERNOON')]);
+      comp.onComposeDeadlineChanged(dayIn(9));
+      eventsApi.list.mockResolvedValue([opened]);
+
+      await comp.confirmCompose();
+
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(eventsApi.update).toHaveBeenCalledTimes(1);
+      const [partieId, eventId, dto] = eventsApi.update.mock.calls[0];
+      expect([partieId, eventId]).toEqual(['g1', 'e1']);
+      expect(dto).toEqual({
+        title: 'Soirée plateaux',
+        lieu: 'Chez Léa',
+        heureRdv: '19:30',
+        notePratique: 'Apportez à boire',
+        capacity: null,
+        pollOptions: [
+          { date: '2099-11-20', slot: 'EVENING' },
+          { date: '2099-11-21', slot: 'AFTERNOON' },
+          { date: '2099-11-27', slot: 'EVENING' },
+        ],
+        pollDeadline: dayIn(9),
+      });
+      expect(comp.composing()).toBe(false);
+      expect(comp.destinyPollId()).toBe('p1');
+    });
+
+    it('la journée entière est refusée avec sa raison, comme pour une conjonction', async () => {
+      const { comp, fixture } = await createGroupView({
+        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+      comp.startCompose('s1');
+      comp.onComposeAdded([cell('2099-11-27', 'FULL_DAY'), cell('2099-11-28', 'EVENING')]);
+      fixture.detectChanges();
+
+      expect(comp.composedCells()).toHaveLength(1);
+      expect(fixture.nativeElement.querySelector('.calendar-error--compose')?.textContent?.trim()).toBe(
+        GRIMOIRE_TONE['partie.ralliement_calendar_compose_full_day'],
+      );
+    });
+
+    it('moins de deux créneaux ou fin passée : Valider bloqué, rien n’est écrit', async () => {
+      const { comp, eventsApi } = await createGroupView({
+        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+      comp.startCompose('s1');
+      comp.onComposeAdded([cell('2099-11-27', 'EVENING')]);
+      expect(comp.composeCanConfirm()).toBe(false);
+
+      comp.onComposeAdded([cell('2099-11-28', 'EVENING')]);
+      expect(comp.composeCanConfirm()).toBe(true);
+      comp.onComposeDeadlineChanged('2020-01-01');
+      expect(comp.composeCanConfirm()).toBe(false);
+      await comp.confirmCompose();
+      expect(eventsApi.update).not.toHaveBeenCalled();
+    });
+
+    it('daté ou lancé ailleurs pendant la composition : message, composer fermé, rien d’écrit', async () => {
+      const { comp, eventsApi, fixture } = await createGroupView({
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless()],
+      });
+      comp.startCompose('s1');
+      comp.onComposeAdded([cell('2099-11-27', 'EVENING'), cell('2099-11-28', 'EVENING')]);
+      comp.groupEvents.set([groupCard({ can: HOST_CAN })]); // un vote est apparu ailleurs
+
+      await comp.confirmCompose();
+      fixture.detectChanges();
+
+      expect(eventsApi.update).not.toHaveBeenCalled();
+      expect(comp.composing()).toBe(false);
+      expect(
+        fixture.nativeElement.querySelector('.calendar-notice span')?.textContent?.trim(),
+      ).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
+    });
+
+    it('un refus du serveur reste affiché et le composer est conservé', async () => {
+      const { comp, eventsApi } = await createGroupView({
+        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+      comp.startCompose('s1');
+      comp.onComposeAdded([cell('2099-11-27', 'EVENING'), cell('2099-11-28', 'EVENING')]);
+      eventsApi.update.mockRejectedValueOnce({ error: { message: 'Soirée terminée.' } });
+
+      await comp.confirmCompose();
+
+      expect(comp.composing()).toBe(true);
+      expect(comp.error()).toBe('Soirée terminée.');
+    });
+
+    it('qui n’est pas l’hôte : la soirée n’est jamais proposée, aucun composer', async () => {
+      const { comp } = await createGroupView({
+        party: EVENING_PARTY,
+        userId: ME,
+        events: [dateless({ can: { propose: false, edit: false, choose: false, extend: false } })],
+      });
+      expect(comp.rendezvousRows()).toEqual([]);
+      comp.startCompose('s1');
+      expect(comp.composing()).toBe(false);
+    });
+  });
+
   it('Story 45.4 — la fin du vote d’une conjonction : la fin actuelle est montrée, et la fin CHOISIE est celle du PATCH', async () => {
     const card = groupCard({}, { votes: [] });
     const { comp, eventsApi, fixture } = await createGroupView({ userId: HOST, events: [card] });
@@ -7047,7 +7209,7 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
     expect(button(fixture)).toBeNull();
   });
 
-  it('atelier d’un groupe : une soirée isolée sans date est servie par le prédicat mais le web la masque (Story 45.5)', async () => {
+  it('Story 45.5 — atelier d’une soirée : la soirée sans date est proposée, le bouton la liste', async () => {
     const { fixture } = await createCalendarView({
       mode: 'personal',
       partieId: 'partie-g',
@@ -7070,8 +7232,10 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
       },
     ]);
     fixture.detectChanges();
-    expect(comp.rendezvousRows()).toEqual([]);
-    expect(button(fixture)).toBeNull();
+    expect(comp.rendezvousRows().map((r: any) => [r.seanceId, r.eventId, r.nature])).toEqual([
+      ['s1', 'e1', 'soiree'],
+    ]);
+    expect(button(fixture)?.textContent?.trim()).toBe(GRIMOIRE_TONE['calendar.view_propose_dates']);
   });
 
   describe('calendrier personnel', () => {
@@ -7139,12 +7303,20 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
       expect(button(fixture)).toBeNull();
     });
 
-    it('une soirée sans date est servie mais pas encore proposée par le web (Story 45.5)', async () => {
+    it('Story 45.5 — une soirée sans date est proposée (« soirée sans date ») et mène à l’atelier de la soirée, sans composer', async () => {
       const { fixture } = await createCalendarView({
         mode: 'personal',
-        datable: [entry('s1', 'Apéro', { family: 'ralliement', kind: 'ONE_SHOT' })],
+        datable: [entry('s1', 'Apéro', { partieId: 'pS', family: 'ralliement', kind: 'ONE_SHOT' })],
       });
-      expect(button(fixture)).toBeNull();
+      const router = TestBed.inject(Router);
+      const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      expect(button(fixture)).not.toBeNull();
+
+      button(fixture)!.click();
+      fixture.detectChanges();
+
+      expect(navigate).toHaveBeenCalledWith('/parties/pS/guild-calendar?seanceId=s1');
+      expect((fixture.componentInstance as any).composing()).toBe(false);
     });
   });
 });

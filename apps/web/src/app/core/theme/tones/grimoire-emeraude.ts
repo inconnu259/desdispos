@@ -979,6 +979,8 @@ export const grimoireEmeraude = {
   'calendar.selbar_compose_remove': 'Retirer',
   'calendar.selbar_compose_pick_moment': 'Choisissez d’abord un moment (matin, après-midi ou soir).',
   // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
+  // Story 45.5 — la cible « soirée sans date » : aucun mot du JDR ni « partie ».
+  'calendar.compose_target_evening': 'Dates à proposer : {title}',
   'calendar.compose_deadline_field': 'Fin du vote : {date}',
   'calendar.compose_deadline_edit_aria': 'Modifier la fin du vote',
   'calendar.compose_deadline_hint_14': 'Proposé : dans 14 jours.',

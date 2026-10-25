@@ -978,6 +978,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.selbar_compose_remove': 'Écarter',
   'calendar.selbar_compose_pick_moment': 'Précisez d’abord un moment (matin, après-midi ou soir).',
   // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
+  // Story 45.5 — la cible « soirée sans date » : aucun mot du JDR ni « partie ».
+  'calendar.compose_target_evening': 'Dates à soumettre : {title}',
   'calendar.compose_deadline_field': 'Clôture du scrutin : {date}',
   'calendar.compose_deadline_edit_aria': 'Réviser la clôture du scrutin',
   'calendar.compose_deadline_hint_14': 'Par défaut : dans 14 jours.',

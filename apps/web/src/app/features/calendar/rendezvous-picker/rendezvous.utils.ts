@@ -17,20 +17,11 @@ export interface RendezvousRow {
   partieName: string;
   family: GameSystemFamily;
   nature: RendezvousNature;
+  /** Story 45.5 — l'événement d'une soirée isolée (sa cible de composer) ; absent pour une séance de JDR et pour une
+   *  ligne de la vitrine (elle ouvre l'atelier, qui retrouve l'événement par `seanceId`). */
+  eventId?: string;
   /** Le nom du rendez-vous (« Titre — Séance 2 » quand le scénario en a plusieurs). */
   title: string;
-}
-
-/**
- * 🚧 Story 45.5 — la cible de composer d'une soirée isolée sans date n'existe pas encore : la lister serait un
- * bouton qui n'arme rien. Le serveur, le prédicat et leurs tests la couvrent déjà ; seul le web la masque, ICI.
- * Le jour où 45.5 livre la cible : passer à `true` (ou retirer ce drapeau et `armableRendezvous`).
- */
-export const SOIREE_ROWS_ARMABLE = false;
-
-/** Les rendez-vous que le web sait armer aujourd'hui. */
-export function armableRendezvous(rows: readonly RendezvousRow[]): RendezvousRow[] {
-  return rows.filter((r) => SOIREE_ROWS_ARMABLE || r.nature !== 'soiree');
 }
 
 export function natureOf(family: GameSystemFamily): RendezvousNature {
@@ -113,6 +104,7 @@ export function groupRendezvous(
       partieName: partie.name,
       family: 'ralliement',
       nature: 'soiree',
+      eventId: card.id,
       title: card.title,
     });
   }

@@ -326,6 +326,14 @@ export class PartieForm implements OnInit {
     return this.theme.tone()[key] ?? kind;
   }
 
+  /** Story 45.7 — ce que la nature crée, en clair (même texte dans les trois thèmes, vocabulaire du mode). */
+  protected kindPlain(kind: FormKind): string {
+    const key = this.isRalliement()
+      ? `partie.ralliement_kind_plain_${kind}`
+      : `partie.kind_plain_${kind}`;
+    return this.theme.tone()[key] ?? '';
+  }
+
   /** Dépôt de l'image de couverture. En édition, immédiat (Story 29.12) ; en création, le fichier
    *  est retenu jusqu'à ce que la partie existe (AC12). */
   async onCoverFileSelected(event: Event): Promise<void> {

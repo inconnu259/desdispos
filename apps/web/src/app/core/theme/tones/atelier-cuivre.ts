@@ -378,6 +378,18 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'partie.mode_label': 'Genre de l’opération',
   'partie.mode_ralliement': 'Rassemblement',
   'partie.mode_quete': 'Mission',
+  // Story 45.7 — la ligne en clair sous chaque mode et chaque nature du formulaire de création : identique dans les
+  // trois thèmes (NEUTRAL_KEYS), et sans mot du JDR pour le mode soirée.
+  'partie.mode_plain_quete': 'Jeu de rôle',
+  'partie.mode_plain_ralliement': 'Soirée entre amis',
+  'partie.kind_plain_ONE_SHOT': 'Une seule séance : l’histoire commence et se termine le même soir.',
+  'partie.kind_plain_CAMPAGNE_LINEAIRE': 'Une histoire suivie sur plusieurs séances, avec la même troupe.',
+  'partie.kind_plain_CAMPAGNE_EPISODIQUE':
+    'Plusieurs séances complètes chacune ; les joueurs peuvent changer d’une séance à l’autre.',
+  'partie.ralliement_kind_plain_ONE_SHOT':
+    'Un rendez-vous unique : on invite, on trouve une date, et c’est fini.',
+  'partie.ralliement_kind_plain_CAMPAGNE_EPISODIQUE':
+    'Une bande d’amis durable : chaque membre peut proposer des rencontres, chez lui, quand il veut.',
   'partie.ralliement_name_label': 'Nom du rassemblement',
   'partie.ralliement_kind_label': 'Régime du rassemblement',
   'partie.ralliement_kind_ONE_SHOT': 'La réunion d’établi',

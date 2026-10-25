@@ -801,7 +801,8 @@ describe('PartieForm', () => {
   describe('mode quête / ralliement (Story 38.2)', () => {
     const labels = (fixture: { nativeElement: HTMLElement }, selector: string): string[] =>
       Array.from(fixture.nativeElement.querySelectorAll(selector)).map((el) =>
-        (el.textContent ?? '').trim(),
+        // Story 45.7 : une option porte son nom (ligne 1) et sa ligne en clair (ligne 2) — les libellés se lisent sur le nom.
+        ((el as HTMLElement).querySelector('.option-name')?.textContent ?? el.textContent ?? '').trim(),
       );
 
     it('création : la bascule est présente, à deux options, ralliement à gauche et quête à droite, quête par défaut', async () => {
@@ -1052,5 +1053,115 @@ describe('PartieForm', () => {
       expect(nav.title()).toBe(tone['partie.edit_title']);
       expect(nav.subtitle()).toBe('La Guilde des Ombres');
     });
+  });
+});
+
+// ─── Story 45.7 — comprendre ce qu'on crée : la ligne en clair sous chaque mode et chaque nature ───
+
+describe('PartieForm — lignes en clair (Story 45.7)', () => {
+  const cell = (root: HTMLElement, selector: string) =>
+    Array.from(root.querySelectorAll(selector)).map((el) => ({
+      name: el.querySelector('.option-name')?.textContent?.trim(),
+      plain: el.querySelector('.option-plain')?.textContent?.trim(),
+    }));
+  const MODE = '.mode-toggle mat-button-toggle';
+  const KIND = '.kind-toggle mat-button-toggle';
+
+  it('création : la bascule montre le nom du thème PUIS « Jeu de rôle » / « Soirée entre amis », dans les trois thèmes', async () => {
+    const { fixture } = await createComponent();
+    const root = fixture.nativeElement as HTMLElement;
+    for (const theme of THEMES) {
+      TestBed.inject(ThemeToneService).activeTheme.set(theme);
+      fixture.detectChanges();
+      const tone = TONE_MAP[theme];
+      expect(cell(root, MODE), theme).toEqual([
+        { name: tone['partie.mode_ralliement'], plain: 'Soirée entre amis' },
+        { name: tone['partie.mode_quete'], plain: 'Jeu de rôle' },
+      ]);
+    }
+  });
+
+  it('mode quête : chaque nature porte sa ligne (EXPERIENCE §2.7), la choisie comme les autres', async () => {
+    const { fixture } = await createComponent();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(cell(root, KIND).map((o) => o.plain)).toEqual([
+      'Une seule séance : l’histoire commence et se termine le même soir.',
+      'Une histoire suivie sur plusieurs séances, avec la même troupe.',
+      'Plusieurs séances complètes chacune ; les joueurs peuvent changer d’une séance à l’autre.',
+    ]);
+
+    (fixture.componentInstance as any).form.patchValue({ kind: 'CAMPAGNE_LINEAIRE' });
+    fixture.detectChanges();
+    // Le choix ne retire aucune ligne.
+    expect(cell(root, KIND).every((o) => !!o.plain)).toBe(true);
+    expect(root.querySelectorAll(`${KIND}.mat-button-toggle-checked .option-plain`)).toHaveLength(1);
+  });
+
+  it('mode ralliement : les deux lignes de la soirée isolée et du groupe, sans mot du JDR', async () => {
+    const { fixture } = await createComponent();
+    (fixture.componentInstance as any).setMode('ralliement');
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+
+    const lines = cell(root, KIND).map((o) => o.plain);
+    expect(lines).toEqual([
+      'Un rendez-vous unique : on invite, on trouve une date, et c’est fini.',
+      'Une bande d’amis durable : chaque membre peut proposer des rencontres, chez lui, quand il veut.',
+    ]);
+    for (const line of lines) {
+      expect(line).not.toMatch(/\b(MJ|campagne|sc[ée]nario|s[ée]ance|joueur|qu[êe]te|troupe|partie)/i);
+    }
+  });
+
+  it('les lignes en clair sont identiques dans les trois thèmes, les noms diffèrent', async () => {
+    const { fixture } = await createComponent();
+    const root = fixture.nativeElement as HTMLElement;
+    const plains = new Set<string>();
+    const names = new Set<string>();
+    for (const theme of THEMES) {
+      TestBed.inject(ThemeToneService).activeTheme.set(theme);
+      fixture.detectChanges();
+      plains.add(
+        cell(root, KIND)
+          .map((o) => o.plain)
+          .join('|'),
+      );
+      names.add(
+        cell(root, KIND)
+          .map((o) => o.name)
+          .join('|'),
+      );
+    }
+    expect(plains.size).toBe(1);
+    expect(names.size).toBe(THEMES.length);
+  });
+
+  it('édition d’une partie de JDR : pas de bascule de mode, les natures gardent leur ligne', async () => {
+    const { fixture } = await createComponent('p1');
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.mode-toggle')).toBeNull();
+    expect(cell(root, KIND).every((o) => !!o.plain)).toBe(true);
+  });
+
+  it('édition d’un ralliement : natures figées mais avec leur ligne', async () => {
+    const { fixture } = await createComponent('p1', {
+      partie: { gameSystemId: 'ralliement', kind: 'ONE_SHOT' },
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.mode-toggle')).toBeNull();
+    const lines = cell(root, KIND).map((o) => o.plain);
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe('Un rendez-vous unique : on invite, on trouve une date, et c’est fini.');
+  });
+
+  it('une nature désactivée garde sa ligne, et sa raison reste écrite dessous', async () => {
+    const { fixture } = await createComponent('p1', {
+      partie: { kind: 'CAMPAGNE_LINEAIRE' },
+      scenarios: [scenario({ id: 's1' }), scenario({ id: 's2' })],
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    const disabled = root.querySelector(`${KIND}.mat-button-toggle-disabled`)!;
+    expect(disabled.querySelector('.option-plain')?.textContent?.trim()).toBeTruthy();
+    expect(root.querySelector('.kind-reason')).not.toBeNull();
   });
 });

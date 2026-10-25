@@ -62,7 +62,9 @@
               type="button"
               class="cover-chip"
               [disabled]="coverLocked()"
-              [attr.aria-label]="theme.tone()['common.retirer'] + ' — ' + theme.tone()['partie.cover_remove']"
+              [attr.aria-label]="
+                theme.tone()['common.retirer'] + ' — ' + theme.tone()['partie.cover_remove']
+              "
               (click)="removeCoverImage()"
             >
               {{ theme.tone()['common.retirer'] }}
@@ -83,7 +85,9 @@
               class="cover-file-input"
               [accept]="'image/jpeg,image/png,image/webp'"
               [disabled]="coverLocked()"
-              [attr.aria-label]="theme.tone()['common.changer'] + ' — ' + theme.tone()['partie.cover_change']"
+              [attr.aria-label]="
+                theme.tone()['common.changer'] + ' — ' + theme.tone()['partie.cover_change']
+              "
               (change)="onCoverFileSelected($event)"
             />
           </label>
@@ -106,7 +110,9 @@
            description (toujours dernière). -->
       <mat-form-field appearance="outline">
         <mat-label>{{
-          isRalliement() ? theme.tone()['partie.ralliement_name_label'] : theme.tone()['partie.name_label']
+          isRalliement()
+            ? theme.tone()['partie.ralliement_name_label']
+            : theme.tone()['partie.name_label']
         }}</mat-label>
         <input matInput formControlName="name" />
       </mat-form-field>
@@ -122,12 +128,18 @@
           hideSingleSelectionIndicator
         >
           @for (option of modeOptions; track option) {
+            <!-- ⚠️ Story 45.7 — deux lignes : le nom du thème, puis ce qu'il désigne en clair (identique partout). -->
             <mat-button-toggle [value]="option">
-              {{
+              <span class="option-name">{{
                 option === 'ralliement'
                   ? theme.tone()['partie.mode_ralliement']
                   : theme.tone()['partie.mode_quete']
-              }}
+              }}</span>
+              <span class="option-plain">{{
+                option === 'ralliement'
+                  ? theme.tone()['partie.mode_plain_ralliement']
+                  : theme.tone()['partie.mode_plain_quete']
+              }}</span>
             </mat-button-toggle>
           }
         </mat-button-toggle-group>
@@ -145,23 +157,31 @@
       }
 
       <fieldset class="kind-field">
-        <legend class="lbl">{{
-          isRalliement() ? theme.tone()['partie.ralliement_kind_label'] : theme.tone()['partie.kind_label']
-        }}</legend>
+        <legend class="lbl">
+          {{
+            isRalliement()
+              ? theme.tone()['partie.ralliement_kind_label']
+              : theme.tone()['partie.kind_label']
+          }}
+        </legend>
         <!-- Groupe vertical : « Campagne épisodique » ne tient pas sur une ligne de 375 px, et un
              groupe horizontal y tronquait le libellé (AC1). -->
         <mat-button-toggle-group
           formControlName="kind"
           class="kind-toggle"
           [attr.aria-label]="
-            isRalliement() ? theme.tone()['partie.ralliement_kind_label'] : theme.tone()['partie.kind_label']
+            isRalliement()
+              ? theme.tone()['partie.ralliement_kind_label']
+              : theme.tone()['partie.kind_label']
           "
           hideSingleSelectionIndicator
           vertical
         >
           @for (option of kindAvailability(); track option.kind) {
+            <!-- Story 45.7 — sous chaque nature, ce qu'elle crée : la ligne reste visible, choisie ou non. -->
             <mat-button-toggle [value]="option.kind" [disabled]="option.disabled">
-              {{ kindLabel(option.kind) }}
+              <span class="option-name">{{ kindLabel(option.kind) }}</span>
+              <span class="option-plain">{{ kindPlain(option.kind) }}</span>
             </mat-button-toggle>
           }
         </mat-button-toggle-group>

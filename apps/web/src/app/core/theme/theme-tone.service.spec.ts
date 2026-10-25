@@ -853,6 +853,14 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.destiny_notice_dismiss',
     // Story 45.1 — nature d'un rendez-vous dans le choix : explication en clair, volontairement hors thème
     // (« soirée sans date » dans les trois thèmes, EXPERIENCE §3.3)
+    // Story 45.7 — explication en clair, volontairement hors thème (EXPERIENCE §2.7)
+    'partie.mode_plain_quete',
+    'partie.mode_plain_ralliement',
+    'partie.kind_plain_ONE_SHOT',
+    'partie.kind_plain_CAMPAGNE_LINEAIRE',
+    'partie.kind_plain_CAMPAGNE_EPISODIQUE',
+    'partie.ralliement_kind_plain_ONE_SHOT',
+    'partie.ralliement_kind_plain_CAMPAGNE_EPISODIQUE',
     'calendar.rendezvous_nature_seance',
     'calendar.rendezvous_nature_soiree',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
@@ -1266,7 +1274,9 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     key.startsWith('auth.field_') ||
     key.startsWith('calendar.agenda.badge_') ||
     // Story 43.1 : confirmation d'effacement du compte, textes fixes du contrat (UX-DR12), vouvoyés.
-    /^account\.delete_(intro|groups_title|jdr_title|irreversible)$/.test(key);
+    /^account\.delete_(intro|groups_title|jdr_title|irreversible)$/.test(key) ||
+    // Story 45.7 : lignes en clair du formulaire de création — une seule voix neutre pour les trois thèmes (UX §2.7).
+    /^partie\.(mode_plain_|kind_plain_|ralliement_kind_plain_)/.test(key);
   const VOUVOIEMENT =
     /(^|[^\p{L}])(vous|votre|vos)(?=$|[^\p{L}])|-vous(?=$|[^\p{L}])|(^|[^\p{L}])(réessayez|rechargez|vérifiez|choisissez|ouvrez|créez|connectez|terminez|refaites|patientez|utilisez|acceptez|cochez|cliquez|revalidez|demandez|revenez|touchez|répartissez|gravez|ajoutez|sélectionnez|renseignez|veuillez|rédigez|déverrouillez|rouvrez|consultez|plantez|façonnez)(?=$|[^\p{L}])/iu;
   // Impératifs du tutoiement, restreints aux formes sans ambiguïté (« ouvre » est aussi un « il ouvre »).
@@ -2170,5 +2180,35 @@ describe('Tones — le filtre par partie (Story 44.8)', () => {
       voices.add(value);
     }
     expect(voices.size).toBe(3);
+  });
+});
+
+// Story 45.7 — les lignes en clair du formulaire de création : une seule voix pour les trois thèmes, et aucun mot du
+// JDR (ni « partie ») dans celles du mode soirée.
+describe('Tones — lignes en clair du formulaire de création (Story 45.7)', () => {
+  const PLAIN = [
+    'partie.mode_plain_quete',
+    'partie.mode_plain_ralliement',
+    'partie.kind_plain_ONE_SHOT',
+    'partie.kind_plain_CAMPAGNE_LINEAIRE',
+    'partie.kind_plain_CAMPAGNE_EPISODIQUE',
+    'partie.ralliement_kind_plain_ONE_SHOT',
+    'partie.ralliement_kind_plain_CAMPAGNE_EPISODIQUE',
+  ];
+  const SOIREE = PLAIN.filter((k) => k.includes('ralliement'));
+  const JDR_WORDS = /(^|[^\p{L}])(mj|campagnes?|sc[ée]narios?|s[ée]ances?|joueurs?|qu[êe]tes?|troupe|parties?)(?=$|[^\p{L}])/iu;
+
+  it.each(PLAIN)('%s : le même texte dans les trois thèmes, jamais vide', (key) => {
+    const texts = THEMES.map((theme) => TONE_MAP[theme][key]);
+    expect(texts[0], key).toBeTruthy();
+    expect(new Set(texts).size, key).toBe(1);
+  });
+
+  it.each(SOIREE)('%s : aucun mot du JDR ni « partie »', (key) => {
+    expect(JDR_WORDS.test(TONE_MAP['grimoire-emeraude'][key]), key).toBe(false);
+  });
+
+  it('les lignes du JDR gardent leurs mots (garde-fou du test précédent)', () => {
+    expect(JDR_WORDS.test(TONE_MAP['grimoire-emeraude']['partie.kind_plain_ONE_SHOT'])).toBe(true);
   });
 });

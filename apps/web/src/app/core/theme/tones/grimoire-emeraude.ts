@@ -904,6 +904,9 @@ export const grimoireEmeraude = {
   'calendar.agg_unknown_title': 'Inconnus',
   'calendar.agg_unavailable_title': 'Indisponibles',
   'calendar.slots_list_aria': 'Fenêtres disponibles',
+  // Story 46.1 — les deux boutons de la colonne de droite : mêmes mots dans les trois thèmes (accessibilité).
+  'calendar.column_dock': 'Ranger la colonne',
+  'calendar.column_reopen': 'Rouvrir la colonne',
   'calendar.rail_empty': 'Aucun jour à consulter',
   'calendar.rail_status_unknown': 'Rien d’inscrit',
   'calendar.layer_group_aria': 'Couches affichées de l’almanach',
@@ -1124,7 +1127,7 @@ export const grimoireEmeraude = {
   'cta.find_date': "Consulter l'oracle des créneaux",
   'cta.guild_calendar': 'Voir le grimoire des disponibilités',
   'cta.save_constraint': 'Inscrire dans le grimoire',
-  'section.slots': 'Fenêtres de la destinée',
+  'section.slots': 'Éphémérides',
   'empty.no_slots': "L'oracle ne voit aucun créneau libre. Les parchemins manquent de données.",
   'success.constraint_saved': 'Contrainte gravée dans le parchemin.',
   'alert.missing_player': "{name} n'a pas encore consulté l'oracle.",

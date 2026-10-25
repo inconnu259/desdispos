@@ -863,6 +863,9 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'partie.ralliement_kind_plain_CAMPAGNE_EPISODIQUE',
     'calendar.rendezvous_nature_seance',
     'calendar.rendezvous_nature_soiree',
+    // Story 46.1 — boutons de la colonne de droite : noms accessibles identiques dans les trois thèmes
+    'calendar.column_dock',
+    'calendar.column_reopen',
     // Vocabulaire du système de jeu (Ryuutama) : noms de fiches, de rubriques et de catégories
     'partie.asset_journal_cta',
     'partie.asset_carte_cta',
@@ -2210,5 +2213,22 @@ describe('Tones — lignes en clair du formulaire de création (Story 45.7)', ()
 
   it('les lignes du JDR gardent leurs mots (garde-fou du test précédent)', () => {
     expect(JDR_WORDS.test(TONE_MAP['grimoire-emeraude']['partie.kind_plain_ONE_SHOT'])).toBe(true);
+  });
+});
+
+// Story 46.1 — la section des fenêtres de l'automate : « destinée » ne désigne plus que le mode ; les boutons de la
+// colonne de droite disent la même chose dans les trois thèmes.
+describe("Tones — fenêtres de l'automate et colonne de droite (Story 46.1)", () => {
+  it('section.slots : un nom par thème, sans « destinée »', () => {
+    expect(TONE_MAP['grimoire-emeraude']['section.slots']).toBe('Éphémérides');
+    expect(TONE_MAP['foret-ancienne']['section.slots']).toBe('Clairières disponibles');
+    expect(TONE_MAP['atelier-cuivre']['section.slots']).toBe("Créneaux calculés par l'automate");
+    for (const theme of THEMES) expect(TONE_MAP[theme]['section.slots']).not.toMatch(/destin/i);
+  });
+
+  it.each(['calendar.column_dock', 'calendar.column_reopen'])('%s : le même texte dans les trois thèmes', (key) => {
+    const texts = THEMES.map((theme) => TONE_MAP[theme][key]);
+    expect(texts[0], key).toBeTruthy();
+    expect(new Set(texts).size, key).toBe(1);
   });
 });

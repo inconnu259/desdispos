@@ -124,3 +124,58 @@ describe('AvailableSlotsPanel — la lecture longue par rôle (Story 36.8, AC9)'
     expect(el.querySelector('app-creneau-card')).toBeFalsy();
   });
 });
+
+// Story 46.1 — le titre porte le nombre de fenêtres ; sous 768 px il devient un bouton qui replie la liste.
+describe('AvailableSlotsPanel — titre et repli (Story 46.1)', () => {
+  let fixture: ComponentFixture<AvailableSlotsPanel>;
+  let el: HTMLElement;
+
+  function create(inputs: Record<string, unknown>): void {
+    fixture = TestBed.createComponent(AvailableSlotsPanel);
+    fixture.componentRef.setInput('slots', [SLOT, { ...SLOT, slot: 'AFTERNOON' }]);
+    for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  beforeEach(() => TestBed.configureTestingModule({ imports: [AvailableSlotsPanel] }));
+
+  it('le titre dit « Éphémérides · 2 », sans bouton quand la liste n’est pas repliable', () => {
+    create({});
+    expect(el.querySelector('.available-slots__title')!.textContent!.trim()).toBe(
+      'Éphémérides · 2',
+    );
+    expect(el.querySelector('.available-slots__fold')).toBeNull();
+  });
+
+  it('pendant le chargement, le titre n’annonce pas encore de nombre', () => {
+    create({ loading: true });
+    expect(el.querySelector('.available-slots__title')!.textContent!.trim()).toBe('Éphémérides');
+  });
+
+  it('repliable : un bouton pleine largeur aria-expanded, la liste visible quand elle est dépliée', () => {
+    create({ foldable: true, folded: false });
+    const fold = el.querySelector<HTMLButtonElement>('.available-slots__fold')!;
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    expect(fold.textContent).toContain('Éphémérides · 2');
+    expect(el.querySelectorAll('app-creneau-card')).toHaveLength(2);
+  });
+
+  it('repliée : seul le titre reste, aria-expanded=false, et le clic demande de basculer', () => {
+    create({ foldable: true, folded: true });
+    const fold = el.querySelector<HTMLButtonElement>('.available-slots__fold')!;
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(el.querySelector('.available-slots__list')).toBeNull();
+    expect(el.querySelector('.available-slots__empty')).toBeNull();
+
+    let toggled = 0;
+    fixture.componentInstance.foldToggled.subscribe(() => toggled++);
+    fold.click();
+    expect(toggled).toBe(1);
+  });
+
+  it('« repliée » n’a aucun effet quand la liste n’est pas repliable (≥ 768 px)', () => {
+    create({ foldable: false, folded: true });
+    expect(el.querySelectorAll('app-creneau-card')).toHaveLength(2);
+  });
+});

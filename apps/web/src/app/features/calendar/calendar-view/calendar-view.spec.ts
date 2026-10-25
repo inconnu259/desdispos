@@ -7529,3 +7529,176 @@ describe('CalendarView — plateau d’un vote de JDR terminé (Story 45.4)', ()
     ).toBeNull();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 46.1 — ranger la colonne de droite (≥ 768 px) et replier les éphémérides (< 768 px)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
+  const LS_KEY = 'master-jdr.calendar.column-closed';
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+
+  beforeEach(() => localStorage.removeItem(LS_KEY));
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    localStorage.removeItem(LS_KEY);
+  });
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+  const dockButton = (fixture: any) =>
+    root(fixture).querySelector<HTMLButtonElement>('.side-dock__bar .side-dock__button');
+  const reopenButton = (fixture: any) =>
+    root(fixture).querySelector<HTMLButtonElement>('.side-dock .side-dock__button');
+  const dockLabel = (fixture: any) => root(fixture).querySelector('.side-dock__label')?.textContent?.trim();
+
+  const poll = () =>
+    openPollEntry({
+      pollId: 'poll-a',
+      partieId: 'partie-1',
+      partieName: 'Les Cendres',
+      title: 'Chapitre 4',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      eligibleCount: 5,
+      answeredCount: 2,
+      can: ORGANIZER,
+      options: [
+        { optionId: 'a1', date: '2030-03-04', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
+        { optionId: 'a2', date: '2030-03-06', slot: 'EVENING', yes: 2, maybe: 0, no: 0, myAnswer: null },
+      ],
+    });
+
+  it('colonne MJ : › range la colonne en dock « Éphémérides · N », ‹ la rouvre, la clé est écrite', async () => {
+    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [] });
+    await tick(fixture);
+
+    const dock = dockButton(fixture)!;
+    expect(dock.getAttribute('aria-expanded')).toBe('true');
+    expect(dock.getAttribute('aria-label')).toBe('Ranger la colonne');
+    expect(root(fixture).querySelector('.date-range-form')).not.toBeNull();
+
+    dock.click();
+    await tick(fixture);
+    const host = root(fixture).querySelector('app-side-dock.mj-results-panel')!;
+    expect(host.classList).toContain('side-dock--docked');
+    expect(dockLabel(fixture)).toBe('Éphémérides · 0');
+    expect(root(fixture).querySelector('.date-range-form')).toBeNull();
+    expect(localStorage.getItem(LS_KEY)).toBe('closed');
+    const reopen = reopenButton(fixture)!;
+    expect(reopen.getAttribute('aria-expanded')).toBe('false');
+    expect(reopen.getAttribute('aria-label')).toBe('Rouvrir la colonne');
+    // Le focus passe à ‹ (le bouton qui vient d'être activé a disparu).
+    expect(document.activeElement).toBe(reopen);
+
+    reopen.click();
+    await tick(fixture);
+    expect(root(fixture).querySelector('app-side-dock.mj-results-panel')!.classList).not.toContain(
+      'side-dock--docked',
+    );
+    expect(root(fixture).querySelector('.date-range-form')).not.toBeNull();
+    expect(localStorage.getItem(LS_KEY)).toBeNull();
+    expect(document.activeElement).toBe(dockButton(fixture));
+  });
+
+  it('colonne joueur : se range de la même façon', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', partieId: 'partie-1' });
+    await tick(fixture);
+    expect(root(fixture).querySelector('app-side-dock.guild-slots-panel')).not.toBeNull();
+
+    dockButton(fixture)!.click();
+    await tick(fixture);
+    expect(root(fixture).querySelector('app-side-dock.guild-slots-panel')!.classList).toContain(
+      'side-dock--docked',
+    );
+    expect(dockLabel(fixture)).toBe('Éphémérides · 0');
+  });
+
+  it('colonne de groupe : se range, libellé « votes de dates · N »', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', partieId: 'partie-1' });
+    (fixture.componentInstance as any).isGroup.set(true);
+    await tick(fixture);
+
+    dockButton(fixture)!.click();
+    await tick(fixture);
+    expect(dockLabel(fixture)).toBe(`${GRIMOIRE_TONE['partie.ralliement_calendar_polls_heading']} · 0`);
+  });
+
+  it('plateau de la destinée : « ✦ titre », et entrer en Destinée rouvre la colonne rangée', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [poll()] });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+
+    dockButton(fixture)!.click();
+    await tick(fixture);
+    expect(root(fixture).querySelector('app-side-dock.destiny-board-col')!.classList).toContain(
+      'side-dock--docked',
+    );
+    expect(dockLabel(fixture)).toBe('✦ Chapitre 4');
+
+    // Quitter puis entrer de nouveau : la colonne revient ouverte.
+    comp.quitDestiny();
+    await tick(fixture);
+    comp.chooseDestiny('poll-a');
+    await tick(fixture);
+    expect(root(fixture).querySelector('app-side-dock.destiny-board-col')!.classList).not.toContain(
+      'side-dock--docked',
+    );
+    expect(localStorage.getItem(LS_KEY)).toBeNull();
+  });
+
+  it('au rechargement : l’état retenu « rangé » rouvre la colonne rangée', async () => {
+    localStorage.setItem(LS_KEY, 'closed');
+    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [] });
+    await tick(fixture);
+    expect(root(fixture).querySelector('app-side-dock.mj-results-panel')!.classList).toContain(
+      'side-dock--docked',
+    );
+  });
+
+  it('stockage qui jette : on range quand même, sans erreur', async () => {
+    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [] });
+    await tick(fixture);
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota');
+    });
+    try {
+      dockButton(fixture)!.click();
+      await tick(fixture);
+      expect(root(fixture).querySelector('app-side-dock.mj-results-panel')!.classList).toContain(
+        'side-dock--docked',
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('sous 768 px : pas de dock, la liste se replie et Du / Au / Scruter disparaissent', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [],
+      desktop: false,
+    });
+    const comp = fixture.componentInstance as any;
+    comp.onViewChange('month');
+    comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+    await tick(fixture);
+
+    expect(root(fixture).querySelector('.side-dock__bar')).toBeNull();
+    const fold = root(fixture).querySelector<HTMLButtonElement>('.available-slots__fold')!;
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    expect(root(fixture).querySelector('.date-range-form')).not.toBeNull();
+
+    fold.click();
+    await tick(fixture);
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(root(fixture).querySelector('.date-range-form')).toBeNull();
+    expect(root(fixture).querySelector('.available-slots__empty')).toBeNull();
+  });
+});

@@ -1,7 +1,22 @@
 <section class="available-slots">
-  <h2 class="available-slots__title">{{ theme.tone()['section.slots'] }}</h2>
+  <h2 class="available-slots__title">
+    @if (foldable()) {
+      <button
+        type="button"
+        class="available-slots__fold"
+        [attr.aria-expanded]="!folded()"
+        (click)="foldToggled.emit()"
+      >
+        <span>{{ title() }}</span>
+        <span class="available-slots__chevron" aria-hidden="true">{{ folded() ? '▾' : '▴' }}</span>
+      </button>
+    } @else {
+      {{ title() }}
+    }
+  </h2>
 
-  @if (loading()) {
+  <!-- Story 46.1 — repliée, seul le titre reste. -->
+  @if (!collapsed() && loading()) {
     <div
       class="available-slots__loading"
       aria-busy="true"
@@ -13,15 +28,15 @@
     </div>
   }
 
-  @if (error()) {
+  @if (!collapsed() && error()) {
     <p class="available-slots__error" role="alert">{{ error() }}</p>
   }
 
-  @if (!loading() && !error() && sortedSlots().length === 0) {
+  @if (!collapsed() && !loading() && !error() && sortedSlots().length === 0) {
     <p class="available-slots__empty">{{ theme.tone()['empty.no_slots'] }}</p>
   }
 
-  @if (!loading() && !error() && sortedSlots().length > 0) {
+  @if (!collapsed() && !loading() && !error() && sortedSlots().length > 0) {
     <ul class="available-slots__list" [attr.aria-label]="theme.tone()['calendar.slots_list_aria']">
       @for (s of sortedSlots(); track s.date + s.slot) {
         <li>

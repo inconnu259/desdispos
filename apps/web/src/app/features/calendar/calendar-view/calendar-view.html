@@ -195,9 +195,9 @@
           [active]="activeLayers()"
           [legendVisible]="legendVisible()"
           (layerToggled)="toggleLayer($event)"
-            [parties]="filterParties()"
-            [hiddenPartieIds]="hiddenPartieIds()"
-            (partieToggled)="togglePartie($event)"
+          [parties]="filterParties()"
+          [hiddenPartieIds]="hiddenPartieIds()"
+          (partieToggled)="togglePartie($event)"
           (legendToggled)="toggleLegend()"
           (resetRequested)="resetToDefault()"
         />
@@ -424,7 +424,14 @@
        habituelles sont donc rendues seulement quand il est absent ; la Destinée quittée, elles reviennent
        telles quelles. Sous 768 px rien ne change : c'est le tiroir de la story 44.5. -->
   @if (destinyBoardShown() && destinyBoard(); as board) {
-    <aside class="destiny-board-col" [class.destiny-board-col--partie]="isMjMode()">
+    <app-side-dock
+      class="destiny-board-col"
+      role="complementary"
+      [class.destiny-board-col--partie]="isMjMode()"
+      [docked]="dock.closed()"
+      [label]="boardDockLabel()"
+      (toggled)="dock.toggle()"
+    >
       <app-destiny-board
         [model]="board"
         (slotChosen)="chooseDestinySlot($event)"
@@ -434,7 +441,7 @@
         (modifyRequested)="openDestinyModify()"
         (otherRequested)="proposeOther()"
       />
-    </aside>
+    </app-side-dock>
   }
 
   <!-- Story 44.5 — ⚠️ sous 768 px la Destinée active s'affiche dans un tiroir du bas non modal (replié : un résumé du
@@ -454,7 +461,13 @@
   }
 
   @if (isMjMode() && !destinyBoardShown()) {
-    <div class="mj-results-panel">
+    <app-side-dock
+      class="mj-results-panel"
+      [enabled]="isWide()"
+      [docked]="dock.closed()"
+      [label]="slotsDockLabel()"
+      (toggled)="dock.toggle()"
+    >
       <!-- ⚠️ Story 36.10, AC9 — le sélecteur « Planifier un vote pour : » a été RETIRÉ d'ici.
            Il demandait la séance AVANT les dates, à côté d'un calendrier qui ne montrait pas ces
            dates ; c'est le formulaire séparé que FR-52 supprime. La composition passe désormais
@@ -501,29 +514,32 @@
         </div>
       }
 
-      <div class="date-range-form">
-        <label class="date-range-label">
-          {{ theme.tone()['common.du'] }}
-          <input
-            type="date"
-            class="date-input"
-            [value]="fromDateStr()"
-            (change)="onFromChange($event)"
-          />
-        </label>
-        <label class="date-range-label">
-          {{ theme.tone()['common.au'] }}
-          <input
-            type="date"
-            class="date-input"
-            [value]="toDateStr()"
-            (change)="onToChange($event)"
-          />
-        </label>
-        <button mat-stroked-button (click)="onSearch()">
-          {{ theme.tone()['common.rechercher'] }}
-        </button>
-      </div>
+      <!-- Story 46.1 — Du / Au / Scruter ne se montrent que colonne ouverte ou liste dépliée. -->
+      @if (!dock.closed()) {
+        <div class="date-range-form">
+          <label class="date-range-label">
+            {{ theme.tone()['common.du'] }}
+            <input
+              type="date"
+              class="date-input"
+              [value]="fromDateStr()"
+              (change)="onFromChange($event)"
+            />
+          </label>
+          <label class="date-range-label">
+            {{ theme.tone()['common.au'] }}
+            <input
+              type="date"
+              class="date-input"
+              [value]="toDateStr()"
+              (change)="onToChange($event)"
+            />
+          </label>
+          <button mat-stroked-button (click)="onSearch()">
+            {{ theme.tone()['common.rechercher'] }}
+          </button>
+        </div>
+      }
       <!-- Story 30.6, AC5 : contenu de l'ancien panneau « voir les créneaux calculés », devenu la
            couche disponibilite-groupe — plus de bouton de défilement dédié, visible seulement
            quand la couche est active. Masquée en vue Agenda (revue de code) — agendaEntries()
@@ -533,38 +549,55 @@
           [slots]="availableSlots()"
           [loading]="slotsLoading()"
           [error]="slotsError()"
+          [foldable]="!isWide()"
+          [folded]="dock.closed()"
+          (foldToggled)="dock.toggle()"
         />
       }
-    </div>
+    </app-side-dock>
   }
 
   <!-- Story 40.5b — le calendrier d'un GROUPE : les votes de dates de ses conjonctions, chacun avec
        l'état du vote en toutes lettres (on peut répondre jusqu'au…, ou lecture seule et pourquoi).
        Ni plage de dates, ni créneaux calculés : le serveur les refuse à un groupe. -->
   @if (isGroup() && !destinyBoardShown()) {
-    <section class="guild-slots-panel group-polls" aria-labelledby="group-polls-title">
-      <h2 class="group-polls__title" id="group-polls-title">
-        {{ theme.tone()['partie.ralliement_calendar_polls_heading'] }}
-      </h2>
-      @if (groupPollRows().length === 0) {
-        <p class="hint group-polls__empty">
-          {{ theme.tone()['partie.ralliement_calendar_polls_empty'] }}
-        </p>
-      } @else {
-        <ul class="group-polls__list">
-          @for (row of groupPollRows(); track row.eventId) {
-            <li class="group-poll">
-              <p class="group-poll__title">{{ row.title }}</p>
-              <p class="group-poll__state">{{ row.state }}</p>
-            </li>
-          }
-        </ul>
-      }
-    </section>
+    <app-side-dock
+      class="guild-slots-panel"
+      [enabled]="isWide()"
+      [docked]="dock.closed()"
+      [label]="groupDockLabel()"
+      (toggled)="dock.toggle()"
+    >
+      <section class="group-polls" aria-labelledby="group-polls-title">
+        <h2 class="group-polls__title" id="group-polls-title">
+          {{ theme.tone()['partie.ralliement_calendar_polls_heading'] }}
+        </h2>
+        @if (groupPollRows().length === 0) {
+          <p class="hint group-polls__empty">
+            {{ theme.tone()['partie.ralliement_calendar_polls_empty'] }}
+          </p>
+        } @else {
+          <ul class="group-polls__list">
+            @for (row of groupPollRows(); track row.eventId) {
+              <li class="group-poll">
+                <p class="group-poll__title">{{ row.title }}</p>
+                <p class="group-poll__state">{{ row.state }}</p>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </app-side-dock>
   }
 
   @if (!isMjMode() && partieId() && groupResolved() && !isGroup() && !destinyBoardShown()) {
-    <div class="guild-slots-panel">
+    <app-side-dock
+      class="guild-slots-panel"
+      [enabled]="isWide()"
+      [docked]="dock.closed()"
+      [label]="slotsDockLabel()"
+      (toggled)="dock.toggle()"
+    >
       <!-- ⚠️ Story 36.7, AC3 — `<app-poll-response>` a été RETIRÉ d'ici, et d'ici seulement.
            Il portait le « second chemin de retrait » que l'AC3 interdit dans le calendrier
            (« aucun second chemin de retrait ne subsiste »), en plus d'un second chemin de
@@ -574,29 +607,31 @@
            Le composant lui-même n'est pas supprimé : la fiche de scénario (`seance-list`,
            `scenario-read-dialog`) continue de le rendre. La liste de créneaux groupés par jour
            qui disparaît ici est précisément ce que la story 36.9 doit retirer du panneau. -->
-      <div class="date-range-form">
-        <label class="date-range-label">
-          {{ theme.tone()['common.du'] }}
-          <input
-            type="date"
-            class="date-input"
-            [value]="fromDateStr()"
-            (change)="onFromChange($event)"
-          />
-        </label>
-        <label class="date-range-label">
-          {{ theme.tone()['common.au'] }}
-          <input
-            type="date"
-            class="date-input"
-            [value]="toDateStr()"
-            (change)="onToChange($event)"
-          />
-        </label>
-        <button mat-stroked-button (click)="onSearch()">
-          {{ theme.tone()['common.rechercher'] }}
-        </button>
-      </div>
+      @if (!dock.closed()) {
+        <div class="date-range-form">
+          <label class="date-range-label">
+            {{ theme.tone()['common.du'] }}
+            <input
+              type="date"
+              class="date-input"
+              [value]="fromDateStr()"
+              (change)="onFromChange($event)"
+            />
+          </label>
+          <label class="date-range-label">
+            {{ theme.tone()['common.au'] }}
+            <input
+              type="date"
+              class="date-input"
+              [value]="toDateStr()"
+              (change)="onToChange($event)"
+            />
+          </label>
+          <button mat-stroked-button (click)="onSearch()">
+            {{ theme.tone()['common.rechercher'] }}
+          </button>
+        </div>
+      }
       <!-- Story 30.6, AC5 : couche disponibilite-groupe côté joueur — masquée en vue Agenda
            (revue de code, doublon avec agendaEntries()). -->
       @if (isLayerActive('disponibilite-groupe') && view() !== 'agenda') {
@@ -604,9 +639,12 @@
           [slots]="availableSlots()"
           [loading]="slotsLoading()"
           [error]="slotsError()"
+          [foldable]="!isWide()"
+          [folded]="dock.closed()"
+          (foldToggled)="dock.toggle()"
         />
       }
-    </div>
+    </app-side-dock>
   }
 </div>
 

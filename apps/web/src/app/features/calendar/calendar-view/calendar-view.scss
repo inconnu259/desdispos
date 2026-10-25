@@ -346,6 +346,14 @@
   }
 }
 
+/* ── Story 46.1 : la colonne de droite rangée en dock de 44 px (≥ 768 px). L'hôte `app-side-dock` porte les classes
+   de la colonne ; rangé, il ne garde que le dock, et ces règles passent après toutes celles de la colonne. */
+.calendar-page .side-dock--docked {
+  flex: 0 0 44px !important; /* bat `flex: 0 0 40%` / `340px` des colonnes, de spécificité variable */
+  min-width: 44px;
+  max-width: 44px;
+}
+
 /* ── Story 44.5 : le tiroir de la destinée (sous 768 px) est posé en `position: fixed` par son composant. Le
    contenu de la page garde de quoi défiler derrière lui : replié ≈ 120 px, déplié jusqu'à 70 % de l'écran. */
 @media (max-width: 767px) {

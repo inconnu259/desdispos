@@ -11,6 +11,26 @@
   color: var(--mat-sys-on-surface, #1c1b1f);
 }
 
+.available-slots__fold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.available-slots__fold:focus-visible {
+  outline: 2px solid var(--mat-sys-primary, currentColor);
+  outline-offset: 2px;
+}
+
 .available-slots__loading {
   display: flex;
   flex-direction: column;

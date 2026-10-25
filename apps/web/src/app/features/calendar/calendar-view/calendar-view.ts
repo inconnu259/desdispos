@@ -133,6 +133,8 @@ import {
   type ComposeConfirmData,
 } from '../compose-confirm-dialog/compose-confirm-dialog';
 import { AvailableSlotsPanel } from '../available-slots/available-slots';
+import { ColumnDockService } from '../side-dock/column-dock.service';
+import { SideDock } from '../side-dock/side-dock';
 import { VoteAnswerPicker } from '../vote-answer-picker/vote-answer-picker';
 import type { VoteOptionActivatedEvent, VoteParticipation } from '../poll-track.utils';
 import {
@@ -271,6 +273,7 @@ export interface EligibleSeanceEntry {
     MatButtonToggleModule,
     MatButtonModule,
     AvailableSlotsPanel,
+    SideDock,
     PollMissingPanel,
     VoteAnswerPicker,
     CdkConnectedOverlay,
@@ -302,6 +305,8 @@ export class CalendarView implements OnInit {
   private readonly realtime = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly breakpointObserver = inject(BreakpointObserver);
+  /** Story 46.1 — l'état « colonne rangée » (dock ≥ 768 px, liste repliée en dessous), retenu dans ce navigateur. */
+  protected readonly dock = inject(ColumnDockService);
   private readonly sessionLayers = inject(CalendarSessionLayersService);
   // Story 40.5b — `EventsApiService` n'est résolu qu'à la demande (groupe seulement) : il tire HttpClient,
   // et le calendrier d'une quête ou du MJ n'a pas à en dépendre.
@@ -1180,6 +1185,8 @@ export class CalendarView implements OnInit {
    */
   protected enterDestiny(pollId: string): void {
     this.destinyPollId.set(pollId);
+    // Story 46.1 — entrer en Destinée rouvre la colonne : le vote ne se suit pas derrière un dock.
+    this.dock.open();
     // Le créneau courant appartenait au vote précédent ; `chooseDestiny` pose celui du nouveau.
     this.destinyOptionId.set(null);
     // Story 44.8 — entrer en Destinée sur une partie décochée la recoche : on ne regarde pas un vote que la grille
@@ -1346,6 +1353,20 @@ export class CalendarView implements OnInit {
       this.destinyPoll() !== null &&
       this.destinyEntry() !== null,
   );
+
+  /** Story 46.1 — ce que le dock de la colonne MJ ou joueur dit en vertical : « Éphémérides · 18 ». */
+  protected readonly slotsDockLabel = computed(
+    () => `${this.theme.tone()['section.slots']} · ${this.availableSlots().length}`,
+  );
+
+  /** Story 46.1 — le dock de la colonne d'un groupe : ses votes de dates, comptés. */
+  protected readonly groupDockLabel = computed(
+    () =>
+      `${this.theme.tone()['partie.ralliement_calendar_polls_heading']} · ${this.groupPollRows().length}`,
+  );
+
+  /** Story 46.1 — le dock du plateau : « ✦ Chapitre 4 ». */
+  protected readonly boardDockLabel = computed(() => `✦ ${this.destinyBoard()?.title ?? ''}`);
 
   protected readonly destinyBoardShown = computed(() => this.isWide() && this.destinyPresentable());
 

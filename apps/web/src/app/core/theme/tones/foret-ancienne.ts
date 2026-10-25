@@ -899,6 +899,9 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.agg_unknown_title': 'Inconnus',
   'calendar.agg_unavailable_title': 'Indisponibles',
   'calendar.slots_list_aria': 'Clairières disponibles',
+  // Story 46.1 — les deux boutons de la colonne de droite : mêmes mots dans les trois thèmes (accessibilité).
+  'calendar.column_dock': 'Ranger la colonne',
+  'calendar.column_reopen': 'Rouvrir la colonne',
   'calendar.rail_empty': 'Aucun jour à explorer',
   'calendar.rail_status_unknown': 'Rien de prévu',
   'calendar.layer_group_aria': 'Couches affichées du calendrier lunaire',

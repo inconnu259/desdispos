@@ -97,6 +97,7 @@ context:
 | 5 | The filter reaches the Destinée / ✦ list | false | they read the unfiltered lists; asserted in the spec |
 | 6 | `isOverridden` now also reads parties, changing a computed other specs know | false | the layer part is `layersOverridden`, unchanged; existing 36.14 specs green |
 | 7 | Remaining eslint/prettier findings in `calendar-view.ts` | false | predate this story (same lines as before) |
+| 8 | `calendar-display-panel.spec.ts` was overwritten by the first commit, erasing its 8 existing tests | high | seen in the commit's file list (`M`, 82 deletions); restored from the previous commit with the 3 new tests appended (11 pass) in a follow-up commit |
 
 ## Design Notes
 

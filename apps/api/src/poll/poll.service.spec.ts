@@ -185,18 +185,66 @@ describe('PollService', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 
-  it('create() → écrit expiresAt à ~14 jours dans le futur (jamais null)', async () => {
+  // ── Story 45.4 — la fin du vote : `defaultPollDeadline`, ou celle choisie ──
+
+  /** Clé de jour `YYYY-MM-DD` (UTC) décalée de `days` jours par rapport à aujourd'hui. */
+  const inDays = (days: number) =>
+    new Date(Date.now() + days * 86_400_000).toISOString().substring(0, 10);
+  const endOf = (key: string) => new Date(`${key}T23:59:59.999Z`);
+  const writtenDeadline = () =>
+    callArg<{ data: { expiresAt: Date } }>(prisma.sessionPoll.create).data.expiresAt;
+
+  it('create() sans échéance, créneaux lointains → la fin de vote proposée : dans 14 jours, fin de ce jour', async () => {
     prisma.sessionPoll.create.mockResolvedValue(makePoll());
-    const before = Date.now();
     await service.create(GRANT_P1, 'mj1', {
-      options: [opt('2026-08-01', 'MORNING'), opt('2026-08-02', 'AFTERNOON')],
+      options: [opt(inDays(60), 'MORNING'), opt(inDays(61), 'AFTERNOON')],
     });
-    const after = Date.now();
-    const data = callArg<{ data: { expiresAt: Date } }>(prisma.sessionPoll.create).data;
-    expect(data.expiresAt).toBeInstanceOf(Date);
-    const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
-    expect(data.expiresAt.getTime()).toBeGreaterThanOrEqual(before + fourteenDaysMs);
-    expect(data.expiresAt.getTime()).toBeLessThanOrEqual(after + fourteenDaysMs);
+    expect(writtenDeadline()).toEqual(endOf(inDays(14)));
+  });
+
+  it('create() sans échéance, premier créneau proche → la veille du premier créneau', async () => {
+    prisma.sessionPoll.create.mockResolvedValue(makePoll());
+    await service.create(GRANT_P1, 'mj1', {
+      options: [opt(inDays(5), 'MORNING'), opt(inDays(9), 'AFTERNOON')],
+    });
+    expect(writtenDeadline()).toEqual(endOf(inDays(4)));
+  });
+
+  it('create() sans échéance, premier créneau aujourd’hui → aujourd’hui, jamais avant', async () => {
+    prisma.sessionPoll.create.mockResolvedValue(makePoll());
+    await service.create(GRANT_P1, 'mj1', {
+      options: [opt(inDays(0), 'EVENING'), opt(inDays(3), 'AFTERNOON')],
+    });
+    expect(writtenDeadline()).toEqual(endOf(inDays(0)));
+  });
+
+  it('create() avec une échéance → la fin de CE jour, quels que soient les créneaux (après le premier permis)', async () => {
+    prisma.sessionPoll.create.mockResolvedValue(makePoll());
+    await service.create(GRANT_P1, 'mj1', {
+      options: [opt(inDays(5), 'MORNING'), opt(inDays(9), 'AFTERNOON')],
+      expiresAt: inDays(7),
+    });
+    expect(writtenDeadline()).toEqual(endOf(inDays(7)));
+  });
+
+  it('create() avec une échéance PASSÉE → 400, rien d’écrit', async () => {
+    await expect(
+      service.create(GRANT_P1, 'mj1', {
+        options: [opt(inDays(5), 'MORNING'), opt(inDays(9), 'AFTERNOON')],
+        expiresAt: inDays(-1),
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.sessionPoll.create).not.toHaveBeenCalled();
+  });
+
+  it('create() avec une échéance qui n’est pas un vrai jour → 400, rien d’écrit', async () => {
+    await expect(
+      service.create(GRANT_P1, 'mj1', {
+        options: [opt(inDays(5), 'MORNING'), opt(inDays(9), 'AFTERNOON')],
+        expiresAt: '2026-02-30',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.sessionPoll.create).not.toHaveBeenCalled();
   });
 
   it('create() → émet un événement temps réel scopé sur la Partie (Story 18.1, AC1)', async () => {
@@ -770,6 +818,45 @@ describe('PollService', () => {
       expect(prisma.pollOption.createMany).not.toHaveBeenCalled();
     });
 
+    // ── Story 45.4 — la fin du vote d'un vote de JDR ──
+    const dayIn = (days: number) =>
+      new Date(Date.now() + days * 86_400_000).toISOString().substring(0, 10);
+    const keep = [opt('2026-08-01', 'MORNING'), opt('2026-08-02', 'AFTERNOON')];
+
+    it('une NOUVELLE fin du vote est écrite (repousser la fin EST la prolongation du JDR), sans rien d’autre', async () => {
+      await service.setOptions('p1', 'poll1', 'mj1', { options: keep, expiresAt: dayIn(20) });
+      expect(prisma.sessionPoll.update).toHaveBeenCalledWith({
+        where: { id: 'poll1' },
+        data: { expiresAt: new Date(`${dayIn(20)}T23:59:59.999Z`) },
+      });
+    });
+
+    it('sans `expiresAt` : la fin actuelle est gardée, aucune écriture de l’échéance', async () => {
+      await service.setOptions('p1', 'poll1', 'mj1', { options: keep });
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+    });
+
+    it('une NOUVELLE fin déjà passée → 400, rien d’écrit', async () => {
+      await expect(
+        service.setOptions('p1', 'poll1', 'mj1', { options: keep, expiresAt: dayIn(-1) }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.pollOption.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+    });
+
+    it('une fin INCHANGÉE est acceptée même passée : on corrige les créneaux d’un vote terminé', async () => {
+      const past = new Date(`${dayIn(-3)}T23:59:59.999Z`);
+      prisma.sessionPoll.findUnique.mockResolvedValue({ ...pollWithOptions(), expiresAt: past });
+      await service.setOptions('p1', 'poll1', 'mj1', { options: keep, expiresAt: dayIn(-3) });
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+    });
+
+    it('une fin qui n’est pas un vrai jour → 400', async () => {
+      await expect(
+        service.setOptions('p1', 'poll1', 'mj1', { options: keep, expiresAt: '2026-13-01' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('→ poll introuvable : NotFoundException (AC14)', async () => {
       prisma.sessionPoll.findUnique.mockResolvedValue(null);
       await expect(
@@ -926,11 +1013,19 @@ describe('PollService', () => {
       expect(partieSignals.notifyChanged).not.toHaveBeenCalled();
     });
 
-    it('sans échéance : l’échéance par défaut du JDR (14 jours), jamais null', async () => {
+    it('sans échéance : la fin de vote proposée par la fonction partagée, jamais null', async () => {
       const tx = { sessionPoll: { create: jest.fn().mockResolvedValue({ id: 'p' }) } };
-      await service.createInTx(tx as never, 'p1', 'mj1', { options });
+      const far = [
+        { date: new Date(Date.now() + 60 * 86_400_000), slot: 'EVENING' as DaySlot },
+        { date: new Date(Date.now() + 61 * 86_400_000), slot: 'MORNING' as DaySlot },
+      ];
+      await service.createInTx(tx as never, 'p1', 'mj1', { options: far });
       const data = callArg<{ data: { expiresAt: Date } }>(tx.sessionPoll.create).data;
-      expect(data.expiresAt.getTime()).toBeGreaterThan(Date.now() + 13 * 24 * 3_600_000);
+      expect(data.expiresAt).toEqual(
+        new Date(
+          `${new Date(Date.now() + 14 * 86_400_000).toISOString().substring(0, 10)}T23:59:59.999Z`,
+        ),
+      );
     });
 
     it('un seul créneau → 400 ; au-delà de la garde technique → 400 ; 41 créneaux acceptés (aucun plafond métier)', async () => {

@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import type { DaySlot, PartieKind, PartieRole, SessionPollDto } from '@master-jdr/shared';
 // Import RUNTIME du registre des systèmes (Story 40.5) : la famille de la partie décide si le vote
 // passe par les règles d'un groupe. Jamais `import type` sur une valeur.
-import { familyOf } from '@master-jdr/shared';
+import { defaultPollDeadline, familyOf } from '@master-jdr/shared';
 import { countParticipants } from '../common/participant-count.util';
 import { PermissionService, type PartieGrant } from '../permissions/permission.service';
 import {
@@ -23,8 +23,6 @@ import { GROUP_POLL_EXTEND_PORT, type GroupPollExtendPort } from './ports/group-
 import { GROUP_POLL_VOTE_PORT, type GroupPollVotePort } from './ports/group-poll-vote.port';
 import { PARTIE_SIGNALS_PORT, type PartieSignalsPort } from './ports/partie-signals.port';
 import { SEANCE_DATE_PORT, type SeanceDatePort } from './ports/seance-date.port';
-
-const DEFAULT_POLL_TTL_MS = 14 * 24 * 60 * 60 * 1000; // défaut 14 jours
 
 /** Refus de fixer la date d'une conjonction dont la date est déjà fixée (Story 40.6). */
 export const DATE_ALREADY_FIXED_MESSAGE = 'La date de cette conjonction est déjà fixée';
@@ -110,8 +108,14 @@ export class PollService {
     const options = dto.options.map((o) => ({ date: new Date(o.date), slot: o.slot }));
     // Les doublons sont refusés AVANT d'ouvrir la transaction (comme avant la Story 40.5).
     assertNoDuplicateOptions(options);
+    // Story 45.4 — la fin du vote choisie par le MJ (refusée si passée) ; absente, la fonction partagée la propose.
+    const expiresAt = dto.expiresAt === undefined ? undefined : deadlineFromDay(dto.expiresAt);
     const poll = await this.prisma.$transaction((tx) =>
-      this.createInTx(tx, partieId, userId, { options, scenarioRef: dto.scenarioRef ?? null }),
+      this.createInTx(tx, partieId, userId, {
+        options,
+        scenarioRef: dto.scenarioRef ?? null,
+        expiresAt,
+      }),
     );
     this.realtimeEvents.emit(partieTopic(partieId));
     // AUCUNE_DATE_NI_VOTE (Story 29.7, AD-14) : en plus de partieTopic ci-dessus, jamais en
@@ -153,7 +157,8 @@ export class PollService {
         partieId,
         createdById: userId,
         scenarioRef: input.scenarioRef ?? null,
-        expiresAt: input.expiresAt ?? new Date(Date.now() + DEFAULT_POLL_TTL_MS),
+        // Story 45.4 — sans échéance donnée, la MÊME fonction que le composer (plus de délai fixe de 14 jours).
+        expiresAt: input.expiresAt ?? defaultDeadline(input.options),
         options: { create: input.options.map((o) => ({ date: o.date, slot: o.slot })) },
       },
       include: POLL_INCLUDE,
@@ -552,6 +557,17 @@ export class PollService {
     const toDeleteIds = plan.toDeleteIds;
     const toCreate = plan.toCreate.map((o) => ({ pollId, date: o.date, slot: o.slot }));
 
+    // Story 45.4 — une NOUVELLE fin du vote (repousser la fin d'un vote de JDR EST sa prolongation) ; une fin
+    // inchangée est toujours acceptée, même passée : on peut corriger les créneaux d'un vote terminé.
+    const newDeadline = dto.expiresAt === undefined ? null : deadlineFromDay(dto.expiresAt, false);
+    // Comparée par JOUR : une fin écrite avant la 45.4 (un instant, « maintenant + 14 jours ») n'est pas « changée »
+    // par un client qui renvoie son jour tel qu'il l'a lu.
+    const deadlineChanged =
+      newDeadline !== null && (!poll.expiresAt || dayKeyUtc(poll.expiresAt) !== dto.expiresAt);
+    if (deadlineChanged && dto.expiresAt! < dayKeyUtc(new Date())) {
+      throw new BadRequestException(POLL_DEADLINE_PAST_MESSAGE);
+    }
+
     // Une seule transaction : un retrait appliqué sans son ajout laisserait le vote dans un état
     // que le MJ n'a jamais demandé.
     await this.prisma.$transaction(async (tx) => {
@@ -562,6 +578,10 @@ export class PollService {
       }
       if (toCreate.length > 0) {
         await tx.pollOption.createMany({ data: toCreate });
+      }
+      if (deadlineChanged) {
+        // JDR : aucune relance à ré-armer (elle n'existe que pour les conjonctions de groupe).
+        await tx.sessionPoll.update({ where: { id: pollId }, data: { expiresAt: newDeadline } });
       }
     });
 
@@ -602,6 +622,27 @@ export class PollService {
 /** Clé de jour `YYYY-MM-DD` (UTC) d'un instant — la convention des conjonctions (40.1 à 40.7). */
 function dayKeyUtc(date: Date): string {
   return date.toISOString().substring(0, 10);
+}
+
+/** La fin de vote proposée pour ces créneaux, aujourd'hui (UTC) : `defaultPollDeadline` donne le jour, ce jour-là
+ *  se termine à sa dernière milliseconde (Story 45.4). */
+function defaultDeadline(options: readonly { date: Date }[]): Date {
+  const day = defaultPollDeadline(
+    options.map((o) => ({ date: dayKeyUtc(o.date) })),
+    dayKeyUtc(new Date()),
+  );
+  return endOfDayUtc(day) as Date;
+}
+
+/** Une fin de vote reçue (jour `YYYY-MM-DD`) : 400 si ce n'est pas un vrai jour ; avec `refusePast`, 400 aussi si
+ *  ce jour est déjà passé (création). La comparaison « inchangée » d'une modification se fait chez l'appelant. */
+function deadlineFromDay(day: string, refusePast = true): Date {
+  const end = endOfDayUtc(day);
+  if (!end) throw new BadRequestException(EXTEND_INVALID_DAY_MESSAGE);
+  if (refusePast && day < dayKeyUtc(new Date())) {
+    throw new BadRequestException(POLL_DEADLINE_PAST_MESSAGE);
+  }
+  return end;
 }
 
 /** Fin du jour `dayKey` (UTC, dernière milliseconde) — l'échéance d'un vote de groupe, comme à sa

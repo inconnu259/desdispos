@@ -5,6 +5,9 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
   ValidateNested,
 } from 'class-validator';
 import type { DaySlot } from '@master-jdr/shared';
@@ -34,4 +37,10 @@ export class SetPollOptionsDto {
   @ValidateNested({ each: true })
   @Type(() => SetPollOptionInput)
   options!: SetPollOptionInput[];
+
+  /** Story 45.4 — fin du vote : un jour `YYYY-MM-DD` (la validité calendaire et le passé sont vérifiés par le service). */
+  @IsOptional()
+  @IsString({ message: "L'échéance du vote doit être au format AAAA-MM-JJ" })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "L'échéance du vote doit être au format AAAA-MM-JJ" })
+  expiresAt?: string;
 }

@@ -973,6 +973,15 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.selbar_compose_add': 'Ajoute au vote',
   'calendar.selbar_compose_remove': 'Retire',
   'calendar.selbar_compose_pick_moment': 'Choisis d’abord un moment (matin, après-midi ou soir).',
+  // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
+  'calendar.compose_deadline_field': 'Fin du vote : {date}',
+  'calendar.compose_deadline_edit_aria': 'Modifie la fin du vote',
+  'calendar.compose_deadline_hint_14': 'Proposé : dans 14 jours.',
+  'calendar.compose_deadline_hint_eve': 'Proposé : la veille du premier créneau.',
+  'calendar.compose_deadline_hint_today': 'Proposé : aujourd’hui.',
+  'calendar.compose_deadline_past': 'La fin du vote ne peut pas être passée.',
+  'calendar.compose_deadline_ended_tag': 'passée',
+  'calendar.destiny_reopen_vote': 'Pour rouvrir le vote, modifie les dates et repousse la fin du vote.',
   'calendar.selbar_scope_aria': 'Étendue de la sélection dans la forêt',
   'calendar.selbar_toolbar_aria': 'Actions de la forêt sur la sélection',
   /* — panneau de contraintes — */

@@ -108,3 +108,93 @@ describe('ComposeBar (Story 36.10)', () => {
     expect(cancelled).toHaveBeenCalledTimes(1);
   });
 });
+
+/** Story 45.4 — la fin du vote dans la barre : un texte au crayon, la date native à l'édition. */
+describe('ComposeBar — fin du vote (Story 45.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function render(inputs: Record<string, unknown> = {}) {
+    await TestBed.configureTestingModule({
+      imports: [ComposeBar],
+      providers: [provideAnimationsAsync()],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ComposeBar);
+    fixture.componentRef.setInput('count', 2);
+    fixture.componentRef.setInput('targetLabel', 'Plages d’un nouveau vote');
+    fixture.componentRef.setInput('canConfirm', true);
+    for (const [k, v] of Object.entries(inputs)) fixture.componentRef.setInput(k, v);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const el = (f: { nativeElement: HTMLElement }) => f.nativeElement;
+
+  it('sans jour (conjonction à créer) : aucun champ', async () => {
+    const f = await render({ deadlineDay: null });
+    expect(el(f).querySelector('.compose-bar__deadline')).toBeNull();
+  });
+
+  it('écrit « Fin du vote : {jour} » en lettres — jamais l’ISO brut — avec l’explication du défaut', async () => {
+    const f = await render({
+      deadlineDay: '2026-11-06',
+      deadlineHint: GRIMOIRE_TONE['calendar.compose_deadline_hint_14'],
+    });
+    const text = el(f)
+      .querySelector('.compose-bar__deadline-btn')!
+      .textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('Fin du vote : ven. 6 nov');
+    expect(text).not.toContain('2026-11-06');
+    expect(el(f).querySelector('.compose-bar__deadline-hint')?.textContent?.trim()).toBe(
+      GRIMOIRE_TONE['calendar.compose_deadline_hint_14'],
+    );
+  });
+
+  it('une fin passée est marquée « passée » en toutes lettres', async () => {
+    const f = await render({ deadlineDay: '2020-01-01', deadlinePast: true });
+    expect(el(f).querySelector('.compose-bar__deadline-tag')?.textContent?.trim()).toBe(
+      GRIMOIRE_TONE['calendar.compose_deadline_ended_tag'],
+    );
+  });
+
+  it('le crayon ouvre la date native (min = aujourd’hui, valeur = le jour) ; choisir un jour l’émet et referme', async () => {
+    const f = await render({ deadlineDay: '2026-11-06', deadlineMin: '2026-11-02' });
+    const changed = vi.fn();
+    f.componentInstance.deadlineChanged.subscribe(changed);
+
+    (el(f).querySelector('.compose-bar__deadline-btn') as HTMLButtonElement).click();
+    f.detectChanges();
+    const input = el(f).querySelector('.compose-bar__deadline-input') as HTMLInputElement;
+    expect(input.type).toBe('date');
+    expect(input.min).toBe('2026-11-02');
+    expect(input.value).toBe('2026-11-06');
+
+    input.value = '2026-11-20';
+    input.dispatchEvent(new Event('change'));
+    f.detectChanges();
+
+    expect(changed).toHaveBeenCalledWith('2026-11-20');
+    expect(el(f).querySelector('.compose-bar__deadline-input')).toBeNull();
+    expect(el(f).querySelector('.compose-bar__deadline-btn')).not.toBeNull();
+  });
+
+  it('une saisie vide ou invalide n’émet rien', async () => {
+    const f = await render({ deadlineDay: '2026-11-06' });
+    const changed = vi.fn();
+    f.componentInstance.deadlineChanged.subscribe(changed);
+
+    (el(f).querySelector('.compose-bar__deadline-btn') as HTMLButtonElement).click();
+    f.detectChanges();
+    const input = el(f).querySelector('.compose-bar__deadline-input') as HTMLInputElement;
+    input.value = '';
+    input.dispatchEvent(new Event('change'));
+
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it('le crayon est désactivé pendant l’écriture', async () => {
+    const f = await render({ deadlineDay: '2026-11-06', busy: true });
+    expect((el(f).querySelector('.compose-bar__deadline-btn') as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+});

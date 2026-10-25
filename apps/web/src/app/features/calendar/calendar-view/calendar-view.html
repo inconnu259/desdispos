@@ -386,6 +386,11 @@
         [busy]="pollActionPending()"
         [canConfirm]="composeCanConfirm()"
         [blockedReason]="composeBlockedReason()"
+        [deadlineDay]="composeHasDeadline() ? composeDeadline() : null"
+        [deadlineMin]="todayKey"
+        [deadlineHint]="composeDeadlineHint()"
+        [deadlinePast]="composeDeadlinePast()"
+        (deadlineChanged)="onComposeDeadlineChanged($event)"
         (confirmed)="confirmCompose()"
         (cancelled)="cancelCompose()"
       />

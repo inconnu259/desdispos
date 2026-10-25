@@ -122,7 +122,7 @@ export class ScenariosController {
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateSeancePollDto,
   ) {
-    return this.scenarios.createSeancePoll(seanceId, user.id, dto.options);
+    return this.scenarios.createSeancePoll(seanceId, user.id, dto.options, dto.expiresAt);
   }
 
   @Patch('scenarios/seances/:id/reset-date')

@@ -54,6 +54,7 @@ import {
   CALENDAR_LAYER_KEYS,
   DEFAULT_CALENDAR_LAYER_KEYS,
   atelierUrl,
+  defaultPollDeadline,
   bestOption,
   destinyEntryOption,
   familyOf,
@@ -1443,6 +1444,11 @@ export class CalendarView implements OnInit {
       })),
       absent: this.destinyAbsent(entry),
       actions: this.destinyActions(entry),
+      // Story 45.4 — un vote de JDR terminé n'a pas de « Prolonger » : on le rouvre en repoussant sa fin.
+      reopenHint:
+        entry.family === 'jdr' && entry.can.edit && deadline !== null && deadline < this.todayKey
+          ? tone['calendar.destiny_reopen_vote']
+          : null,
       announcement: current
         ? fillTone(tone['calendar.destiny_board_announce'], {
             n: position,
@@ -1795,11 +1801,59 @@ export class CalendarView implements OnInit {
     return kind === 'group-poll' || kind === 'group-new';
   }
 
+  // ─── Story 45.4 — la fin du vote dans le composer ─────────────────────────────────────────────
+
+  /** Le jour que l'organisateur a choisi (ou celui d'un vote existant), `YYYY-MM-DD` ; `null` tant que rien n'est fixé. */
+  private readonly composeDeadlineDay = signal<string | null>(null);
+  /** L'organisateur a touché la date, ou le vote existait déjà avec sa fin : la date ne suit plus les créneaux. */
+  private readonly composeDeadlineFixed = signal(false);
+
+  /** Une fin de vote se règle dans tous les composers qui ÉCRIVENT (vote de JDR, conjonction ouverte). La composition
+   *  d'une conjonction à créer n'écrit rien : sa fin se règle dans la fenêtre de création. */
+  protected readonly composeHasDeadline = computed(() => {
+    const kind = this.composeTarget()?.kind;
+    return kind === 'new' || kind === 'poll' || kind === 'group-poll';
+  });
+
+  /** LA fin du vote : celle de l'organisateur, sinon la proposée (`defaultPollDeadline`), qui suit les créneaux. */
+  protected readonly composeDeadline = computed(() => {
+    if (this.composeDeadlineFixed()) {
+      const day = this.composeDeadlineDay();
+      if (day) return day;
+    }
+    return defaultPollDeadline(
+      this.composedCells().map((c) => ({ date: toDateKey(c.date) })),
+      this.todayKey,
+    );
+  });
+
+  /** La fin est passée : « Valider » est bloqué jusqu'à ce qu'elle soit repoussée (le serveur refuse aussi). */
+  protected readonly composeDeadlinePast = computed(
+    () => this.composeHasDeadline() && this.composeDeadline() < this.todayKey,
+  );
+
+  /** L'explication du défaut, seulement tant que la date est celle qu'on propose et que personne n'y a touché. */
+  protected readonly composeDeadlineHint = computed(() => {
+    if (!this.composeHasDeadline() || this.composeDeadlineFixed()) return '';
+    const tone = this.theme.tone();
+    const day = this.composeDeadline();
+    if (day === this.todayKey) return tone['calendar.compose_deadline_hint_today'];
+    return day === defaultPollDeadline([], this.todayKey)
+      ? tone['calendar.compose_deadline_hint_14']
+      : tone['calendar.compose_deadline_hint_eve'];
+  });
+
+  protected onComposeDeadlineChanged(day: string): void {
+    this.composeDeadlineDay.set(day);
+    this.composeDeadlineFixed.set(true);
+  }
+
   /** AC14 côté client : la borne serveur est 2..40, et la création exige une séance. Un bouton
    *  qu'on ne peut pas presser doit dire pourquoi (`composeBlockedReason`), jamais rester inerte. */
   protected readonly composeCanConfirm = computed(() => {
     const n = this.composedCells().length;
     // Story 40.5b — un groupe : au moins deux créneaux, aucun plafond métier (le serveur garde le sien).
+    if (this.composeDeadlinePast()) return false;
     if (this.isGroupTarget()) return n >= GROUP_MIN_SLOTS;
     return n >= 2 && n <= 40;
   });
@@ -1808,11 +1862,12 @@ export class CalendarView implements OnInit {
     const tone = this.theme.tone();
     const n = this.composedCells().length;
     if (this.isGroupTarget()) {
-      return n < GROUP_MIN_SLOTS ? tone['partie.ralliement_event_poll_min_hint'] : '';
+      if (n < GROUP_MIN_SLOTS) return tone['partie.ralliement_event_poll_min_hint'];
+      return this.composeDeadlinePast() ? tone['calendar.compose_deadline_past'] : '';
     }
     if (n < 2) return tone['calendar.view_compose_blocked_min'];
     if (n > 40) return tone['calendar.view_compose_blocked_max'];
-    return '';
+    return this.composeDeadlinePast() ? tone['calendar.compose_deadline_past'] : '';
   });
 
   /** Le point d'entrée n'existe que là où la composition a un sens (AC10) : à l'atelier, et s'il y a quelque chose à
@@ -1997,6 +2052,16 @@ export class CalendarView implements OnInit {
     this.composeTarget.set(target);
     this.composedCells.set(cells);
     this.composeRefusal.set(null);
+    // Story 45.4 — un vote existant montre SA fin (et ne la fait plus suivre les créneaux) ; un vote neuf propose la
+    // sienne et la fait suivre les créneaux tant qu'on n'y touche pas.
+    const existingEnd =
+      target.kind === 'poll'
+        ? this.activePolls().find((e) => e.poll.id === target.pollId)?.poll.expiresAt
+        : target.kind === 'group-poll'
+          ? this.groupPolls().find((e) => e.card.id === target.eventId)?.poll.expiresAt
+          : null;
+    this.composeDeadlineDay.set(existingEnd ? existingEnd.substring(0, 10) : null);
+    this.composeDeadlineFixed.set(!!existingEnd);
     this.composing.set(true);
     // Un groupe se compose en vue Semaine (règle 40.5b) ; la vue Agenda n'a ni grille ni barre de composition.
     if (target.kind === 'group-poll') this.showGridForCompose();
@@ -2136,6 +2201,8 @@ export class CalendarView implements OnInit {
     this.composeTarget.set(null);
     this.composedCells.set([]);
     this.composeRefusal.set(null);
+    this.composeDeadlineDay.set(null);
+    this.composeDeadlineFixed.set(false);
   }
 
   /** Story 40.5b — retour à la page du groupe (son onglet des conjonctions rouvre la fenêtre de
@@ -2232,11 +2299,18 @@ export class CalendarView implements OnInit {
         // notification de domaine est portée par le serveur, qui émet déjà `partieTopic` sur
         // cette mutation (AC15) — `ScenariosService.notifyChanged()` est privé et réservé à ses
         // propres écritures.
-        await this.pollSvc.setPollOptions(partieId, target.pollId, { options });
+        await this.pollSvc.setPollOptions(partieId, target.pollId, {
+          options,
+          expiresAt: this.composeDeadline(),
+        });
         pollId = target.pollId;
       } else {
         // Le vote créé est lu dans le scénario renvoyé par l'écriture (son identifiant n'existait pas avant).
-        const scenario = await this.scenariosSvc.createSeancePoll(target.seanceId, options);
+        const scenario = await this.scenariosSvc.createSeancePoll(
+          target.seanceId,
+          options,
+          this.composeDeadline(),
+        );
         pollId = scenario.seances.find((s) => s.id === target.seanceId)?.poll?.id;
       }
       await this.loadScenarios(partieId);
@@ -2285,16 +2359,8 @@ export class CalendarView implements OnInit {
     if (!this.isGroup() || this.composing()) return;
     const entry = this.groupPolls().find((e) => e.card.id === eventId);
     if (!entry?.card.can.edit) return;
-    this.composeTarget.set({ kind: 'group-poll', eventId });
-    this.composedCells.set(
-      entry.poll.options.map((o) => ({
-        date: dateKeyToLocalMidnight(o.date.substring(0, 10)),
-        slot: o.slot,
-      })),
-    );
-    this.composeRefusal.set(null);
-    this.composing.set(true);
-    this.showGridForCompose();
+    // Un seul chemin d'armement : créneaux actuels, fin du vote actuelle, vue Semaine (Story 45.4).
+    this.armTarget({ kind: 'group-poll', eventId });
   }
 
   /** La fenêtre de création a envoyé ici son brouillon : composition d'une conjonction qui n'existe
@@ -2341,11 +2407,8 @@ export class CalendarView implements OnInit {
     if (!entry || entry.card.id !== eventId) return;
     const tone = this.theme.tone();
     const options = this.composedSlots();
-    const deadline = entry.poll.expiresAt?.substring(0, 10);
-    if (!deadline) {
-      this.error.set(tone['partie.ralliement_calendar_compose_save_error']);
-      return;
-    }
+    // Story 45.4 — la fin du vote est celle du composer (la fin actuelle, ou celle que l'hôte a choisie).
+    const deadline = this.composeDeadline();
 
     // Ce qui disparaît et ce que cela coûte aux autres : les réponses des créneaux retirés.
     const kept = new Set(options.map((o) => `${o.date}|${o.slot}`));
@@ -2395,7 +2458,7 @@ export class CalendarView implements OnInit {
       notePratique: card.seance?.notePratique ?? null,
       capacity: card.seance?.capacity ?? null,
       pollOptions: options,
-      pollDeadline: current.poll.expiresAt?.substring(0, 10) ?? deadline,
+      pollDeadline: deadline,
     };
     this.pollActionPending.set(true);
     this.error.set(null);

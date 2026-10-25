@@ -745,6 +745,8 @@ export interface SetResumeFinDto {
  * Seance.pollId. */
 export interface CreateSeancePollDto {
   options: { date: string; slot: DaySlot }[];
+  /** Story 45.4 — fin du vote, un jour `YYYY-MM-DD` (fin de ce jour, UTC). Absent : `defaultPollDeadline`. */
+  expiresAt?: string;
 }
 
 /** Payload de création d'un scénario (POST /parties/:id/scenarios). */
@@ -1018,6 +1020,30 @@ function compareOptionsChronologically(a: RankableOption, b: RankableOption): nu
  *  de l'ordre du plateau de la Destinée et de ses chevrons ; ne modifie pas la liste reçue. */
 export function sortOptionsChronologically<T extends RankableOption>(options: readonly T[]): T[] {
   return [...options].sort(compareOptionsChronologically);
+}
+
+/** Délai par défaut de la fin d'un vote, en jours (Story 45.4). */
+export const POLL_DEFAULT_DEADLINE_DAYS = 14;
+
+/** La clé de jour `YYYY-MM-DD` décalée de `days` jours (calendrier UTC, sans heure). */
+function shiftDayKey(key: string, days: number): string {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().substring(0, 10);
+}
+
+/**
+ * LA fin de vote proposée (Story 45.4, AR17) — source unique du composer ET du serveur, qui remplace le délai
+ * fixe de 14 jours : le plus TÔT de « dans 14 jours » et de « la veille du premier créneau », jamais avant
+ * aujourd'hui. Entrées et résultat sont des clés de jour `YYYY-MM-DD` ; le serveur donne au résultat la fin de
+ * ce jour. Sans créneau : dans 14 jours.
+ */
+export function defaultPollDeadline(options: readonly { date: string }[], today: string): string {
+  const inTwoWeeks = shiftDayKey(today, POLL_DEFAULT_DEADLINE_DAYS);
+  if (options.length === 0) return inTwoWeeks;
+  const first = options.map((o) => o.date.substring(0, 10)).sort()[0];
+  const eve = shiftDayKey(first, -1);
+  const earliest = eve < inTwoWeeks ? eve : inTwoWeeks;
+  return earliest < today ? today : earliest;
 }
 
 /**
@@ -1405,6 +1431,8 @@ export interface PollVoteDto {
 export interface CreatePollDto {
   options: { date: string; slot: DaySlot }[];
   scenarioRef?: string | null;
+  /** Story 45.4 — fin du vote, un jour `YYYY-MM-DD`. Absent : `defaultPollDeadline`. */
+  expiresAt?: string;
 }
 
 /**
@@ -1425,6 +1453,9 @@ export interface CreatePollDto {
  */
 export interface SetPollOptionsDto {
   options: { date: string; slot: DaySlot }[];
+  /** Story 45.4 — nouvelle fin du vote, un jour `YYYY-MM-DD` ; absent : la fin actuelle est gardée. Repousser la
+   *  fin d'un vote de JDR EST sa prolongation. Une date déjà passée est refusée, sauf si elle est inchangée. */
+  expiresAt?: string;
 }
 
 /** Payload pour voter sur une option (POST /parties/:id/poll/:pollId/vote). */

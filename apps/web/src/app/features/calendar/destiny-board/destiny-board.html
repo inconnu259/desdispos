@@ -57,6 +57,10 @@
     </div>
   }
 
+  @if (model().reopenHint; as hint) {
+    <p class="destiny-board__reopen">{{ hint }}</p>
+  }
+
   <!-- Annonce du créneau courant : vide au montage, réécrite à chaque changement. -->
   @if (announce()) {
     <p class="destiny-board__sr" aria-live="polite">{{ model().announcement }}</p>

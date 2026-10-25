@@ -624,6 +624,163 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     });
   });
 
+  describe('la fin du vote dans le composer (Story 45.4)', () => {
+    /** La clé de jour (locale, comme `todayKey`) décalée de `days` jours. */
+    const dayIn = (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return toDateKey(d);
+    };
+    const armNew = async () => {
+      const r = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [scenario('sc1')],
+      });
+      const comp = r.fixture.componentInstance as any;
+      comp.startCompose('sc1-s1');
+      await tick(r.fixture);
+      return { ...r, comp };
+    };
+    const armEdit = async (endDay: string) => {
+      // Un vote ouvert se modifie en arrivant par `?seanceId` (45.2) : aucune destinée n'est nécessaire.
+      const r = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        queryParams: { seanceId: 'sc1-s1' },
+        scenarios: [
+          scenario('sc1', { poll: openPoll('poll1', { expiresAt: `${endDay}T23:59:59.999Z` }) }),
+        ],
+      });
+      const comp = r.fixture.componentInstance as any;
+      await tick(r.fixture);
+      return { ...r, comp };
+    };
+    const deadlineText = (fixture: any) =>
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.compose-bar__deadline-btn')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim() ?? null;
+
+    it('un vote NEUF propose « dans 14 jours » pour des créneaux lointains, et la date SUIT les créneaux tant qu’on n’y touche pas', async () => {
+      const { comp, fixture } = await armNew();
+      // Sans créneau : dans 14 jours.
+      expect(comp.composeDeadline()).toBe(dayIn(14));
+
+      comp.onComposeAdded([cell(dayIn(60), 'EVENING'), cell(dayIn(61), 'MORNING')]);
+      expect(comp.composeDeadline()).toBe(dayIn(14));
+      expect(comp.composeDeadlineHint()).toBe(GRIMOIRE_TONE['calendar.compose_deadline_hint_14']);
+
+      comp.onComposeAdded([cell(dayIn(5), 'EVENING')]);
+      await tick(fixture);
+      expect(comp.composeDeadline()).toBe(dayIn(4));
+      expect(comp.composeDeadlineHint()).toBe(GRIMOIRE_TONE['calendar.compose_deadline_hint_eve']);
+      expect(deadlineText(fixture)).toContain('Fin du vote');
+
+      comp.onComposeRemoved([cell(dayIn(5), 'EVENING')]);
+      expect(comp.composeDeadline()).toBe(dayIn(14));
+    });
+
+    it('premier créneau aujourd’hui : la fin proposée est aujourd’hui, jamais avant', async () => {
+      const { comp } = await armNew();
+      comp.onComposeAdded([cell(dayIn(0), 'EVENING'), cell(dayIn(2), 'EVENING')]);
+      expect(comp.composeDeadline()).toBe(dayIn(0));
+      expect(comp.composeDeadlineHint()).toBe(GRIMOIRE_TONE['calendar.compose_deadline_hint_today']);
+      expect(comp.composeDeadlinePast()).toBe(false);
+    });
+
+    it('une date choisie ne suit plus les créneaux, perd l’explication du défaut, et une date après le premier créneau est permise', async () => {
+      const { comp } = await armNew();
+      comp.onComposeAdded([cell(dayIn(5), 'EVENING'), cell(dayIn(9), 'EVENING')]);
+      comp.onComposeDeadlineChanged(dayIn(7));
+
+      comp.onComposeAdded([cell(dayIn(30), 'EVENING')]);
+      expect(comp.composeDeadline()).toBe(dayIn(7));
+      expect(comp.composeDeadlineHint()).toBe('');
+      expect(comp.composeCanConfirm()).toBe(true);
+    });
+
+    it('une date PASSÉE : refus écrit, Valider bloqué, rien n’est écrit', async () => {
+      const { comp, scenariosSvc } = await armNew();
+      comp.onComposeAdded([cell(dayIn(5), 'EVENING'), cell(dayIn(9), 'EVENING')]);
+      comp.onComposeDeadlineChanged(dayIn(-1));
+
+      expect(comp.composeDeadlinePast()).toBe(true);
+      expect(comp.composeCanConfirm()).toBe(false);
+      expect(comp.composeBlockedReason()).toBe(GRIMOIRE_TONE['calendar.compose_deadline_past']);
+      await comp.confirmCompose();
+      expect(scenariosSvc.createSeancePoll).not.toHaveBeenCalled();
+    });
+
+    it('la création écrit la fin CHOISIE', async () => {
+      const { comp, scenariosSvc } = await armNew();
+      comp.onComposeAdded([cell(dayIn(5), 'EVENING'), cell(dayIn(9), 'EVENING')]);
+      comp.onComposeDeadlineChanged(dayIn(8));
+
+      await comp.confirmCompose();
+
+      expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith(
+        'sc1-s1',
+        expect.any(Array),
+        dayIn(8),
+      );
+    });
+
+    it('un vote EXISTANT montre sa fin actuelle et ne la fait pas suivre les créneaux', async () => {
+      const { comp, fixture } = await armEdit(dayIn(9));
+      expect(comp.composeDeadline()).toBe(dayIn(9));
+      expect(comp.composeDeadlineHint()).toBe('');
+
+      comp.onComposeAdded([cell(dayIn(2), 'EVENING')]);
+      await tick(fixture);
+      expect(comp.composeDeadline()).toBe(dayIn(9));
+    });
+
+    it('un vote dont la fin est PASSÉE : marqué « passée », Valider bloqué jusqu’à ce qu’on la repousse, puis la nouvelle fin est écrite', async () => {
+      const { comp, fixture, pollSvc } = await armEdit(dayIn(-2));
+      expect(comp.composeDeadlinePast()).toBe(true);
+      expect(deadlineText(fixture)).toContain(GRIMOIRE_TONE['calendar.compose_deadline_ended_tag']);
+      expect(comp.composeCanConfirm()).toBe(false);
+
+      comp.onComposeDeadlineChanged(dayIn(6));
+      await tick(fixture);
+      expect(comp.composeCanConfirm()).toBe(true);
+      expect(deadlineText(fixture)).not.toContain(
+        GRIMOIRE_TONE['calendar.compose_deadline_ended_tag'],
+      );
+
+      await comp.confirmCompose();
+      expect(pollSvc.setPollOptions).toHaveBeenCalledWith('partie-1', 'poll1', {
+        options: expect.any(Array),
+        expiresAt: dayIn(6),
+      });
+    });
+
+    it('quitter le composer remet la fin à zéro : le suivant repart du défaut', async () => {
+      const { comp } = await armNew();
+      comp.onComposeDeadlineChanged(dayIn(3));
+      comp.cancelCompose();
+      comp.startCompose('sc1-s1');
+      expect(comp.composeDeadline()).toBe(dayIn(14));
+      expect(comp.composeDeadlineHint()).not.toBe('');
+    });
+
+    it('la barre porte le champ : texte, explication du défaut, et le crayon ouvre la date native', async () => {
+      const { fixture } = await armNew();
+      const bar = fixture.nativeElement.querySelector('app-compose-bar') as HTMLElement;
+      expect(bar.querySelector('.compose-bar__deadline-hint')?.textContent?.trim()).toBe(
+        GRIMOIRE_TONE['calendar.compose_deadline_hint_14'],
+      );
+
+      (bar.querySelector('.compose-bar__deadline-btn') as HTMLButtonElement).click();
+      await tick(fixture);
+      const input = bar.querySelector('.compose-bar__deadline-input') as HTMLInputElement;
+      expect(input).not.toBeNull();
+      expect(input.min).toBe(dayIn(0));
+      expect(input.value).toBe(dayIn(14));
+    });
+  });
+
   describe('composer et Destinée', () => {
     const withDestiny = () =>
       createCalendarView({
@@ -683,10 +840,15 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
 
       expect(dialog.open).not.toHaveBeenCalled();
       expect(scenariosSvc.createSeancePoll).toHaveBeenCalledTimes(1);
-      expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith('sc2-s1', [
-        { date: '2026-09-04', slot: 'EVENING' },
-        { date: '2026-09-05', slot: 'MORNING' },
-      ]);
+      expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith(
+        'sc2-s1',
+        [
+          { date: '2026-09-04', slot: 'EVENING' },
+          { date: '2026-09-05', slot: 'MORNING' },
+        ],
+        // Story 45.4 — la fin du vote proposée accompagne l'écriture.
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      );
       expect(openPollsSvc.refresh).toHaveBeenCalled();
       expect(comp.composing()).toBe(false);
       expect(comp.destinyPollId()).toBe('pollNew');
@@ -3707,6 +3869,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
         { date: '2026-08-02', slot: 'MORNING' },
         { date: '2026-08-03', slot: 'EVENING' },
       ],
+      expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
   });
 
@@ -3774,6 +3937,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
         { date: '2026-08-02', slot: 'MORNING' },
         { date: '2026-08-03', slot: 'EVENING' },
       ],
+      expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
     expect(comp.composing()).toBe(false);
   });
@@ -3795,10 +3959,14 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
 
     // ⚠️ Story 45.2 — le rendez-vous est choisi avant : créer n'ouvre AUCUN dialogue.
     expect(dialog.open).not.toHaveBeenCalled();
-    expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith('seanceX', [
-      { date: '2026-09-04', slot: 'EVENING' },
-      { date: '2026-09-05', slot: 'MORNING' },
-    ]);
+    expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith(
+      'seanceX',
+      [
+        { date: '2026-09-04', slot: 'EVENING' },
+        { date: '2026-09-05', slot: 'MORNING' },
+      ],
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
     expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
   });
 
@@ -4952,6 +5120,32 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     comp.onComposeAdded([cell('2099-11-29', 'MORNING')]);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.calendar-error--compose')).toBeNull();
+  });
+
+  it('Story 45.4 — la fin du vote d’une conjonction : la fin actuelle est montrée, et la fin CHOISIE est celle du PATCH', async () => {
+    const card = groupCard({}, { votes: [] });
+    const { comp, eventsApi, fixture } = await createGroupView({ userId: HOST, events: [card] });
+    comp.startGroupCompose('e1');
+    expect(comp.composeHasDeadline()).toBe(true);
+    expect(comp.composeDeadline()).toBe(card.poll.expiresAt.substring(0, 10));
+
+    const later = new Date(Date.now() + 40 * 86_400_000).toISOString().substring(0, 10);
+    comp.onComposeDeadlineChanged(later);
+    fixture.detectChanges();
+    await comp.confirmCompose();
+
+    expect(eventsApi.update.mock.calls[0][2].pollDeadline).toBe(later);
+  });
+
+  it('Story 45.4 — une fin passée bloque la validation d’une conjonction, avec la raison écrite', async () => {
+    const { comp, eventsApi } = await createGroupView({ userId: HOST });
+    comp.startGroupCompose('e1');
+    comp.onComposeDeadlineChanged('2020-01-01');
+
+    expect(comp.composeCanConfirm()).toBe(false);
+    expect(comp.composeBlockedReason()).toBe(GRIMOIRE_TONE['calendar.compose_deadline_past']);
+    await comp.confirmCompose();
+    expect(eventsApi.update).not.toHaveBeenCalled();
   });
 
   it('la journée entière est refusée avec sa raison écrite ; un créneau précis est accepté', async () => {
@@ -6952,5 +7146,53 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
       });
       expect(button(fixture)).toBeNull();
     });
+  });
+});
+
+// ─── Story 45.4 — comment rouvrir un vote de JDR terminé ──────────────────────────────────────
+
+describe('CalendarView — plateau d’un vote de JDR terminé (Story 45.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const entry = (over: Partial<OpenPollEntry>) =>
+    openPollEntry({
+      pollId: 'poll-j',
+      partieId: 'partie-J',
+      family: 'jdr',
+      title: 'Chapitre 4',
+      options: [
+        { optionId: 'a1', date: '2099-03-04', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
+        { optionId: 'a2', date: '2099-03-06', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+      ],
+      ...over,
+    });
+
+  const reopenHint = async (e: OpenPollEntry) => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [e] });
+    const comp = fixture.componentInstance as any;
+    comp.destinyPollId.set('poll-j');
+    fixture.detectChanges();
+    const hint = comp.destinyBoard()?.reopenHint ?? null;
+    TestBed.resetTestingModule();
+    return hint;
+  };
+
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+  const NOBODY = { propose: false, edit: false, choose: false, extend: false };
+
+  it('fin passée, organisateur : la phrase « Pour rouvrir le vote… » (jamais de « Prolonger » en JDR)', async () => {
+    expect(await reopenHint(entry({ expiresAt: '2020-01-01T23:59:59.999Z', can: ORGANIZER }))).toBe(
+      GRIMOIRE_TONE['calendar.destiny_reopen_vote'],
+    );
+  });
+
+  it('fin non passée, ou pas organisateur, ou groupe : aucune phrase', async () => {
+    expect(await reopenHint(entry({ expiresAt: '2099-01-01T23:59:59.999Z', can: ORGANIZER }))).toBeNull();
+    expect(await reopenHint(entry({ expiresAt: '2020-01-01T23:59:59.999Z', can: NOBODY }))).toBeNull();
+    expect(
+      await reopenHint(
+        entry({ expiresAt: '2020-01-01T23:59:59.999Z', can: ORGANIZER, family: 'ralliement' }),
+      ),
+    ).toBeNull();
   });
 });

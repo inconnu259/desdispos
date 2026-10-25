@@ -712,6 +712,7 @@ export class ScenariosService {
     seanceId: string,
     mjId: string,
     options: { date: string; slot: DaySlot }[],
+    expiresAt?: string,
   ): Promise<ScenarioDto> {
     const grant = await this.permissions.assert(mjId, 'SEANCE_POLL_CREATE', { seanceId });
     const seance = await this.prisma.seance.findUnique({
@@ -736,6 +737,7 @@ export class ScenariosService {
     await this.events.createSeancePoll(grant, seance, () =>
       this.pollService.create(grant, mjId, {
         options,
+        expiresAt,
       }),
     );
 

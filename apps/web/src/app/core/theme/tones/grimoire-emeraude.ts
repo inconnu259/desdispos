@@ -978,6 +978,15 @@ export const grimoireEmeraude = {
   'calendar.selbar_compose_add': 'Ajouter au vote',
   'calendar.selbar_compose_remove': 'Retirer',
   'calendar.selbar_compose_pick_moment': 'Choisissez d’abord un moment (matin, après-midi ou soir).',
+  // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
+  'calendar.compose_deadline_field': 'Fin du vote : {date}',
+  'calendar.compose_deadline_edit_aria': 'Modifier la fin du vote',
+  'calendar.compose_deadline_hint_14': 'Proposé : dans 14 jours.',
+  'calendar.compose_deadline_hint_eve': 'Proposé : la veille du premier créneau.',
+  'calendar.compose_deadline_hint_today': 'Proposé : aujourd’hui.',
+  'calendar.compose_deadline_past': 'La fin du vote ne peut pas être passée.',
+  'calendar.compose_deadline_ended_tag': 'passée',
+  'calendar.destiny_reopen_vote': 'Pour rouvrir le vote, modifiez les dates et repoussez la fin du vote.',
   'calendar.selbar_scope_aria': 'Étendue de la sélection',
   'calendar.selbar_toolbar_aria': 'Actions du grimoire sur la sélection',
   /* — panneau de contraintes — */

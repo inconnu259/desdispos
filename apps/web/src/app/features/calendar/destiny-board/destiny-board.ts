@@ -39,6 +39,9 @@ export interface DestinyBoardModel {
   actions: DestinyBoardActions | null;
   /** Annoncé en `aria-live` poli à chaque changement de créneau courant. */
   announcement: string;
+  /** Story 45.4 — vote de JDR terminé, pour son organisateur : comment le rouvrir (modifier les dates et repousser
+   *  la fin du vote) ; `null` sinon. Jamais de « Prolonger » en JDR. */
+  reopenHint?: string | null;
 }
 
 /**

@@ -138,7 +138,21 @@ describe('ScenariosController', () => {
       { date: '2026-08-02T00:00:00.000Z', slot: 'AFTERNOON' as const },
     ];
     await controller.createSeancePoll('seance1', user, { options });
-    expect(scenarios.createSeancePoll).toHaveBeenCalledWith('seance1', 'mj1', options);
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith('seance1', 'mj1', options, undefined);
+  });
+
+  it('Story 45.4 — createSeancePoll() transmet la fin du vote choisie', async () => {
+    const options = [
+      { date: '2026-08-01T00:00:00.000Z', slot: 'AFTERNOON' as const },
+      { date: '2026-08-02T00:00:00.000Z', slot: 'AFTERNOON' as const },
+    ];
+    await controller.createSeancePoll('seance1', user, { options, expiresAt: '2026-07-30' });
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith(
+      'seance1',
+      'mj1',
+      options,
+      '2026-07-30',
+    );
   });
 
   it('resetSeanceDate() route seanceId/user vers ScenariosService.resetSeanceDate', async () => {

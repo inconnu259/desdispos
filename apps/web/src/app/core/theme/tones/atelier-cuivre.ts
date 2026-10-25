@@ -977,6 +977,15 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.selbar_compose_add': 'Verser au vote',
   'calendar.selbar_compose_remove': 'Écarter',
   'calendar.selbar_compose_pick_moment': 'Précisez d’abord un moment (matin, après-midi ou soir).',
+  // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
+  'calendar.compose_deadline_field': 'Clôture du scrutin : {date}',
+  'calendar.compose_deadline_edit_aria': 'Réviser la clôture du scrutin',
+  'calendar.compose_deadline_hint_14': 'Par défaut : dans 14 jours.',
+  'calendar.compose_deadline_hint_eve': 'Par défaut : la veille du premier créneau.',
+  'calendar.compose_deadline_hint_today': 'Par défaut : aujourd’hui.',
+  'calendar.compose_deadline_past': 'La clôture du scrutin ne peut pas être passée.',
+  'calendar.compose_deadline_ended_tag': 'échue',
+  'calendar.destiny_reopen_vote': 'Pour rouvrir le scrutin, révisez les dates et repoussez la clôture.',
   'calendar.selbar_scope_aria': 'Portée de la sélection',
   'calendar.selbar_toolbar_aria': 'Commandes de la sélection',
   /* — panneau de contraintes — */

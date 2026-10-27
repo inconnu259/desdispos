@@ -2,6 +2,8 @@ import { BadRequestException } from '@nestjs/common';
 import { spanEnd, spanSlots } from '@master-jdr/shared';
 import {
   DURATION_CAP_MESSAGE,
+  isSeancePast,
+  upcomingSeanceOr,
   DURATION_FULL_DAY_MESSAGE,
   assertDuration,
   seanceSpanEnd,
@@ -78,5 +80,41 @@ describe('assertDuration / seanceSpanEnd (Story 47.1)', () => {
     expect(() => seanceSpanEnd(new Date('2026-11-14T00:00:00.000Z'), 'FULL_DAY', 2)).toThrow(
       DURATION_FULL_DAY_MESSAGE,
     );
+  });
+});
+
+describe('isSeancePast / upcomingSeanceOr — la règle « passée » (Story 47.2)', () => {
+  const day = (key: string) => new Date(`${key}T00:00:00.000Z`);
+  const TODAY = '2026-11-14';
+
+  it('sans date : jamais passée', () => {
+    expect(isSeancePast(null, null, TODAY)).toBe(false);
+  });
+
+  it('un créneau : passée le lendemain, pas le jour même', () => {
+    expect(isSeancePast(day('2026-11-14'), day('2026-11-14'), TODAY)).toBe(false);
+    expect(isSeancePast(day('2026-11-13'), day('2026-11-13'), TODAY)).toBe(true);
+  });
+
+  it('sans fin servie, le début décide', () => {
+    expect(isSeancePast(day('2026-11-13'), null, TODAY)).toBe(true);
+    expect(isSeancePast(day('2026-11-14'), undefined, TODAY)).toBe(false);
+  });
+
+  it('une plage commencée reste à venir jusqu’à sa fin ; finie hier, elle est passée', () => {
+    expect(isSeancePast(day('2026-11-13'), day('2026-11-15'), TODAY)).toBe(false);
+    expect(isSeancePast(day('2026-11-13'), day('2026-11-14'), TODAY)).toBe(false);
+    expect(isSeancePast(day('2026-11-11'), day('2026-11-13'), TODAY)).toBe(true);
+  });
+
+  it('le filtre Prisma : sans date, ou fin ≥ aujourd’hui, ou sans fin et début ≥ aujourd’hui', () => {
+    const today = day(TODAY);
+    expect(upcomingSeanceOr(today)).toEqual([
+      { startDate: null },
+      { endDate: { gte: today } },
+      { endDate: null, startDate: { gte: today } },
+    ]);
+    // Sans borne exploitable, seules les séances sans date restent.
+    expect(upcomingSeanceOr(null)).toEqual([{ startDate: null }]);
   });
 });

@@ -146,6 +146,52 @@ describe('NotificationsService', () => {
     expect(data.sessionDate).toBe('mardi 14 juillet');
   });
 
+  it('Story 47.2 : une plage de plusieurs créneaux est écrite « du … au … » ; un créneau seul garde son texte', async () => {
+    prisma.seance.findMany.mockResolvedValue([
+      makeSeance({
+        startDate: new Date('2026-11-14T00:00:00.000Z'),
+        startSlot: 'EVENING',
+        endDate: new Date('2026-11-15T00:00:00.000Z'),
+        endSlot: 'AFTERNOON',
+      }),
+    ]);
+
+    await service.sendDueReminders();
+
+    const [, , data] = email.sendMail.mock.calls[0] as [string, string, { sessionDate: string }];
+    expect(data.sessionDate).toBe('du samedi 14 novembre (soir) au dimanche 15 novembre (après-midi)');
+  });
+
+  it('Story 47.2 : le rappel JDR dit « le … » pour un créneau et « du … au … » pour une plage', async () => {
+    prisma.seance.findMany.mockResolvedValue([makeSeance({ startSlot: 'EVENING' })]);
+    await service.sendDueReminders();
+    let [, , data] = email.sendMail.mock.calls[0] as [string, string, { sessionPhrase: string }];
+    expect(data.sessionPhrase).toBe('le mardi 14 juillet (soir)');
+
+    email.sendMail.mockClear();
+    prisma.seance.findMany.mockResolvedValue([
+      makeSeance({
+        startSlot: 'EVENING',
+        endDate: new Date('2026-07-15T00:00:00.000Z'),
+        endSlot: 'AFTERNOON',
+      }),
+    ]);
+    await service.sendDueReminders();
+    [, , data] = email.sendMail.mock.calls[0] as [string, string, { sessionPhrase: string }];
+    expect(data.sessionPhrase).toBe('du mardi 14 juillet (soir) au mercredi 15 juillet (après-midi)');
+  });
+
+  it('Story 47.2 : fin égale au début → texte d’un créneau', async () => {
+    prisma.seance.findMany.mockResolvedValue([
+      makeSeance({ startSlot: 'EVENING', endDate: new Date('2026-07-14T00:00:00.000Z'), endSlot: 'EVENING' }),
+    ]);
+
+    await service.sendDueReminders();
+
+    const [, , data] = email.sendMail.mock.calls[0] as [string, string, { sessionDate: string }];
+    expect(data.sessionDate).toBe('mardi 14 juillet (soir)');
+  });
+
   describe('groupe de ralliement — rappel de la veille d’une conjonction (Story 40.3)', () => {
     const conjonction = (over: Record<string, unknown> = {}, inscrits: string[] = ['b', 'c']) => ({
       ...makeSeance(
@@ -341,6 +387,19 @@ describe('NotificationsService', () => {
       expect(dansLaFenetre('2026-11-19T23:00:00.000Z')).toBe(true); // dernier passage horaire du jour D−1
       expect(dansLaFenetre('2026-11-18T23:00:00.000Z')).toBe(false); // l’avant-veille
       expect(dansLaFenetre('2026-11-20T00:00:00.000Z')).toBe(false); // le jour d’échéance lui-même
+    });
+
+    it('Story 47.2 : la relance dit la durée d’un rendez-vous de plusieurs créneaux, et rien pour un créneau', async () => {
+      prisma.sessionPoll.findMany.mockResolvedValue([votePoll({}, { durationSlots: 3 })]);
+      await service.sendDueReminders();
+      let [, , data] = email.sendMail.mock.calls[0] as [string, string, Record<string, unknown>];
+      expect(data.durationLabel).toBe('3 créneaux');
+
+      email.sendMail.mockClear();
+      prisma.sessionPoll.findMany.mockResolvedValue([votePoll({}, { durationSlots: 1 })]);
+      await service.sendDueReminders();
+      [, , data] = email.sendMail.mock.calls[0] as [string, string, Record<string, unknown>];
+      expect(data.durationLabel).toBeNull();
     });
 
     it('relance les éligibles qui n’ont pas voté, une fois chacun, par l’e-mail neutre — puis marque le sondage', async () => {

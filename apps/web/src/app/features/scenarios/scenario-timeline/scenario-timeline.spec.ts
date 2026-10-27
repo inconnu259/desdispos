@@ -664,6 +664,8 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            endDate: '2026-08-15T00:00:00.000Z',
+            endSlot: 'AFTERNOON',
             durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-avec-seances',
@@ -703,6 +705,8 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            endDate: null,
+            endSlot: null,
             durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-non-datee',
@@ -733,6 +737,8 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            endDate: null,
+            endSlot: null,
             durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-mobile',
@@ -774,6 +780,8 @@ describe('ScenarioTimeline', () => {
         notePratique: null,
         createdAt: '2020-01-01T00:00:00.000Z',
         durationSlots: 1,
+        endDate: iso,
+        endSlot: null,
         can: { propose: false, edit: false, choose: false, extend: false },
         ...extra,
       };

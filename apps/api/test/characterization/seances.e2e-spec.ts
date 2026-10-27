@@ -157,6 +157,8 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
         'createdAt',
         'dateValidee',
         'durationSlots',
+        'endDate',
+        'endSlot',
         'heureRdv',
         'id',
         'inscription',
@@ -270,6 +272,64 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
       expect(raw).not.toContain(nameB);
       expect(raw).not.toContain(mjB.id);
       expect(raw).not.toContain(mjB.pseudo);
+    });
+  });
+
+  describe('plage de plusieurs créneaux (Story 47.2)', () => {
+    it('un rendez-vous de 3 créneaux rend ses participants indisponibles sur chacun, du soir au lendemain, et le calendrier porte sa fin', async () => {
+      const mjA = await h.createUser('mj-plage-a');
+      const mjB = await h.createUser('mj-plage-b');
+      const joueur = await h.createUser('joueur-plage');
+      const { id: partieA } = await h.createPartie(mjA, 'CAMPAGNE_LINEAIRE', 'plage-a');
+      const { id: partieB } = await h.createPartie(mjB, 'ONE_SHOT', 'plage-b');
+      await h.addMember(partieA, joueur);
+      await h.addMember(partieB, joueur);
+
+      const day = isoDay(15);
+      const lendemain = isoDay(16);
+      const scenariosRes = await mjB.agent.get(`/parties/${partieB}/scenarios`).expect(200);
+      const seanceId = body<ScenarioDtoLike[]>(scenariosRes)[0].seances[0].id;
+      // La durée se règle avant le vote (sous un vote ouvert sans date elle est figée).
+      await mjB.agent
+        .patch(`/scenarios/seances/${seanceId}/infos-pratiques`)
+        .send({ heureRdv: null, lieu: null, notePratique: null, durationSlots: 3 })
+        .expect(200);
+      await datePourVote(
+        mjB,
+        partieB,
+        seanceId,
+        [
+          { date: day, slot: 'EVENING' },
+          { date: isoDay(17), slot: 'EVENING' },
+        ],
+        0,
+      );
+
+      const slots = body<AvailableSlotLike[]>(
+        await mjA.agent
+          .get(`/parties/${partieA}/available-slots`)
+          .query({ from: day, to: lendemain })
+          .expect(200),
+      );
+      const statusOf = (date: string, slot: string) =>
+        slots.find((s) => s.date === date && s.slot === slot)?.members.find((m) => m.userId === joueur.id)
+          ?.status;
+      expect(statusOf(day, 'EVENING')).toBe('UNAVAILABLE');
+      expect(statusOf(lendemain, 'MORNING')).toBe('UNAVAILABLE');
+      expect(statusOf(lendemain, 'AFTERNOON')).toBe('UNAVAILABLE');
+      // La plage s'arrête à son dernier créneau.
+      expect(statusOf(lendemain, 'EVENING')).toBe('UNKNOWN');
+      expect(statusOf(day, 'AFTERNOON')).toBe('UNKNOWN');
+
+      // Le calendrier personnel le sert sur son SECOND jour, avec sa fin, et pas après.
+      const cal = async (from: string, to: string) =>
+        body<{ 'mes-seances': { seanceId: string; date: string; endDate: string; endSlot: string }[] }>(
+          await mjB.agent.get('/me/calendar').query({ from, to }).expect(200),
+        )['mes-seances'];
+      const onSecondDay = await cal(lendemain, lendemain);
+      expect(onSecondDay).toHaveLength(1);
+      expect(onSecondDay[0]).toMatchObject({ date: day, endDate: lendemain, endSlot: 'AFTERNOON' });
+      expect(await cal(isoDay(18), isoDay(19))).toHaveLength(0);
     });
   });
 

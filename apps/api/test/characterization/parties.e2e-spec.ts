@@ -32,6 +32,9 @@ const PARTIE_DTO_KEYS = [
   'kind',
   'name',
   'nextSessionDate',
+  // Story 47.2 : fin de la plage de la prochaine séance.
+  'nextSessionEndDate',
+  'nextSessionEndSlot',
   'nextSessionSlot',
   'ownerDisplayName',
   'ownerId',
@@ -64,6 +67,9 @@ const SEANCE_DTO_KEYS = [
   'dateValidee',
   // Story 47.1 : durée du rendez-vous, en créneaux enchaînés (1 par défaut).
   'durationSlots',
+  // Story 47.2 : fin de la plage de la séance.
+  'endDate',
+  'endSlot',
   'heureRdv',
   'id',
   'lieu',

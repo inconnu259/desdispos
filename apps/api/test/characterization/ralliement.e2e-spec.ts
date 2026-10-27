@@ -1397,6 +1397,8 @@ describe('Ralliement — proposer une conjonction à date fixée (Story 40.1)', 
         heureRdv: '20:30',
         notePratique: 'On mange sur place.',
         capacity: null,
+        endDate: day,
+        endSlot: 'EVENING',
         durationSlots: 1,
         placesTaken: 1,
       },
@@ -1748,6 +1750,8 @@ describe('Ralliement — consulter et modifier une conjonction (Story 40.2)', ()
         heureRdv: '09:30',
         notePratique: null,
         capacity: null,
+        endDate: newDay,
+        endSlot: 'MORNING',
         durationSlots: 1,
         placesTaken: 1,
       },
@@ -5442,7 +5446,11 @@ describe('Ralliement — annuler une conjonction de groupe (Story 42.1)', () => 
       const card = await propose(host, { title: 'Trop tard' });
       await h.prisma.seance.update({
         where: { id: card.seance!.id },
-        data: { startDate: new Date(`${isoDay(-2)}T00:00:00.000Z`) },
+        // Début ET fin : une conjonction passée a sa plage entière dans le passé (Story 47.2).
+        data: {
+          startDate: new Date(`${isoDay(-2)}T00:00:00.000Z`),
+          endDate: new Date(`${isoDay(-2)}T00:00:00.000Z`),
+        },
       });
       const past = await cancel(host, card.id);
       expect(past.status).toBe(400);

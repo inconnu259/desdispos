@@ -437,7 +437,19 @@ export class Dashboard implements OnInit {
           timeZone: 'UTC',
         }).format(new Date(partie.nextSessionDate));
         const slot = partie.nextSessionSlot ? `, ${SLOT_LABELS[partie.nextSessionSlot]}` : '';
-        return `${date}${slot}`;
+        const start = `${date}${slot}`;
+        // Story 47.2 : une plage de plusieurs créneaux se lit « début → fin » ; un créneau seul reste inchangé.
+        const end = partie.nextSessionEndDate;
+        const sameDay = !end || end.substring(0, 10) === partie.nextSessionDate.substring(0, 10);
+        const sameSlot = (partie.nextSessionEndSlot ?? partie.nextSessionSlot) === partie.nextSessionSlot;
+        if (!end || (sameDay && sameSlot)) return start;
+        const endDate = new Intl.DateTimeFormat('fr-FR', {
+          day: 'numeric',
+          month: 'long',
+          timeZone: 'UTC',
+        }).format(new Date(end));
+        const endSlot = partie.nextSessionEndSlot ? `, ${SLOT_LABELS[partie.nextSessionEndSlot]}` : '';
+        return `${start} → ${endDate}${endSlot}`;
       } catch {
         return this.signalLabel(code);
       }

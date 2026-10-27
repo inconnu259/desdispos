@@ -580,6 +580,9 @@ export interface PartieDto {
   createdAt: string;
   nextSessionDate: string | null;
   nextSessionSlot: DaySlot | null;
+  /** Story 47.2 : fin de la plage de la prochaine séance (égale au début pour un créneau) ; absente = non servie. */
+  nextSessionEndDate?: string | null;
+  nextSessionEndSlot?: DaySlot | null;
   /** Rôle de l'appelant sur cette partie — calculé serveur (`ownerId === userId`), jamais dérivé
    *  côté client (Story 29.1, AD-15). Toujours présent, contrairement à `ownerPseudo`/`ownerDisplayName`. */
   role: PartieRole;
@@ -722,6 +725,10 @@ export interface SeanceDto {
    *  (`poll.chosenSlot`) : la colonne `Seance.dateValidee` n'a pas de créneau propre — même
    *  convention que `recalculateNextSession()`, qui pose `slot: null` dans ce cas. */
   slotValidee: DaySlot | null;
+  /** Story 47.2 : fin de la plage de la séance, lue de `Seance.endDate/endSlot` (jamais de `poll.chosenDate`),
+   *  même forme que `dateValidee` / `slotValidee` ; `null` tant que la séance n'a pas de date. */
+  endDate: string | null;
+  endSlot: DaySlot | null;
   compteRendu: string | null;
   /** Informations pratiques (Story 36.5, D-15 amendée le 2026-08-19) — trois champs
    *  facultatifs, séparés pour qu'on puisse en lâcher un quand la place manque.
@@ -888,6 +895,9 @@ export interface EventCardSeanceDto {
   heureRdv: string | null;
   notePratique: string | null;
   capacity: number | null;
+  /** Story 47.2 : fin de la plage (clé `YYYY-MM-DD` et créneau), `null` tant que la séance n'a pas de date. */
+  endDate: string | null;
+  endSlot: DaySlot | null;
   /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
   durationSlots: number;
   /** Story 40.4 : places prises = l'hôte + TOUTES les lignes d'inscription, `RESERVED` comprises —
@@ -1395,6 +1405,9 @@ export interface MyCalendarSeanceEntry {
   scenarioTitle: string;
   date: string;
   slot: DaySlot;
+  /** Story 47.2 : fin de la plage de la séance (égale au début pour un créneau), lue de la `Seance`. */
+  endDate: string;
+  endSlot: DaySlot;
   /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
   durationSlots: number;
   /** Informations pratiques (Story 36.5). Elles doivent transiter par CE chemin aussi : sans

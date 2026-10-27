@@ -429,3 +429,10 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/spec-47-1-donner-une-duree-a-un-rendez-vous.md`
   summary: Les gardes « passé » d'`updateHosted` et `cancelHosted` lisent `startDate` seule : un rendez-vous long déjà commencé est refusé en édition et annulation ; à passer à « fin avant aujourd'hui » (47.2).
   evidence: `currentDay < todayKeyUtc()` dans `updateHosted` et son pendant d'annulation ; le PRD demande « passée = fin avant aujourd'hui partout » (relecteur Blind Hunter, story 47.1).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-47-2-etre-occupe-sur-toute-la-plage-dun-rendez-vous.md`
+  summary: L'Agenda (sections « à venir / passé »), la carte d'événement et le compte à rebours du tableau de bord rangent encore une plage commencée par son début ; à passer à « fin avant aujourd'hui » avec l'affichage des plages (47.3).
+  evidence: Seuls `seanceState`, le badge du tableau de bord et le widget « Prochaine séance » lisent la fin ; la règle serveur « passée = fin avant aujourd'hui » est appliquée partout (relecteurs Blind Hunter et Edge Case Hunter, story 47.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-47-2-etre-occupe-sur-toute-la-plage-dun-rendez-vous.md`
+  summary: Le gabarit `conjonction-relance.hbs` avec `durationLabel` n'est pas rendu par un test (l'intégration Mailpit s'ignore sans Mailpit) ; ajouter un cas de rendu avec et sans durée.
+  evidence: Seule la donnée passée à `sendMail` est vérifiée ; renommer la variable du gabarit ne ferait échouer aucun test (relecteur Verification Gap, story 47.2).

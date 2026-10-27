@@ -19,7 +19,7 @@ import type {
 } from '@master-jdr/shared';
 // Import RUNTIME du registre des systèmes (Story 40.1) : la famille de la partie choisit qui
 // participe à une séance datée dans les ports du calendrier. Jamais `import type` sur une valeur.
-import { familyOf } from '@master-jdr/shared';
+import { familyOf, spanSlots } from '@master-jdr/shared';
 import type { OccupiedSpan, OccupiedSpansPort } from '../availability/ports/occupied-spans.port';
 import type {
   OwnEvents,
@@ -41,7 +41,9 @@ import { eligibleVoters } from './eligible-voters';
 import {
   DURATION_POLL_PENDING_MESSAGE,
   assertDuration,
+  isSeancePast,
   seanceSpanEnd,
+  upcomingSeanceOr,
 } from './seance-span';
 import { isFreeOn, type DeclaredAvailability } from './slot-availability';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
@@ -120,6 +122,9 @@ export interface SeanceInfosPratiques {
 export interface NextSession {
   nextSessionDate: Date | null;
   nextSessionSlot: DaySlot | null;
+  /** Story 47.2 : fin de la plage de cette séance (égale au début pour un créneau). */
+  nextSessionEndDate: Date | null;
+  nextSessionEndSlot: DaySlot | null;
 }
 
 /** De quoi écrire l'e-mail d'invitation à une soirée isolée (Story 41.3), lu au moment de l'invitation :
@@ -128,6 +133,9 @@ export interface InvitationNotice {
   eventTitle: string;
   startDate: Date | null;
   startSlot: DaySlot | null;
+  /** Story 47.2 : fin de la plage, pour écrire une plage de plusieurs créneaux. */
+  endDate?: Date | null;
+  endSlot?: DaySlot | null;
   /** Échéance du vote (sondage ouvert, séance sans date), sinon `null`. */
   deadline: Date | null;
   lieu: string | null;
@@ -243,6 +251,8 @@ export interface CancellationNotice {
   actorName: string;
   startDate: Date | null;
   startSlot: DaySlot | null;
+  endDate?: Date | null;
+  endSlot?: DaySlot | null;
   recipients: ReminderRecipient[];
 }
 
@@ -252,6 +262,8 @@ export interface ReservationNotice {
   hostName: string;
   startDate: Date | null;
   startSlot: DaySlot | null;
+  endDate?: Date | null;
+  endSlot?: DaySlot | null;
   lieu: string | null;
   recipients: ReminderRecipient[];
 }
@@ -532,6 +544,8 @@ export class EventsService
             id: true,
             startDate: true,
             startSlot: true,
+            endDate: true,
+            endSlot: true,
             lieu: true,
             heureRdv: true,
             notePratique: true,
@@ -561,6 +575,11 @@ export class EventsService
               id: s.id,
               date: s.startDate ? s.startDate.toISOString().substring(0, 10) : null,
               slot: s.startSlot ?? null,
+              // Story 47.2 : la fin de la plage (le début à défaut), lue de la séance.
+              endDate: s.startDate
+                ? (s.endDate ?? s.startDate).toISOString().substring(0, 10)
+                : null,
+              endSlot: s.startDate ? (s.endSlot ?? s.startSlot ?? null) : null,
               lieu: s.lieu ?? null,
               heureRdv: s.heureRdv ?? null,
               notePratique: s.notePratique ?? null,
@@ -838,6 +857,7 @@ export class EventsService
               id: true,
               startDate: true,
               startSlot: true,
+              endDate: true,
               pollId: true,
               durationSlots: true,
             },
@@ -864,7 +884,8 @@ export class EventsService
         throw new BadRequestException(POLL_MODE_MESSAGE);
 
       const currentDay = seance.startDate?.toISOString().substring(0, 10) ?? null;
-      if (currentDay !== null && currentDay < todayKeyUtc()) {
+      // Story 47.2 : « passée » = la FIN de la plage est avant aujourd'hui (une plage commencée reste modifiable).
+      if (isSeancePast(seance.startDate, seance.endDate)) {
         throw new BadRequestException(PAST_EVENT_MESSAGE);
       }
 
@@ -979,15 +1000,17 @@ export class EventsService
           seances: {
             orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
             take: 1,
-            select: { startDate: true, pollId: true },
+            select: { startDate: true, endDate: true, pollId: true },
           },
         },
       });
       if (!event) throw new NotFoundException('Conjonction introuvable');
       if (event.cancelledAt) throw new BadRequestException(CANCELLED_EVENT_MESSAGE);
       const seance = event.seances[0];
-      const day = seance?.startDate?.toISOString().substring(0, 10) ?? null;
-      if (day !== null && day < todayKeyUtc()) throw new BadRequestException(CANCEL_PAST_MESSAGE);
+      // Story 47.2 : une plage commencée reste annulable jusqu'à sa fin.
+      if (seance && isSeancePast(seance.startDate, seance.endDate)) {
+        throw new BadRequestException(CANCEL_PAST_MESSAGE);
+      }
 
       await tx.event.update({ where: { id: eventId }, data: { cancelledAt: new Date() } });
       if (seance?.pollId) await closePoll(tx, seance.pollId);
@@ -1023,11 +1046,7 @@ export class EventsService
         partieId,
         ownerId: hostId,
         cancelledAt: null,
-        seances: {
-          some: {
-            OR: [{ startDate: null }, ...(todayStart ? [{ startDate: { gte: todayStart } }] : [])],
-          },
-        },
+        seances: { some: { OR: upcomingSeanceOr(todayStart) } },
       },
       select: { id: true, seances: { select: { pollId: true } } },
       orderBy: { id: 'asc' },
@@ -1084,6 +1103,8 @@ export class EventsService
           select: {
             startDate: true,
             startSlot: true,
+            endDate: true,
+            endSlot: true,
             inscriptions: {
               orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
               select: { user: { select: { id: true, email: true } } },
@@ -1114,6 +1135,8 @@ export class EventsService
       actorName: actorName ?? actor?.displayName ?? 'Un membre du groupe',
       startDate: seance?.startDate ?? null,
       startSlot: seance?.startSlot ?? null,
+      endDate: seance?.endDate ?? null,
+      endSlot: seance?.endSlot ?? null,
       recipients,
     };
   }
@@ -1455,7 +1478,7 @@ export class EventsService
     await this.assertSeanceInGrant(grant, seanceId);
     const confirmed = await this.prisma.$transaction(async (tx) => {
       const { seance, ownerId } = await this.lockedSeanceOfEvent(tx, seanceId);
-      this.assertNotPast(seance.startDate);
+      this.assertNotPast(seance.startDate, seance.endDate);
 
       // Idempotence : l'hôte occupe déjà sa place, un inscrit reste inscrit — avant tout comptage,
       // pour qu'une conjonction pleine ne rejette jamais quelqu'un qui en fait déjà partie.
@@ -1502,7 +1525,7 @@ export class EventsService
     await this.assertSeanceInGrant(grant, seanceId);
     const removed = await this.prisma.$transaction(async (tx) => {
       const { seance, ownerId } = await this.lockedSeanceOfEvent(tx, seanceId);
-      this.assertNotPast(seance.startDate);
+      this.assertNotPast(seance.startDate, seance.endDate);
       if (userId === ownerId) return 0;
       const { count } = await tx.inscription.deleteMany({ where: { seanceId, userId } });
       return count;
@@ -1533,7 +1556,7 @@ export class EventsService
     await this.assertSeanceInGrant(grant, seanceId);
     await this.prisma.$transaction(async (tx) => {
       const { seance, ownerId } = await this.lockedSeanceOfEvent(tx, seanceId);
-      this.assertNotPast(seance.startDate);
+      this.assertNotPast(seance.startDate, seance.endDate);
       if (seance.inscriptionMax === null) {
         throw new BadRequestException(RESERVE_NOT_LIMITED_MESSAGE);
       }
@@ -1571,7 +1594,7 @@ export class EventsService
     await this.assertSeanceInGrant(grant, seanceId);
     const removed = await this.prisma.$transaction(async (tx) => {
       const { seance } = await this.lockedSeanceOfEvent(tx, seanceId);
-      this.assertNotPast(seance.startDate);
+      this.assertNotPast(seance.startDate, seance.endDate);
       const { count } = await tx.inscription.deleteMany({
         where: { seanceId, userId: targetUserId, status: 'RESERVED' },
       });
@@ -1591,7 +1614,7 @@ export class EventsService
     await this.assertSeanceInGrant(grant, seanceId);
     const accepted = await this.prisma.$transaction(async (tx) => {
       const { seance } = await this.lockedSeanceOfEvent(tx, seanceId);
-      this.assertNotPast(seance.startDate);
+      this.assertNotPast(seance.startDate, seance.endDate);
       const { count } = await tx.inscription.updateMany({
         where: { seanceId, userId, status: 'RESERVED' },
         data: { status: 'CONFIRMED' },
@@ -1622,7 +1645,7 @@ export class EventsService
       userId,
       seance: {
         event: { partieId },
-        OR: [{ startDate: null }, ...(todayStart ? [{ startDate: { gte: todayStart } }] : [])],
+        OR: upcomingSeanceOr(todayStart),
       },
     };
     const rows = await tx.inscription.findMany({
@@ -1653,7 +1676,7 @@ export class EventsService
         seances: {
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           take: 1,
-          select: { startDate: true, startSlot: true, lieu: true },
+          select: { startDate: true, startSlot: true, endDate: true, endSlot: true, lieu: true },
         },
       },
     });
@@ -1668,6 +1691,8 @@ export class EventsService
       hostName: event.owner?.displayName ?? 'Un membre du groupe',
       startDate: seance?.startDate ?? null,
       startSlot: seance?.startSlot ?? null,
+      endDate: seance?.endDate ?? null,
+      endSlot: seance?.endSlot ?? null,
       lieu: seance?.lieu ?? null,
       recipients: users,
     };
@@ -1793,6 +1818,8 @@ export class EventsService
           select: {
             startDate: true,
             startSlot: true,
+            endDate: true,
+            endSlot: true,
             lieu: true,
             poll: { select: { status: true, expiresAt: true } },
           },
@@ -1806,6 +1833,8 @@ export class EventsService
       eventTitle: event.title,
       startDate: seance?.startDate ?? null,
       startSlot: seance?.startSlot ?? null,
+      endDate: seance?.endDate ?? null,
+      endSlot: seance?.endSlot ?? null,
       deadline: !seance?.startDate ? (openPoll?.expiresAt ?? null) : null,
       lieu: seance?.lieu ?? null,
     };
@@ -1817,7 +1846,7 @@ export class EventsService
     tx: Prisma.TransactionClient,
     seanceId: string,
   ): Promise<{
-    seance: { startDate: Date | null; inscriptionMax: number | null };
+    seance: { startDate: Date | null; endDate?: Date | null; inscriptionMax: number | null };
     ownerId: string | null;
   }> {
     const ref = await tx.seance.findUnique({ where: { id: seanceId }, select: { eventId: true } });
@@ -1827,6 +1856,7 @@ export class EventsService
       where: { id: seanceId },
       select: {
         startDate: true,
+        endDate: true,
         inscriptionMax: true,
         event: { select: { ownerId: true, cancelledAt: true } },
       },
@@ -1836,15 +1866,20 @@ export class EventsService
     // conjonction annulée — lu sous le verrou, donc sérialisé avec l'annulation.
     if (seance.event.cancelledAt) throw new BadRequestException(CANCELLED_EVENT_MESSAGE);
     return {
-      seance: { startDate: seance.startDate, inscriptionMax: seance.inscriptionMax },
+      seance: {
+        startDate: seance.startDate,
+        endDate: seance.endDate,
+        inscriptionMax: seance.inscriptionMax,
+      },
       ownerId: seance.event.ownerId,
     };
   }
 
   /** Les inscriptions d'une conjonction se figent quand son jour est passé (jour UTC strictement avant
    *  aujourd'hui, comme la modification). Une séance sans date n'est jamais passée. */
-  private assertNotPast(startDate: Date | null): void {
-    if (startDate && startDate.toISOString().substring(0, 10) < todayKeyUtc()) {
+  private assertNotPast(startDate: Date | null, endDate?: Date | null): void {
+    // Story 47.2 : c'est la fin de la plage qui fige les inscriptions (une plage commencée reste ouverte).
+    if (isSeancePast(startDate, endDate)) {
       throw new BadRequestException(PAST_ROSTER_MESSAGE);
     }
   }
@@ -1965,6 +2000,8 @@ export class EventsService
       select: {
         startDate: true,
         startSlot: true,
+        endDate: true,
+        endSlot: true,
         lieu: true,
         event: {
           select: {
@@ -2001,6 +2038,8 @@ export class EventsService
       eventTitle: seance.event.title,
       startDate: seance.startDate,
       startSlot: seance.startSlot,
+      endDate: seance.endDate,
+      endSlot: seance.endSlot,
       lieu: seance.lieu,
       recipients: invited.map((i) => i.user).filter((user) => user.id !== hostId),
     };
@@ -2107,7 +2146,7 @@ export class EventsService
     const seances = await tx.seance.findMany({
       // Story 42.1 : une conjonction annulée n'est jamais la prochaine date.
       where: { AND: [{ event: { partieId, cancelledAt: null } }, VISIBLE_SEANCE_WHERE] },
-      select: { startDate: true, startSlot: true },
+      select: { startDate: true, startSlot: true, endDate: true, endSlot: true },
     });
 
     // Bug fix (production) : comparer à Date.now() excluait TOUJOURS une séance datée
@@ -2116,20 +2155,28 @@ export class EventsService
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
     const now = startOfToday.getTime();
-    type Candidate = { date: Date; slot: DaySlot | null };
+    type Candidate = { date: Date; slot: DaySlot | null; end: Date; endSlot: DaySlot | null };
     const nearest =
       seances
         .map((s): Candidate | null => {
           // Créneau vide = « sans créneau » (date posée hors vote) → `nextSessionSlot` null.
-          if (s.startDate) return { date: s.startDate, slot: s.startSlot ?? null };
-          return null;
+          if (!s.startDate) return null;
+          return {
+            date: s.startDate,
+            slot: s.startSlot ?? null,
+            // Story 47.2 : la fin de la plage décide du « à venir » (une plage commencée en fait partie).
+            end: s.endDate ?? s.startDate,
+            endSlot: s.endDate ? (s.endSlot ?? null) : (s.startSlot ?? null),
+          };
         })
-        .filter((c): c is Candidate => c !== null && c.date.getTime() >= now)
+        .filter((c): c is Candidate => c !== null && c.end.getTime() >= now)
         .sort((a, b) => a.date.getTime() - b.date.getTime())[0] ?? null;
 
     const next: NextSession = {
       nextSessionDate: nearest?.date ?? null,
       nextSessionSlot: nearest?.slot ?? null,
+      nextSessionEndDate: nearest?.end ?? null,
+      nextSessionEndSlot: nearest?.endSlot ?? null,
     };
     await tx.partie.update({ where: { id: partieId }, data: next });
     return next;
@@ -2212,10 +2259,24 @@ export class EventsService
         Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
       );
 
+      // Story 47.2 (AD-14) : la plage est dépliée créneau par créneau (`spanSlots`) — un rendez-vous de N
+      // créneaux occupe chacun d'eux, du soir au lendemain matin compris. Un créneau seul, une journée
+      // entière ou une date sans créneau gardent leur entrée unique.
+      const covered: OccupiedSpan[] =
+        seance.startSlot && seance.startSlot !== 'FULL_DAY' && seance.durationSlots > 1
+          ? spanSlots(
+              dayUtc.toISOString().substring(0, 10),
+              seance.startSlot,
+              seance.durationSlots,
+            ).map((c) => ({ date: parseDayKey(c.date)!, slot: c.slot }))
+          : [{ date: dayUtc, slot }];
+
       for (const userId of participantIds) {
-        // Copie par entrée : chaque utilisateur reçoit son propre objet, jamais une référence
+        // Copie par entrée : chaque utilisateur reçoit ses propres objets, jamais une référence
         // partagée avec les autres participants de la même séance.
-        if (requested.has(userId)) map.get(userId)!.push({ date: new Date(dayUtc), slot });
+        if (requested.has(userId)) {
+          map.get(userId)!.push(...covered.map((c) => ({ date: new Date(c.date), slot: c.slot })));
+        }
       }
     }
 
@@ -2298,7 +2359,16 @@ export class EventsService
       const notMine = ralliementIds.has(partie.id)
         ? s.event.ownerId !== userId && !inscrit
         : partie.kind === 'CAMPAGNE_EPISODIQUE' && roleByPartie.get(partie.id) !== 'mj' && !inscrit;
-      if (date && date.getTime() >= range.fromMs && date.getTime() <= range.toMs && !notMine) {
+      // Story 47.2 : le filtre de période teste le CHEVAUCHEMENT de la plage (une séance du 31 au 1ᵉʳ
+      // apparaît dans les deux mois), pas son seul début.
+      const lastDay = s.endDate ?? date;
+      if (
+        date &&
+        lastDay &&
+        lastDay.getTime() >= range.fromMs &&
+        date.getTime() <= range.toMs &&
+        !notMine
+      ) {
         mySeances.push({
           seanceId: s.id,
           partieId: partie.id,
@@ -2309,6 +2379,8 @@ export class EventsService
           // AC5 : créneau de la plage de la séance (Story 37.4), FULL_DAY à défaut — jamais une
           // supposition locale à l'appelant.
           slot: s.startSlot ?? 'FULL_DAY',
+          endDate: lastDay.toISOString().substring(0, 10),
+          endSlot: s.endSlot ?? s.startSlot ?? 'FULL_DAY',
           durationSlots: s.durationSlots,
           // Story 36.5 — transmis tels quels. `heureRdv` reste une CHAÎNE : rien ici ne la parse
           // ni ne la compare, et elle n'entre pas dans le calcul de statut de créneau (AD-9).

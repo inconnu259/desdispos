@@ -74,6 +74,8 @@ model Partie {
 
   nextSessionDate DateTime? // Date confirmée de la prochaine séance (mise à jour par Epic 3)
   nextSessionSlot DaySlot? // Créneau confirmé
+  nextSessionEndDate DateTime? // Story 47.2 — fin de la plage de la prochaine séance (= nextSessionDate pour un créneau)
+  nextSessionEndSlot DaySlot? // Story 47.2 — créneau de fin de cette plage
   closedAt        DateTime? // AD-8 — seul état persisté ; "en cours"/"pas encore commencée" dérivés à la lecture (Story 29.6)
   coverImageUrl   String? // Story 29.12, AD-19 — null = bannière générée. Seule donnée persistée (jamais dimensions/checksum/horodatage, qui seraient du dérivé)
 

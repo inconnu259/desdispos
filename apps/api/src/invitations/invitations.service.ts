@@ -9,7 +9,7 @@ import type { InvitationDto } from '@master-jdr/shared';
 import { familyOf } from '@master-jdr/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
-import { formatSessionDate } from '../events/session-date';
+import { formatSessionDate, formatSessionSpan } from '../events/session-date';
 import { PartiesService } from '../parties/parties.service';
 import { PermissionService } from '../permissions/permission.service';
 import { InviteLinksService } from './invite-links.service';
@@ -98,7 +98,7 @@ export class InvitationsService {
         this.events.invitationNotice(partie.id),
       ]);
       let dateLine = 'date à fixer';
-      if (notice?.startDate) dateLine = formatSessionDate(notice.startDate, notice.startSlot);
+      if (notice?.startDate) dateLine = formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot);
       else if (notice?.deadline) {
         dateLine = `date à voter jusqu'au ${formatSessionDate(notice.deadline, null)}`;
       }

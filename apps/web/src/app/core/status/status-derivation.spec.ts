@@ -223,6 +223,25 @@ describe('seanceState — la matrice d’E/S, ligne par ligne', () => {
 });
 
 // Le départage de deux états simultanés — testé explicitement, comme l'exige la spec.
+describe('seanceState — une plage n’est passée qu’à sa fin (Story 47.2)', () => {
+  const dated = (date: string, endDate: string | null) =>
+    seance({ dateValidee: `${date}T00:00:00.000Z`, slotValidee: 'EVENING', endDate: endDate && `${endDate}T00:00:00.000Z` });
+
+  it('commencée avant aujourd’hui mais finissant aujourd’hui ou plus tard : encore à venir', () => {
+    const yesterday = '2026-09-22';
+    expect(seanceState(dated(yesterday, TODAY), ME, TODAY).labelKey).not.toBe('status.seance_a_debriefer');
+    expect(seanceState(dated(yesterday, '2026-09-26'), ME, TODAY).labelKey).not.toBe('status.seance_a_debriefer');
+  });
+
+  it('finie avant aujourd’hui : « À débriefer »', () => {
+    expect(seanceState(dated('2026-09-18', '2026-09-22'), ME, TODAY).labelKey).toBe('status.seance_a_debriefer');
+  });
+
+  it('sans fin servie : le début décide, comme avant', () => {
+    expect(seanceState(dated('2026-09-22', null), ME, TODAY).labelKey).toBe('status.seance_a_debriefer');
+  });
+});
+
 describe('seanceState — ordre de priorité (actionnabilité décroissante)', () => {
   it('« À débriefer » prime sur tout une fois la date passée', () => {
     const s = seanceState(

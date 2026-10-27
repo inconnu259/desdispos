@@ -100,9 +100,19 @@ export class PartySignalsService {
         where: {
           event: { partieId: { in: mjPartieIds } },
           // Story 37.4 : séance datée = plage posée (seule source de la date).
-          OR: [{ compteRendu: null, startDate: { not: null } }, { startDate: { gt: new Date() } }],
+          OR: [
+            { compteRendu: null, startDate: { not: null } },
+            { startDate: { gt: new Date() } },
+            // Story 47.2 : une plage commencée est « à venir » jusqu'à sa fin.
+            { endDate: { gt: new Date() } },
+          ],
         },
-        select: { compteRendu: true, startDate: true, event: { select: { partieId: true } } },
+        select: {
+          compteRendu: true,
+          startDate: true,
+          endDate: true,
+          event: { select: { partieId: true } },
+        },
       }),
       // Une seule requête groupée sert à la fois VOTE_EN_COURS_SANS_REPONSE (joueur, filtré sur
       // les votes de l'utilisateur) et AUCUNE_DATE_NI_VOTE (MJ, simple présence d'un poll OPEN).
@@ -130,7 +140,14 @@ export class PartySignalsService {
           userId,
           status: 'RESERVED',
           // Story 42.1 : une place réservée d'une conjonction annulée n'attend plus de réponse.
-          seance: { startDate: { gte: startOfTodayUtc() }, event: { cancelledAt: null } },
+          // Story 47.2 : une plage commencée, finissant aujourd'hui ou plus tard, attend encore sa réponse.
+          seance: {
+            OR: [
+              { endDate: { gte: startOfTodayUtc() } },
+              { endDate: null, startDate: { gte: startOfTodayUtc() } },
+            ],
+            event: { cancelledAt: null },
+          },
         },
         select: { seance: { select: { event: { select: { partieId: true } } } } },
       }),
@@ -159,7 +176,7 @@ export class PartySignalsService {
     );
     const mjPartiesWithFutureSeance = new Set(
       seancesOfMjParties
-        .filter((s) => s.startDate != null && s.startDate.getTime() > Date.now())
+        .filter((s) => s.startDate != null && (s.endDate ?? s.startDate).getTime() > Date.now())
         .map((s) => s.event.partieId),
     );
     const openPollsByPartie = new Map<string, OpenPollWithVotes[]>();
@@ -184,7 +201,8 @@ export class PartySignalsService {
       const hasFutureSessionDate =
         role === 'mj'
           ? mjPartiesWithFutureSeance.has(partie.id)
-          : !!partie.nextSessionDate && new Date(partie.nextSessionDate).getTime() > now;
+          : !!partie.nextSessionDate &&
+            new Date(partie.nextSessionEndDate ?? partie.nextSessionDate).getTime() > now;
 
       // AC5 : une partie clôturée ne porte jamais un signal d'action, seuls les signaux de fin
       // subsistent — appliqué en premier, avant toute autre dérivation. Les deux signaux de fin

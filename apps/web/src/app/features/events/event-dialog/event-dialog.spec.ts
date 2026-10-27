@@ -42,6 +42,8 @@ function pollCard(over: Partial<EventCardDto['poll'] & object> = {}, host = HOST
     hostId: host,
     hostDisplayName: 'Léa',
     seance: {
+      endDate: null,
+      endSlot: null,
       durationSlots: 1,
       id: 's1',
       date: null,
@@ -508,6 +510,8 @@ class FrozenHost {
     hostId: 'host',
     hostDisplayName: 'Léa',
     seance: {
+      endDate: null,
+      endSlot: null,
       durationSlots: 1,
       id: 's1',
       date: null,
@@ -552,6 +556,8 @@ describe('EventDialog — rendu en ligne d’une soirée isolée (Story 41.1)', 
       hostId: HOST,
       hostDisplayName: 'Léa',
       seance: {
+        endDate: null,
+        endSlot: null,
         durationSlots: 1,
         id: 's1',
         date: null,

@@ -1746,6 +1746,8 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
         scenarioTitle: 'Le Donjon Oublié',
         date: '2026-10-10',
         slot: 'MORNING',
+        endDate: '2026-10-10',
+        endSlot: 'MORNING',
         // Story 36.5 : toujours présents, à null quand la séance n'en porte pas — le client
         // n'a jamais à distinguer « clé absente » de « valeur vide ».
         heureRdv: null,

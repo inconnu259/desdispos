@@ -4,7 +4,7 @@ import { EmailService } from '../email/email.service';
 import { PermissionService } from '../permissions/permission.service';
 import type { GroupPollChoosePort } from '../poll/ports/group-poll-choose.port';
 import { EventsService } from './events.service';
-import { formatSessionDate } from './session-date';
+import { formatSessionSpan } from './session-date';
 
 /**
  * Fixer la date d'une conjonction depuis son sondage (Story 40.6) — le côté `events/` de la route
@@ -44,7 +44,7 @@ export class GroupPollChoiceService implements GroupPollChoosePort {
       if (!notice || notice.recipients.length === 0) return;
       const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${poll.partieId}`;
       const sessionDate = notice.startDate
-        ? formatSessionDate(notice.startDate, notice.startSlot)
+        ? formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot)
         : null;
       for (const recipient of notice.recipients) {
         const result = await this.email.sendMail('conjonction-date-fixee', recipient.email, {

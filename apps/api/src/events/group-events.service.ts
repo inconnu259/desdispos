@@ -30,7 +30,7 @@ import {
   type EventCardBase,
   type EventSeanceInput,
 } from './events.service';
-import { formatSessionDate } from './session-date';
+import { formatSessionSpan } from './session-date';
 
 /** Refus d'une clé de jour bien formée mais inexistante au calendrier (ex. `2026-02-31`). */
 export const INVALID_DAY_MESSAGE = "Cette date n'existe pas";
@@ -257,7 +257,7 @@ export class GroupEventsService {
       if (!notice) return;
       const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${grant.partieId}`;
       const sessionDate = notice.startDate
-        ? formatSessionDate(notice.startDate, notice.startSlot)
+        ? formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot)
         : null;
       for (const recipient of notice.recipients) {
         const result = await this.email.sendMail('conjonction-reservation', recipient.email, {

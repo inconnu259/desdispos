@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '../email/email.service';
 import { EventsService } from './events.service';
-import { formatSessionDate } from './session-date';
+import { formatSessionSpan } from './session-date';
 
 /**
  * E-mail n° 7 « Annulée : « *Conjonction* » » (Stories 42.1 et 42.3) — UNE seule définition de l'envoi,
@@ -49,7 +49,7 @@ export class EventCancellationMailer {
       if (addresses.length === 0) return;
       const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${partieId}`;
       const sessionDate = notice.startDate
-        ? formatSessionDate(notice.startDate, notice.startSlot)
+        ? formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot)
         : null;
       for (const address of addresses) {
         const result = await this.email.sendMail('conjonction-annulee', address, {

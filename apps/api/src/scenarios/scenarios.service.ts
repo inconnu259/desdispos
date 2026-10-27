@@ -1242,6 +1242,9 @@ function toSeanceDto(
         : undefined,
     dateValidee: dateEffective ? dateEffective.toISOString() : null,
     slotValidee: slotEffectif,
+    // Story 47.2 : la fin de la plage, lue de la séance (jamais de `poll.chosenDate`) ; le début à défaut.
+    endDate: dateEffective ? (seance.endDate ?? dateEffective).toISOString() : null,
+    endSlot: dateEffective ? (seance.endDate ? seance.endSlot : slotEffectif) : null,
     compteRendu: seance.compteRendu,
     // Story 36.5 — rendus tels quels. `heureRdv` reste une CHAÎNE : aucun new Date(), aucun
     // formatage, aucun tri. Le client l'affiche, il ne la calcule pas.

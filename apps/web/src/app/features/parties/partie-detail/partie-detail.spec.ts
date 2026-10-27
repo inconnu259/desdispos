@@ -444,6 +444,36 @@ describe('PartieDetail — widget de planification', () => {
     expect(el.querySelector('.scheduling-widget .next-session-date')).toBeTruthy();
   });
 
+  it('Story 47.2 : une plage commencée hier et finissant demain reste la prochaine séance, écrite « début → fin »', async () => {
+    const { el } = await createFixture(
+      makePartie({
+        nextSessionDate: isoInDays(-1),
+        nextSessionSlot: 'EVENING',
+        nextSessionEndDate: isoInDays(1),
+        nextSessionEndSlot: 'AFTERNOON',
+      }),
+      MJ_ID,
+    );
+    expect(widgetBadge(el)).not.toBe('À planifier');
+    expect(widgetBadge(el)).not.toBe('À débriefer');
+    const text = el.querySelector('.scheduling-widget .next-session-date')?.textContent ?? '';
+    expect(text).toContain('→');
+    expect(text).toContain('Après-midi');
+  });
+
+  it('Story 47.2 : une plage finie hier est passée comme une date passée', async () => {
+    const { el } = await createFixture(
+      makePartie({
+        nextSessionDate: isoInDays(-3),
+        nextSessionSlot: 'EVENING',
+        nextSessionEndDate: isoInDays(-1),
+        nextSessionEndSlot: 'AFTERNOON',
+      }),
+      MJ_ID,
+    );
+    expect(widgetBadge(el)).toBe('À planifier');
+  });
+
   it('🚨 une date déjà passée ne fait jamais apparaître « À débriefer » ici (widget « Prochaine séance »)', async () => {
     const { el } = await createFixture(
       makePartie({ nextSessionDate: isoInDays(-10), nextSessionSlot: 'EVENING' }),
@@ -4746,6 +4776,8 @@ describe('PartieDetail — les conjonctions d’un groupe (Story 40.1)', () => {
     hostId: OTHER_ID,
     hostDisplayName: 'Léa',
     seance: {
+      endDate: dayKey(days),
+      endSlot: 'EVENING',
       durationSlots: 1,
       id: `s-${id}`,
       date: dayKey(days),
@@ -4998,6 +5030,8 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
     hostId: HOST_ID,
     hostDisplayName: 'Hélène Hôte',
     seance: {
+      endDate: dayKey(days),
+      endSlot: 'EVENING',
       durationSlots: 1,
       id: `s-${id}`,
       date: dayKey(days),
@@ -6223,6 +6257,8 @@ describe('PartieDetail — du groupe vers son calendrier (Story 40.5b)', () => {
     hostId: HOST_ID,
     hostDisplayName: 'Hélène Hôte',
     seance: {
+      endDate: null,
+      endSlot: null,
       durationSlots: 1,
       id: 's-a',
       date: null,
@@ -6441,6 +6477,8 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
     hostId: MJ_ID,
     hostDisplayName: 'Créateur',
     seance: {
+      endDate: null,
+      endSlot: null,
       durationSlots: 1,
       id: 's-1',
       date: null,
@@ -6586,6 +6624,8 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
   it('une date fixée, un lieu et une heure se lisent dans la fiche', async () => {
     const dated = event({
       seance: {
+        endDate: '2099-12-20',
+        endSlot: 'EVENING',
         durationSlots: 1,
         id: 's-1',
         date: '2099-12-20',
@@ -6910,6 +6950,8 @@ describe('PartieDetail — annuler une conjonction (Story 42.1)', () => {
     hostId: HOST_ID,
     hostDisplayName: 'Hélène Hôte',
     seance: {
+      endDate: dayKey(days),
+      endSlot: 'EVENING',
       durationSlots: 1,
       id: `s-${id}`,
       date: dayKey(days),

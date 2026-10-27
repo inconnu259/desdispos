@@ -22,6 +22,8 @@ const card = (id: string, title: string): EventCardDto => ({
   hostId: 'host',
   hostDisplayName: 'Léa',
   seance: {
+    endDate: null,
+    endSlot: null,
     durationSlots: 1,
     id: `s-${id}`,
     date: null,

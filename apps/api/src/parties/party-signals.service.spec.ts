@@ -129,7 +129,10 @@ describe('PartySignalsService', () => {
           userId: 'u1',
           status: 'RESERVED',
           seance: {
-            startDate: { gte: new Date('2026-10-17T00:00:00.000Z') },
+            OR: [
+              { endDate: { gte: new Date('2026-10-17T00:00:00.000Z') } },
+              { endDate: null, startDate: { gte: new Date('2026-10-17T00:00:00.000Z') } },
+            ],
             event: { cancelledAt: null },
           },
         }),
@@ -356,6 +359,26 @@ describe('PartySignalsService', () => {
       {
         compteRendu: 'ok',
         startDate: new Date('2099-01-01T00:00:00.000Z'),
+        event: { partieId: 'p1' },
+      },
+    ]);
+    const map = await service.getSignals('u1');
+    expect(map['p1'].signals).toContain('PROCHAINE_SEANCE_CONNUE');
+    expect(map['p1'].signals).not.toContain('AUCUNE_DATE_NI_VOTE');
+  });
+
+  it('Story 47.2 : pour le MJ, une plage commencée mais pas finie compte comme une séance à venir', async () => {
+    parties.listForUser.mockImplementation((_u: string, role: string) =>
+      Promise.resolve(role === 'mj' ? [makePartie({ id: 'p1' })] : []),
+    );
+    prisma.partie.findMany.mockResolvedValue([]);
+    prisma.membership.groupBy.mockResolvedValue([{ partieId: 'p1', _count: { _all: 1 } }]);
+    prisma.event.groupBy.mockResolvedValue([{ partieId: 'p1', _count: { _all: 1 } }]);
+    prisma.seance.findMany.mockResolvedValue([
+      {
+        compteRendu: 'ok',
+        startDate: new Date('2020-01-01T00:00:00.000Z'),
+        endDate: new Date('2099-01-01T00:00:00.000Z'),
         event: { partieId: 'p1' },
       },
     ]);

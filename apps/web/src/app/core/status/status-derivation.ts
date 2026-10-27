@@ -93,6 +93,8 @@ export interface SeanceStateSource {
    *  `Seance.dateValidee`). */
   dateValidee?: string | null;
   slotValidee?: DaySlot | null;
+  /** Story 47.2 : fin de la plage (`Seance.endDate`), servie à la racine du DTO ; absente = le début. */
+  endDate?: string | null;
   compteRendu?: string | null;
 }
 
@@ -141,10 +143,13 @@ export function seanceState(
   todayKey: string,
 ): StatusBadgeState {
   const dateKey = dateKeyOf(seance);
+  // Story 47.2 : une séance n'est passée qu'une fois sa FIN passée — une plage commencée reste annoncée.
+  const endKey = seance.endDate ? seance.endDate.substring(0, 10) : null;
+  const lastKey = endKey && dateKey && endKey > dateKey ? endKey : dateKey;
 
   // 1 — passée. Le jour même n'est PAS passé (une séance du soir reste à venir le matin) : même
   // comparaison que `sectionIdFor()` dans l'Agenda, `date >= todayKey` = encore annoncé.
-  if (dateKey && dateKey < todayKey) {
+  if (lastKey && lastKey < todayKey) {
     return seance.compteRendu?.trim()
       ? { tone: 'done', labelKey: 'status.seance_jouee', draft: false }
       : { tone: 'todo', labelKey: 'status.seance_a_debriefer', draft: false };

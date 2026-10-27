@@ -610,6 +610,51 @@ describe('Dashboard — badges de signal (Story 29.7, AC3/AC9)', () => {
     expect(badge.textContent).toContain('Soir');
   });
 
+  it('Story 47.2 : PROCHAINE_SEANCE_CONNUE écrit la plage « début → fin » d’un rendez-vous de plusieurs créneaux', async () => {
+    const party = {
+      ...makeParty('p1', 'player', 'EN_COURS'),
+      nextSessionDate: '2026-11-14T00:00:00.000Z',
+      nextSessionSlot: 'EVENING' as const,
+      nextSessionEndDate: '2026-11-15T00:00:00.000Z',
+      nextSessionEndSlot: 'AFTERNOON' as const,
+    };
+    const signals = new Map([
+      [
+        'p1',
+        {
+          role: 'player' as const,
+          status: 'EN_COURS' as const,
+          signals: ['PROCHAINE_SEANCE_CONNUE'] as const,
+        },
+      ],
+    ]);
+    const { fixture } = await createFixture(new Map(), undefined, [party], signals as any);
+    const badge = fixture.nativeElement.querySelector('.signal-badge');
+    expect(badge.textContent).toContain('14 novembre, Soir → 15 novembre, Après-midi');
+  });
+
+  it('Story 47.2 : une fin égale au début garde le libellé d’un créneau', async () => {
+    const party = {
+      ...makeParty('p1', 'player', 'EN_COURS'),
+      nextSessionDate: '2026-08-12T00:00:00.000Z',
+      nextSessionSlot: 'EVENING' as const,
+      nextSessionEndDate: '2026-08-12T00:00:00.000Z',
+      nextSessionEndSlot: 'EVENING' as const,
+    };
+    const signals = new Map([
+      [
+        'p1',
+        {
+          role: 'player' as const,
+          status: 'EN_COURS' as const,
+          signals: ['PROCHAINE_SEANCE_CONNUE'] as const,
+        },
+      ],
+    ]);
+    const { fixture } = await createFixture(new Map(), undefined, [party], signals as any);
+    expect(fixture.nativeElement.querySelector('.signal-badge').textContent).not.toContain('→');
+  });
+
   it('PARTIE_TERMINEE n’est jamais rendu en badge (doublon avec .status-indicator, revue de code)', async () => {
     const signals = new Map([
       [

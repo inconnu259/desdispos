@@ -188,6 +188,8 @@ describe('PartiesService', () => {
     createdAt: new Date(),
     nextSessionDate: null,
     nextSessionSlot: null,
+    nextSessionEndDate: null,
+    nextSessionEndSlot: null,
   };
 
   beforeEach(() => {
@@ -347,6 +349,8 @@ describe('PartiesService', () => {
       createdAt: partie.createdAt.toISOString(),
       nextSessionDate: null,
       nextSessionSlot: null,
+      nextSessionEndDate: null,
+      nextSessionEndSlot: null,
       role: 'mj',
       status: 'EN_COURS',
       isFavorite: false,
@@ -618,6 +622,8 @@ describe('PartiesService', () => {
         createdAt: partie.createdAt.toISOString(),
         nextSessionDate: null,
         nextSessionSlot: null,
+        nextSessionEndDate: null,
+        nextSessionEndSlot: null,
         role: 'player',
         status: 'A_VENIR',
         isFavorite: false,
@@ -685,6 +691,8 @@ describe('PartiesService', () => {
           createdAt: partieB.createdAt.toISOString(),
           nextSessionDate: null,
           nextSessionSlot: null,
+          nextSessionEndDate: null,
+          nextSessionEndSlot: null,
           role: 'player',
           status: 'A_VENIR',
           isFavorite: false,
@@ -790,6 +798,8 @@ describe('PartiesService', () => {
         createdAt: partie.createdAt.toISOString(),
         nextSessionDate: null,
         nextSessionSlot: null,
+        nextSessionEndDate: null,
+        nextSessionEndSlot: null,
         role: 'mj',
         status: 'A_VENIR',
         isFavorite: false,
@@ -924,6 +934,8 @@ describe('PartiesService', () => {
         'createdAt',
         'nextSessionDate',
         'nextSessionSlot',
+        'nextSessionEndDate',
+        'nextSessionEndSlot',
         'role',
         'status',
         'isFavorite',
@@ -956,6 +968,8 @@ describe('PartiesService', () => {
         'createdAt',
         'nextSessionDate',
         'nextSessionSlot',
+        'nextSessionEndDate',
+        'nextSessionEndSlot',
         'role',
         'status',
         'isFavorite',
@@ -1228,6 +1242,8 @@ describe('PartiesService', () => {
       createdAt: partie.createdAt.toISOString(),
       nextSessionDate: null,
       nextSessionSlot: null,
+      nextSessionEndDate: null,
+      nextSessionEndSlot: null,
       role: 'mj',
       status: 'A_VENIR',
       ownerPseudo: 'mj-pseudo',
@@ -1263,6 +1279,8 @@ describe('PartiesService', () => {
       createdAt: partie.createdAt.toISOString(),
       nextSessionDate: null,
       nextSessionSlot: null,
+      nextSessionEndDate: null,
+      nextSessionEndSlot: null,
       role: 'player',
       status: 'A_VENIR',
       ownerPseudo: 'mj-pseudo',
@@ -1328,6 +1346,8 @@ describe('PartiesService', () => {
       createdAt: partie.createdAt.toISOString(),
       nextSessionDate: null,
       nextSessionSlot: null,
+      nextSessionEndDate: null,
+      nextSessionEndSlot: null,
       role: 'mj',
       status: 'A_VENIR',
       isFavorite: false,
@@ -1838,6 +1858,12 @@ describe('PartiesService', () => {
           OR: [
             { startDate: null },
             {
+              endDate: {
+                gte: new Date(`${new Date().toISOString().substring(0, 10)}T00:00:00.000Z`),
+              },
+            },
+            {
+              endDate: null,
               startDate: {
                 gte: new Date(`${new Date().toISOString().substring(0, 10)}T00:00:00.000Z`),
               },
@@ -2250,6 +2276,8 @@ describe('PartiesService', () => {
       createdAt: partie.createdAt.toISOString(),
       nextSessionDate: null,
       nextSessionSlot: null,
+      nextSessionEndDate: null,
+      nextSessionEndSlot: null,
       role: 'mj',
       status: 'A_VENIR',
       isFavorite: false,
@@ -3024,6 +3052,8 @@ describe('PartiesService', () => {
       createdAt: new Date(),
       nextSessionDate: null,
       nextSessionSlot: null,
+      nextSessionEndDate: null,
+      nextSessionEndSlot: null,
     };
 
     it("un membre occupé par une séance datée d'une autre Partie (B) apparaît UNAVAILABLE dans le calendrier de A, pour la vue MJ ET la vue joueur, sans qu'aucun champ ne nomme la Partie B", async () => {
@@ -3320,11 +3350,11 @@ describe('PartiesService', () => {
 
       expect(prisma.seance.findMany).toHaveBeenCalledWith({
         where: { AND: [{ event: { partieId: 'p1', cancelledAt: null } }, VISIBLE_SEANCE_WHERE] },
-        select: { startDate: true, startSlot: true },
+        select: { startDate: true, startSlot: true, endDate: true, endSlot: true },
       });
       expect(prisma.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: future, nextSessionSlot: 'EVENING' },
+        data: { nextSessionDate: future, nextSessionSlot: 'EVENING', nextSessionEndDate: future, nextSessionEndSlot: 'EVENING' },
       });
       expect(dto.nextSessionDate).toBe(future.toISOString());
     });

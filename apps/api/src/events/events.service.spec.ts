@@ -399,6 +399,8 @@ describe('EventsService (Story 37.3)', () => {
             heureRdv: '20:30',
             notePratique: null,
             capacity: 8,
+            endDate: '2026-11-14',
+            endSlot: 'EVENING',
             durationSlots: 1,
             placesTaken: 1,
           },
@@ -1190,11 +1192,11 @@ describe('EventsService (Story 37.3)', () => {
       // comptent (fragment partagé `VISIBLE_SEANCE_WHERE`).
       expect(prisma.tx.seance.findMany).toHaveBeenCalledWith({
         where: { AND: [{ event: { partieId: 'p1', cancelledAt: null } }, VISIBLE_SEANCE_WHERE] },
-        select: { startDate: true, startSlot: true },
+        select: { startDate: true, startSlot: true, endDate: true, endSlot: true },
       });
       expect(prisma.tx.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: future, nextSessionSlot: 'EVENING' },
+        data: { nextSessionDate: future, nextSessionSlot: 'EVENING', nextSessionEndDate: future, nextSessionEndSlot: 'EVENING' },
       });
       // Rien n'est écrit hors de la transaction de l'appelant.
       expect(prisma.partie.update).not.toHaveBeenCalled();
@@ -1224,7 +1226,7 @@ describe('EventsService (Story 37.3)', () => {
       });
       expect(prisma.tx.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: null, nextSessionSlot: null },
+        data: { nextSessionDate: null, nextSessionSlot: null, nextSessionEndDate: null, nextSessionEndSlot: null },
       });
     });
 
@@ -1889,6 +1891,8 @@ describe('EventsService (Story 37.3)', () => {
           hostName: 'Léa',
           startDate: new Date('2026-11-14T00:00:00Z'),
           startSlot: 'EVENING',
+          endDate: null,
+          endSlot: null,
           lieu: 'Lyon',
           recipients: [{ id: 'cible', email: 'cible@example.com' }],
         });
@@ -1949,7 +1953,11 @@ describe('EventsService (Story 37.3)', () => {
         userId: 'u1',
         seance: {
           event: { partieId: 'p1' },
-          OR: [{ startDate: null }, { startDate: { gte: new Date(`${today}T00:00:00.000Z`) } }],
+          OR: [
+            { startDate: null },
+            { endDate: { gte: new Date(`${today}T00:00:00.000Z`) } },
+            { endDate: null, startDate: { gte: new Date(`${today}T00:00:00.000Z`) } },
+          ],
         },
       });
       // Aucun filtre de statut : `RESERVED` et `CONFIRMED` sont libérés.
@@ -2161,6 +2169,8 @@ describe('EventsService (Story 37.3)', () => {
         data: {
           nextSessionDate: FUTURE_NEAR,
           nextSessionSlot: 'EVENING',
+          nextSessionEndDate: FUTURE_NEAR,
+          nextSessionEndSlot: 'EVENING',
         },
       });
     });
@@ -2182,6 +2192,8 @@ describe('EventsService (Story 37.3)', () => {
         data: {
           nextSessionDate: TODAY,
           nextSessionSlot: 'MORNING',
+          nextSessionEndDate: TODAY,
+          nextSessionEndSlot: 'MORNING',
         },
       });
     });
@@ -2207,6 +2219,8 @@ describe('EventsService (Story 37.3)', () => {
         data: {
           nextSessionDate: FUTURE_FAR,
           nextSessionSlot: 'AFTERNOON',
+          nextSessionEndDate: FUTURE_FAR,
+          nextSessionEndSlot: 'AFTERNOON',
         },
       });
     });
@@ -2223,6 +2237,8 @@ describe('EventsService (Story 37.3)', () => {
         data: {
           nextSessionDate: FUTURE_NEAR,
           nextSessionSlot: null,
+          nextSessionEndDate: FUTURE_NEAR,
+          nextSessionEndSlot: null,
         },
       });
     });
@@ -2240,6 +2256,8 @@ describe('EventsService (Story 37.3)', () => {
         data: {
           nextSessionDate: null,
           nextSessionSlot: null,
+          nextSessionEndDate: null,
+          nextSessionEndSlot: null,
         },
       });
     });
@@ -2253,7 +2271,7 @@ describe('EventsService (Story 37.3)', () => {
 
       expect(prisma.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: FUTURE_NEAR, nextSessionSlot: 'EVENING' },
+        data: { nextSessionDate: FUTURE_NEAR, nextSessionSlot: 'EVENING', nextSessionEndDate: FUTURE_NEAR, nextSessionEndSlot: 'EVENING' },
       });
       expect(prisma.seance.update).not.toHaveBeenCalled();
     });
@@ -2290,11 +2308,324 @@ describe('EventsService (Story 37.3)', () => {
 
       expect(prisma.tx.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: FUTURE_NEAR, nextSessionSlot: 'EVENING' },
+        data: { nextSessionDate: FUTURE_NEAR, nextSessionSlot: 'EVENING', nextSessionEndDate: FUTURE_NEAR, nextSessionEndSlot: 'EVENING' },
       });
       expect(prisma.seance.findMany).not.toHaveBeenCalled();
       expect(prisma.partie.update).not.toHaveBeenCalled();
       expect(realtime.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── Plage de plusieurs créneaux (Story 47.2, AD-14) ──────────────────────────────────────
+
+  describe('plage de plusieurs créneaux (Story 47.2)', () => {
+    const SAT = new Date('2026-11-14T00:00:00.000Z');
+    const SUN = new Date('2026-11-15T00:00:00.000Z');
+    const DAY = 86_400_000;
+    const midnight = (offsetDays: number) =>
+      new Date(new Date(Date.now() + offsetDays * DAY).toISOString().substring(0, 10));
+    const longSeance = (over: Record<string, unknown> = {}) => ({
+      id: 'sL',
+      startDate: SAT,
+      startSlot: 'EVENING',
+      endDate: SUN,
+      endSlot: 'AFTERNOON',
+      durationSlots: 3,
+      inscriptions: [],
+      event: { partieId: 'B', ownerId: null },
+      ...over,
+    });
+
+    describe('occupiedSpansOf — la plage est dépliée créneau par créneau', () => {
+      beforeEach(() => {
+        prisma.partie.findMany.mockResolvedValue([
+          { id: 'B', kind: 'CAMPAGNE_LINEAIRE', ownerId: 'mjB', memberships: [{ userId: 'u1' }] },
+        ]);
+      });
+
+      it('3 créneaux depuis un soir : le soir, puis le matin et l’après-midi du lendemain, pour chaque participant', async () => {
+        prisma.seance.findMany.mockResolvedValue([longSeance()]);
+
+        const map = await service.occupiedSpansOf(['u1', 'mjB']);
+
+        const expected = [
+          { date: SAT, slot: 'EVENING' },
+          { date: SUN, slot: 'MORNING' },
+          { date: SUN, slot: 'AFTERNOON' },
+        ];
+        expect(map.get('u1')).toEqual(expected);
+        expect(map.get('mjB')).toEqual(expected);
+        // Chaque participant a ses propres objets.
+        expect(map.get('u1')![0]).not.toBe(map.get('mjB')![0]);
+      });
+
+      it('un seul créneau, une journée entière ou une date sans créneau : une seule entrée, comme avant', async () => {
+        prisma.seance.findMany.mockResolvedValue([
+          longSeance({ id: 'a', durationSlots: 1, endDate: SAT, endSlot: 'EVENING' }),
+          longSeance({ id: 'b', startSlot: 'FULL_DAY', durationSlots: 1 }),
+          longSeance({ id: 'c', startSlot: null, durationSlots: 1 }),
+        ]);
+
+        const map = await service.occupiedSpansOf(['u1']);
+
+        expect(map.get('u1')).toEqual([
+          { date: SAT, slot: 'EVENING' },
+          { date: SAT, slot: 'FULL_DAY' },
+          { date: SAT, slot: 'FULL_DAY' },
+        ]);
+      });
+
+      it('deux rendez-vous qui se chevauchent occupent tous deux leurs créneaux — rien n’est refusé', async () => {
+        prisma.seance.findMany.mockResolvedValue([
+          longSeance(),
+          longSeance({ id: 'sM', startDate: SUN, startSlot: 'MORNING', durationSlots: 2 }),
+        ]);
+
+        const map = await service.occupiedSpansOf(['u1']);
+
+        expect(map.get('u1')).toHaveLength(5);
+        expect(
+          map.get('u1')!.filter((s) => s.date.getTime() === SUN.getTime() && s.slot === 'MORNING'),
+        ).toHaveLength(2);
+      });
+
+      it('une plage qui traverse un changement de mois et d’année', async () => {
+        prisma.seance.findMany.mockResolvedValue([
+          longSeance({ startDate: new Date('2026-12-31T00:00:00Z'), durationSlots: 2 }),
+        ]);
+
+        const map = await service.occupiedSpansOf(['u1']);
+
+        expect(map.get('u1')).toEqual([
+          { date: new Date('2026-12-31T00:00:00Z'), slot: 'EVENING' },
+          { date: new Date('2027-01-01T00:00:00Z'), slot: 'MORNING' },
+        ]);
+      });
+    });
+
+    describe('ownEventsOf — filtre de période par chevauchement', () => {
+      const row = (over: Record<string, unknown> = {}) => ({
+        id: 'sL',
+        eventId: 'ev1',
+        startDate: new Date('2026-10-31T00:00:00Z'),
+        startSlot: 'EVENING',
+        endDate: new Date('2026-11-01T00:00:00Z'),
+        endSlot: 'MORNING',
+        durationSlots: 2,
+        inscriptions: [],
+        inscriptionMin: null,
+        inscriptionMax: null,
+        event: { partieId: 'A', title: 'Week-end', ownerId: null },
+        ...over,
+      });
+      const window = (from: string, to: string) => ({
+        fromMs: Date.parse(`${from}T00:00:00.000Z`),
+        toMs: Date.parse(`${to}T23:59:59.999Z`),
+      });
+      const roles = () => jest.fn().mockResolvedValue(new Map([['A', 'mj']]));
+
+      beforeEach(() => {
+        prisma.partie.findMany.mockResolvedValue([{ id: 'A', name: 'P', kind: 'ONE_SHOT' }]);
+        prisma.seance.findMany.mockResolvedValue([row()]);
+      });
+
+      it('une séance du 31 au 1ᵉʳ apparaît dans octobre ET dans novembre, avec sa fin', async () => {
+        const october = await service.ownEventsOf('me', roles(), window('2026-10-01', '2026-10-31'));
+        const november = await service.ownEventsOf('me', roles(), window('2026-11-01', '2026-11-30'));
+
+        expect(october.seances).toHaveLength(1);
+        expect(november.seances).toHaveLength(1);
+        expect(november.seances[0]).toMatchObject({
+          date: '2026-10-31',
+          slot: 'EVENING',
+          endDate: '2026-11-01',
+          endSlot: 'MORNING',
+        });
+      });
+
+      it('hors de la plage, ni avant son début ni après sa fin', async () => {
+        const before = await service.ownEventsOf('me', roles(), window('2026-10-01', '2026-10-30'));
+        const after = await service.ownEventsOf('me', roles(), window('2026-11-02', '2026-11-30'));
+
+        expect(before.seances).toHaveLength(0);
+        expect(after.seances).toHaveLength(0);
+      });
+    });
+
+    describe('« passée » = la fin est avant aujourd’hui', () => {
+      const GRANT_E1 = testGrant({ id: 'p1', ownerId: 'mj1' }, 'member', { eventId: 'e1' });
+      const INPUT = (date: Date) => ({
+        title: 'Week-end',
+        seance: {
+          date,
+          slot: 'EVENING' as const,
+          lieu: null,
+          heureRdv: null,
+          notePratique: null,
+          capacity: null,
+        },
+      });
+      const existing = (seance: Record<string, unknown>) =>
+        prisma.tx.event.findUnique.mockResolvedValue({
+          ownerId: 'hote',
+          cancelledAt: null,
+          seances: [{ id: 'se1', pollId: null, durationSlots: 3, startSlot: 'EVENING', ...seance }],
+        });
+
+      it('modification : une plage commencée hier et finissant demain reste modifiable', async () => {
+        existing({ startDate: midnight(-1), endDate: midnight(1), endSlot: 'AFTERNOON' });
+
+        await service.updateHosted(GRANT_E1, 'e1', INPUT(midnight(-1)));
+
+        expect(prisma.tx.seance.update).toHaveBeenCalled();
+      });
+
+      it('modification : une plage finie hier est refusée', async () => {
+        existing({ startDate: midnight(-3), endDate: midnight(-1), endSlot: 'AFTERNOON' });
+
+        await expect(service.updateHosted(GRANT_E1, 'e1', INPUT(midnight(-3)))).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+      });
+
+      it('annulation : commencée hier, finissant demain → annulable ; finie hier → refusée', async () => {
+        const closePoll = jest.fn();
+        existing({ startDate: midnight(-1), endDate: midnight(1) });
+        await service.cancelHosted(GRANT_E1, 'e1', closePoll);
+        expect(prisma.tx.event.update).toHaveBeenCalledTimes(1);
+
+        prisma.tx.event.update.mockClear();
+        existing({ startDate: midnight(-3), endDate: midnight(-1) });
+        await expect(service.cancelHosted(GRANT_E1, 'e1', closePoll)).rejects.toThrow(
+          'passé',
+        );
+        expect(prisma.tx.event.update).not.toHaveBeenCalled();
+      });
+
+      it('inscription : une plage commencée reste ouverte, une plage finie est figée', async () => {
+        const run = async (seance: Record<string, unknown>) => {
+          prisma.tx.seance.findUnique.mockReset();
+          prisma.tx.seance.findUnique
+            .mockResolvedValueOnce({ eventId: 'ev1' })
+            .mockResolvedValueOnce({
+              inscriptionMax: null,
+              event: { ownerId: 'hote', cancelledAt: null },
+              ...seance,
+            });
+          await service.inscrireConjonction(GRANT_P1, 'se1', 'membre');
+        };
+
+        await expect(
+          run({ startDate: midnight(-1), endDate: midnight(1) }),
+        ).resolves.toBeUndefined();
+        await expect(run({ startDate: midnight(-3), endDate: midnight(-1) })).rejects.toThrow(
+          BadRequestException,
+        );
+      });
+    });
+
+    describe('prochaine séance — une plage commencée en fait partie jusqu’à sa fin', () => {
+      it('commencée hier, finissant demain : retenue, avec sa fin', async () => {
+        const start = midnight(-1);
+        const end = midnight(1);
+        prisma.seance.findMany.mockResolvedValue([
+          { startDate: start, startSlot: 'EVENING', endDate: end, endSlot: 'AFTERNOON' },
+        ]);
+
+        await service.recalculateNextSession('p1');
+
+        expect(prisma.partie.update).toHaveBeenCalledWith({
+          where: { id: 'p1' },
+          data: {
+            nextSessionDate: start,
+            nextSessionSlot: 'EVENING',
+            nextSessionEndDate: end,
+            nextSessionEndSlot: 'AFTERNOON',
+          },
+        });
+      });
+
+      it('finie hier : ignorée', async () => {
+        prisma.seance.findMany.mockResolvedValue([
+          {
+            startDate: midnight(-3),
+            startSlot: 'EVENING',
+            endDate: midnight(-1),
+            endSlot: 'AFTERNOON',
+          },
+        ]);
+
+        await service.recalculateNextSession('p1');
+
+        expect(prisma.partie.update).toHaveBeenCalledWith({
+          where: { id: 'p1' },
+          data: {
+            nextSessionDate: null,
+            nextSessionSlot: null,
+            nextSessionEndDate: null,
+            nextSessionEndSlot: null,
+          },
+        });
+      });
+
+      it('entre deux plages à venir, la plus proche par son début', async () => {
+        const near = midnight(2);
+        prisma.seance.findMany.mockResolvedValue([
+          { startDate: midnight(9), startSlot: 'MORNING', endDate: midnight(10), endSlot: 'MORNING' },
+          { startDate: near, startSlot: 'EVENING', endDate: midnight(3), endSlot: 'AFTERNOON' },
+        ]);
+
+        await service.recalculateNextSession('p1');
+
+        expect(prisma.partie.update).toHaveBeenCalledWith({
+          where: { id: 'p1' },
+          data: expect.objectContaining({
+            nextSessionDate: near,
+            nextSessionEndDate: midnight(3),
+            nextSessionEndSlot: 'AFTERNOON',
+          }),
+        });
+      });
+    });
+
+    describe('listCards et notices portent la fin', () => {
+      it('la carte de conjonction expose la fin de la plage', async () => {
+        prisma.event.findMany.mockResolvedValue([
+          {
+            id: 'e1',
+            title: 'Week-end',
+            ownerId: 'hote',
+            cancelledAt: null,
+            owner: { displayName: 'Léa' },
+            seances: [
+              {
+                id: 'se1',
+                startDate: SAT,
+                startSlot: 'EVENING',
+                endDate: SUN,
+                endSlot: 'AFTERNOON',
+                lieu: null,
+                heureRdv: null,
+                notePratique: null,
+                inscriptionMax: null,
+                pollId: null,
+                durationSlots: 3,
+              },
+            ],
+          },
+        ]);
+
+        const [card] = await service.listCards(GRANT_P1, 'viewer');
+
+        expect(card.seance).toMatchObject({
+          date: '2026-11-14',
+          slot: 'EVENING',
+          endDate: '2026-11-15',
+          endSlot: 'AFTERNOON',
+          durationSlots: 3,
+        });
+      });
     });
   });
 
@@ -2533,6 +2864,8 @@ describe('EventsService (Story 37.3)', () => {
           scenarioTitle: 'Le Donjon Oublié',
           date: '2026-10-10',
           slot: 'MORNING',
+          endDate: '2026-10-10',
+          endSlot: 'MORNING',
           heureRdv: null,
           lieu: null,
           notePratique: null,
@@ -2823,7 +3156,7 @@ describe('EventsService (Story 37.3)', () => {
 
         expect(prisma.tx.partie.update).toHaveBeenCalledWith({
           where: { id: 'p1' },
-          data: { nextSessionDate: null, nextSessionSlot: null },
+          data: { nextSessionDate: null, nextSessionSlot: null, nextSessionEndDate: null, nextSessionEndSlot: null },
         });
       });
     });
@@ -3376,6 +3709,8 @@ describe('EventsService (Story 37.3)', () => {
           eventTitle: 'Soirée',
           startDate: null,
           startSlot: null,
+          endDate: null,
+          endSlot: null,
           deadline: null,
           lieu: null,
         });
@@ -4043,6 +4378,8 @@ describe('EventsService (Story 37.3)', () => {
           actorName: 'Léa',
           startDate: new Date('2026-11-14T00:00:00Z'),
           startSlot: 'EVENING',
+          endDate: null,
+          endSlot: null,
           recipients: [
             { id: 'a', email: 'a@example.com' },
             { id: 'b', email: 'b@example.com' },
@@ -4109,7 +4446,15 @@ describe('EventsService (Story 37.3)', () => {
           partieId: 'p1',
           ownerId: 'hote',
           cancelledAt: null,
-          seances: { some: { OR: [{ startDate: null }, { startDate: { gte: startOfToday } }] } },
+          seances: {
+            some: {
+              OR: [
+                { startDate: null },
+                { endDate: { gte: startOfToday } },
+                { endDate: null, startDate: { gte: startOfToday } },
+              ],
+            },
+          },
         },
         select: { id: true, seances: { select: { pollId: true } } },
         orderBy: { id: 'asc' },

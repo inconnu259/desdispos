@@ -33,6 +33,8 @@ type DueVotePoll = Omit<VoteReminderPoll, 'seance'> & {
   expiresAt: Date | null;
   seance:
     | (VoteReminderPoll['seance'] & {
+        /** Story 47.2 : durée du rendez-vous, dite par la relance quand elle dépasse un créneau. */
+        durationSlots: number;
         event: { title: string; partie: { id: string; kind: PartieKind; gameSystemId: string } };
       })
     | null;
@@ -151,7 +153,7 @@ export class NotificationsService {
     // Story 41.2 : tout ralliement (groupe ou soirée isolée) reçoit l'e-mail neutre de la conjonction.
     const group = familyOf(partie.gameSystemId) === 'ralliement';
     const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${partie.id}`;
-    const sessionDate = this.formatSessionDate(seance.startDate!, seance.startSlot);
+    const sessionDate = this.formatSessionRange(seance);
     for (const recipient of recipients) {
       // Story 40.3 : un groupe reçoit l'e-mail neutre de la conjonction (hôte et inscrits seulement) ;
       // Story 41.2 : la soirée isolée aussi (propriétaire et membres) ; le JDR garde `session-reminder`.
@@ -165,6 +167,8 @@ export class NotificationsService {
         : await this.email.sendMail('session-reminder', recipient.email, {
             partieName: partie.name,
             sessionDate,
+            // « a lieu le mardi 14 juillet » pour un créneau, « a lieu du … au … » pour une plage.
+            sessionPhrase: sessionDate.startsWith('du ') ? sessionDate : `le ${sessionDate}`,
             link,
           });
       if (!result.ok) {
@@ -218,6 +222,7 @@ export class NotificationsService {
           seance: {
             select: {
               inscriptionMax: true,
+              durationSlots: true,
               inscriptions: {
                 orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
                 select: { status: true, user: { select: { id: true, email: true } } },
@@ -277,6 +282,8 @@ export class NotificationsService {
       const result = await this.email.sendMail('conjonction-relance', recipient.email, {
         eventTitle: seance.event.title,
         deadline,
+        // Story 47.2 : un rendez-vous de plusieurs créneaux le dit (chaque date proposée est un départ).
+        durationLabel: seance.durationSlots > 1 ? `${seance.durationSlots} créneaux` : null,
         link,
       });
       if (!result.ok) {
@@ -292,6 +299,23 @@ export class NotificationsService {
       where: { id: poll.id, status: 'OPEN', relanceSentAt: null, expiresAt: poll.expiresAt },
       data: { relanceSentAt: new Date() },
     });
+  }
+
+  /** Story 47.2 : la date du rappel — « du … au … » quand la plage couvre plusieurs créneaux, le texte
+   *  d'un créneau seul inchangé sinon. Le rappel part toujours la veille du DÉPART. */
+  private formatSessionRange(seance: {
+    startDate: Date | null;
+    startSlot: DaySlot | null;
+    endDate?: Date | null;
+    endSlot?: DaySlot | null;
+  }): string {
+    const start = seance.startDate!;
+    const single = this.formatSessionDate(start, seance.startSlot);
+    const { endDate, endSlot } = seance;
+    if (!endDate) return single;
+    const sameDay = endDate.toISOString().substring(0, 10) === start.toISOString().substring(0, 10);
+    if (sameDay && (endSlot ?? seance.startSlot) === seance.startSlot) return single;
+    return `du ${single} au ${this.formatSessionDate(endDate, endSlot ?? null)}`;
   }
 
   private formatSessionDate(date: Date, slot: DaySlot | null): string {

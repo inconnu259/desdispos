@@ -23,6 +23,8 @@ function pollCard(deadline: string): EventCardDto {
     hostId: 'u1',
     hostDisplayName: 'Léa',
     seance: {
+      endDate: null,
+      endSlot: null,
       durationSlots: 1,
       id: 's1',
       date: null,

@@ -730,7 +730,22 @@ export class PartieDetail implements OnInit {
         .format(d)
         .toLocaleLowerCase('fr-FR');
       const slot = p.nextSessionSlot ? ` — ${SLOT_LABELS[p.nextSessionSlot]}` : '';
-      return `${date}${slot}`;
+      const start = `${date}${slot}`;
+      // Story 47.2 : une plage de plusieurs créneaux se lit « début → fin ».
+      const end = p.nextSessionEndDate;
+      const sameDay = !end || end.substring(0, 10) === p.nextSessionDate.substring(0, 10);
+      const sameSlot = (p.nextSessionEndSlot ?? p.nextSessionSlot) === p.nextSessionSlot;
+      if (!end || (sameDay && sameSlot)) return start;
+      const endLabel = new Intl.DateTimeFormat('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'UTC',
+      })
+        .format(new Date(end))
+        .toLocaleLowerCase('fr-FR');
+      const endSlot = p.nextSessionEndSlot ? ` — ${SLOT_LABELS[p.nextSessionEndSlot]}` : '';
+      return `${start} → ${endLabel}${endSlot}`;
     } catch {
       return null;
     }
@@ -763,7 +778,9 @@ export class PartieDetail implements OnInit {
     const polls = this.activePolls();
     const pending = me ? polls.find((poll) => hasUnansweredOptions(poll, me)) : undefined;
     const dateKey = p?.nextSessionDate ? p.nextSessionDate.substring(0, 10) : null;
-    const scheduled = dateKey && dateKey >= this.todayKey ? p!.nextSessionDate : null;
+    // Story 47.2 : la prochaine séance peut avoir commencé — c'est la FIN de la plage qui la rend passée.
+    const lastKey = (p?.nextSessionEndDate ?? p?.nextSessionDate)?.substring(0, 10) ?? null;
+    const scheduled = dateKey && lastKey && lastKey >= this.todayKey ? p!.nextSessionDate : null;
     return seanceState(
       {
         // 🚨 Un vote n'est retenu QUE tant que la prochaine séance n'a pas de date : `activePolls()`
@@ -772,6 +789,7 @@ export class PartieDetail implements OnInit {
         poll: scheduled ? undefined : (pending ?? polls[0]),
         dateValidee: scheduled,
         slotValidee: p?.nextSessionSlot ?? null,
+        endDate: scheduled ? (p?.nextSessionEndDate ?? null) : null,
       },
       me,
       this.todayKey,

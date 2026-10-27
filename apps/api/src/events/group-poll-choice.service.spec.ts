@@ -100,6 +100,24 @@ describe('GroupPollChoiceService (Story 40.6)', () => {
       );
     });
 
+    it('Story 47.2 : une plage de plusieurs créneaux est écrite « du … au … »', async () => {
+      events.dateFixedNotice.mockResolvedValue({
+        ...notice([{ id: 'a', email: 'a@example.com' }]),
+        endDate: new Date('2026-11-15T00:00:00.000Z'),
+        endSlot: 'AFTERNOON' as const,
+      });
+
+      await service.notifyDateFixed(POLL);
+
+      expect(email.sendMail).toHaveBeenCalledWith(
+        'conjonction-date-fixee',
+        'a@example.com',
+        expect.objectContaining({
+          sessionDate: 'du samedi 14 novembre (soir) au dimanche 15 novembre (après-midi)',
+        }),
+      );
+    });
+
     it('aucun inscrit (ou conjonction introuvable) : aucun e-mail', async () => {
       events.dateFixedNotice.mockResolvedValue(notice([]));
       await service.notifyDateFixed(POLL);

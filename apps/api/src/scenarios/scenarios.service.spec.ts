@@ -1427,6 +1427,37 @@ describe('ScenariosService', () => {
         });
       });
 
+      it('Story 47.2 : la séance porte la fin de sa plage, lue de la Seance ; sans fin, le début', async () => {
+        permissions.assert.mockResolvedValue(
+          testGrant({ id: 'p1', kind: 'CAMPAGNE_LINEAIRE' }, 'player'),
+        );
+        prisma.scenario.findMany.mockResolvedValue(withEvent([row('A_VENIR')]));
+        prisma.seance.findMany.mockResolvedValue([
+          {
+            ...seanceRow,
+            startSlot: 'EVENING',
+            endDate: new Date('2099-01-03T00:00:00.000Z'),
+            endSlot: 'AFTERNOON',
+          },
+          { ...seanceRow, id: 'se2', startSlot: 'MORNING', endDate: null, endSlot: null },
+          { ...seanceRow, id: 'se3', startDate: null, startSlot: null, endDate: null, endSlot: null },
+        ]);
+
+        const [dto] = await service.findAllForPartie('p1', 'u1');
+
+        expect(dto.seances[0]).toMatchObject({
+          dateValidee: '2099-01-02T00:00:00.000Z',
+          slotValidee: 'EVENING',
+          endDate: '2099-01-03T00:00:00.000Z',
+          endSlot: 'AFTERNOON',
+        });
+        expect(dto.seances[1]).toMatchObject({
+          endDate: '2099-01-02T00:00:00.000Z',
+          endSlot: 'MORNING',
+        });
+        expect(dto.seances[2]).toMatchObject({ endDate: null, endSlot: null });
+      });
+
       it('ONE_SHOT BROUILLON (exemption) : listé, contenu masqué, séances conservées', async () => {
         permissions.assert.mockResolvedValue(testGrant({ id: 'p1', kind: 'ONE_SHOT' }, 'player'));
         prisma.scenario.findMany.mockResolvedValue(withEvent([row('BROUILLON')]));
@@ -2354,7 +2385,7 @@ describe('ScenariosService', () => {
 
       expect(prisma.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: future, nextSessionSlot: 'EVENING' },
+        data: { nextSessionDate: future, nextSessionSlot: 'EVENING', nextSessionEndDate: future, nextSessionEndSlot: 'EVENING' },
       });
       // Statut et recalcul dans UNE transaction, la partie verrouillée AVANT la lecture des
       // séances (FOR UPDATE), puis l'écriture de la prochaine séance.
@@ -3300,6 +3331,8 @@ describe('ScenariosService', () => {
           // qu'une séance datée sans vote ni inscription expose enfin une date exploitable.
           dateValidee: null,
           slotValidee: null,
+          endDate: null,
+          endSlot: null,
           compteRendu: null,
           // Story 36.5 : les trois champs d'informations pratiques figurent désormais dans
           // SeanceDto. Une séance qui n'en porte aucun les expose à null — jamais absents,
@@ -4180,6 +4213,8 @@ describe('ScenariosService', () => {
         data: objectLike({
           nextSessionDate: null,
           nextSessionSlot: null,
+          nextSessionEndDate: null,
+          nextSessionEndSlot: null,
         }),
       });
     });

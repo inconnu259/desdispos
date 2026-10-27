@@ -234,6 +234,9 @@ function toPartieDto(
     createdAt: partie.createdAt.toISOString(),
     nextSessionDate: partie.nextSessionDate?.toISOString() ?? null,
     nextSessionSlot: partie.nextSessionSlot,
+    // Story 47.2 : fin de la plage de la prochaine séance (égale au début pour un créneau).
+    nextSessionEndDate: partie.nextSessionEndDate?.toISOString() ?? null,
+    nextSessionEndSlot: partie.nextSessionEndSlot ?? null,
     role,
     status,
     isFavorite,

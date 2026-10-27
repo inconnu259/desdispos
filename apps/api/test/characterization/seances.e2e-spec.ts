@@ -156,6 +156,7 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
         'compteRendu',
         'createdAt',
         'dateValidee',
+        'durationSlots',
         'heureRdv',
         'id',
         'inscription',

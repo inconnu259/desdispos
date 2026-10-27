@@ -124,6 +124,9 @@ function makePrisma() {
       create: prismaMock.seance.create,
       // Recalcul de la prochaine séance à l'ouverture d'un scénario (dans la transaction).
       findMany: prismaMock.seance.findMany,
+      // Story 47.1 : correction de durée d'une séance (lecture puis écriture sous verrou).
+      findUnique: prismaMock.seance.findUnique,
+      update: prismaMock.seance.update,
     },
     partie: prismaMock.partie,
   });
@@ -3285,7 +3288,7 @@ describe('ScenariosService', () => {
         eventId: VALID_SCENARIO_ID,
       });
       expect(prisma.seance.create).toHaveBeenCalledWith({
-        data: { eventId: VALID_SCENARIO_ID },
+        data: { eventId: VALID_SCENARIO_ID, durationSlots: 1 },
       });
       expect(result.seances).toEqual([
         {
@@ -5453,6 +5456,43 @@ describe('ScenariosService', () => {
         });
       },
     );
+
+    it('Story 47.1 : une durée corrigée notifie les calendriers personnels', async () => {
+      arrange();
+      prisma.seance.findUnique.mockResolvedValue(
+        asSeance({
+          id: SEANCE_ID,
+          scenarioId: VALID_SCENARIO_ID,
+          durationSlots: 1,
+          startDate: null,
+          startSlot: null,
+          pollId: null,
+        }),
+      );
+
+      await service.setInfosPratiques(SEANCE_ID, 'mj1', { ...PAYLOAD, durationSlots: 3 });
+
+      expect(parties.notifyPartieSignalsChanged).toHaveBeenCalledWith('p1', 'mj1');
+    });
+
+    it('Story 47.1 : sans durée, ou à durée identique, aucune notification', async () => {
+      arrange();
+      await service.setInfosPratiques(SEANCE_ID, 'mj1', PAYLOAD);
+
+      prisma.seance.findUnique.mockResolvedValue(
+        asSeance({
+          id: SEANCE_ID,
+          scenarioId: VALID_SCENARIO_ID,
+          durationSlots: 3,
+          startDate: null,
+          startSlot: null,
+          pollId: null,
+        }),
+      );
+      await service.setInfosPratiques(SEANCE_ID, 'mj1', { ...PAYLOAD, durationSlots: 3 });
+
+      expect(parties.notifyPartieSignalsChanged).not.toHaveBeenCalled();
+    });
 
     it('AC1 : les trois champs sont écrits en UNE seule mise à jour', async () => {
       arrange();

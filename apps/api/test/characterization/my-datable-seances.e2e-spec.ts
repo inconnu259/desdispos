@@ -70,6 +70,7 @@ describe('Mes rendez-vous à dater — GET /me/datable-seances (Story 45.1)', ()
       title: 'Courant',
       seanceRank: 1,
       seanceCount: 1,
+      durationSlots: 1,
       can: { propose: true, edit: true, choose: true, extend: false },
     });
   });

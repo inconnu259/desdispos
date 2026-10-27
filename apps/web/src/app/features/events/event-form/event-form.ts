@@ -15,6 +15,7 @@ import { fillTone } from '../../../core/theme/tone-format';
 import { SLOT_LABELS } from '../../calendar/agenda-badge.utils';
 import { toDateKey } from '../../calendar/day-detail.utils';
 import type { ConjonctionDraft } from '../conjonction-draft.service';
+import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import { pollSlotLabel, pollSummaryLabel } from '../event-card.util';
 
 /** Nombre de places proposé par défaut quand on passe à « Places limitées » (hôte compris). */
@@ -65,7 +66,7 @@ let nextUid = 0;
  */
 @Component({
   selector: 'app-event-form',
-  imports: [FormsModule, MatButtonToggleModule, MatFormFieldModule, MatInputModule],
+  imports: [DurationStepper, FormsModule, MatButtonToggleModule, MatFormFieldModule, MatInputModule],
   templateUrl: './event-form.html',
   styleUrl: './event-form.scss',
 })
@@ -121,6 +122,11 @@ export class EventForm implements OnInit {
   protected readonly notePratique = signal('');
   protected readonly participation = signal<'all' | 'limited'>('all');
   protected readonly places = signal(DEFAULT_PLACES);
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés (1 par défaut). */
+  protected readonly durationSlots = signal(1);
+  /** Durée de la conjonction à l'ouverture (modification) : tant que le compteur n'y touche pas, elle ne
+   *  part pas, pour qu'une fiche périmée ne réécrase jamais une durée corrigée ailleurs. */
+  private initialDuration: number | null = null;
   /** Story 40.4 : membres cochés (places réservées d'emblée). */
   protected readonly reserved = signal<string[]>([]);
 
@@ -144,6 +150,18 @@ export class EventForm implements OnInit {
     const awaitingDate = card.seance !== null && card.seance.date === null && card.poll === null;
     return !awaitingDate;
   });
+  /** Story 47.1 : un rendez-vous au vote ouvert et sans date garde sa durée (elle se règle dans le composer
+   *  de dates) : le compteur la montre sans la laisser changer. */
+  protected readonly durationLocked = computed(() => {
+    const card = this.prefill();
+    return card !== null && card.poll !== null && card.seance?.date == null;
+  });
+  /** Départ de la plage, quand le mode « date fixée » a un jour valide : le compteur écrit alors la plage. */
+  protected readonly durationStart = computed(() =>
+    this.mode() === 'fixed' && DAY_KEY.test(this.day())
+      ? { date: this.day(), slot: this.slot() }
+      : null,
+  );
   /** Résumé « 3 créneaux · ven. 17 → sam. 25 oct. », une fois au moins un créneau placé. */
   protected readonly pollSummary = computed(() =>
     this.pollOptions().length > 0 ? pollSummaryLabel(this.pollOptions(), this.theme.tone()) : null,
@@ -184,6 +202,10 @@ export class EventForm implements OnInit {
     heureRdv: this.heureRdv().trim() || null,
     notePratique: this.notePratique().trim() || null,
     capacity: !this.soiree() && this.participation() === 'limited' ? this.places() : null,
+    // Création : toujours envoyée ; modification : seulement si le compteur a bougé (absente = inchangée).
+    ...(this.initialDuration === null || this.durationSlots() !== this.initialDuration
+      ? { durationSlots: this.durationSlots() }
+      : {}),
     // Story 40.4 : places réservées d'emblée — créations à places limitées seulement.
     ...(this.canReserve() && this.reserved().length > 0
       ? { reservedUserIds: [...this.reserved()] }
@@ -211,6 +233,8 @@ export class EventForm implements OnInit {
     this.lieu.set(seance?.lieu ?? '');
     this.heureRdv.set(seance?.heureRdv ?? '');
     this.notePratique.set(seance?.notePratique ?? '');
+    this.durationSlots.set(seance?.durationSlots ?? 1);
+    this.initialDuration = seance?.durationSlots ?? null;
     if (seance?.capacity != null) {
       this.participation.set('limited');
       this.places.set(Math.max(MIN_PLACES, seance.capacity));

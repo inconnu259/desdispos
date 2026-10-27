@@ -664,6 +664,7 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-avec-seances',
             // Story 32.3 — date effective à la racine du DTO ; ici elle double `poll.chosenDate`,
@@ -702,6 +703,7 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-non-datee',
             dateValidee: null,
@@ -731,6 +733,7 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-mobile',
             dateValidee: null,
@@ -770,6 +773,7 @@ describe('ScenarioTimeline', () => {
         lieu: null,
         notePratique: null,
         createdAt: '2020-01-01T00:00:00.000Z',
+        durationSlots: 1,
         can: { propose: false, edit: false, choose: false, extend: false },
         ...extra,
       };

@@ -144,6 +144,15 @@ describe('ScenariosService', () => {
     await p;
   });
 
+  it('addSeance avec une durée → POST /scenarios/:id/seances avec { durationSlots }', async () => {
+    const p = service.addSeance('s1', 6);
+    const req = http.expectOne(`${API}/scenarios/s1/seances`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ durationSlots: 6 });
+    req.flush({ ...scenario, seances: [] });
+    await p;
+  });
+
   it('addSeance → POST /scenarios/:id/seances sans body', async () => {
     const p = service.addSeance('s1');
     const req = http.expectOne(`${API}/scenarios/s1/seances`);

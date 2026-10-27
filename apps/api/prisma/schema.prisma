@@ -634,12 +634,16 @@ model Seance {
   inscriptionMax Int?
   /// Date de la séance (Story 37.4, AD-4) : plage continue, SEULE source de la date. Écrite au
   /// choix d'une option de vote (`EventsService.chooseDate`), effacée à sa remise à zéro.
-  /// Seules des plages `start = end` sont écrites à ce palier. `startSlot` vide = « sans
-  /// créneau » à l'affichage, `FULL_DAY` pour les disponibilités.
+  /// Depuis la Story 47.1 la fin vaut `spanEnd(début, durationSlots)` (créneaux enchaînés) ; seul
+  /// `events/` l'écrit. `startSlot` vide = « sans créneau » à l'affichage, `FULL_DAY` pour les
+  /// disponibilités.
   startDate      DateTime?
   startSlot      DaySlot?
   endDate        DateTime?
   endSlot        DaySlot?
+  /// Durée du rendez-vous en créneaux enchaînés (Story 47.1, AD-10) : 1 par défaut, 45 au plus.
+  /// Vaut pour toutes les options du sondage de la séance ; écrite par `events/` seul.
+  durationSlots  Int          @default(1)
   /// Rappel de la veille (Story 37.9, AD-12) : null = pas encore envoyé pour la date courante de
   /// cette séance. Remis à null à chaque écriture ou effacement de la plage (`EventsService`).
   reminderSentAt DateTime?

@@ -134,3 +134,25 @@ describe('CreateEventDto — sondage de dates (Story 40.5)', () => {
     expect(properties).toEqual(['date', 'slot']);
   });
 });
+
+describe('CreateEventDto — durée (Story 47.1)', () => {
+  it('durée absente → valide (1 créneau à la création, inchangée à la modification)', async () => {
+    expect(await check(valid)).toHaveLength(0);
+  });
+
+  it.each([1, 3, 45])('%i créneaux → valide', async (durationSlots) => {
+    expect(await check({ ...valid, durationSlots })).toHaveLength(0);
+  });
+
+  it('plus de 45 créneaux → refusé avec le message des 15 jours', async () => {
+    const { properties, messages } = await errorsOf({ ...valid, durationSlots: 46 });
+    expect(properties).toEqual(['durationSlots']);
+    expect(messages).toContain('15 jours au plus : au-delà, créez deux rendez-vous.');
+  });
+
+  it.each([0, -2, 1.5, '3'])('durée « %s » → refusée, message en français', async (durationSlots) => {
+    const { properties, messages } = await errorsOf({ ...valid, durationSlots });
+    expect(properties).toEqual(['durationSlots']);
+    expect(messages).toContain('La durée doit être un entier d’au moins 1 créneau');
+  });
+});

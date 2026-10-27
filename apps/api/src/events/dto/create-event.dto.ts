@@ -9,6 +9,7 @@ import {
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
   Min,
   ValidateIf,
@@ -20,6 +21,9 @@ import type {
   EventSlot,
   UpdateEventDto as UpdateEventPayload,
 } from '@master-jdr/shared';
+// Import RUNTIME : le plafond est une valeur (un `import type` l'effacerait).
+import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { DURATION_CAP_MESSAGE } from '../seance-span';
 
 /** `HH:MM` en 24 h, heures et minutes paddées — même règle que les informations pratiques d'une
  *  séance (Story 36.5) : la valeur n'est jamais reparsée en aval, c'est ici qu'on garantit sa forme. */
@@ -118,6 +122,14 @@ export class CreateEventDto implements CreateEventPayload {
   @IsInt({ message: 'Le nombre de places doit être un entier' })
   @Min(2, { message: 'Des places limitées en comptent au moins 2, hôte compris' })
   capacity?: number | null;
+
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. Absente = 1 à la création, inchangée à la
+   *  modification. */
+  @IsOptional()
+  @IsInt({ message: 'La durée doit être un entier d’au moins 1 créneau' })
+  @Min(1, { message: 'La durée doit être un entier d’au moins 1 créneau' })
+  @Max(MAX_SLOT_WINDOW_SLOTS, { message: DURATION_CAP_MESSAGE })
+  durationSlots?: number;
 
   /** Story 40.4 : membres à qui une place est réservée d'emblée. Les règles métier (places limitées,
    *  jamais l'hôte, au plus `capacity − 1`, tous membres) sont vérifiées par le service. */

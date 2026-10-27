@@ -8,7 +8,7 @@ import type { DaySlot } from '@master-jdr/shared';
 export interface SeanceDatePort {
   /**
    * Dans la transaction de l'appelant : écrit la plage de la séance rattachée au vote `pollId`
-   * (`start = end`), puis recalcule la prochaine séance de la partie. Le vote clos, la date et la
+   * (`end = spanEnd(start, Seance.durationSlots)`, soit `start = end` pour un créneau), puis recalcule la prochaine séance de la partie. Le vote clos, la date et la
    * valeur dérivée sont ainsi validés ensemble ou pas du tout. N'émet jamais : l'appelant émet
    * après son commit. Une date passée n'est jamais retenue comme prochaine séance.
    */

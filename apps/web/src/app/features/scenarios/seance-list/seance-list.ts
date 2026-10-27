@@ -8,6 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
 import { Router } from '@angular/router';
 import type {
@@ -27,6 +28,7 @@ import { composeSeanceInfo, toDateKey } from '../../calendar/day-detail.utils';
 import { PollStatusPanel } from '../../poll/poll-status/poll-status';
 import { PollResponseComponent } from '../../poll/poll-response/poll-response';
 import { FillIndicator } from '../fill-indicator/fill-indicator';
+import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 import { seanceState, type StatusBadgeState } from '../../../core/status/status-derivation';
 
@@ -51,7 +53,14 @@ const SLOT_LABELS: Record<DaySlot, string> = {
  */
 @Component({
   selector: 'app-seance-list',
-  imports: [MatButtonModule, PollStatusPanel, PollResponseComponent, FillIndicator, StatusBadge],
+  imports: [
+    DurationStepper,
+    MatButtonModule,
+    PollStatusPanel,
+    PollResponseComponent,
+    FillIndicator,
+    StatusBadge,
+  ],
   templateUrl: './seance-list.html',
   styleUrl: './seance-list.scss',
 })
@@ -107,13 +116,42 @@ export class SeanceList {
     Record<string, { heureRdv: string; lieu: string; notePratique: string }>
   >({});
 
+  /** Story 47.1 : durée saisie par séance (brouillon local, comme les informations pratiques). */
+  protected readonly durationDrafts = signal<Record<string, number>>({});
+
+  protected durationDraft(seanceId: string): number {
+    return this.durationDrafts()[seanceId] ?? 1;
+  }
+
+  protected setDurationDraft(seanceId: string, value: number): void {
+    this.durationDrafts.update((d) => ({ ...d, [seanceId]: value }));
+  }
+
+  /** Départ de la plage d'une séance datée, pour que le compteur l'écrive en clair. */
+  protected durationStart(seance: SeanceDto): { date: string; slot: DaySlot } | null {
+    return seance.dateValidee && seance.slotValidee
+      ? { date: seance.dateValidee.substring(0, 10), slot: seance.slotValidee }
+      : null;
+  }
+
+  /** Un vote ouvert sans date : sa durée se règle dans le composer de dates (Story 47.4), pas ici. */
+  protected durationLocked(seance: SeanceDto): boolean {
+    return seance.poll !== undefined && !seance.dateValidee;
+  }
+
   private syncInfosDrafts(s: ScenarioDto): void {
     const previous = this.previousScenarioSeances;
     this.previousScenarioSeances = s.seances;
     const next = { ...this.infosDrafts() };
+    const nextDurations = { ...this.durationDrafts() };
+    let durationsTouched = false;
     let touched = false;
     for (const seance of s.seances) {
       const prevSeance = previous?.find((p) => p.id === seance.id);
+      if (!prevSeance || prevSeance.durationSlots !== seance.durationSlots) {
+        nextDurations[seance.id] = seance.durationSlots;
+        durationsTouched = true;
+      }
       const serverChanged =
         !prevSeance ||
         (prevSeance.heureRdv ?? '') !== (seance.heureRdv ?? '') ||
@@ -129,6 +167,7 @@ export class SeanceList {
       }
     }
     if (touched) this.infosDrafts.set(next);
+    if (durationsTouched) this.durationDrafts.set(nextDurations);
   }
 
   /** Valeur à afficher dans un champ d'informations pratiques : le brouillon local, jamais
@@ -380,14 +419,27 @@ export class SeanceList {
     this.pollActionPending.set(true);
     this.error.set(null);
     try {
+      const current = this.scenario().seances.find((x) => x.id === seanceId);
       const updated = await this.scenarios.setInfosPratiques(seanceId, {
         heureRdv: heureRdv.trim() || null,
         lieu: lieu.trim() || null,
         notePratique: notePratique.trim() || null,
+        // Story 47.1 : la durée ne part que si le compteur a bougé (absente = inchangée côté serveur) et
+        // jamais sous un vote ouvert sans date.
+        ...(current &&
+        !this.durationLocked(current) &&
+        this.durationDraft(seanceId) !== current.durationSlots
+          ? { durationSlots: this.durationDraft(seanceId) }
+          : {}),
       });
       this.seanceLinked.emit(updated);
-    } catch {
-      this.error.set(this.theme.tone()['scenarios.seances_infos_error']);
+    } catch (err) {
+      // Story 47.1 : un refus du serveur sur la durée (déjà écrit en français) est montré tel quel.
+      this.error.set(
+        err instanceof HttpErrorResponse && typeof err.error?.message === 'string'
+          ? err.error.message
+          : this.theme.tone()['scenarios.seances_infos_error'],
+      );
     } finally {
       this.pollActionPending.set(false);
     }

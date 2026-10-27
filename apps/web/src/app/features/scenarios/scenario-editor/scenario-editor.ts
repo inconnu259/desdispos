@@ -32,6 +32,7 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { FieldEditPencil } from '../../characters/character-sheet/field-edit-pencil/field-edit-pencil';
 import { CharacterSummaryCard } from '../../characters/character-summary-card/character-summary-card';
+import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import { ScenarioStatusBadge } from '../scenario-status-badge/scenario-status-badge';
 import { SeanceList } from '../seance-list/seance-list';
 import { AnnonceCard } from '../../announcements/annonce-card/annonce-card';
@@ -56,6 +57,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 @Component({
   selector: 'app-scenario-editor',
   imports: [
+    DurationStepper,
     MatButtonModule,
     MatIconModule,
     FieldEditPencil,
@@ -129,6 +131,8 @@ export class ScenarioEditor implements OnInit {
   protected readonly markCourantPending = signal(false);
   protected readonly closePending = signal(false);
   protected readonly addSeancePending = signal(false);
+  /** Story 47.1 : durée de la séance à ajouter, en créneaux enchaînés. */
+  protected readonly newSeanceDuration = signal(1);
   protected readonly resumeFinPending = signal(false);
   protected readonly members = signal<PartieMemberDto[]>([]);
   // Story 9.2 : vue MJ — aucun filtrage de statut (le MJ ne peut pas se spoiler son propre contenu,
@@ -441,7 +445,8 @@ export class ScenarioEditor implements OnInit {
     this.addSeancePending.set(true);
     this.addSeanceError.set(null);
     try {
-      this.scenario.set(await this.scenarios.addSeance(s.id));
+      this.scenario.set(await this.scenarios.addSeance(s.id, this.newSeanceDuration()));
+      this.newSeanceDuration.set(1);
     } catch (err) {
       this.addSeanceError.set(
         extractErrorMessage(err, this.theme.tone()['scenarios.editor_add_seance_error']),

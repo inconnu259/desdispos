@@ -10,6 +10,7 @@ import { DatableSeancesService } from './datable-seances.service';
 
 function entry(id: string): DatableSeanceEntry {
   return {
+    durationSlots: 1,
     seanceId: id,
     partieId: 'p1',
     partieName: 'Partie',

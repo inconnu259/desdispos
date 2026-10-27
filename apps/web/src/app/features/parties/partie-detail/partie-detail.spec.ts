@@ -4746,6 +4746,7 @@ describe('PartieDetail — les conjonctions d’un groupe (Story 40.1)', () => {
     hostId: OTHER_ID,
     hostDisplayName: 'Léa',
     seance: {
+      durationSlots: 1,
       id: `s-${id}`,
       date: dayKey(days),
       slot: 'EVENING',
@@ -4997,6 +4998,7 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
     hostId: HOST_ID,
     hostDisplayName: 'Hélène Hôte',
     seance: {
+      durationSlots: 1,
       id: `s-${id}`,
       date: dayKey(days),
       slot: 'EVENING',
@@ -6221,6 +6223,7 @@ describe('PartieDetail — du groupe vers son calendrier (Story 40.5b)', () => {
     hostId: HOST_ID,
     hostDisplayName: 'Hélène Hôte',
     seance: {
+      durationSlots: 1,
       id: 's-a',
       date: null,
       slot: null,
@@ -6438,6 +6441,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
     hostId: MJ_ID,
     hostDisplayName: 'Créateur',
     seance: {
+      durationSlots: 1,
       id: 's-1',
       date: null,
       slot: null,
@@ -6582,6 +6586,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
   it('une date fixée, un lieu et une heure se lisent dans la fiche', async () => {
     const dated = event({
       seance: {
+        durationSlots: 1,
         id: 's-1',
         date: '2099-12-20',
         slot: 'EVENING',
@@ -6905,6 +6910,7 @@ describe('PartieDetail — annuler une conjonction (Story 42.1)', () => {
     hostId: HOST_ID,
     hostDisplayName: 'Hélène Hôte',
     seance: {
+      durationSlots: 1,
       id: `s-${id}`,
       date: dayKey(days),
       slot: 'EVENING',

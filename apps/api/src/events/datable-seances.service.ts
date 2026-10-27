@@ -50,6 +50,7 @@ export class DatableSeancesService {
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       select: {
         id: true,
+        durationSlots: true,
         event: {
           select: {
             title: true,
@@ -96,6 +97,7 @@ export class DatableSeancesService {
         title: row.event.title,
         seanceRank: rank,
         seanceCount: row.event.seances.length,
+        durationSlots: row.durationSlots,
         can: cans[i],
       });
     });

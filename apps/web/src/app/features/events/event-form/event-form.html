@@ -172,6 +172,15 @@
     </div>
   }
 
+  <!-- Story 47.1 : la durée du rendez-vous (créneaux enchaînés), à la création comme à la modification. -->
+  <div class="ec__field ec__duration">
+    <app-duration-stepper
+      [(value)]="durationSlots"
+      [start]="durationStart()"
+      [readonly]="durationLocked()"
+    />
+  </div>
+
   <div class="ec__row">
     <mat-form-field appearance="outline">
       <mat-label>{{ theme.tone()['partie.ralliement_event_place_label'] }}</mat-label>

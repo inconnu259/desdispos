@@ -422,3 +422,10 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/46-3-ajouter-une-fenetre-au-vote.md`
   summary: Rendre date-indépendant le test unitaire « AD-9 end-to-end » de `parties.service.spec.ts` (séance fixée au 2026-09-20).
   evidence: Il échoue depuis que cette date est passée (l'indisponibilité dérivée expire un jour après la séance, `computeSlotStatus` écarte les déclarations expirées) ; rien à voir avec 46.3, constaté en lançant toute la suite API.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-47-1-donner-une-duree-a-un-rendez-vous.md`
+  summary: Choisir une option `FULL_DAY` d'un vote dont la séance dure plus d'un créneau échoue en 400 dans `chooseDate` ; refuser ou masquer ces options à l'écriture du vote (47.4, composer et `setOptionsInTx`).
+  evidence: Les options de vote JDR acceptent `FULL_DAY` (create-poll.dto) et une séance peut passer à plusieurs créneaux avant que son vote existe ; `seanceSpanEnd` refuse alors la fin dans la transaction de clôture (relecteurs Blind Hunter, Edge Case Hunter, Verification Gap, story 47.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-47-1-donner-une-duree-a-un-rendez-vous.md`
+  summary: Les gardes « passé » d'`updateHosted` et `cancelHosted` lisent `startDate` seule : un rendez-vous long déjà commencé est refusé en édition et annulation ; à passer à « fin avant aujourd'hui » (47.2).
+  evidence: `currentDay < todayKeyUtc()` dans `updateHosted` et son pendant d'annulation ; le PRD demande « passée = fin avant aujourd'hui partout » (relecteur Blind Hunter, story 47.1).

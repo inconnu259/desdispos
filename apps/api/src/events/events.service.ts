@@ -38,6 +38,11 @@ import type { SeanceDatePort } from '../poll/ports/seance-date.port';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseDayKey, todayKeyUtc } from './day-key';
 import { eligibleVoters } from './eligible-voters';
+import {
+  DURATION_POLL_PENDING_MESSAGE,
+  assertDuration,
+  seanceSpanEnd,
+} from './seance-span';
 import { isFreeOn, type DeclaredAvailability } from './slot-availability';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 
@@ -77,6 +82,9 @@ export interface EventSeanceInput {
   heureRdv: string | null;
   notePratique: string | null;
   capacity: number | null;
+  /** Story 47.1 : durée du rendez-vous en créneaux enchaînés. Absente = 1 à la création, inchangée à la
+   *  modification (jamais un défaut appliqué à une séance existante). */
+  durationSlots?: number;
   /** Story 40.4 : membres à qui l'hôte réserve une place À LA CRÉATION (lignes `RESERVED`, même
    *  transaction). Règles vérifiées sous le verrou de la partie par `createInTx` : places limitées,
    *  distincts, jamais l'hôte, au plus `capacity − 1`, tous membres du groupe. */
@@ -104,6 +112,8 @@ export interface SeanceInfosPratiques {
   heureRdv: string | null;
   lieu: string | null;
   notePratique: string | null;
+  /** Story 47.1 : nouvelle durée du rendez-vous, en créneaux ; absente = inchangée. */
+  durationSlots?: number;
 }
 
 /** Valeur persistée de `Partie.nextSessionDate/nextSessionSlot`, telle que (re)calculée. */
@@ -383,15 +393,17 @@ export class EventsService
       throw new BadRequestException(POLL_MODE_MESSAGE);
     }
     const poll = seance.createPoll ? await seance.createPoll(tx) : null;
-    // Story 40.1 : séance datée d'emblée (conjonction à date fixée) — une plage d'un seul créneau.
+    // Story 40.1 : séance datée d'emblée (conjonction à date fixée). Story 47.1 : la plage couvre
+    // `durationSlots` créneaux enchaînés (1 par défaut, à la création).
+    const durationSlots = seance.durationSlots ?? 1;
     const created = await tx.seance.create({
       data: {
         eventId: event.id,
         ...(poll ? { pollId: poll.id } : {}),
         startDate: seance.date,
         startSlot: seance.slot,
-        endDate: seance.date,
-        endSlot: seance.slot,
+        ...seanceSpanEnd(seance.date, seance.slot, durationSlots),
+        durationSlots,
         lieu: seance.lieu,
         heureRdv: seance.heureRdv,
         notePratique: seance.notePratique,
@@ -525,6 +537,7 @@ export class EventsService
             notePratique: true,
             inscriptionMax: true,
             pollId: true,
+            durationSlots: true,
           },
         },
       },
@@ -552,6 +565,7 @@ export class EventsService
               heureRdv: s.heureRdv ?? null,
               notePratique: s.notePratique ?? null,
               capacity: s.inscriptionMax ?? null,
+              durationSlots: s.durationSlots,
               placesTaken: roster?.placesTaken ?? (e.ownerId ? 1 : 0),
             }
           : null,
@@ -820,7 +834,13 @@ export class EventsService
           seances: {
             orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
             take: 1,
-            select: { id: true, startDate: true, startSlot: true, pollId: true },
+            select: {
+              id: true,
+              startDate: true,
+              startSlot: true,
+              pollId: true,
+              durationSlots: true,
+            },
           },
         },
       });
@@ -846,6 +866,15 @@ export class EventsService
       const currentDay = seance.startDate?.toISOString().substring(0, 10) ?? null;
       if (currentDay !== null && currentDay < todayKeyUtc()) {
         throw new BadRequestException(PAST_EVENT_MESSAGE);
+      }
+
+      // Story 47.1 : durée absente = inchangée (même si la modification remplace les autres champs).
+      // Celle d'un rendez-vous au vote ouvert et sans date se règle dans le composer (47.4), jamais ici.
+      const durationSlots = input.seance.durationSlots ?? seance.durationSlots;
+      assertDuration(durationSlots);
+      const durationChanged = durationSlots !== seance.durationSlots;
+      if (durationChanged && undatedPoll) {
+        throw new BadRequestException(DURATION_POLL_PENDING_MESSAGE);
       }
 
       // Participants actuels = l'hôte + les inscrits (un hôte éventuellement inscrit n'est compté
@@ -874,6 +903,7 @@ export class EventsService
           where: { id: seance.id },
           data: {
             pollId: poll.id,
+            durationSlots,
             lieu: input.seance.lieu,
             heureRdv: input.seance.heureRdv,
             notePratique: input.seance.notePratique,
@@ -907,14 +937,14 @@ export class EventsService
           data: {
             startDate: input.seance.date,
             startSlot: input.seance.slot,
-            endDate: input.seance.date,
-            endSlot: input.seance.slot,
+            ...seanceSpanEnd(input.seance.date, input.seance.slot, durationSlots),
+            durationSlots,
             lieu: input.seance.lieu,
             heureRdv: input.seance.heureRdv,
             notePratique: input.seance.notePratique,
             inscriptionMax: capacity,
-            // Nouvelle date → le rappel de la veille est ré-armé (Story 37.9).
-            ...(dateChanged ? { reminderSentAt: null } : {}),
+            // Nouvelle date ou nouvelle durée → le rappel de la veille est ré-armé (Story 37.9, 47.1).
+            ...(dateChanged || durationChanged ? { reminderSentAt: null } : {}),
           },
         });
       }
@@ -1124,10 +1154,12 @@ export class EventsService
 
   // ─── Séances ────────────────────────────────────────────────────────────────────────────────
 
-  /** Ajoute une séance à un événement — aucun plafond (Story 8.2, AC1). */
-  async addSeance(grant: PartieGrant, eventId: string): Promise<void> {
+  /** Ajoute une séance à un événement — aucun plafond (Story 8.2, AC1). Story 47.1 : `durationSlots`
+   *  est sa durée en créneaux (1 par défaut, à la création). */
+  async addSeance(grant: PartieGrant, eventId: string, durationSlots = 1): Promise<void> {
+    assertDuration(durationSlots);
     await this.assertEventInGrant(grant, eventId);
-    await this.prisma.seance.create({ data: { eventId } });
+    await this.prisma.seance.create({ data: { eventId, durationSlots } });
     this.realtimeEvents.emit(partieTopic(grant.partieId));
   }
 
@@ -1236,14 +1268,15 @@ export class EventsService
       select: { partieId: true },
     });
     if (!poll) throw new NotFoundException('Poll introuvable');
+    // Story 47.1 : la fin se calcule sur la durée de la séance (1 créneau tant qu'aucune n'est posée).
+    const seance = await tx.seance.findFirst({ where: { pollId }, select: { durationSlots: true } });
     await tx.seance.updateMany({
       where: { pollId },
       // Nouvelle date → le rappel de la veille de cette séance est ré-armé (Story 37.9).
       data: {
         startDate: date,
         startSlot: slot,
-        endDate: date,
-        endSlot: slot,
+        ...seanceSpanEnd(date, slot, seance?.durationSlots ?? 1),
         reminderSentAt: null,
       },
     });
@@ -1275,18 +1308,73 @@ export class EventsService
     grant: PartieGrant,
     seanceId: string,
     dto: SeanceInfosPratiques,
-  ): Promise<void> {
+  ): Promise<{ durationChanged: boolean }> {
     await this.assertSeanceInGrant(grant, seanceId);
     // Un seul update pour les trois champs : ils sont saisis ensemble.
-    await this.prisma.seance.update({
+    const infos = {
+      heureRdv: dto.heureRdv,
+      lieu: dto.lieu,
+      notePratique: dto.notePratique,
+    };
+    const { durationSlots } = dto;
+    let durationChanged = false;
+    if (durationSlots === undefined) {
+      await this.prisma.seance.update({ where: { id: seanceId }, data: infos });
+    } else {
+      assertDuration(durationSlots);
+      await this.prisma.$transaction(async (tx) => {
+        // Story 47.1 : corriger la durée suit l'ordre des verrous des écrivains de plage — la PARTIE,
+        // puis l'événement de la séance.
+        await tx.$queryRaw`SELECT "id" FROM "Partie" WHERE "id" = ${grant.partieId} FOR UPDATE`;
+        await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = (SELECT "eventId" FROM "Seance" WHERE "id" = ${seanceId}) FOR UPDATE`;
+        ({ changed: durationChanged } = await this.setSeanceDurationInTx(
+          tx,
+          grant.partieId,
+          seanceId,
+          durationSlots,
+        ));
+        await tx.seance.update({ where: { id: seanceId }, data: infos });
+      });
+    }
+    this.realtimeEvents.emit(partieTopic(grant.partieId));
+    return { durationChanged };
+  }
+
+  /**
+   * Story 47.1 (AD-10, AD-14) : fixe la durée d'une séance DANS la transaction de l'appelant, qui tient
+   * déjà les verrous de la partie puis de l'événement. Renvoie `changed` (faux = durée identique, rien
+   * n'est écrit). Séance datée : la fin est recalculée, le rappel de la veille ré-armé si le départ n'est
+   * pas passé et la prochaine date de la partie recalculée ; séance au vote ouvert sans date : refusée
+   * (400, le composer s'en charge). N'émet rien et n'envoie aucun e-mail.
+   */
+  async setSeanceDurationInTx(
+    tx: Prisma.TransactionClient,
+    partieId: string,
+    seanceId: string,
+    durationSlots: number,
+  ): Promise<{ changed: boolean }> {
+    assertDuration(durationSlots);
+    const seance = await tx.seance.findUnique({
+      where: { id: seanceId },
+      select: { durationSlots: true, startDate: true, startSlot: true, pollId: true },
+    });
+    if (!seance) throw new NotFoundException('Séance introuvable');
+    if (seance.durationSlots === durationSlots) return { changed: false };
+    if (seance.pollId && !seance.startDate) {
+      throw new BadRequestException(DURATION_POLL_PENDING_MESSAGE);
+    }
+    const started =
+      seance.startDate !== null && seance.startDate.toISOString().substring(0, 10) < todayKeyUtc();
+    await tx.seance.update({
       where: { id: seanceId },
       data: {
-        heureRdv: dto.heureRdv,
-        lieu: dto.lieu,
-        notePratique: dto.notePratique,
+        durationSlots,
+        ...seanceSpanEnd(seance.startDate, seance.startSlot, durationSlots),
+        ...(seance.startDate && !started ? { reminderSentAt: null } : {}),
       },
     });
-    this.realtimeEvents.emit(partieTopic(grant.partieId));
+    if (seance.startDate) await this.recalculateNextSessionInTx(tx, partieId);
+    return { changed: true };
   }
 
   // ─── Inscriptions ───────────────────────────────────────────────────────────────────────────
@@ -2221,6 +2309,7 @@ export class EventsService
           // AC5 : créneau de la plage de la séance (Story 37.4), FULL_DAY à défaut — jamais une
           // supposition locale à l'appelant.
           slot: s.startSlot ?? 'FULL_DAY',
+          durationSlots: s.durationSlots,
           // Story 36.5 — transmis tels quels. `heureRdv` reste une CHAÎNE : rien ici ne la parse
           // ni ne la compare, et elle n'entre pas dans le calcul de statut de créneau (AD-9).
           heureRdv: s.heureRdv ?? null,

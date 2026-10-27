@@ -1,0 +1,33 @@
+<div class="ds" role="group" [attr.aria-labelledby]="uid + '-label'">
+  <span class="ds__label" [id]="uid + '-label'">{{ text.label }}</span>
+  <div class="ds__pill">
+    <button
+      type="button"
+      class="ds__step ds__step--less"
+      [disabled]="readonly() || atMin()"
+      [attr.aria-label]="text.shorten"
+      (click)="shorten()"
+    >
+      −
+    </button>
+    <span class="ds__value">{{ slotsText() }}</span>
+    <button
+      type="button"
+      class="ds__step ds__step--more"
+      [disabled]="readonly() || atMax()"
+      [attr.aria-label]="text.lengthen"
+      (click)="lengthen()"
+    >
+      +
+    </button>
+  </div>
+  @if (detail()) {
+    <span class="ds__detail">{{ detail() }}</span>
+  }
+  @if (readonly()) {
+    <span class="ds__hint">{{ text.pollPending }}</span>
+  } @else if (capReached()) {
+    <span class="ds__hint">{{ text.max }}</span>
+  }
+  <span class="ds__sr" aria-live="polite">{{ announcement() }}</span>
+</div>

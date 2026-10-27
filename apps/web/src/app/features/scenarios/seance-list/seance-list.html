@@ -290,6 +290,14 @@
               />
             </label>
           </div>
+          <!-- Story 47.1 : la durée du rendez-vous. Elle part avec les informations pratiques ; sous un
+               vote ouvert sans date, elle se lit mais se règle dans le composer de dates (47.4). -->
+          <app-duration-stepper
+            [value]="durationDraft(seance.id)"
+            (valueChange)="setDurationDraft(seance.id, $event)"
+            [start]="durationStart(seance)"
+            [readonly]="durationLocked(seance)"
+          />
           <button
             mat-stroked-button
             type="button"

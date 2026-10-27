@@ -27,6 +27,7 @@ import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { ScenariosService } from './scenarios.service';
 import { CreateScenarioDto } from './dto/create-scenario.dto';
 import { UpdateScenarioDto } from './dto/update-scenario.dto';
+import { AddSeanceDto } from './dto/add-seance.dto';
 import { CreateSeancePollDto } from './dto/create-seance-poll.dto';
 import { ReservePlaceDto } from './dto/reserve-place.dto';
 import { SetSeanceCapacityDto } from './dto/set-seance-capacity.dto';
@@ -107,8 +108,12 @@ export class ScenariosController {
   }
 
   @Post('scenarios/:id/seances')
-  addSeance(@Param('id', ParseUUIDPipe) scenarioId: string, @CurrentUser() user: AuthUser) {
-    return this.scenarios.addSeance(scenarioId, user.id);
+  addSeance(
+    @Param('id', ParseUUIDPipe) scenarioId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto?: AddSeanceDto,
+  ) {
+    return this.scenarios.addSeance(scenarioId, user.id, dto?.durationSlots);
   }
 
   @Delete('scenarios/seances/:id')

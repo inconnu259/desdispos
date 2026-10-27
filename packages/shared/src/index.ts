@@ -731,6 +731,8 @@ export interface SeanceDto {
   lieu: string | null;
   notePratique: string | null;
   createdAt: string;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés (1 par défaut). */
+  durationSlots: number;
   /** Story 44.1 : droits d'organisateur de la personne qui lit, sur cette séance (aucun écran du JDR
    *  ne les lit encore). */
   can: OrganizerCan;
@@ -757,6 +759,13 @@ export interface SetInfosPratiquesDto {
   heureRdv: string | null;
   lieu: string | null;
   notePratique: string | null;
+  /** Story 47.1 : nouvelle durée du rendez-vous, en créneaux (1 à 45) ; absente = inchangée. */
+  durationSlots?: number;
+}
+
+/** Payload d'ajout d'une séance (POST /scenarios/:id/seances, Story 47.1). Durée absente = 1 créneau. */
+export interface AddSeanceDto {
+  durationSlots?: number;
 }
 
 /** Payload de définition de la capacité d'une Seance (PATCH /scenarios/seances/:id/capacite). */
@@ -844,6 +853,9 @@ export interface CreateEventDto {
   heureRdv?: string | null;
   notePratique?: string | null;
   capacity?: number | null;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés (1 à 45). Absente = 1 à la création,
+   *  inchangée à la modification (même si celle-ci remplace les autres champs). */
+  durationSlots?: number;
   /** Story 40.4 : membres à qui l'hôte réserve une place d'emblée (distincts, jamais l'hôte, places
    *  limitées seulement, au plus `capacity − 1`). Ignoré par la modification. */
   reservedUserIds?: string[];
@@ -876,6 +888,8 @@ export interface EventCardSeanceDto {
   heureRdv: string | null;
   notePratique: string | null;
   capacity: number | null;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
+  durationSlots: number;
   /** Story 40.4 : places prises = l'hôte + TOUTES les lignes d'inscription, `RESERVED` comprises —
    *  servi à tous pour que « Complet » et « libres » soient justes sans révéler qui tient une place
    *  en attente. */
@@ -999,6 +1013,59 @@ export interface AssignGroupRoleDto {
 
 /** Granularité d'un créneau de disponibilité. */
 export type DaySlot = 'MORNING' | 'AFTERNOON' | 'EVENING' | 'FULL_DAY';
+
+/** Story 47.1 (AD-10) — un créneau précis d'un jour, avec sa clé de jour `AAAA-MM-JJ` (UTC). */
+export interface DatedSlot {
+  date: string;
+  slot: DaySlot;
+}
+
+/** Les trois créneaux d'une journée, dans l'ordre où ils s'enchaînent (le soir est suivi du matin
+ *  du lendemain). */
+const SLOT_CHAIN: readonly DaySlot[] = ['MORNING', 'AFTERNOON', 'EVENING'];
+
+function addDays(dayKey: string, days: number): string {
+  const d = new Date(`${dayKey}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().substring(0, 10);
+}
+
+/**
+ * Story 47.1 (AD-10) — **la** fonction de fin d'une plage : `durationSlots` créneaux enchaînés
+ * (`MORNING → AFTERNOON → EVENING → MORNING` du lendemain) à partir du créneau de départ, départ
+ * compris. `FULL_DAY` n'existe qu'à 1 : la fin est alors le départ lui-même. Lève une `RangeError`
+ * pour une durée qui n'est pas un entier ≥ 1, ou pour `FULL_DAY` au-delà de 1 ; l'appelant la
+ * traduit en refus écrit.
+ */
+export function spanEnd(date: string, slot: DaySlot, durationSlots: number): DatedSlot {
+  if (!Number.isInteger(durationSlots) || durationSlots < 1) {
+    throw new RangeError('La durée doit être un entier d’au moins 1 créneau');
+  }
+  if (slot === 'FULL_DAY') {
+    if (durationSlots > 1) throw new RangeError('Une journée entière ne dure qu’un créneau');
+    return { date, slot };
+  }
+  const index = SLOT_CHAIN.indexOf(slot) + durationSlots - 1;
+  return {
+    date: addDays(date, Math.floor(index / SLOT_CHAIN.length)),
+    slot: SLOT_CHAIN[index % SLOT_CHAIN.length],
+  };
+}
+
+/**
+ * Story 47.1 (AD-10) — **la** fonction des créneaux couverts par une plage, du départ à la fin,
+ * un par créneau précis. `FULL_DAY` (durée 1) se déplie en les trois créneaux de son jour. Mêmes
+ * refus que `spanEnd`.
+ */
+export function spanSlots(date: string, slot: DaySlot, durationSlots: number): DatedSlot[] {
+  spanEnd(date, slot, durationSlots);
+  if (slot === 'FULL_DAY') return SLOT_CHAIN.map((s) => ({ date, slot: s }));
+  const start = SLOT_CHAIN.indexOf(slot);
+  return Array.from({ length: durationSlots }, (_, i) => ({
+    date: addDays(date, Math.floor((start + i) / SLOT_CHAIN.length)),
+    slot: SLOT_CHAIN[(start + i) % SLOT_CHAIN.length],
+  }));
+}
 
 /** Type d'une déclaration de disponibilité. */
 export type AvailKind = 'UNAVAILABLE' | 'AVAILABLE';
@@ -1285,7 +1352,7 @@ export interface AvailableSlotDto {
 }
 
 /** Story 46.4 — plafond d'une fenêtre ou d'un rendez-vous, en créneaux : 15 jours de 3 créneaux (AR10). Borne la durée
- *  d'un masquage ; la durée du rendez-vous elle-même arrive avec l'épic 47. */
+ *  d'un masquage et, depuis la Story 47.1, la durée d'un rendez-vous (`Seance.durationSlots`). */
 export const MAX_SLOT_WINDOW_SLOTS = 45;
 
 /** Story 46.4 — corps de `PUT` / `DELETE /parties/:id/available-slots/hidden` : la fenêtre telle que servie. */
@@ -1328,6 +1395,8 @@ export interface MyCalendarSeanceEntry {
   scenarioTitle: string;
   date: string;
   slot: DaySlot;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
+  durationSlots: number;
   /** Informations pratiques (Story 36.5). Elles doivent transiter par CE chemin aussi : sans
    *  cela le calendrier personnel ne les verrait jamais, le contexte de partie étant le seul à
    *  disposer du `SeanceDto` complet. Aucun appel supplémentaire — les scalaires de `Seance`
@@ -1403,6 +1472,8 @@ export interface DatableSeanceEntry {
    *  écrit « Titre — Séance 2 » seulement quand il y en a plusieurs. */
   seanceRank: number;
   seanceCount: number;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
+  durationSlots: number;
   /** Droits d'organisateur de la personne qui lit (`propose` est vrai pour toute entrée servie). */
   can: OrganizerCan;
 }

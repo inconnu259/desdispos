@@ -673,6 +673,7 @@ describe('ScenarioReadDialog', () => {
           status: 'A_VENIR',
           seances: [
             {
+              durationSlots: 1,
               id: 'seance1',
               scenarioId: 's1',
               dateValidee: null,

@@ -124,7 +124,7 @@ describe('ScenariosController', () => {
 
   it('addSeance() route scenarioId/user vers ScenariosService.addSeance', async () => {
     await controller.addSeance('s1', user);
-    expect(scenarios.addSeance).toHaveBeenCalledWith('s1', 'mj1');
+    expect(scenarios.addSeance).toHaveBeenCalledWith('s1', 'mj1', undefined);
   });
 
   it('deleteSeance() route seanceId/user vers ScenariosService.deleteSeance', async () => {

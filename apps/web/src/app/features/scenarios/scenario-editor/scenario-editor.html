@@ -28,6 +28,8 @@
           {{ theme.tone()['scenarios.editor_close'] }}
         </button>
       }
+      <!-- Story 47.1 : la durée de la séance à ajouter (1 créneau par défaut). -->
+      <app-duration-stepper [(value)]="newSeanceDuration" />
       <button mat-button type="button" [disabled]="addSeancePending()" (click)="addSeance()">
         {{ theme.tone()['scenarios.editor_add_seance'] }}
       </button>

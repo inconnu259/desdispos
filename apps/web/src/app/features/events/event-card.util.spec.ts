@@ -57,6 +57,7 @@ const card = (id: string, date: string | null, over: Partial<EventCardDto> = {})
   hostId: 'hote',
   hostDisplayName: 'Léa',
   seance: {
+    durationSlots: 1,
     id: `s-${id}`,
     date,
     slot: date ? 'EVENING' : null,

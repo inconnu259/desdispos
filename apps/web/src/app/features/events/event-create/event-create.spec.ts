@@ -174,6 +174,7 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
       heureRdv: '20:30',
       notePratique: null,
       capacity: null,
+      durationSlots: 1,
     });
     expect(fixture.componentInstance.created()).toEqual(CARD);
     expect(q('.ec__error')).toBeNull();
@@ -471,6 +472,7 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
         heureRdv: null,
         notePratique: null,
         capacity: null,
+        durationSlots: 1,
       });
       const sent = api.create.mock.calls[0][1] as Record<string, unknown>;
       expect('date' in sent).toBe(false);

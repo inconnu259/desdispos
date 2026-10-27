@@ -318,6 +318,8 @@ export class GroupEventsService {
       heureRdv: cleaned(dto.heureRdv),
       notePratique: cleaned(dto.notePratique),
       capacity: dto.capacity ?? null,
+      // Story 47.1 : durée absente = 1 à la création, inchangée à la modification (jamais `null`).
+      ...(dto.durationSlots != null ? { durationSlots: dto.durationSlots } : {}),
     };
     // `null` vaut absent (un corps JSON peut envoyer `null`) : seul un champ renseigné désigne un mode.
     const pollMode = dto.pollOptions != null || dto.pollDeadline != null;

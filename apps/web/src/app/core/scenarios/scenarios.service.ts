@@ -8,6 +8,7 @@ import type {
   ScenarioDocumentDto,
   ScenarioDto,
   SetCompteRenduDto,
+  AddSeanceDto,
   SetInfosPratiquesDto,
   SetResumeFinDto,
   SetSeanceCapacityDto,
@@ -146,11 +147,12 @@ export class ScenariosService {
     return result;
   }
 
-  async addSeance(scenarioId: string): Promise<ScenarioDto> {
+  /** Story 47.1 : `durationSlots` = durée de la nouvelle séance en créneaux enchaînés (absente = 1). */
+  async addSeance(scenarioId: string, durationSlots?: number): Promise<ScenarioDto> {
     const result = await firstValueFrom(
       this.http.post<ScenarioDto>(
         `${API_BASE}/scenarios/${scenarioId}/seances`,
-        {},
+        (durationSlots === undefined ? {} : { durationSlots }) satisfies AddSeanceDto,
         { withCredentials: true },
       ),
     );

@@ -62,6 +62,8 @@ const SEANCE_DTO_KEYS = [
   'compteRendu',
   'createdAt',
   'dateValidee',
+  // Story 47.1 : durée du rendez-vous, en créneaux enchaînés (1 par défaut).
+  'durationSlots',
   'heureRdv',
   'id',
   'lieu',

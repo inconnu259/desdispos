@@ -868,8 +868,20 @@ describe('ScenarioEditor', () => {
 
       await comp.addSeance();
 
-      expect(scenariosSvc.addSeance).toHaveBeenCalledWith('s1');
+      expect(scenariosSvc.addSeance).toHaveBeenCalledWith('s1', 1);
       expect(comp.scenario().seances).toHaveLength(1);
+    });
+
+    it('Story 47.1 : la durée choisie part avec l’ajout, puis le compteur revient à 1 créneau', async () => {
+      const { fixture, scenariosSvc } = await createComponent();
+      const comp = fixture.componentInstance as any;
+      scenariosSvc.addSeance.mockResolvedValue({ ...SCENARIO, seances: [] });
+      comp.newSeanceDuration.set(6);
+
+      await comp.addSeance();
+
+      expect(scenariosSvc.addSeance).toHaveBeenCalledWith('s1', 6);
+      expect(comp.newSeanceDuration()).toBe(1);
     });
 
     it('échec → addSeanceError affiche le message serveur', async () => {

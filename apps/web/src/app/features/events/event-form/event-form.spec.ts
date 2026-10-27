@@ -23,6 +23,7 @@ function pollCard(deadline: string): EventCardDto {
     hostId: 'u1',
     hostDisplayName: 'Léa',
     seance: {
+      durationSlots: 1,
       id: 's1',
       date: null,
       slot: null,
@@ -235,6 +236,7 @@ describe('EventForm — calendrier du groupe et brouillon (Story 40.5b)', () => 
       heureRdv: '11:00',
       notePratique: 'Pique-nique',
       capacity: 6,
+      durationSlots: 1,
       // Les places réservées d'emblée voyagent aussi avec le brouillon.
       reservedUserIds: ['u2'],
     });
@@ -368,3 +370,85 @@ class DraftSoireeHost {
     reserved: [],
   };
 }
+
+describe('EventForm — durée du rendez-vous (Story 47.1)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function mount(card: EventCardDto | null) {
+    await TestBed.configureTestingModule({
+      imports: [Host],
+      providers: [
+        provideNoopAnimations(),
+        { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.card.set(card);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const more = () => el.querySelector<HTMLButtonElement>('.ds__step--more')!;
+    const less = () => el.querySelector<HTMLButtonElement>('.ds__step--less')!;
+    return { fixture, form: fixture.componentInstance.form(), el, more, less };
+  }
+
+  function datedCard(durationSlots: number): EventCardDto {
+    const card = pollCard(dayKey(5));
+    return {
+      ...card,
+      poll: null,
+      seance: { ...card.seance!, date: dayKey(6), slot: 'EVENING', durationSlots },
+    };
+  }
+
+  it('à la création : « 1 créneau » par défaut, sans mention « facultatif »', async () => {
+    const { el, form } = await mount(null);
+
+    expect(el.querySelector('.ds__value')?.textContent?.trim()).toBe('1 créneau');
+    expect(el.querySelector('.ec__duration')?.textContent).not.toMatch(/facultatif/i);
+    expect(form.dto().durationSlots).toBe(1);
+  });
+
+  it('« Allonger » change la durée du dto', async () => {
+    const { fixture, form, more } = await mount(null);
+
+    more().click();
+    more().click();
+    fixture.detectChanges();
+
+    expect(form.dto().durationSlots).toBe(3);
+  });
+
+  it('à la modification d’une date fixée : la durée du rendez-vous est préremplie et reste modifiable', async () => {
+    const { fixture, form, el, less, more } = await mount(datedCard(3));
+
+    expect(el.querySelector('.ds__value')?.textContent?.trim()).toBe('3 créneaux');
+    // Inchangée, la durée ne part pas (absente = inchangée côté serveur).
+    expect(form.dto()).not.toHaveProperty('durationSlots');
+    // Le départ est connu : la plage s'écrit en clair.
+    expect(el.querySelector('.ds__detail')?.textContent).toContain('→');
+
+    less().click();
+    fixture.detectChanges();
+    expect(form.dto().durationSlots).toBe(2);
+
+    // Revenue à la valeur d'origine, elle ne part plus.
+    more().click();
+    fixture.detectChanges();
+    expect(form.dto()).not.toHaveProperty('durationSlots');
+  });
+
+  it('un rendez-vous au vote ouvert et sans date : la durée se lit mais ne se règle pas ici', async () => {
+    const card = pollCard(dayKey(5));
+    const { form, more, less, el } = await mount({
+      ...card,
+      seance: { ...card.seance!, durationSlots: 3 },
+    });
+
+    expect(form.dto()).not.toHaveProperty('durationSlots');
+    expect(more().disabled).toBe(true);
+    expect(less().disabled).toBe(true);
+    expect(el.querySelector('.ds__hint')?.textContent).toContain('composer de dates');
+  });
+});

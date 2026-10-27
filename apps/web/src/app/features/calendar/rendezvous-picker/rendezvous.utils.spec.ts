@@ -103,6 +103,7 @@ describe('vitrine (Story 45.1, 45.5)', () => {
     title: 'Chapitre',
     seanceRank: 2,
     seanceCount: 3,
+    durationSlots: 1,
     can: PROPOSE,
     ...over,
   });

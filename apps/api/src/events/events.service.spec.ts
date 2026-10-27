@@ -60,6 +60,8 @@ function makePrisma() {
       findUniqueOrThrow: jest.fn(),
       // Story 40.3 : séance (et hôte de son événement) relue sous le verrou de l'événement.
       findUnique: jest.fn(),
+      // Story 47.1 : durée de la séance du vote, lue par `chooseDate`.
+      findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
       updateMany: jest.fn(),
@@ -222,6 +224,7 @@ describe('EventsService (Story 37.3)', () => {
           startSlot: 'EVENING',
           endDate: DAY,
           endSlot: 'EVENING',
+          durationSlots: 1,
           lieu: 'Lyon 3e',
           heureRdv: '20:30',
           notePratique: 'Apportez un jeu',
@@ -371,6 +374,7 @@ describe('EventsService (Story 37.3)', () => {
           heureRdv: '20:30',
           notePratique: null,
           inscriptionMax: 8,
+          durationSlots: 1,
         },
       ],
       ...over,
@@ -395,6 +399,7 @@ describe('EventsService (Story 37.3)', () => {
             heureRdv: '20:30',
             notePratique: null,
             capacity: 8,
+            durationSlots: 1,
             placesTaken: 1,
           },
           participants: [
@@ -579,7 +584,7 @@ describe('EventsService (Story 37.3)', () => {
     function existing(over: Record<string, unknown> = {}) {
       prisma.tx.event.findUnique.mockResolvedValue({
         ownerId: 'hote',
-        seances: [{ id: 'se1', startDate: futureDay(), startSlot: 'EVENING' }],
+        seances: [{ id: 'se1', startDate: futureDay(), startSlot: 'EVENING', durationSlots: 1 }],
         ...over,
       });
     }
@@ -611,6 +616,7 @@ describe('EventsService (Story 37.3)', () => {
           startSlot: 'AFTERNOON',
           endDate: NEW_DAY,
           endSlot: 'AFTERNOON',
+          durationSlots: 1,
           lieu: 'Paris',
           heureRdv: '14:00',
           notePratique: null,
@@ -624,7 +630,7 @@ describe('EventsService (Story 37.3)', () => {
 
     it('même jour et même créneau : le rappel de la veille n’est pas ré-armé', async () => {
       const day = futureDay();
-      existing({ seances: [{ id: 'se1', startDate: day, startSlot: 'EVENING' }] });
+      existing({ seances: [{ id: 'se1', startDate: day, startSlot: 'EVENING', durationSlots: 1 }] });
 
       await service.updateHosted(GRANT_E1, 'e1', {
         ...INPUT,
@@ -697,7 +703,7 @@ describe('EventsService (Story 37.3)', () => {
     it('conjonction passée (jour strictement avant aujourd’hui) → 400, rien n’est écrit', async () => {
       existing({
         seances: [
-          { id: 'se1', startDate: new Date(Date.now() - 2 * 86_400_000), startSlot: 'EVENING' },
+          { id: 'se1', startDate: new Date(Date.now() - 2 * 86_400_000), startSlot: 'EVENING', durationSlots: 1 },
         ],
       });
 
@@ -708,7 +714,7 @@ describe('EventsService (Story 37.3)', () => {
     });
 
     it('une conjonction d’aujourd’hui reste modifiable', async () => {
-      existing({ seances: [{ id: 'se1', startDate: new Date(), startSlot: 'EVENING' }] });
+      existing({ seances: [{ id: 'se1', startDate: new Date(), startSlot: 'EVENING', durationSlots: 1 }] });
 
       await service.updateHosted(GRANT_E1, 'e1', INPUT);
       expect(prisma.tx.seance.update).toHaveBeenCalledTimes(1);
@@ -733,6 +739,334 @@ describe('EventsService (Story 37.3)', () => {
     });
   });
 
+  describe('durée d’un rendez-vous (Story 47.1)', () => {
+    const START = new Date(Date.UTC(2099, 0, 2));
+    const NEXT = new Date(Date.UTC(2099, 0, 3));
+    const BASE = { lieu: null, heureRdv: null, notePratique: null, capacity: null };
+    const GRANT_E1 = testGrant({ id: 'p1', ownerId: 'mj1' }, 'member', { eventId: 'e1' });
+
+    describe('création', () => {
+      beforeEach(() => {
+        prisma.tx.$queryRaw.mockResolvedValue([{ kind: 'CAMPAGNE_EPISODIQUE' }]);
+      });
+
+      it('3 créneaux depuis un soir : la plage s’étend au lendemain après-midi', async () => {
+        await service.createHosted(GRANT_P1, 'hote', {
+          title: 'Week-end',
+          seance: { ...BASE, date: START, slot: 'EVENING', durationSlots: 3 },
+        });
+
+        expect(prisma.tx.seance.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            startDate: START,
+            startSlot: 'EVENING',
+            endDate: NEXT,
+            endSlot: 'AFTERNOON',
+            durationSlots: 3,
+          }),
+        });
+      });
+
+      it('durée absente à la création : 1 créneau, fin = départ', async () => {
+        await service.createHosted(GRANT_P1, 'hote', {
+          title: 'Soirée',
+          seance: { ...BASE, date: START, slot: 'EVENING' },
+        });
+
+        expect(prisma.tx.seance.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({ endDate: START, endSlot: 'EVENING', durationSlots: 1 }),
+        });
+      });
+
+      it.each([
+        ['46 créneaux', 'EVENING' as const, 46, '15 jours au plus : au-delà, créez deux rendez-vous.'],
+        ['0 créneau', 'EVENING' as const, 0, 'La durée doit être un entier d’au moins 1 créneau'],
+        ['journée entière sur 2 créneaux', 'FULL_DAY' as const, 2, 'Une journée entière ne dure qu’un créneau'],
+      ])('%s → 400 français, rien n’est écrit ni émis', async (_label, slot, durationSlots, message) => {
+        await expect(
+          service.createHosted(GRANT_P1, 'hote', {
+            title: 'Trop long',
+            seance: { ...BASE, date: START, slot: slot as 'EVENING', durationSlots },
+          }),
+        ).rejects.toThrow(message);
+        expect(prisma.tx.seance.create).not.toHaveBeenCalled();
+        expect(realtime.emit).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('updateHosted()', () => {
+      function existing(seance: Record<string, unknown>) {
+        prisma.tx.event.findUnique.mockResolvedValue({
+          ownerId: 'hote',
+          seances: [{ id: 'se1', pollId: null, ...seance }],
+        });
+      }
+      // Minuit UTC dans 5 jours : la fin d'une plage est toujours à minuit UTC (clé de jour).
+      const day = () => new Date(new Date(Date.now() + 5 * 86_400_000).toISOString().substring(0, 10));
+      const input = (date: Date, over: Record<string, unknown> = {}) => ({
+        title: 'Week-end',
+        seance: { ...BASE, date, slot: 'EVENING' as const, ...over },
+      });
+
+      it('durée absente : un rendez-vous de 3 créneaux le reste, fin comprise', async () => {
+        const d = day();
+        existing({ startDate: d, startSlot: 'EVENING', durationSlots: 3 });
+
+        await service.updateHosted(GRANT_E1, 'e1', input(d));
+
+        const data = prisma.tx.seance.update.mock.calls[0][0].data;
+        expect(data).toEqual(expect.objectContaining({ durationSlots: 3, endSlot: 'AFTERNOON' }));
+        expect(data.endDate.getTime()).toBe(d.getTime() + 86_400_000);
+        // Rien n’a bougé : le rappel de la veille n’est pas ré-armé.
+        expect(data).not.toHaveProperty('reminderSentAt');
+      });
+
+      it('durée corrigée sur une séance datée : fin recalculée et rappel ré-armé', async () => {
+        const d = day();
+        existing({ startDate: d, startSlot: 'EVENING', durationSlots: 3 });
+
+        await service.updateHosted(GRANT_E1, 'e1', input(d, { durationSlots: 1 }));
+
+        expect(prisma.tx.seance.update).toHaveBeenCalledWith({
+          where: { id: 'se1' },
+          data: expect.objectContaining({
+            durationSlots: 1,
+            endDate: d,
+            endSlot: 'EVENING',
+            reminderSentAt: null,
+          }),
+        });
+        expect(prisma.tx.partie.update).toHaveBeenCalledTimes(1);
+      });
+
+      it('modifier un autre champ ne change jamais la plage', async () => {
+        const d = day();
+        existing({ startDate: d, startSlot: 'EVENING', durationSlots: 2 });
+
+        await service.updateHosted(GRANT_E1, 'e1', input(d, { lieu: 'Chez Marc' }));
+
+        const data = prisma.tx.seance.update.mock.calls[0][0].data;
+        expect(data).toEqual(expect.objectContaining({ lieu: 'Chez Marc', durationSlots: 2, endSlot: 'MORNING' }));
+      });
+
+      it('séance au vote ouvert et sans date : changer la durée → 400, rien n’est écrit', async () => {
+        existing({ startDate: null, startSlot: null, pollId: 'poll-1', durationSlots: 1 });
+        const updatePoll = jest.fn();
+
+        await expect(
+          service.updateHosted(GRANT_E1, 'e1', {
+            title: 'Week-end',
+            seance: { ...BASE, date: null, slot: null, updatePoll, durationSlots: 3 },
+          }),
+        ).rejects.toThrow('La durée d’un rendez-vous au vote ouvert se règle dans le composer de dates.');
+        expect(updatePoll).not.toHaveBeenCalled();
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+        expect(realtime.emit).not.toHaveBeenCalled();
+      });
+
+      it('séance au vote ouvert : la même durée (renvoyée par le formulaire) est acceptée', async () => {
+        existing({ startDate: null, startSlot: null, pollId: 'poll-1', durationSlots: 3 });
+        const updatePoll = jest.fn();
+
+        await service.updateHosted(GRANT_E1, 'e1', {
+          title: 'Week-end',
+          seance: { ...BASE, date: null, slot: null, updatePoll, durationSlots: 3 },
+        });
+
+        expect(updatePoll).toHaveBeenCalledWith(prisma.tx, 'poll-1');
+      });
+    });
+
+    describe('setInfosPratiques() — durée', () => {
+      const INFOS = { heureRdv: null, lieu: 'Lyon', notePratique: null };
+
+      it('séance datée : durée, fin et rappel écrits sous les verrous, prochaine date recalculée', async () => {
+        const d = new Date(Date.now() + 5 * 86_400_000);
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: d,
+          startSlot: 'EVENING',
+          pollId: null,
+        });
+
+        await service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 3 });
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        const locks = prisma.tx.$queryRaw.mock.calls.map((c) => (c[0] as string[]).join('?'));
+        expect(locks[0]).toContain('FROM "Partie"');
+        expect(locks[1]).toContain('FROM "Event"');
+        expect(prisma.tx.seance.update).toHaveBeenNthCalledWith(1, {
+          where: { id: 'se1' },
+          data: expect.objectContaining({
+            durationSlots: 3,
+            endSlot: 'AFTERNOON',
+            reminderSentAt: null,
+          }),
+        });
+        expect(prisma.tx.seance.update).toHaveBeenNthCalledWith(2, {
+          where: { id: 'se1' },
+          data: { heureRdv: null, lieu: 'Lyon', notePratique: null },
+        });
+        expect(prisma.tx.partie.update).toHaveBeenCalledTimes(1);
+        expect(realtime.emit).toHaveBeenCalledWith(partieTopic('p1'));
+      });
+
+      it('dit si la durée a changé : oui pour une correction, non pour la même valeur', async () => {
+        const d = new Date(Date.now() + 5 * 86_400_000);
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: d,
+          startSlot: 'EVENING',
+          pollId: null,
+        });
+        await expect(
+          service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 3 }),
+        ).resolves.toEqual({ durationChanged: true });
+
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 3,
+          startDate: d,
+          startSlot: 'EVENING',
+          pollId: null,
+        });
+        await expect(
+          service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 3 }),
+        ).resolves.toEqual({ durationChanged: false });
+        await expect(service.setInfosPratiques(GRANT_P1, 'se1', INFOS)).resolves.toEqual({
+          durationChanged: false,
+        });
+      });
+
+      it('départ déjà passé : la fin est recalculée mais le rappel n’est pas ré-armé', async () => {
+        const past = new Date(Date.now() - 3 * 86_400_000);
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: past,
+          startSlot: 'EVENING',
+          pollId: null,
+        });
+
+        await service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 3 });
+
+        const data = prisma.tx.seance.update.mock.calls[0][0].data;
+        expect(data).toEqual(expect.objectContaining({ durationSlots: 3, endSlot: 'AFTERNOON' }));
+        expect(data).not.toHaveProperty('reminderSentAt');
+      });
+
+      it('date sans créneau : la fin reste le jour du début, rien n’est effacé', async () => {
+        const d = new Date(Date.now() + 5 * 86_400_000);
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: d,
+          startSlot: null,
+          pollId: null,
+        });
+
+        await service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 2 });
+
+        expect(prisma.tx.seance.update).toHaveBeenNthCalledWith(1, {
+          where: { id: 'se1' },
+          data: expect.objectContaining({ durationSlots: 2, endDate: d, endSlot: null }),
+        });
+      });
+
+      it('séance disparue sous les verrous → 404, rien n’est écrit ni émis', async () => {
+        prisma.tx.seance.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 2 }),
+        ).rejects.toThrow('Séance introuvable');
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+        expect(realtime.emit).not.toHaveBeenCalled();
+      });
+
+      it('même durée : seules les informations pratiques sont écrites', async () => {
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 3,
+          startDate: null,
+          startSlot: null,
+          pollId: null,
+        });
+
+        await service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 3 });
+
+        expect(prisma.tx.seance.update).toHaveBeenCalledTimes(1);
+        expect(prisma.tx.partie.update).not.toHaveBeenCalled();
+      });
+
+      it('séance sans date : la durée est posée sans fin ni rappel', async () => {
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: null,
+          startSlot: null,
+          pollId: null,
+        });
+
+        await service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 2 });
+
+        expect(prisma.tx.seance.update).toHaveBeenNthCalledWith(1, {
+          where: { id: 'se1' },
+          data: { durationSlots: 2, endDate: null, endSlot: null },
+        });
+      });
+
+      it('séance au vote ouvert et sans date → 400, aucune écriture', async () => {
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: null,
+          startSlot: null,
+          pollId: 'poll-1',
+        });
+
+        await expect(
+          service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 2 }),
+        ).rejects.toThrow('se règle dans le composer de dates');
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+        expect(realtime.emit).not.toHaveBeenCalled();
+      });
+
+      it('durée hors bornes → 400 avant toute transaction', async () => {
+        await expect(
+          service.setInfosPratiques(GRANT_P1, 'se1', { ...INFOS, durationSlots: 46 }),
+        ).rejects.toThrow('15 jours au plus');
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+      });
+
+      it('durée absente : aucune transaction, durée inchangée', async () => {
+        await service.setInfosPratiques(GRANT_P1, 'se1', INFOS);
+
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.seance.update).toHaveBeenCalledWith({ where: { id: 'se1' }, data: INFOS });
+      });
+    });
+
+    it('chooseDate() écrit la plage complète de la séance (3 créneaux depuis un soir)', async () => {
+      prisma.tx.seance.findFirst.mockResolvedValue({ durationSlots: 3 });
+
+      await service.chooseDate(prisma.tx as unknown as Prisma.TransactionClient, 'poll1', START, 'EVENING');
+
+      expect(prisma.tx.seance.updateMany).toHaveBeenCalledWith({
+        where: { pollId: 'poll1' },
+        data: {
+          startDate: START,
+          startSlot: 'EVENING',
+          endDate: NEXT,
+          endSlot: 'AFTERNOON',
+          reminderSentAt: null,
+        },
+      });
+    });
+
+    it('addSeance() porte la durée demandée ; au-delà de 45 créneaux → 400 sans écriture', async () => {
+      await service.addSeance(GRANT_P1, 'e1', 4);
+      expect(prisma.seance.create).toHaveBeenCalledWith({ data: { eventId: 'e1', durationSlots: 4 } });
+
+      prisma.seance.create.mockClear();
+      await expect(service.addSeance(GRANT_P1, 'e1', 46)).rejects.toThrow('15 jours au plus');
+      expect(prisma.seance.create).not.toHaveBeenCalled();
+    });
+  });
+
   it('createInTx() n’ouvre pas de transaction et n’émet pas — l’appelant émet après son commit', async () => {
     await service.createInTx(prisma.tx as unknown as Prisma.TransactionClient, {
       partieId: 'p1',
@@ -751,7 +1085,9 @@ describe('EventsService (Story 37.3)', () => {
     it('addSeance() crée une séance rattachée à l’événement et émet', async () => {
       await service.addSeance(GRANT_P1, 'e1');
 
-      expect(prisma.seance.create).toHaveBeenCalledWith({ data: { eventId: 'e1' } });
+      expect(prisma.seance.create).toHaveBeenCalledWith({
+        data: { eventId: 'e1', durationSlots: 1 },
+      });
       expect(realtime.emit).toHaveBeenCalledWith(partieTopic('p1'));
     });
 
@@ -2429,6 +2765,7 @@ describe('EventsService (Story 37.3)', () => {
             startSlot: null,
             endDate: null,
             endSlot: null,
+            durationSlots: 1,
             lieu: 'Lyon 3e',
             heureRdv: null,
             notePratique: null,
@@ -2496,7 +2833,7 @@ describe('EventsService (Story 37.3)', () => {
       const pollSeance = (over: Record<string, unknown> = {}) =>
         prisma.tx.event.findUnique.mockResolvedValue({
           ownerId: 'hote',
-          seances: [{ id: 'se1', startDate: null, startSlot: null, pollId: 'poll-1', ...over }],
+          seances: [{ id: 'se1', startDate: null, startSlot: null, pollId: 'poll-1', durationSlots: 1, ...over }],
         });
 
       it('délègue créneaux et échéance au callback (dans la transaction), n’écrit JAMAIS de date de séance', async () => {
@@ -2533,6 +2870,7 @@ describe('EventsService (Story 37.3)', () => {
           where: { id: 'se1' },
           data: {
             pollId: 'poll-9',
+            durationSlots: 1,
             lieu: 'Lyon 3e',
             heureRdv: null,
             notePratique: null,
@@ -3230,7 +3568,7 @@ describe('EventsService (Story 37.3)', () => {
         prisma.tx.event.findUnique.mockResolvedValue({
           ownerId: 'hote',
           seances: [
-            { id: 'se1', startDate: fixedDay, startSlot: 'EVENING', pollId: 'poll-1', ...over },
+            { id: 'se1', startDate: fixedDay, startSlot: 'EVENING', pollId: 'poll-1', durationSlots: 1, ...over },
           ],
         });
       const input = (over: Record<string, unknown> = {}) => ({
@@ -3309,7 +3647,7 @@ describe('EventsService (Story 37.3)', () => {
     function existing(over: Record<string, unknown> = {}) {
       prisma.tx.event.findUnique.mockResolvedValue({
         cancelledAt: null,
-        seances: [{ startDate: dayStart(inDays(5)), pollId: null }],
+        seances: [{ startDate: dayStart(inDays(5)), pollId: null, durationSlots: 1 }],
         ...over,
       });
     }
@@ -3343,7 +3681,7 @@ describe('EventsService (Story 37.3)', () => {
       });
 
       it('ferme le sondage de la conjonction par la fermeture de l’appelant, dans la même transaction', async () => {
-        existing({ seances: [{ startDate: null, pollId: 'poll-1' }] });
+        existing({ seances: [{ startDate: null, pollId: 'poll-1', durationSlots: 1 }] });
         const closePoll = jest.fn();
 
         await service.cancelHosted(GRANT_E1, 'e1', closePoll);
@@ -3353,7 +3691,7 @@ describe('EventsService (Story 37.3)', () => {
       });
 
       it('une conjonction du jour peut encore être annulée', async () => {
-        existing({ seances: [{ startDate: dayStart(new Date()), pollId: null }] });
+        existing({ seances: [{ startDate: dayStart(new Date()), pollId: null, durationSlots: 1 }] });
 
         await service.cancelHosted(GRANT_E1, 'e1', jest.fn());
 
@@ -3374,7 +3712,7 @@ describe('EventsService (Story 37.3)', () => {
       });
 
       it('jour passé → 400, rien d’écrit ni d’émis', async () => {
-        existing({ seances: [{ startDate: dayStart(inDays(-2)), pollId: 'poll-1' }] });
+        existing({ seances: [{ startDate: dayStart(inDays(-2)), pollId: 'poll-1', durationSlots: 1 }] });
         const closePoll = jest.fn();
 
         const refusal = service.cancelHosted(GRANT_E1, 'e1', closePoll);

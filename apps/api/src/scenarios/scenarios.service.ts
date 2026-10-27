@@ -644,7 +644,7 @@ export class ScenariosService {
 
   // AD-9 : écriture MJ-only (`SEANCE_ADD`, comme create/update/open/markCourant/close) — ajouter
   // une séance est une action MJ, contrairement à participate() (AD-9 joueur). Aucun plafond (AC1).
-  async addSeance(scenarioId: string, mjId: string): Promise<ScenarioDto> {
+  async addSeance(scenarioId: string, mjId: string, durationSlots?: number): Promise<ScenarioDto> {
     const grant = await this.permissions.assert(mjId, 'SEANCE_ADD', { eventId: scenarioId });
     const scenario = await this.findScenario(scenarioId);
     if (!scenario) throw new NotFoundException('Scénario introuvable');
@@ -655,7 +655,8 @@ export class ScenariosService {
     }
 
     // Story 37.3 : écriture déléguée à `EventsService` (qui émet `partie:`).
-    await this.events.addSeance(grant, scenarioId);
+    // Story 47.1 : la durée est passée à `events/`, seul écrivain (absente = 1 créneau).
+    await this.events.addSeance(grant, scenarioId, durationSlots);
 
     const updated = await this.reloadScenario(scenarioId);
     // Deferred-work (SSE, calendrier personnel) : une nouvelle séance peut apparaître dans
@@ -973,11 +974,15 @@ export class ScenariosService {
 
     // Story 37.3 : écriture (un seul update, les trois champs ensemble) et émission `partie:`
     // déléguées à `EventsService`.
-    await this.events.setInfosPratiques(grant, seanceId, dto);
+    const { durationChanged } = await this.events.setInfosPratiques(grant, seanceId, dto);
 
     const updated = await this.reloadScenario(scenario.id);
-    // Pas de notifyPartieSignalsChanged ici : contrairement au compte-rendu, l'absence
-    // d'informations pratiques n'est PAS un manquement et ne porte aucun signal (AC4).
+    // Pas de notifyPartieSignalsChanged pour les informations pratiques : contrairement au
+    // compte-rendu, leur absence n'est PAS un manquement et ne porte aucun signal (AC4). Corriger la
+    // durée d'une séance, elle, déplace sa plage : les calendriers personnels doivent le savoir (47.1).
+    if (durationChanged) {
+      await this.parties.notifyPartieSignalsChanged(partie.id, mjId);
+    }
     return this.enrich(updated, partie.kind, grant);
   }
 
@@ -1194,6 +1199,8 @@ export interface SetInfosPratiquesPayload {
   heureRdv: string | null;
   lieu: string | null;
   notePratique: string | null;
+  /** Story 47.1 : nouvelle durée du rendez-vous, en créneaux ; absente = inchangée. */
+  durationSlots?: number;
 }
 
 /** Droits d'organisateur d'un lot de séances pour la personne qui lit (Story 44.1), alignés sur
@@ -1242,6 +1249,7 @@ function toSeanceDto(
     lieu: seance.lieu ?? null,
     notePratique: seance.notePratique ?? null,
     createdAt: seance.createdAt.toISOString(),
+    durationSlots: seance.durationSlots,
     can,
   };
 }

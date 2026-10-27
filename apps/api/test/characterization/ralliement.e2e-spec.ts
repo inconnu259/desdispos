@@ -1397,6 +1397,7 @@ describe('Ralliement — proposer une conjonction à date fixée (Story 40.1)', 
         heureRdv: '20:30',
         notePratique: 'On mange sur place.',
         capacity: null,
+        durationSlots: 1,
         placesTaken: 1,
       },
       // Story 40.2 : l'hôte est le premier (et ici le seul) participant.
@@ -1747,6 +1748,7 @@ describe('Ralliement — consulter et modifier une conjonction (Story 40.2)', ()
         heureRdv: '09:30',
         notePratique: null,
         capacity: null,
+        durationSlots: 1,
         placesTaken: 1,
       },
       participants: [

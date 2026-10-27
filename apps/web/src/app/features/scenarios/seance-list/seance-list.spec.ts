@@ -26,6 +26,7 @@ const POLL: SessionPollDto = {
 };
 
 const SEANCE_NO_POLL: SeanceDto = {
+  durationSlots: 1,
   id: 'seance1',
   scenarioId: 's1',
   // Story 32.3 — date effective servie à la RACINE du DTO (`poll.chosenDate` ?? `Seance.dateValidee`).
@@ -992,6 +993,48 @@ describe('SeanceList', () => {
         notePratique: 'pensez aux dés',
       });
       expect(emitted).toHaveLength(1);
+    });
+
+    it('Story 47.1 : la durée choisie part avec les informations pratiques', async () => {
+      const { fixture, scenariosSvc } = await createComponent(
+        { ...SCENARIO, seances: [SEANCE_NO_POLL] },
+        { isMj: true },
+      );
+      scenariosSvc.setInfosPratiques.mockResolvedValue({ ...SCENARIO, seances: [] });
+      const el = fixture.nativeElement as HTMLElement;
+
+      el.querySelector<HTMLButtonElement>('.ds__step--more')!.click();
+      el.querySelector<HTMLButtonElement>('.ds__step--more')!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('.ds__value')?.textContent?.trim()).toBe('3 créneaux');
+
+      const buttons = [...el.querySelectorAll<HTMLButtonElement>('button')];
+      buttons.find((b) => b.textContent?.includes('informations pratiques'))!.click();
+      await fixture.whenStable();
+
+      expect(scenariosSvc.setInfosPratiques).toHaveBeenCalledWith(
+        SEANCE_NO_POLL.id,
+        expect.objectContaining({ durationSlots: 3 }),
+      );
+    });
+
+    it('Story 47.1 : sous un vote ouvert sans date, la durée est en lecture seule et ne part pas', async () => {
+      const { fixture, scenariosSvc } = await createComponent(
+        { ...SCENARIO, seances: [{ ...SEANCE_WITH_POLL, durationSlots: 3 }] },
+        { isMj: true },
+      );
+      scenariosSvc.setInfosPratiques.mockResolvedValue({ ...SCENARIO, seances: [] });
+      const el = fixture.nativeElement as HTMLElement;
+
+      expect(el.querySelector<HTMLButtonElement>('.ds__step--more')!.disabled).toBe(true);
+      expect(el.querySelector('.ds__value')?.textContent?.trim()).toBe('3 créneaux');
+
+      const buttons = [...el.querySelectorAll<HTMLButtonElement>('button')];
+      buttons.find((b) => b.textContent?.includes('informations pratiques'))!.click();
+      await fixture.whenStable();
+
+      const payload = scenariosSvc.setInfosPratiques.mock.calls[0][1];
+      expect(payload).not.toHaveProperty('durationSlots');
     });
 
     it('un champ vidé part à null, jamais à la chaîne vide', async () => {

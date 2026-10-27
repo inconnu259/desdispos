@@ -33,6 +33,7 @@ import {
 } from '../day-detail.utils';
 import { SlotSelectedEvent } from '../calendar-month-view/calendar-month-view';
 import { SelectionBar } from '../selection-bar/selection-bar';
+import { composeSpanKeys } from '../compose-span.utils';
 import {
   LONG_PRESS_MS,
   MOVE_THRESHOLD_PX,
@@ -332,6 +333,21 @@ export class CalendarWeekView {
   /** Story 45.3 — la journée entière est-elle permise dans cette composition ? Faux pour une conjonction ou une
    *  soirée : la barre ne propose alors pas « Journée ». */
   readonly composeFullDay = input(true);
+  /** ⚠️ Story 47.4 — bloc JUMEAU de `calendar-month-view.ts` : les créneaux couverts par les plages des départs
+   *  désignés (départs exclus), reçus de `CalendarView`, et la durée composée (aperçu au survol). */
+  readonly composeCoverKeys = input<ReadonlySet<string> | null>(null);
+  readonly composeDuration = input(1);
+
+  /** Story 47.4 — la cellule survolée à la souris pendant la composition (sa plage s'allume en aperçu). */
+  private readonly hoverStart = signal<{ date: Date; slot: DaySlot } | null>(null);
+  private readonly hoverKeys = computed<ReadonlySet<string>>(() => {
+    const start = this.hoverStart();
+    if (!start || !this.composing()) return new Set();
+    return new Set([
+      composeCellKey(start.date, start.slot),
+      ...composeSpanKeys([start], this.composeDuration()),
+    ]);
+  });
   readonly displayDateChange = output<Date>();
   /** Story 30.3 : lot construit par un glissement (souris/tactile) ou une validation clavier —
    *  CalendarView construit les items et appelle createDeclarationBatch(), jamais cette vue. */
@@ -823,6 +839,25 @@ export class CalendarWeekView {
   /** Story 36.10, AC13 — ce créneau fait-il partie de la composition en cours ? */
   protected isCellComposed(cell: WeekCell, slot: DaySlot): boolean {
     return this.composedKeys()?.has(composeCellKey(cell.date, slot)) ?? false;
+  }
+
+  /** ⚠️ Story 47.4 — bloc JUMEAU de `CalendarMonthView.isBandSpanPreview` : la cellule est couverte par la plage d'un
+   *  départ désigné, ou par celle qu'ouvrirait la cellule survolée. Rien à 1 créneau. */
+  protected isCellSpanPreview(cell: WeekCell, slot: DaySlot): boolean {
+    if (this.composeDuration() <= 1 || this.isCellComposed(cell, slot)) return false;
+    const key = composeCellKey(cell.date, slot);
+    return (this.composeCoverKeys()?.has(key) ?? false) || this.hoverKeys().has(key);
+  }
+
+  /** Story 47.4 — survol d'une cellule pendant la composition (`null` : la souris la quitte). Souris seulement : au
+   *  doigt, l'entrée émulée après un tap n'a pas de sortie et laisserait une plage allumée. */
+  protected onCellHover(event: PointerEvent, cell: WeekCell | null, slot?: DaySlot): void {
+    if (event.pointerType !== 'mouse') return;
+    if (!cell || !slot || cell.isPast || !this.composing() || this.composeDuration() <= 1) {
+      if (this.hoverStart() !== null) this.hoverStart.set(null);
+      return;
+    }
+    this.hoverStart.set({ date: cell.date, slot });
   }
 
   /** AC2/AC3 — le marquage suit la **portée** : passer la portée à « journée » doit allumer les

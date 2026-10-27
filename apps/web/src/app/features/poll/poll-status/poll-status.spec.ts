@@ -42,6 +42,7 @@ const fakePoll: SessionPollDto = {
   chosenSlot: null,
   // Story 36.6 — effectif de la troupe (MJ + membres).
   membersCount: 4,
+  durationSlots: 1,
   options: [
     {
       id: 'opt1',

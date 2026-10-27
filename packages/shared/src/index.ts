@@ -794,6 +794,9 @@ export interface CreateSeancePollDto {
   options: { date: string; slot: DaySlot }[];
   /** Story 45.4 — fin du vote, un jour `YYYY-MM-DD` (fin de ce jour, UTC). Absent : `defaultPollDeadline`. */
   expiresAt?: string;
+  /** Story 47.4 : durée du rendez-vous, en créneaux (1 à 45), écrite avec le vote dans la même transaction ;
+   *  absente = inchangée. Un créneau `FULL_DAY` n'existe qu'à 1. */
+  durationSlots?: number;
 }
 
 /** Payload de création d'un scénario (POST /parties/:id/scenarios). */
@@ -944,6 +947,9 @@ export interface EventPollDto {
   expiresAt: string | null;
   status: PollStatus;
   eligibleVoterIds: string[];
+  /** Story 47.4 : durée du rendez-vous voté, en créneaux — chaque créneau candidat est le DÉPART d'une plage
+   *  de cette durée. */
+  durationSlots: number;
   options: EventPollOptionDto[];
   votes: EventPollVoteDto[];
 }
@@ -1461,7 +1467,7 @@ export interface OpenPollEntry {
   title: string;
   /** Échéance du vote, `null` si non définie. Passée ou non : un sondage ouvert reste listé. */
   expiresAt: string | null;
-  /** Durée du rendez-vous en créneaux (1 tant que l'épic 47 n'est pas livrée). */
+  /** Durée du rendez-vous en créneaux (Story 47.4 : lue de la séance ; 1 pour un sondage sans séance). */
   durationSlots: number;
   options: OpenPollOption[];
   eligibleCount: number;
@@ -1537,6 +1543,9 @@ export interface SessionPollDto {
    *
    *  Requis, jamais optionnel : un effectif absent rendrait une piste au dénominateur indéfini. */
   membersCount: number;
+  /** Story 47.4 : durée du rendez-vous voté, en créneaux (1 pour un sondage sans séance) — chaque option est
+   *  le DÉPART d'une plage de cette durée. Requis, à la racine (même raison que `membersCount`). */
+  durationSlots: number;
   options: PollOptionDto[];
 }
 
@@ -1588,6 +1597,10 @@ export interface SetPollOptionsDto {
   /** Story 45.4 — nouvelle fin du vote, un jour `YYYY-MM-DD` ; absent : la fin actuelle est gardée. Repousser la
    *  fin d'un vote de JDR EST sa prolongation. Une date déjà passée est refusée, sauf si elle est inchangée. */
   expiresAt?: string;
+  /** Story 47.4 : nouvelle durée du rendez-vous, en créneaux (1 à 45) ; absente = inchangée. Une durée
+   *  réellement changée recrée toutes les options : TOUTES les réponses sont effacées (avertissement préalable
+   *  côté client). Un créneau `FULL_DAY` n'existe qu'à 1. */
+  durationSlots?: number;
 }
 
 /** Payload pour voter sur une option (POST /parties/:id/poll/:pollId/vote). */

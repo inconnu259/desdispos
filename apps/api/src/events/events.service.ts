@@ -34,6 +34,7 @@ import {
   isSpoilRestricted,
 } from '../permissions/scenario-visibility';
 import type { GroupPollVotePort } from '../poll/ports/group-poll-vote.port';
+import type { RendezVousDurationPort } from '../poll/ports/rendez-vous-duration.port';
 import type { SeanceDatePort } from '../poll/ports/seance-date.port';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseDayKey, todayKeyUtc } from './day-key';
@@ -78,8 +79,14 @@ export interface EventSeanceInput {
    *  une séance sans date. */
   createPoll?: (tx: Prisma.TransactionClient) => Promise<{ id: string }>;
   /** Story 40.5 : à la modification, met à jour (dans la transaction) le sondage déjà rattaché à la
-   *  séance — créneaux et échéance. Exige une séance sans date, déjà liée à un sondage. */
-  updatePoll?: (tx: Prisma.TransactionClient, pollId: string) => Promise<void>;
+   *  séance — créneaux et échéance. Exige une séance sans date, déjà liée à un sondage. Story 47.4 :
+   *  `purge` vrai quand la durée vient de changer (dans la même transaction) — toutes les options et
+   *  leurs réponses sont alors recréées. */
+  updatePoll?: (
+    tx: Prisma.TransactionClient,
+    pollId: string,
+    options: { purge: boolean },
+  ) => Promise<void>;
   lieu: string | null;
   heureRdv: string | null;
   notePratique: string | null;
@@ -336,7 +343,12 @@ const SLOT_ORDER: Record<DaySlot, number> = { MORNING: 0, AFTERNOON: 1, EVENING:
  */
 @Injectable()
 export class EventsService
-  implements OccupiedSpansPort, OwnEventsPort, SeanceDatePort, GroupPollVotePort
+  implements
+    OccupiedSpansPort,
+    OwnEventsPort,
+    SeanceDatePort,
+    GroupPollVotePort,
+    RendezVousDurationPort
 {
   constructor(
     private readonly prisma: PrismaService,
@@ -714,7 +726,12 @@ export class EventsService
     partieId: string,
     events: {
       ownerId: string | null;
-      seances: { id: string; pollId: string | null; inscriptionMax: number | null }[];
+      seances: {
+        id: string;
+        pollId: string | null;
+        inscriptionMax: number | null;
+        durationSlots: number;
+      }[];
     }[],
     rosters: Map<string, Roster>,
   ): Promise<Map<string, EventPollDto>> {
@@ -798,6 +815,8 @@ export class EventsService
         expiresAt: poll.expiresAt?.toISOString() ?? null,
         status: poll.status,
         eligibleVoterIds,
+        // Story 47.4 : chaque créneau candidat est le départ d'une plage de cette durée.
+        durationSlots: t.seance.durationSlots,
         options: [...poll.options]
           .sort(
             (a, b) =>
@@ -890,13 +909,11 @@ export class EventsService
       }
 
       // Story 47.1 : durée absente = inchangée (même si la modification remplace les autres champs).
-      // Celle d'un rendez-vous au vote ouvert et sans date se règle dans le composer (47.4), jamais ici.
+      // Story 47.4 : celle d'un rendez-vous au vote ouvert et sans date se règle par le composer, qui
+      // passe par cette même route — elle est écrite AVANT les créneaux, qui sont alors tous recréés.
       const durationSlots = input.seance.durationSlots ?? seance.durationSlots;
       assertDuration(durationSlots);
       const durationChanged = durationSlots !== seance.durationSlots;
-      if (durationChanged && undatedPoll) {
-        throw new BadRequestException(DURATION_POLL_PENDING_MESSAGE);
-      }
 
       // Participants actuels = l'hôte + les inscrits (un hôte éventuellement inscrit n'est compté
       // qu'une fois).
@@ -936,7 +953,14 @@ export class EventsService
         if (!input.seance.updatePoll || !seance.pollId) {
           throw new BadRequestException(POLL_MODE_MESSAGE);
         }
-        await input.seance.updatePoll(tx, seance.pollId);
+        // Story 47.4 (AD-10) : la durée d'abord (verrous déjà tenus), puis les créneaux — purgés
+        // seulement si la durée a réellement changé (le retour de l'écriture en est la seule source).
+        const { changed } = durationChanged
+          ? await this.setSeanceDurationInTx(tx, grant.partieId, seance.id, durationSlots, {
+              allowOpenPoll: true,
+            })
+          : { changed: false };
+        await input.seance.updatePoll(tx, seance.pollId, { purge: changed });
         await tx.seance.update({
           where: { id: seance.id },
           data: {
@@ -1227,21 +1251,40 @@ export class EventsService
    * Rattache à une séance le vote de date que `createPoll` crée (Story 8.7). Un seul vote par
    * séance : refus si la séance en porte déjà un, AVANT de créer le vote. `createPoll` est fourni
    * par l'appelant — `PollService` reste le seul écrivain de `SessionPoll` (P2-AD-2) ; ce service
-   * ne fait que poser `Seance.pollId`. Non-atomique par construction (risque accepté, Story 8.7).
+   * ne fait que poser `Seance.pollId`.
+   *
+   * Story 47.4 : UNE transaction (la non-atomicité de la 8.7 est levée) — verrou de la partie puis de
+   * l'événement, garde « déjà liée » relue sous ces verrous, durée écrite (`durationSlots` absent =
+   * inchangée), vote créé avec la durée EFFECTIVE, puis `Seance.pollId` : tout ou rien.
    */
   async createSeancePoll(
     grant: PartieGrant,
     seance: SeanceRef,
-    createPoll: () => Promise<{ id: string }>,
+    durationSlots: number | undefined,
+    createPoll: (tx: Prisma.TransactionClient, durationSlots: number) => Promise<{ id: string }>,
   ): Promise<void> {
     await this.assertSeanceInGrant(grant, seance.id);
     if (seance.pollId) {
       throw new BadRequestException('Cette séance est déjà liée à un vote de date');
     }
-    const poll = await createPoll();
-    await this.prisma.seance.update({
-      where: { id: seance.id },
-      data: { pollId: poll.id },
+    if (durationSlots !== undefined) assertDuration(durationSlots);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Partie" WHERE "id" = ${grant.partieId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = ${seance.eventId} FOR UPDATE`;
+      const fresh = await tx.seance.findUnique({
+        where: { id: seance.id },
+        select: { pollId: true, durationSlots: true },
+      });
+      if (!fresh) throw new NotFoundException('Séance introuvable');
+      // Relue sous les verrous : deux créations simultanées ne lient jamais deux votes.
+      if (fresh.pollId) {
+        throw new BadRequestException('Cette séance est déjà liée à un vote de date');
+      }
+      if (durationSlots !== undefined) {
+        await this.setSeanceDurationInTx(tx, grant.partieId, seance.id, durationSlots);
+      }
+      const poll = await createPoll(tx, durationSlots ?? fresh.durationSlots);
+      await tx.seance.update({ where: { id: seance.id }, data: { pollId: poll.id } });
     });
     this.realtimeEvents.emit(partieTopic(grant.partieId));
   }
@@ -1368,13 +1411,16 @@ export class EventsService
    * déjà les verrous de la partie puis de l'événement. Renvoie `changed` (faux = durée identique, rien
    * n'est écrit). Séance datée : la fin est recalculée, le rappel de la veille ré-armé si le départ n'est
    * pas passé et la prochaine date de la partie recalculée ; séance au vote ouvert sans date : refusée
-   * (400, le composer s'en charge). N'émet rien et n'envoie aucun e-mail.
+   * (400, le composer s'en charge) — sauf `allowOpenPoll` (Story 47.4), réservé au chemin du composer
+   * (`setDurationInTx`, modification d'une conjonction à sondage), qui recrée alors les créneaux dans la
+   * même transaction. N'émet rien et n'envoie aucun e-mail.
    */
   async setSeanceDurationInTx(
     tx: Prisma.TransactionClient,
     partieId: string,
     seanceId: string,
     durationSlots: number,
+    options: { allowOpenPoll?: boolean } = {},
   ): Promise<{ changed: boolean }> {
     assertDuration(durationSlots);
     const seance = await tx.seance.findUnique({
@@ -1383,7 +1429,7 @@ export class EventsService
     });
     if (!seance) throw new NotFoundException('Séance introuvable');
     if (seance.durationSlots === durationSlots) return { changed: false };
-    if (seance.pollId && !seance.startDate) {
+    if (seance.pollId && !seance.startDate && !options.allowOpenPoll) {
       throw new BadRequestException(DURATION_POLL_PENDING_MESSAGE);
     }
     const started =
@@ -1398,6 +1444,58 @@ export class EventsService
     });
     if (seance.startDate) await this.recalculateNextSessionInTx(tx, partieId);
     return { changed: true };
+  }
+
+  /**
+   * `RendezVousDurationPort` (Story 47.4) : dans la transaction de l'appelant (`PollService`), verrouille
+   * la partie puis l'événement du rendez-vous porté par le vote — l'ordre de `updateHosted` —, puis écrit
+   * sa durée par `setSeanceDurationInTx` (vote ouvert accepté sur ce seul chemin). Durée absente = verrous
+   * seulement. Rend aussi la durée EFFECTIVE (relue sous les verrous). Un vote sans séance (hérité) vaut
+   * 1 : seule une durée donnée y est refusée (404).
+   */
+  async setDurationInTx(
+    tx: Prisma.TransactionClient,
+    pollId: string,
+    durationSlots?: number,
+  ): Promise<{ changed: boolean; durationSlots: number }> {
+    const poll = await tx.sessionPoll.findUnique({
+      where: { id: pollId },
+      select: { partieId: true, seance: { select: { id: true, eventId: true } } },
+    });
+    if (!poll) throw new NotFoundException('Poll introuvable');
+    await tx.$queryRaw`SELECT "id" FROM "Partie" WHERE "id" = ${poll.partieId} FOR UPDATE`;
+    if (!poll.seance) {
+      if (durationSlots !== undefined) throw new NotFoundException('Rendez-vous introuvable');
+      return { changed: false, durationSlots: 1 };
+    }
+    await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = ${poll.seance.eventId} FOR UPDATE`;
+    if (durationSlots === undefined) {
+      const current = await tx.seance.findUnique({
+        where: { id: poll.seance.id },
+        select: { durationSlots: true },
+      });
+      return { changed: false, durationSlots: current?.durationSlots ?? 1 };
+    }
+    const { changed } = await this.setSeanceDurationInTx(
+      tx,
+      poll.partieId,
+      poll.seance.id,
+      durationSlots,
+      { allowOpenPoll: true },
+    );
+    return { changed, durationSlots };
+  }
+
+  /** `RendezVousDurationPort` (Story 47.4) : la durée de chaque vote, en une lecture ; 1 sans séance. */
+  async durationsOf(pollIds: readonly string[]): Promise<Map<string, number>> {
+    const result = new Map<string, number>(pollIds.map((id) => [id, 1]));
+    if (pollIds.length === 0) return result;
+    const rows = await this.prisma.seance.findMany({
+      where: { pollId: { in: [...pollIds] } },
+      select: { pollId: true, durationSlots: true },
+    });
+    for (const row of rows) if (row.pollId) result.set(row.pollId, row.durationSlots);
+    return result;
   }
 
   // ─── Inscriptions ───────────────────────────────────────────────────────────────────────────

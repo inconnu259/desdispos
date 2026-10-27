@@ -165,11 +165,17 @@ export class ScenariosService {
     options: { date: string; slot: DaySlot }[],
     /** Story 45.4 — la fin du vote (jour `YYYY-MM-DD`) ; absente, le serveur propose la sienne. */
     expiresAt?: string,
+    /** Story 47.4 — la durée du rendez-vous, écrite avec le vote (même transaction) ; absente = inchangée. */
+    durationSlots?: number,
   ): Promise<ScenarioDto> {
     const result = await firstValueFrom(
       this.http.post<ScenarioDto>(
         `${API_BASE}/scenarios/seances/${seanceId}/poll`,
-        { options, ...(expiresAt ? { expiresAt } : {}) } satisfies CreateSeancePollDto,
+        {
+          options,
+          ...(expiresAt ? { expiresAt } : {}),
+          ...(durationSlots !== undefined ? { durationSlots } : {}),
+        } satisfies CreateSeancePollDto,
         { withCredentials: true },
       ),
     );

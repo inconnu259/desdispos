@@ -689,6 +689,7 @@ describe('ScenarioTimeline', () => {
               chosenSlot: 'AFTERNOON',
               // Story 36.6 — effectif de la troupe (MJ + membres).
               membersCount: 4,
+              durationSlots: 1,
               options: [],
             },
           },
@@ -1015,6 +1016,7 @@ describe('ScenarioTimeline', () => {
           chosenDate: null,
           chosenSlot: null,
           membersCount: 3,
+          durationSlots: 1,
           options: [
             {
               id: 'opt1',

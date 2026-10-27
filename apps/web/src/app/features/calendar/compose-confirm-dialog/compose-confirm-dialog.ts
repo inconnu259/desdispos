@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
+import { durationLossLabel } from '../../../shared/duration-stepper/duration-labels';
 
 export interface ComposeConfirmData {
   /** Nombre de créneaux que la composition va poser. */
@@ -14,6 +15,9 @@ export interface ComposeConfirmData {
   /** Story 40.5b : conjonction d'un groupe — mêmes questions, avec les mots du groupe (créneaux, pas
    *  de séance). Absent pour un vote de JDR, dont les textes ne changent pas. */
   group?: boolean;
+  /** ⚠️ Story 47.4 : la durée du rendez-vous change — TOUTES les options sont recréées, `voterCount` compte alors
+   *  toutes les réponses (`composeLoss`) et l'avertissement le dit en ces termes. */
+  durationChanged?: boolean;
 }
 
 /**
@@ -56,6 +60,8 @@ export class ComposeConfirmDialog {
   /** AC6 — le nombre de votants est NOMMÉ, jamais résumé en « des réponses seront perdues ». */
   protected readonly warning = computed(() => {
     const { removedCount, voterCount } = this.data;
+    // Story 47.4 — mots neutres, identiques dans les trois thèmes (`DURATION_TEXT`, décision de la 47.1).
+    if (this.data.durationChanged) return durationLossLabel(voterCount);
     const tone = this.theme.tone();
     const slotsKey = this.tk(removedCount > 1 ? 'slots_many' : 'slots_one');
     const votesKey = this.tk(voterCount > 1 ? 'responses_many' : 'responses_one');

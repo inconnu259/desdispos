@@ -187,6 +187,18 @@ describe('ScenariosService', () => {
     await p;
   });
 
+  it('Story 47.4 — createSeancePoll porte la durée dans le corps quand elle est donnée', async () => {
+    const options = [
+      { date: '2026-08-01', slot: 'EVENING' as const },
+      { date: '2026-08-08', slot: 'EVENING' as const },
+    ];
+    const p = service.createSeancePoll('seance1', options, undefined, 6);
+    const req = http.expectOne(`${API}/scenarios/seances/seance1/poll`);
+    expect(req.request.body).toEqual({ options, durationSlots: 6 });
+    req.flush(scenario);
+    await p;
+  });
+
   it('deleteSeance → DELETE /scenarios/seances/:id', async () => {
     const p = service.deleteSeance('seance1');
     const req = http.expectOne(`${API}/scenarios/seances/seance1`);

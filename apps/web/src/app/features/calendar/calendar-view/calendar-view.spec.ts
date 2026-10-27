@@ -37,6 +37,7 @@ import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
 import { DateFixDialog } from '../../events/date-fix-dialog/date-fix-dialog';
 import { ExtendVoteDialog } from '../../events/extend-vote-dialog/extend-vote-dialog';
 import { SealConfirmDialog } from '../seal-confirm-dialog/seal-confirm-dialog';
+import { DURATION_TEXT } from '../../../shared/duration-stepper/duration-labels';
 
 const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
@@ -727,6 +728,8 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
         'sc1-s1',
         expect.any(Array),
         dayIn(8),
+        // Story 47.4 — durée inchangée : elle ne part pas.
+        undefined,
       );
     });
 
@@ -1013,6 +1016,8 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
         ],
         // Story 45.4 — la fin du vote proposée accompagne l'écriture.
         expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        // Story 47.4 — durée inchangée : elle ne part pas.
+        undefined,
       );
       expect(openPollsSvc.refresh).toHaveBeenCalled();
       expect(comp.composing()).toBe(false);
@@ -4210,6 +4215,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
         { date: '2026-09-05', slot: 'MORNING' },
       ],
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      undefined,
     );
     expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
   });
@@ -4270,6 +4276,320 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     expect(fixture.nativeElement.querySelector('app-compose-bar')).not.toBeNull();
     // Et l'armement disparaît : deux entrées simultanées dans le même mode seraient un piège.
     expect(fixture.nativeElement.querySelector('.compose-arm')).toBeNull();
+  });
+
+  // ══ ⚠️ Story 47.4 — proposer des plages : la durée dans le composer ══════════════════════════════
+  describe('la durée dans le composer (Story 47.4)', () => {
+    /** Un vote de 3 créneaux : optA porte 3 réponses, optB une — 4 en tout. */
+    const SPAN_POLL = {
+      ...ACTIVE_POLL_SCENARIO,
+      seances: [
+        {
+          ...ACTIVE_POLL_SCENARIO.seances[0],
+          durationSlots: 3,
+          poll: {
+            ...ACTIVE_POLL_SCENARIO.seances[0].poll,
+            durationSlots: 3,
+            options: [
+              {
+                id: 'optA',
+                date: '2026-08-01T00:00:00.000Z',
+                slot: 'EVENING',
+                votes: [
+                  { userId: 'u1', pseudo: 'Léa', displayName: 'Léa', answer: 'YES' },
+                  { userId: 'u2', pseudo: 'Max', displayName: 'Max', answer: 'NO' },
+                  { userId: 'u3', pseudo: 'Zoé', displayName: 'Zoé', answer: 'MAYBE' },
+                ],
+              },
+              {
+                id: 'optB',
+                date: '2026-08-08T00:00:00.000Z',
+                slot: 'EVENING',
+                votes: [{ userId: 'u1', pseudo: 'Léa', displayName: 'Léa', answer: 'YES' }],
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    async function armOnSpanPoll() {
+      const view = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [SPAN_POLL],
+      });
+      const comp = view.fixture.componentInstance as any;
+      comp.destinyPollId.set('poll1');
+      comp.startCompose();
+      return { ...view, comp };
+    }
+
+    it('la ligne « Durée » part TOUJOURS de la durée du rendez-vous visé', async () => {
+      const { comp, fixture } = await armOnSpanPoll();
+      fixture.detectChanges();
+
+      expect(comp.composeDuration()).toBe(3);
+      expect(
+        fixture.nativeElement.querySelector('app-compose-bar .ds__value')?.textContent?.trim(),
+      ).toBe('3 créneaux');
+    });
+
+    it('une cible d’un créneau : durée 1, aucun aperçu, « Journée » reste permise', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [FREE_SEANCE_SCENARIO],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('seanceX');
+      comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
+
+      expect(comp.composeDuration()).toBe(1);
+      expect([...comp.composeCoverKeys()]).toEqual([]);
+      expect(comp.composeAllowsFullDay()).toBe(true);
+    });
+
+    it('durée gardée : le PUT n’emporte pas `durationSlots`, aucun dialogue pour un simple ajout', async () => {
+      const { comp, pollSvc, dialog } = await armOnSpanPoll();
+      comp.onComposeToggled(cell('2026-08-15', 'EVENING'));
+
+      await comp.confirmCompose();
+
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(pollSvc.setPollOptions).toHaveBeenCalledWith('partie-1', 'poll1', {
+        options: [
+          { date: '2026-08-01', slot: 'EVENING' },
+          { date: '2026-08-08', slot: 'EVENING' },
+          { date: '2026-08-15', slot: 'EVENING' },
+        ],
+        expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      });
+    });
+
+    it('durée changée, 4 réponses : l’avertissement les compte TOUTES, puis la durée part avec les options', async () => {
+      const { comp, pollSvc, dialog } = await armOnSpanPoll();
+      dialog.__result = true;
+      comp.onComposeDurationChanged(6);
+
+      await comp.confirmCompose();
+
+      expect(dialog.open).toHaveBeenCalledTimes(1);
+      expect(dialog.open.mock.calls[0][1]!.data).toMatchObject({
+        voterCount: 4,
+        removedCount: 0,
+        durationChanged: true,
+      });
+      expect(pollSvc.setPollOptions).toHaveBeenCalledWith('partie-1', 'poll1', {
+        options: [
+          { date: '2026-08-01', slot: 'EVENING' },
+          { date: '2026-08-08', slot: 'EVENING' },
+        ],
+        expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        durationSlots: 6,
+      });
+    });
+
+    it('une réponse arrive pendant l’avertissement : la revérification refuse, rien n’est écrit', async () => {
+      const { comp, pollSvc, dialog } = await armOnSpanPoll();
+      comp.onComposeDurationChanged(6);
+      dialog.open.mockImplementationOnce((component: unknown, config?: { data?: any }) => {
+        const seance = SPAN_POLL.seances[0];
+        comp.scenarios.set([
+          {
+            ...SPAN_POLL,
+            seances: [
+              {
+                ...seance,
+                poll: {
+                  ...seance.poll,
+                  options: [
+                    seance.poll.options[0],
+                    {
+                      ...seance.poll.options[1],
+                      votes: [
+                        ...seance.poll.options[1].votes,
+                        { userId: 'u4', pseudo: 'Sam', displayName: 'Sam', answer: 'YES' },
+                      ],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ]);
+        return { component, config, afterClosed: () => of(true) } as any;
+      });
+
+      await comp.confirmCompose();
+
+      expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
+      expect(comp.error()).toBe(GRIMOIRE_TONE['calendar.view_compose_stale_voters']);
+      expect(comp.composing()).toBe(true);
+    });
+
+    it('aperçu : durée 6, vendredi soir désigné → samedi entier et dimanche matin + après-midi', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [FREE_SEANCE_SCENARIO],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('seanceX');
+      comp.onComposeDurationChanged(6);
+      comp.onComposeToggled(cell('2026-11-06', 'EVENING'));
+
+      expect([...comp.composeCoverKeys()].sort()).toEqual([
+        '2026-11-07|AFTERNOON',
+        '2026-11-07|EVENING',
+        '2026-11-07|MORNING',
+        '2026-11-08|AFTERNOON',
+        '2026-11-08|MORNING',
+      ]);
+      // La plage s'écrit depuis le premier départ désigné.
+      expect(comp.composeDurationStart()).toEqual({ date: '2026-11-06', slot: 'EVENING' });
+      // Toucher le départ désigné le retire ; toucher une bande couverte ajoute un départ.
+      comp.onComposeToggled(cell('2026-11-07', 'MORNING'));
+      expect(comp.composedCells()).toHaveLength(2);
+      comp.onComposeToggled(cell('2026-11-06', 'EVENING'));
+      expect(comp.composedCells()).toHaveLength(1);
+    });
+
+    it('au-delà d’un créneau : une journée entière désignée est retirée, avec un message écrit ; « Journée » quitte la barre', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [FREE_SEANCE_SCENARIO],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('seanceX');
+      comp.onComposeToggled(cell('2026-09-04', 'FULL_DAY'));
+      comp.onComposeToggled(cell('2026-09-05', 'EVENING'));
+      // Une journée entière n'est pas le départ de la plage écrite : le compteur peut toujours allonger.
+      expect(comp.composeDurationStart()).toEqual({ date: '2026-09-05', slot: 'EVENING' });
+
+      comp.onComposeDurationChanged(2);
+      fixture.detectChanges();
+
+      expect(comp.composedCells().map((c: any) => c.slot)).toEqual(['EVENING']);
+      expect(comp.composeAllowsFullDay()).toBe(false);
+      expect(
+        fixture.nativeElement.querySelector('.calendar-error--compose')?.textContent?.trim(),
+      ).toBe(DURATION_TEXT.fullDayRemoved);
+    });
+
+    it('vue Mois, durée 2 : toucher une case entière ouvre la Semaine sur ce jour, sans rien désigner', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [FREE_SEANCE_SCENARIO],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('seanceX');
+      comp.onViewChange('month');
+      comp.onComposeDurationChanged(2);
+
+      comp.onComposeToggled(cell('2026-09-04', 'FULL_DAY'));
+
+      expect(comp.view()).toBe('week');
+      expect(comp.sharedDate().toISOString().substring(0, 10)).toBe('2026-09-04');
+      expect(comp.composedCells()).toEqual([]);
+    });
+
+    it('création : une durée changée part avec le vote ; inchangée, elle ne part pas', async () => {
+      const { fixture, scenariosSvc } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [FREE_SEANCE_SCENARIO],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('seanceX');
+      comp.onComposeDurationChanged(3);
+      comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
+      comp.onComposeToggled(cell('2026-09-11', 'EVENING'));
+
+      await comp.confirmCompose();
+
+      expect(scenariosSvc.createSeancePoll).toHaveBeenCalledWith(
+        'seanceX',
+        [
+          { date: '2026-09-04', slot: 'EVENING' },
+          { date: '2026-09-11', slot: 'EVENING' },
+        ],
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        3,
+      );
+    });
+
+    it('une option = UNE entrée de l’agenda, avec son départ et sa fin (durée du vote)', async () => {
+      const { comp } = await armOnSpanPoll();
+      comp.cancelCompose();
+
+      const entry = comp
+        .allCalendarEntries()
+        .find((e: any) => e.key === 'poll-poll1-optA');
+      expect(entry).toMatchObject({
+        date: '2026-08-01',
+        slot: 'EVENING',
+        endDate: '2026-08-02',
+        endSlot: 'AFTERNOON',
+      });
+    });
+
+    it('calendrier personnel : un vote ouvert de 6 créneaux donne à chaque option sa fin', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'personal',
+        openPolls: [openPollEntry({ durationSlots: 6 })],
+      });
+      const comp = fixture.componentInstance as any;
+
+      const entry = comp
+        .allCalendarEntries()
+        .find((e: any) => e.key === 'poll-poll9-2026-08-28-EVENING');
+      expect(entry).toMatchObject({
+        date: '2026-08-28',
+        slot: 'EVENING',
+        endDate: '2026-08-30',
+        endSlot: 'AFTERNOON',
+      });
+    });
+
+    it('au-delà d’un créneau, « Ajouter au vote » refuse une journée entière : seul le créneau précis entre, la raison est écrite', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [FREE_SEANCE_SCENARIO],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('seanceX');
+      comp.onComposeDurationChanged(2);
+
+      comp.onComposeAdded([cell('2026-09-04', 'FULL_DAY'), cell('2026-09-05', 'EVENING')]);
+
+      expect(comp.composedCells().map((c: any) => c.slot)).toEqual(['EVENING']);
+      expect(comp.composeRefusal()).toBe(DURATION_TEXT.fullDayRefused);
+      // Revenir à 1 créneau efface le message propre à la durée.
+      comp.onComposeDurationChanged(1);
+      expect(comp.composeRefusal()).toBeNull();
+    });
+
+    it('au-delà d’un créneau, une journée entière touchée hors vue Mois est refusée avec sa raison, rien n’est désigné', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [FREE_SEANCE_SCENARIO],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.startCompose('seanceX');
+      comp.onViewChange('week');
+      comp.onComposeDurationChanged(2);
+
+      comp.onComposeToggled(cell('2026-09-04', 'FULL_DAY'));
+
+      expect(comp.view()).toBe('week');
+      expect(comp.composedCells()).toEqual([]);
+      expect(comp.composeRefusal()).toBe(DURATION_TEXT.fullDayRefused);
+    });
   });
 });
 
@@ -5473,6 +5793,23 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       expect(comp.destinyPollId()).toBe('p1');
     });
 
+    it('Story 47.4 — la soirée arme sa durée ; changée, elle part dans le PATCH', async () => {
+      const { comp, eventsApi } = await createGroupView({
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless({ seance: { ...SEANCE, durationSlots: 3 } })],
+      });
+      comp.startCompose('s1');
+      expect(comp.composeDuration()).toBe(3);
+
+      comp.onComposeDurationChanged(4);
+      comp.onComposeAdded([cell('2099-11-20', 'EVENING'), cell('2099-11-27', 'EVENING')]);
+      await comp.confirmCompose();
+
+      expect(eventsApi.update).toHaveBeenCalledTimes(1);
+      expect(eventsApi.update.mock.calls[0][2].durationSlots).toBe(4);
+    });
+
     it('la journée entière est refusée avec sa raison, comme pour une conjonction', async () => {
       const { comp, fixture } = await createGroupView({
         party: EVENING_PARTY, userId: HOST, events: [dateless()] });
@@ -5887,6 +6224,75 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
   it('sans brouillon en attente, la page ne compose rien d’elle-même', async () => {
     const { comp } = await createGroupView();
     expect(comp.composing()).toBe(false);
+  });
+
+  // ── ⚠️ Story 47.4 — la durée dans le composer d'un groupe ──
+
+  it('Story 47.4 — le brouillon porte sa durée dans les deux sens (fenêtre de création ↔ composer)', async () => {
+    const { comp, drafts } = await createGroupView({
+      beforeCreate: () =>
+        TestBed.inject(ConjonctionDraftService).beginCompose({ ...DRAFT, durationSlots: 4 }),
+    });
+    expect(comp.composeDuration()).toBe(4);
+
+    comp.onComposeDurationChanged(5);
+    await comp.confirmCompose();
+
+    expect(drafts.takeReopen('g1')?.durationSlots).toBe(5);
+  });
+
+  it('Story 47.4 — vote ouvert d’une conjonction, durée 1 → 2 : toutes les réponses annoncées, puis le PATCH porte la durée', async () => {
+    const { comp, eventsApi, dialog } = await createGroupView({ userId: HOST });
+    comp.startGroupCompose('e1');
+    expect(comp.composeDuration()).toBe(1);
+    comp.onComposeDurationChanged(2);
+    dialog.__result = true;
+
+    await comp.confirmCompose();
+
+    expect(dialog.open.mock.calls[0][1]!.data).toMatchObject({
+      group: true,
+      removedCount: 0,
+      voterCount: 3,
+      durationChanged: true,
+    });
+    expect(eventsApi.update).toHaveBeenCalledTimes(1);
+    expect(eventsApi.update.mock.calls[0][2]).toMatchObject({
+      pollOptions: [
+        { date: '2099-11-24', slot: 'EVENING' },
+        { date: '2099-11-25', slot: 'MORNING' },
+        { date: '2099-11-26', slot: 'EVENING' },
+      ],
+      durationSlots: 2,
+    });
+  });
+
+  it('Story 47.4 — une option du sondage d’une conjonction de 3 créneaux porte sa fin dans l’agenda', async () => {
+    const { comp } = await createGroupView({
+      events: [groupCard({}, { durationSlots: 3 })],
+    });
+
+    const entry = comp.allCalendarEntries().find((e: any) => e.key === 'poll-p1-o1');
+    expect(entry).toMatchObject({
+      date: '2099-11-24',
+      slot: 'EVENING',
+      endDate: '2099-11-25',
+      endSlot: 'AFTERNOON',
+    });
+  });
+
+  it('Story 47.4 — durée gardée : le PATCH n’emporte pas `durationSlots`', async () => {
+    const { comp, eventsApi } = await createGroupView({
+      userId: HOST,
+      events: [groupCard({}, { votes: [], durationSlots: 3 })],
+    });
+    comp.startGroupCompose('e1');
+    expect(comp.composeDuration()).toBe(3);
+    comp.onComposeToggled(cell('2099-11-27', 'AFTERNOON'));
+
+    await comp.confirmCompose();
+
+    expect('durationSlots' in eventsApi.update.mock.calls[0][2]).toBe(false);
   });
 
   // ── Le plateau de la destinée (Story 44.4) ──

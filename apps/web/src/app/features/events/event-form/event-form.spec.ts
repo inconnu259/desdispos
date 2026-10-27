@@ -44,6 +44,7 @@ function pollCard(deadline: string): EventCardDto {
       expiresAt: `${deadline}T23:59:59.999Z`,
       status: 'OPEN',
       eligibleVoterIds: ['u1'],
+      durationSlots: 1,
       options: [
         { id: 'o2', date: dayKey(9), slot: 'MORNING', availableCount: 0 },
         { id: 'o1', date: dayKey(8), slot: 'EVENING', availableCount: 0 },
@@ -243,6 +244,14 @@ describe('EventForm — calendrier du groupe et brouillon (Story 40.5b)', () => 
       reservedUserIds: ['u2'],
     });
     expect(form.valid()).toBe(true);
+  });
+
+  it('Story 47.4 — la durée fait l’aller-retour : restaurée du brouillon, rendue par l’instantané, envoyée à la création', async () => {
+    const { host } = await mountCreate({ ...DRAFT, durationSlots: 6 });
+    const form = host.form();
+
+    expect(form.snapshot('g1').durationSlots).toBe(6);
+    expect(form.dto().durationSlots).toBe(6);
   });
 
   it('l’instantané rend les champs bruts, tels que la fenêtre les retrouvera', async () => {

@@ -65,7 +65,7 @@ describe('GroupEventsService (Story 40.1)', () => {
   let email: { sendMail: jest.Mock };
   let mailer: { send: jest.Mock };
   let cleanup: { revokePendingInTx: jest.Mock };
-  let polls: { createInTx: jest.Mock; updateInTx: jest.Mock; closeInTx: jest.Mock };
+  let polls: { createInTx: jest.Mock; setOptionsInTx: jest.Mock; closeInTx: jest.Mock };
   let service: GroupEventsService;
   const order: string[] = [];
 
@@ -146,7 +146,7 @@ describe('GroupEventsService (Story 40.1)', () => {
     };
     polls = {
       createInTx: jest.fn().mockResolvedValue({ id: 'poll-1' }),
-      updateInTx: jest.fn().mockResolvedValue(undefined),
+      setOptionsInTx: jest.fn().mockResolvedValue(undefined),
       closeInTx: jest.fn().mockResolvedValue(undefined),
     };
     cleanup = {
@@ -553,14 +553,16 @@ describe('GroupEventsService (Story 40.1)', () => {
       ];
       expect(input.seance.date).toBeNull();
       const tx = { tx: true } as never;
-      await input.seance.updatePoll?.(tx, 'poll-1');
-      expect(polls.updateInTx).toHaveBeenCalledWith(
+      await input.seance.updatePoll?.(tx, 'poll-1', { purge: true });
+      // Story 47.4 : la purge décidée par l'écriture de la durée est transmise telle quelle.
+      expect(polls.setOptionsInTx).toHaveBeenCalledWith(
         tx,
         'poll-1',
         expect.objectContaining({
           expiresAt: new Date(`${isoDay(-1)}T23:59:59.999Z`),
           bounds: GROUP_POLL_OPTION_BOUNDS,
         }),
+        { purge: true },
       );
     });
   });

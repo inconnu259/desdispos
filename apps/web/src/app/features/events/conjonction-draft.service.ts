@@ -19,6 +19,9 @@ export interface ConjonctionDraft {
   places: number;
   /** Membres à qui l'hôte réserve une place d'emblée. */
   reserved: string[];
+  /** ⚠️ Story 47.4 : durée du rendez-vous, en créneaux — elle fait l'aller-retour dans les deux sens (le composer
+   *  l'initialise, la fenêtre de création la reprend). Absente = 1. */
+  durationSlots?: number;
 }
 
 /**
@@ -53,11 +56,17 @@ export class ConjonctionDraftService {
     return this.draft;
   }
 
-  /** Le calendrier rend la main : `pollOptions` (créneaux validés) remplace ceux du brouillon ; absent,
-   *  le brouillon est rendu tel quel (renoncer). L'onglet rouvrira la fenêtre de création. */
-  finishCompose(partieId: string, pollOptions?: EventPollOptionInput[]): void {
+  /** Le calendrier rend la main : `pollOptions` (créneaux validés) remplace ceux du brouillon, et — Story 47.4 —
+   *  `durationSlots` sa durée ; absents, le brouillon est rendu tel quel (renoncer). L'onglet rouvrira la fenêtre de
+   *  création. */
+  finishCompose(
+    partieId: string,
+    pollOptions?: EventPollOptionInput[],
+    durationSlots?: number,
+  ): void {
     if (this.draft?.partieId !== partieId) return;
     if (pollOptions) this.draft = { ...this.draft, pollOptions: [...pollOptions] };
+    if (durationSlots !== undefined) this.draft = { ...this.draft, durationSlots };
     this.composePending = false;
     this.reopenPending = true;
   }

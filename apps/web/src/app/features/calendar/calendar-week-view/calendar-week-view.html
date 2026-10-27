@@ -96,6 +96,7 @@
             "
             [class.selected]="isCellSelected(cell, row.slot)"
             [class.slot-cell--composed]="isCellComposed(cell, row.slot)"
+            [class.slot-cell--span-preview]="isCellSpanPreview(cell, row.slot)"
             [class.slot-cell--window]="isCellWindow(cell, row.slot)"
             [class.current]="isCurrentCell(cell, row.slot)"
             [class.slot-cell--dim]="isDayDimmed(cell)"
@@ -112,6 +113,8 @@
                 : cellAriaLabel(cell, getSlotData(cell, row.key), row.label, row.slot)
             "
             (pointerdown)="onCellPointerDown($event, cell, row.slot)"
+            (pointerenter)="onCellHover($event, cell, row.slot)"
+            (pointerleave)="onCellHover($event, null)"
             (keyup.enter)="onCellEnterKey()"
             (keydown.space)="$event.preventDefault()"
             (keyup.space)="onCellKeySelect(cell, row.slot)"

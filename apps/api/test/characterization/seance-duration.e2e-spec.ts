@@ -109,7 +109,7 @@ describe('Durée d’un rendez-vous — Story 47.1', () => {
       expect(list.some((c) => c.title === `Refusé ${durationSlots}`)).toBe(false);
     });
 
-    it('un rendez-vous au vote ouvert garde sa durée : la changer par la fenêtre est refusé', async () => {
+    it('un rendez-vous au vote ouvert : durée absente ou identique gardée ; changée (composer, Story 47.4), elle est écrite', async () => {
       const poll = {
         title: 'Sondage durée',
         pollOptions: [
@@ -125,12 +125,12 @@ describe('Durée d’un rendez-vous — Story 47.1', () => {
       await host.agent.patch(`/parties/${groupId}/events/${card.id}`).send(poll).expect(200);
       expect((await dbSeance(card.seance!.id)).durationSlots).toBe(2);
 
-      const res = await host.agent
+      // Story 47.4 : le composer d'un groupe passe par cette même route — la durée est écrite avec les créneaux.
+      await host.agent
         .patch(`/parties/${groupId}/events/${card.id}`)
-        .send({ ...poll, durationSlots: 3 });
-      expect(res.status).toBe(400);
-      expect(JSON.stringify(res.body)).toContain('composer de dates');
-      expect((await dbSeance(card.seance!.id)).durationSlots).toBe(2);
+        .send({ ...poll, durationSlots: 3 })
+        .expect(200);
+      expect((await dbSeance(card.seance!.id)).durationSlots).toBe(3);
     });
   });
 

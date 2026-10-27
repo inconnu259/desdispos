@@ -16,7 +16,23 @@ export const DURATION_TEXT = {
   max: '15 jours au plus : au-delà, créez deux rendez-vous.',
   /** Rendez-vous au vote ouvert et sans date : la durée se lit ici, se règle dans le composer. */
   pollPending: 'La durée se règle dans le composer de dates tant que le vote est ouvert.',
+  /** Story 47.4 — changer la durée d'un vote recrée toutes ses options : le nombre de réponses perdues. */
+  lossMany: 'Changer la durée efface les {n} réponses déjà données.',
+  lossOne: 'Changer la durée efface la réponse déjà donnée.',
+  /** Story 47.4 — au-delà d'un créneau, une journée entière désignée quitte la composition. */
+  fullDayRemoved:
+    'Une journée entière ne dure qu’un créneau : les journées désignées sont retirées.',
+  /** Story 47.4 — au-delà d'un créneau, une journée entière ne se désigne pas. */
+  fullDayRefused:
+    'Une journée entière ne dure qu’un créneau : choisissez un matin, un après-midi ou un soir.',
 } as const;
+
+/** Story 47.4 — « Changer la durée efface les 4 réponses déjà données. » */
+export function durationLossLabel(answers: number): string {
+  return answers === 1
+    ? DURATION_TEXT.lossOne
+    : DURATION_TEXT.lossMany.replace('{n}', String(answers));
+}
 
 /** Un départ de plage : clé de jour `AAAA-MM-JJ` et créneau. */
 export interface SpanStart {

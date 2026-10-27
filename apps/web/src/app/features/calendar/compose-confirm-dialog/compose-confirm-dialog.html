@@ -6,9 +6,13 @@
   @if (data.voterCount > 0) {
     <!-- AC6 : l'avertissement précède l'écriture et NOMME le nombre de réponses supprimées. -->
     <p class="compose-confirm__warning" role="alert">{{ warning() }}</p>
-    <p class="compose-confirm__note">
-      {{ note() }}
-    </p>
+    <!-- Story 47.4 : une durée changée n'épargne aucune réponse — la note « les créneaux gardés gardent leurs
+         réponses » serait fausse. -->
+    @if (!data.durationChanged) {
+      <p class="compose-confirm__note">
+        {{ note() }}
+      </p>
+    }
   }
 </mat-dialog-content>
 

@@ -518,6 +518,7 @@ describe('PartieDetail — statut du vote', () => {
       chosenSlot: null,
       // Story 36.6 — effectif de la troupe (MJ + membres).
       membersCount: 4,
+      durationSlots: 1,
       options: [
         {
           id: 'opt1',
@@ -3189,6 +3190,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
       chosenDate: null,
       chosenSlot: null,
       membersCount: 2,
+      durationSlots: 1,
       options: [
         {
           id: 'opt1',
@@ -6286,6 +6288,7 @@ describe('PartieDetail — du groupe vers son calendrier (Story 40.5b)', () => {
       expiresAt: '2099-12-30T23:59:59.999Z',
       status: 'OPEN',
       eligibleVoterIds: [HOST_ID, GUEST_ID],
+      durationSlots: 1,
       options: [
         { id: 'o1', date: '2099-12-24', slot: 'EVENING', availableCount: 2 },
         { id: 'o2', date: '2099-12-25', slot: 'MORNING', availableCount: 1 },

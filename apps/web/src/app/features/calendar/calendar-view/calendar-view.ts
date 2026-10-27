@@ -61,6 +61,7 @@ import {
   hasAnswered,
   isPartieActive,
   sortOptionsChronologically,
+  spanEnd,
 } from '@master-jdr/shared';
 import {
   AvailabilityService,
@@ -153,6 +154,9 @@ import {
 } from '../../events/extend-vote-dialog/extend-vote-dialog';
 import { PollMissingPanel } from '../poll-missing/poll-missing';
 import { isSpan } from '../span-label';
+import { composeSpanKeys, earliestStart } from '../compose-span.utils';
+import { composeLoss, type LossOption } from '../compose-loss.utils';
+import { DURATION_TEXT, type SpanStart } from '../../../shared/duration-stepper/duration-labels';
 
 /** Story 8.8, AC7/AC8 : un vote actif, étiqueté par son scénario (et sa séance si le scénario en a
  * plusieurs) — remplace le signal `activePoll` unique qui ne représentait qu'« un » poll par Partie. */
@@ -274,6 +278,22 @@ function spanEndOf(
     return {};
   }
   return { endDate, ...(endSlot ? { endSlot } : {}) };
+}
+
+/**
+ * Story 47.4 — la fin d'une option de vote : chaque option est le DÉPART d'une plage de la durée du vote (`spanEnd`).
+ * Une option d'un créneau (ou une journée entière) n'émet rien : ses entrées restent celles d'avant, et la projection
+ * de la 47.3 dessine les plages candidates des autres.
+ */
+function optionSpanEnd(
+  date: string,
+  slot: DaySlot,
+  durationSlots: number | undefined,
+): { endDate?: string; endSlot?: DaySlot } {
+  const n = durationSlots ?? 1;
+  if (n <= 1 || slot === 'FULL_DAY') return {};
+  const end = spanEnd(date.substring(0, 10), slot, n);
+  return spanEndOf(date, slot, end.date, end.slot);
 }
 
 @Component({
@@ -814,6 +834,8 @@ export class CalendarView implements OnInit {
             // pour les séances (revue de code du 36.6 : le code brut fuitait ici).
             detail: SLOT_LABELS[option.slot],
             slot: option.slot,
+            // Story 47.4 — l'option est le départ d'une plage de la durée du vote.
+            ...optionSpanEnd(option.date, option.slot, entry.poll.durationSlots),
             vote: {
               // Story 36.7 — le triplet d'identité de l'action. En contexte de partie il vient de
               // la route ; il est porté jusqu'à la bande pour que le sélecteur de réponse n'ait
@@ -847,6 +869,8 @@ export class CalendarView implements OnInit {
             label: card.title,
             detail: SLOT_LABELS[option.slot],
             slot: option.slot,
+            // Story 47.4 — l'option est le départ d'une plage de la durée du vote.
+            ...optionSpanEnd(option.date, option.slot, poll.durationSlots),
             vote: {
               partieId: pid,
               pollId: poll.id,
@@ -971,6 +995,8 @@ export class CalendarView implements OnInit {
               // Idem contexte de partie (cf. commentaire ci-dessus, ligne ~332).
               detail: SLOT_LABELS[option.slot],
               slot: option.slot,
+              // Story 47.4 — l'option est le départ d'une plage de la durée du rendez-vous.
+              ...optionSpanEnd(option.date, option.slot, p.durationSlots),
               vote: {
                 // Story 36.7 — ici le `partieId` ne peut PAS venir de la route : le calendrier personnel
                 // agrège plusieurs parties. Il vient de l'entrée elle-même (`OpenPollEntry.partieId`), et
@@ -1918,6 +1944,102 @@ export class CalendarView implements OnInit {
     return new Set(this.composedCells().map((c) => composeCellKey(c.date, c.slot)));
   });
 
+  // ─── ⚠️ Story 47.4 — la durée dans le composer ────────────────────────────────────────────────
+
+  /** La durée composée, en créneaux : chaque créneau désigné est le DÉPART d'une plage de cette durée. Toujours
+   *  initialisée à celle du rendez-vous visé (`Seance.durationSlots`, ou celle du brouillon d'une conjonction). */
+  protected readonly composeDuration = signal(1);
+  /** La durée du rendez-vous visé à l'armement : la comparer à `composeDuration` dit si elle change (payload,
+   *  avertissement de perte). */
+  private readonly composeTargetDuration = signal(1);
+
+  /** Les créneaux qu'allument les plages des départs désignés (départs exclus) — vide à 1 créneau. */
+  protected readonly composeCoverKeys = computed<ReadonlySet<string> | null>(() =>
+    this.composing() ? composeSpanKeys(this.composedCells(), this.composeDuration()) : null,
+  );
+
+  /** Le premier départ désigné : la plage s'écrit depuis lui, en clair, sous le compteur. Une journée entière n'en est
+   *  pas un — sinon le compteur plafonnerait à 1 et l'on ne pourrait plus allonger (ce qui la retire). */
+  protected readonly composeDurationStart = computed<SpanStart | null>(() => {
+    const first = earliestStart(this.composedCells().filter((c) => c.slot !== 'FULL_DAY'));
+    return first ? { date: toDateKey(first.date), slot: first.slot } : null;
+  });
+
+  /** La durée change-t-elle ? Elle ne part dans l'écriture QUE dans ce cas (absente = inchangée côté serveur). */
+  private composeDurationPayload(): { durationSlots?: number } {
+    const n = this.composeDuration();
+    return n !== this.composeTargetDuration() ? { durationSlots: n } : {};
+  }
+
+  /** La durée du rendez-vous qu'une cible vise, lue de la charge déjà chargée (1 à défaut). */
+  private targetDurationOf(target: ComposeTarget): number {
+    switch (target.kind) {
+      case 'poll': {
+        const entry = this.activePolls().find((e) => e.poll.id === target.pollId);
+        return entry?.poll.durationSlots ?? entry?.seance.durationSlots ?? 1;
+      }
+      case 'new':
+        return (
+          this.scenarios()
+            .flatMap((s) => s.seances)
+            .find((s) => s.id === target.seanceId)?.durationSlots ?? 1
+        );
+      case 'group-poll': {
+        const entry = this.groupPolls().find((e) => e.card.id === target.eventId);
+        return entry?.poll.durationSlots ?? entry?.card.seance?.durationSlots ?? 1;
+      }
+      case 'evening-poll':
+        return this.groupEvents().find((c) => c.id === target.eventId)?.seance?.durationSlots ?? 1;
+      case 'group-new':
+        return 1;
+    }
+  }
+
+  /** Arme la ligne « Durée » sur la durée du rendez-vous visé. */
+  private armDuration(durationSlots: number): void {
+    this.composeDuration.set(durationSlots);
+    this.composeTargetDuration.set(durationSlots);
+  }
+
+  /** Une nouvelle durée choisie au compteur. Au-delà d'un créneau, une journée entière déjà désignée quitte la
+   *  composition, et le message l'écrit (jamais un retrait muet). Rien n'est écrit au serveur. */
+  protected onComposeDurationChanged(durationSlots: number): void {
+    if (!this.composing()) return;
+    this.composeDuration.set(durationSlots);
+    if (durationSlots <= 1) {
+      // Revenu à 1 créneau : les messages propres à la durée n'ont plus d'objet.
+      const refusal = this.composeRefusal();
+      if (refusal === DURATION_TEXT.fullDayRemoved || refusal === DURATION_TEXT.fullDayRefused) {
+        this.composeRefusal.set(null);
+      }
+      return;
+    }
+    const cells = this.composedCells();
+    const kept = cells.filter((c) => c.slot !== 'FULL_DAY');
+    if (kept.length < cells.length) {
+      this.composedCells.set(kept);
+      this.composeRefusal.set(DURATION_TEXT.fullDayRemoved);
+    }
+  }
+
+  /** Les options d'un vote de JDR, dans la forme de la règle de perte (`composeLoss`). */
+  private jdrLossOptions(poll: ActivePollEntry['poll'] | undefined): LossOption[] {
+    return (poll?.options ?? []).map((o) => ({
+      date: o.date,
+      slot: o.slot,
+      answers: o.votes.length,
+    }));
+  }
+
+  /** Les options du sondage d'une conjonction, dans la forme de la règle de perte. */
+  private groupLossOptions(poll: EventPollDto): LossOption[] {
+    return poll.options.map((o) => ({
+      date: o.date,
+      slot: o.slot,
+      answers: poll.votes.filter((v) => v.optionId === o.id).length,
+    }));
+  }
+
   /** Le vote ouvert visé, ou `null` (cible « nouveau vote », ou vote disparu). */
   private readonly composedPollEntry = computed(() => {
     const target = this.composeTarget();
@@ -2343,6 +2465,8 @@ export class CalendarView implements OnInit {
           : null;
     this.composeDeadlineDay.set(existingEnd ? existingEnd.substring(0, 10) : null);
     this.composeDeadlineFixed.set(!!existingEnd);
+    // ⚠️ Story 47.4 — la ligne « Durée » part TOUJOURS de la durée du rendez-vous visé.
+    this.armDuration(this.targetDurationOf(target));
     this.composing.set(true);
     // Un groupe se compose en vue Semaine (règle 40.5b) ; la vue Agenda n'a ni grille ni barre de composition.
     if (target.kind === 'group-poll' || target.kind === 'evening-poll') this.showGridForCompose();
@@ -2400,6 +2524,20 @@ export class CalendarView implements OnInit {
   /** AC2 — bascule pure. Aucun appel réseau : rien n'est enregistré avant validation. */
   protected onComposeToggled(event: SlotSelectedEvent): void {
     if (!this.composing()) return;
+    // ⚠️ Story 47.4 — au-delà d'un créneau, une journée entière n'est pas un départ : en Mois, toucher une case
+    // entière ouvre la Semaine sur ce jour (où l'on choisit matin, après-midi ou soir) sans rien désigner.
+    if (event.slot === 'FULL_DAY' && this.composeDuration() > 1) {
+      if (this.view() === 'month') {
+        this.sharedDate.set(
+          new Date(Date.UTC(event.date.getFullYear(), event.date.getMonth(), event.date.getDate())),
+        );
+        this.onViewChange('week');
+        this.composeRefusal.set(null);
+      } else {
+        this.composeRefusal.set(DURATION_TEXT.fullDayRefused);
+      }
+      return;
+    }
     if (this.isGroupTarget()) {
       // Story 40.5b — une conjonction se propose sur un créneau précis : matin, après-midi ou soir.
       // La journée entière est REFUSÉE avec sa raison écrite (jamais un tap muet).
@@ -2418,7 +2556,10 @@ export class CalendarView implements OnInit {
 
   /** ⚠️ Story 45.3 — la journée entière est-elle permise dans cette composition ? En JDR oui ; une conjonction ou une
    *  soirée (cibles de groupe) se propose sur un créneau précis. */
-  protected readonly composeAllowsFullDay = computed(() => !this.isGroupTarget());
+  protected readonly composeAllowsFullDay = computed(
+    // Story 47.4 — et seulement à 1 créneau : au-delà, « Journée » quitte la barre de sélection.
+    () => !this.isGroupTarget() && this.composeDuration() <= 1,
+  );
 
   /** ⚠️ Story 45.3 — « Ajouter au vote » : la sélection (appui maintenu ou glissement, puis un moment) rejoint les
    *  créneaux déjà désignés. CUMUL : l'union, sans doublon, l'ordre existant gardé — jamais un remplacement.
@@ -2433,6 +2574,11 @@ export class CalendarView implements OnInit {
           ? this.theme.tone()['partie.ralliement_calendar_compose_full_day']
           : null,
       );
+      toAdd = kept;
+    } else if (this.composeDuration() > 1) {
+      // Story 47.4 — au-delà d'un créneau, une journée entière n'est pas un départ (refus écrit, jamais muet).
+      const kept = cells.filter((c) => c.slot !== 'FULL_DAY');
+      this.composeRefusal.set(kept.length < cells.length ? DURATION_TEXT.fullDayRefused : null);
       toAdd = kept;
     } else {
       this.composeRefusal.set(null);
@@ -2484,6 +2630,7 @@ export class CalendarView implements OnInit {
     this.composeRefusal.set(null);
     this.composeDeadlineDay.set(null);
     this.composeDeadlineFixed.set(false);
+    this.armDuration(1);
   }
 
   /** Story 40.5b — retour à la page du groupe (son onglet des conjonctions rouvre la fenêtre de
@@ -2530,12 +2677,19 @@ export class CalendarView implements OnInit {
 
     // Ce qui disparaît, et ce que cela coûte aux autres (AC6). Vide par construction sur une
     // création : un vote qui n'existe pas ne porte aucune réponse.
+    // ⚠️ Story 47.4 — UNE règle (`composeLoss`) : une durée changée efface TOUTES les réponses, sinon seules celles
+    // des créneaux retirés partent.
     const entry = this.composedPollEntry();
     const keptKeys = new Set(this.composedCells().map((c) => composeCellKey(c.date, c.slot)));
-    const removed = (entry?.poll.options ?? []).filter(
-      (o) => !keptKeys.has(composeCellKey(dateKeyToLocalMidnight(o.date.substring(0, 10)), o.slot)),
+    const durationSlots = this.composeDuration();
+    const targetDuration = this.composeTargetDuration();
+    const loss = composeLoss(
+      this.jdrLossOptions(entry?.poll),
+      keptKeys,
+      durationSlots,
+      targetDuration,
     );
-    const voterCount = removed.reduce((sum, o) => sum + o.votes.length, 0);
+    const voterCount = loss.answers;
 
     // ⚠️ Story 45.2 — le rendez-vous a été choisi avant : le dialogue ne s'ouvre plus que pour l'avertissement de
     // perte de réponses (modification d'un vote dont des créneaux retirés en portent). Créer n'en ouvre aucun.
@@ -2548,8 +2702,9 @@ export class CalendarView implements OnInit {
     if (voterCount > 0) {
       const data: ComposeConfirmData = {
         slotCount: options.length,
-        removedCount: removed.length,
+        removedCount: loss.removed,
         voterCount,
+        ...(loss.durationChanged ? { durationChanged: true } : {}),
       };
       const ref = this.dialog.open(ComposeConfirmDialog, { data });
       // AC6 — renoncer ne modifie RIEN, et la composition reste telle quelle : le MJ n'a pas à
@@ -2564,11 +2719,12 @@ export class CalendarView implements OnInit {
     // consentement qui ne porte plus sur le bon nombre — redemander confirmation.
     if (target.kind === 'poll') {
       const freshEntry = this.composedPollEntry();
-      const freshRemoved = (freshEntry?.poll.options ?? []).filter(
-        (o) =>
-          !keptKeys.has(composeCellKey(dateKeyToLocalMidnight(o.date.substring(0, 10)), o.slot)),
-      );
-      const freshVoterCount = freshRemoved.reduce((sum, o) => sum + o.votes.length, 0);
+      const freshVoterCount = composeLoss(
+        this.jdrLossOptions(freshEntry?.poll),
+        keptKeys,
+        durationSlots,
+        targetDuration,
+      ).answers;
       if (freshVoterCount > voterCount) {
         this.error.set(this.theme.tone()['calendar.view_compose_stale_voters']);
         return;
@@ -2587,6 +2743,8 @@ export class CalendarView implements OnInit {
         await this.pollSvc.setPollOptions(partieId, target.pollId, {
           options,
           expiresAt: this.composeDeadline(),
+          // Story 47.4 — seulement si elle change : absente, le serveur garde la durée (et les réponses).
+          ...this.composeDurationPayload(),
         });
         pollId = target.pollId;
       } else {
@@ -2595,6 +2753,8 @@ export class CalendarView implements OnInit {
           target.seanceId,
           options,
           this.composeDeadline(),
+          // Story 47.4 — écrite avec le vote, dans la même transaction, seulement si elle change.
+          this.composeDurationPayload().durationSlots,
         );
         pollId = scenario.seances.find((s) => s.id === target.seanceId)?.poll?.id;
       }
@@ -2659,6 +2819,8 @@ export class CalendarView implements OnInit {
       })),
     );
     this.composeRefusal.set(null);
+    // ⚠️ Story 47.4 — la durée du brouillon (celle de la fenêtre de création), dans les deux sens.
+    this.armDuration(draft.durationSlots ?? 1);
     this.composing.set(true);
     this.showGridForCompose();
   }
@@ -2678,8 +2840,10 @@ export class CalendarView implements OnInit {
    *  fenêtre de création revient. Aucun appel au serveur (la conjonction n'existe qu'à « Créer »). */
   private confirmGroupNew(partieId: string): void {
     const options = this.composedSlots();
+    // Story 47.4 — la durée composée rejoint le brouillon avec les créneaux (la fenêtre de création la reprend).
+    const durationSlots = this.composeDuration();
     this.exitCompose();
-    this.drafts.finishCompose(partieId, options);
+    this.drafts.finishCompose(partieId, options, durationSlots);
     void this.returnToGroupPage(partieId);
   }
 
@@ -2704,6 +2868,8 @@ export class CalendarView implements OnInit {
       capacity: card.seance?.capacity ?? null,
       pollOptions: this.composedSlots(),
       pollDeadline: this.composeDeadline(),
+      // Story 47.4 — seulement si elle change (absente = inchangée).
+      ...this.composeDurationPayload(),
     };
     this.pollActionPending.set(true);
     this.error.set(null);
@@ -2737,18 +2903,14 @@ export class CalendarView implements OnInit {
     // Story 45.4 — la fin du vote est celle du composer (la fin actuelle, ou celle que l'hôte a choisie).
     const deadline = this.composeDeadline();
 
-    // Ce qui disparaît et ce que cela coûte aux autres : les réponses des créneaux retirés.
+    // Ce qui disparaît et ce que cela coûte aux autres. ⚠️ Story 47.4 — la MÊME règle que le JDR (`composeLoss`) :
+    // une durée changée efface toutes les réponses, sinon seules celles des créneaux retirés partent.
     const kept = new Set(options.map((o) => `${o.date}|${o.slot}`));
-    const lostVotes = (poll: EventPollDto): { removed: number; votes: number } => {
-      const removedIds = new Set(
-        poll.options
-          .filter((o) => !kept.has(`${o.date.substring(0, 10)}|${o.slot}`))
-          .map((o) => o.id),
-      );
-      return {
-        removed: removedIds.size,
-        votes: poll.votes.filter((v) => removedIds.has(v.optionId)).length,
-      };
+    const durationSlots = this.composeDuration();
+    const targetDuration = this.composeTargetDuration();
+    const lostVotes = (poll: EventPollDto) => {
+      const loss = composeLoss(this.groupLossOptions(poll), kept, durationSlots, targetDuration);
+      return { removed: loss.removed, votes: loss.answers, durationChanged: loss.durationChanged };
     };
     const before = lostVotes(entry.poll);
     // La carte qui sert à bâtir le PATCH est celle relue APRÈS l'avertissement : une modification du
@@ -2761,6 +2923,7 @@ export class CalendarView implements OnInit {
         removedCount: before.removed,
         voterCount: before.votes,
         group: true,
+        ...(before.durationChanged ? { durationChanged: true } : {}),
       };
       const ref = this.dialog.open(ComposeConfirmDialog, { data });
       const decision = await firstValueFrom(ref.afterClosed());
@@ -2786,6 +2949,8 @@ export class CalendarView implements OnInit {
       capacity: card.seance?.capacity ?? null,
       pollOptions: options,
       pollDeadline: deadline,
+      // Story 47.4 — seulement si elle change : le serveur écrit la durée puis recrée les créneaux.
+      ...this.composeDurationPayload(),
     };
     this.pollActionPending.set(true);
     this.error.set(null);

@@ -21,6 +21,7 @@ function poll(over: Partial<SessionPollDto> = {}): SessionPollDto {
     chosenDate: null,
     chosenSlot: null,
     membersCount: 3,
+    durationSlots: 1,
     options: [
       { id: 'o1', date: iso('2026-10-02'), slot: 'EVENING', votes: [] },
       { id: 'o2', date: iso('2026-10-09'), slot: 'EVENING', votes: [] },

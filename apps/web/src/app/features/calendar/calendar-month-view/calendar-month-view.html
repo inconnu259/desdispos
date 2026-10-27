@@ -106,7 +106,7 @@
               Story 36.3, AC1 : le tap n'ouvre plus le panneau de déclaration, il arme une
               sélection d'un créneau. Le panneau se rejoint par « Autre… » dans la barre.
             -->
-            @if (cell.uniform) {
+            @if (!showsSlotBands(cell)) {
               <!-- AC4 (36.2) : trois créneaux au même rang, aucun événement — une seule bande. La
                    cible de créneau disparaît avec elle : le tap vaut la journée entière
                    (collision 8 de la spine d'interactions).
@@ -149,6 +149,7 @@
                     [class.band--span-next]="band.span?.continuesAfter"
                     [class.band--span-prev]="band.span?.continuesBefore"
                     [class.band--composed]="isBandComposed(cell, band.slot)"
+                    [class.band--span-preview]="isBandSpanPreview(cell, band.slot)"
                     [class.band--window]="isBandWindow(cell, band.slot)"
                     [attr.aria-label]="
                       bandAriaLabel(
@@ -162,6 +163,8 @@
                       $event.stopPropagation(); onBandPointerDown($event, cell, band.slot)
                     "
                     (click)="$event.stopPropagation(); onCellClick(cell.date, band.slot, $event)"
+                    (pointerenter)="onBandHover($event, cell, band.slot)"
+                    (pointerleave)="onBandHover($event, null)"
                   >
                     @if (band.text) {
                       <span class="band__label">{{ band.text }}</span>

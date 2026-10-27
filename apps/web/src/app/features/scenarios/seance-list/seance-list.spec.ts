@@ -22,6 +22,7 @@ const POLL: SessionPollDto = {
   chosenSlot: null,
   // Story 36.6 — effectif de la troupe (MJ + membres).
   membersCount: 4,
+  durationSlots: 1,
   options: [],
 };
 
@@ -210,6 +211,7 @@ describe('SeanceList', () => {
         chosenSlot: 'EVENING',
         // Story 36.6 — effectif de la troupe (MJ + membres).
         membersCount: 4,
+        durationSlots: 1,
       };
       const fresh = { ...SCENARIO, seances: [{ ...SEANCE_WITH_POLL, poll: closedPoll }] };
       scenariosSvc.listAll.mockResolvedValue([fresh]);
@@ -269,6 +271,7 @@ describe('SeanceList', () => {
         chosenSlot: 'EVENING',
         // Story 36.6 — effectif de la troupe (MJ + membres).
         membersCount: 4,
+        durationSlots: 1,
       },
     };
     const CLOSED_NO_DATE: SeanceDto = {
@@ -427,6 +430,7 @@ describe('SeanceList', () => {
         chosenSlot: 'AFTERNOON',
         // Story 36.6 — effectif de la troupe (MJ + membres).
         membersCount: 4,
+        durationSlots: 1,
       },
     };
     const SEANCE_CLOSED_NO_DATE: SeanceDto = {
@@ -887,6 +891,7 @@ describe('SeanceList', () => {
           chosenSlot: 'AFTERNOON',
           // Story 36.6 — effectif de la troupe (MJ + membres).
           membersCount: 4,
+          durationSlots: 1,
           options: [],
         },
       };

@@ -365,7 +365,9 @@ export class GroupEventsService {
       ...common,
       createPoll: (tx) =>
         this.polls.createInTx(tx, partieId, hostId, { options, expiresAt, bounds }),
-      updatePoll: (tx, pollId) => this.polls.updateInTx(tx, pollId, { options, expiresAt, bounds }),
+      // Story 47.4 : `purge` vient de l'écriture de la durée par `updateHosted`, juste avant.
+      updatePoll: (tx, pollId, { purge }) =>
+        this.polls.setOptionsInTx(tx, pollId, { options, expiresAt, bounds }, { purge }),
     };
   }
 

@@ -22,6 +22,7 @@ import type {
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { SelectionBar } from '../selection-bar/selection-bar';
+import { composeSpanKeys } from '../compose-span.utils';
 import { SLOT_LABELS } from '../agenda-badge.utils';
 import type { AgendaEntry, AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import {
@@ -373,6 +374,22 @@ export class CalendarMonthView {
   /** Story 45.3 — la journée entière est-elle permise dans cette composition ? Faux pour une conjonction ou une
    *  soirée : la barre ne propose alors pas « Journée ». */
   readonly composeFullDay = input(true);
+  /** ⚠️ Story 47.4 — les créneaux couverts par les plages des départs désignés (départs exclus), en clés
+   *  `composeCellKey` : ils prennent l'aperçu. Reçus de `CalendarView` (`composeSpanKeys`), jamais dérivés ici. */
+  readonly composeCoverKeys = input<ReadonlySet<string> | null>(null);
+  /** Story 47.4 — la durée composée, en créneaux : au survol d'une bande, la plage qu'elle ouvrirait s'allume. */
+  readonly composeDuration = input(1);
+
+  /** Story 47.4 — la bande survolée à la souris pendant la composition (sa plage s'allume en aperçu). */
+  private readonly hoverStart = signal<{ date: Date; slot: DaySlot } | null>(null);
+  private readonly hoverKeys = computed<ReadonlySet<string>>(() => {
+    const start = this.hoverStart();
+    if (!start || !this.composing()) return new Set();
+    return new Set([
+      composeCellKey(start.date, start.slot),
+      ...composeSpanKeys([start], this.composeDuration()),
+    ]);
+  });
 
   protected readonly displayDate = signal(new Date());
 
@@ -774,6 +791,38 @@ export class CalendarMonthView {
 
   protected isBandComposed(cell: DayCell, slot: DaySlot): boolean {
     return this.composedKeys()?.has(composeCellKey(cell.date, slot)) ?? false;
+  }
+
+  /** ⚠️ Story 47.4 — la bande est-elle couverte par la plage d'un départ désigné, ou par celle que la bande
+   *  survolée ouvrirait ? Elle prend alors l'aperçu (un départ garde son tireté). Rien à 1 créneau. */
+  protected isBandSpanPreview(cell: DayCell, slot: DaySlot): boolean {
+    if (this.composeDuration() <= 1 || this.isBandComposed(cell, slot)) return false;
+    const key = composeCellKey(cell.date, slot);
+    return (this.composeCoverKeys()?.has(key) ?? false) || this.hoverKeys().has(key);
+  }
+
+  /** ⚠️ Story 47.4 — un jour « uniforme » (une seule bande fusionnée) ne peut pas montrer un créneau précis : dès
+   *  qu'un départ désigné ou la plage d'un départ touche l'un de ses créneaux (durée > 1), il se déplie en ses trois
+   *  bandes. À 1 créneau, la grille reste celle d'avant. */
+  protected showsSlotBands(cell: DayCell): boolean {
+    if (!cell.uniform) return true;
+    if (!this.composing() || this.composeDuration() <= 1) return false;
+    const marks = [this.composedKeys(), this.composeCoverKeys(), this.hoverKeys()];
+    return (['MORNING', 'AFTERNOON', 'EVENING'] as const).some((slot) => {
+      const key = composeCellKey(cell.date, slot);
+      return marks.some((set) => set?.has(key) ?? false);
+    });
+  }
+
+  /** Story 47.4 — survol d'une bande pendant la composition (`null` : la souris la quitte). Souris seulement : au
+   *  doigt, l'entrée émulée après un tap n'a pas de sortie et laisserait une plage allumée. Un jour passé n'en ouvre pas. */
+  protected onBandHover(event: PointerEvent, cell: DayCell | null, slot?: DaySlot): void {
+    if (event.pointerType !== 'mouse') return;
+    if (!cell || !slot || cell.isPast || !this.composing() || this.composeDuration() <= 1) {
+      if (this.hoverStart() !== null) this.hoverStart.set(null);
+      return;
+    }
+    this.hoverStart.set({ date: cell.date, slot });
   }
 
   /** Story 36.8 — vrai quand la bande rend la JAUGE (et non des pastilles). Seule la jauge est

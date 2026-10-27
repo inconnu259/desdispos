@@ -207,6 +207,22 @@ function makePollService() {
   return { create: jest.fn() };
 }
 
+/** Story 47.4 — `PollService.create` simulé : comme le vrai, il confie l'écriture du vote à l'appelant
+ *  (`EventsService.createSeancePoll`, transaction unique) puis rend le vote créé. */
+function pollCreates(pollService: ReturnType<typeof makePollService>, pollId: string) {
+  pollService.create.mockImplementation(
+    async (
+      _grant: unknown,
+      _userId: unknown,
+      _dto: unknown,
+      persist?: (write: (tx: unknown, durationSlots: number) => Promise<{ id: string }>) => Promise<void>,
+    ) => {
+      await persist?.(async () => ({ id: pollId }));
+      return { id: pollId };
+    },
+  );
+}
+
 function makeRealtimeEvents() {
   return { emit: jest.fn() };
 }
@@ -3949,7 +3965,7 @@ describe('ScenariosService', () => {
           kind: 'CAMPAGNE_LINEAIRE',
         }),
       );
-      pollService.create.mockResolvedValue({ id: POLL_ID });
+      pollCreates(pollService, POLL_ID);
       prisma.seance.findMany.mockResolvedValue(
         asSeance([
           {
@@ -3977,9 +3993,12 @@ describe('ScenariosService', () => {
         seanceId: SEANCE_ID,
       });
       // Story 37.6 : le vote reçoit l'autorisation de la séance (partie `p1`), plus un `partieId` nu.
-      expect(pollService.create).toHaveBeenCalledWith(objectLike({ partieId: 'p1' }), 'mj1', {
-        options: OPTIONS,
-      });
+      expect(pollService.create).toHaveBeenCalledWith(
+        objectLike({ partieId: 'p1' }),
+        'mj1',
+        { options: OPTIONS },
+        expect.any(Function),
+      );
       expect(prisma.seance.update).toHaveBeenCalledWith({
         where: { id: SEANCE_ID },
         data: { pollId: POLL_ID },
@@ -4005,11 +4024,45 @@ describe('ScenariosService', () => {
           kind: 'CAMPAGNE_LINEAIRE',
         }),
       );
-      pollService.create.mockResolvedValue({ id: POLL_ID });
+      pollCreates(pollService, POLL_ID);
 
       await service.createSeancePoll(SEANCE_ID, 'mj1', OPTIONS);
 
       expect(realtimeEvents.emit).toHaveBeenCalledWith(partieTopic('p1'));
+    });
+
+    it('Story 47.4 — la durée est écrite avec le vote, dans la même transaction, avant Seance.pollId', async () => {
+      prisma.seance.findUnique.mockResolvedValue(
+        asSeance({
+          id: SEANCE_ID,
+          eventId: VALID_SCENARIO_ID,
+          scenarioId: VALID_SCENARIO_ID,
+          pollId: null,
+          durationSlots: 1,
+          startDate: null,
+          startSlot: null,
+        }),
+      );
+      prisma.scenario.findUniqueOrThrow
+        .mockResolvedValueOnce(withEvent(mockScenario()))
+        .mockResolvedValueOnce(withEvent(mockScenario()));
+      permissions.assert.mockResolvedValue(
+        testGrant({ id: 'p1', ownerId: 'mj1', kind: 'CAMPAGNE_LINEAIRE' }),
+      );
+      pollCreates(pollService, POLL_ID);
+      prisma.seance.findMany.mockResolvedValue([]);
+
+      await service.createSeancePoll(SEANCE_ID, 'mj1', OPTIONS, undefined, 6);
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(prisma.seance.update).toHaveBeenNthCalledWith(1, {
+        where: { id: SEANCE_ID },
+        data: { durationSlots: 6, endDate: null, endSlot: null },
+      });
+      expect(prisma.seance.update).toHaveBeenNthCalledWith(2, {
+        where: { id: SEANCE_ID },
+        data: { pollId: POLL_ID },
+      });
     });
 
     it('CAMPAGNE_EPISODIQUE : création + liaison réussie, coexiste avec inscription (Story 8.8, Décision 1)', async () => {
@@ -4030,7 +4083,7 @@ describe('ScenariosService', () => {
           kind: 'CAMPAGNE_EPISODIQUE',
         }),
       );
-      pollService.create.mockResolvedValue({ id: POLL_ID });
+      pollCreates(pollService, POLL_ID);
       prisma.seance.findMany.mockResolvedValue(
         asSeance([
           {
@@ -4061,9 +4114,12 @@ describe('ScenariosService', () => {
         seanceId: SEANCE_ID,
       });
       // Story 37.6 : le vote reçoit l'autorisation de la séance (partie `p1`), plus un `partieId` nu.
-      expect(pollService.create).toHaveBeenCalledWith(objectLike({ partieId: 'p1' }), 'mj1', {
-        options: OPTIONS,
-      });
+      expect(pollService.create).toHaveBeenCalledWith(
+        objectLike({ partieId: 'p1' }),
+        'mj1',
+        { options: OPTIONS },
+        expect.any(Function),
+      );
       expect(prisma.seance.update).toHaveBeenCalledWith({
         where: { id: SEANCE_ID },
         data: { pollId: POLL_ID },
@@ -4090,10 +4146,14 @@ describe('ScenariosService', () => {
         }),
       );
 
+      pollCreates(pollService, POLL_ID);
+
       await expect(service.createSeancePoll(SEANCE_ID, 'mj1', OPTIONS)).rejects.toThrow(
         BadRequestException,
       );
-      expect(pollService.create).not.toHaveBeenCalled();
+      // Story 47.4 : `PollService` prépare le vote, mais `EventsService` refuse avant d'ouvrir la transaction —
+      // le vote n'est jamais écrit.
+      expect(prisma.$transaction).not.toHaveBeenCalled();
       expect(prisma.seance.update).not.toHaveBeenCalled();
     });
 

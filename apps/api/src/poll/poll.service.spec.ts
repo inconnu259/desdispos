@@ -7,12 +7,14 @@ import {
   GROUP_POLL_OPTION_BOUNDS,
   PAST_OPTION_MESSAGE,
   POLL_DEADLINE_PAST_MESSAGE,
+  POLL_FULL_DAY_SPAN_MESSAGE,
   PollService,
 } from './poll.service';
 import { GROUP_POLL_CHOOSE_PORT } from './ports/group-poll-choose.port';
 import { GROUP_POLL_EXTEND_PORT } from './ports/group-poll-extend.port';
 import { GROUP_POLL_VOTE_PORT } from './ports/group-poll-vote.port';
 import { PARTIE_SIGNALS_PORT } from './ports/partie-signals.port';
+import { RENDEZ_VOUS_DURATION_PORT } from './ports/rendez-vous-duration.port';
 import { SEANCE_DATE_PORT } from './ports/seance-date.port';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../permissions/permission.service';
@@ -95,6 +97,16 @@ function makeRealtimeEvents() {
   return { emit: jest.fn() };
 }
 
+/** Story 47.4 : `RendezVousDurationPort` — implémenté par `events/` (durée inchangée de 1 par défaut). */
+function makeDuration() {
+  return {
+    setDurationInTx: jest.fn().mockResolvedValue({ changed: false, durationSlots: 1 }),
+    durationsOf: jest.fn((ids: readonly string[]) =>
+      Promise.resolve(new Map(ids.map((id) => [id, 1]))),
+    ),
+  };
+}
+
 function opt(date: string, slot: DaySlot) {
   return { date, slot };
 }
@@ -124,9 +136,11 @@ describe('PollService', () => {
   let groupVotes: { assertCanVote: jest.Mock; lockConjonction: jest.Mock };
   let groupChoice: { assertCanChoose: jest.Mock; notifyDateFixed: jest.Mock };
   let groupExtension: { assertCanExtend: jest.Mock };
+  let duration: ReturnType<typeof makeDuration>;
 
   beforeEach(async () => {
     prisma = makePrisma();
+    duration = makeDuration();
     partieSignals = makePartieSignals();
     permissions = makePermissions();
     realtimeEvents = makeRealtimeEvents();
@@ -152,6 +166,7 @@ describe('PollService', () => {
         { provide: GROUP_POLL_VOTE_PORT, useValue: groupVotes },
         { provide: GROUP_POLL_CHOOSE_PORT, useValue: groupChoice },
         { provide: GROUP_POLL_EXTEND_PORT, useValue: groupExtension },
+        { provide: RENDEZ_VOUS_DURATION_PORT, useValue: duration },
       ],
     }).compile();
     service = module.get(PollService);
@@ -288,6 +303,14 @@ describe('PollService', () => {
       prisma.sessionPoll.findFirst.mockResolvedValue(makePoll());
       const dto = await service.findOpen('p1', 'mj1');
       expect(dto?.membersCount).toBe(1);
+    });
+
+    it('Story 47.4 — findOpen() porte la durée du rendez-vous, lue par le port', async () => {
+      prisma.sessionPoll.findFirst.mockResolvedValue(makePoll());
+      duration.durationsOf.mockResolvedValue(new Map([['poll1', 6]]));
+      const dto = await service.findOpen('p1', 'u1');
+      expect(dto?.durationSlots).toBe(6);
+      expect(duration.durationsOf).toHaveBeenCalledWith(['poll1']);
     });
 
     it('findOpen() sans poll ouvert → aucun comptage inutile', async () => {
@@ -823,11 +846,11 @@ describe('PollService', () => {
       new Date(Date.now() + days * 86_400_000).toISOString().substring(0, 10);
     const keep = [opt('2026-08-01', 'MORNING'), opt('2026-08-02', 'AFTERNOON')];
 
-    it('une NOUVELLE fin du vote est écrite (repousser la fin EST la prolongation du JDR), sans rien d’autre', async () => {
+    it('une NOUVELLE fin du vote est écrite (repousser la fin EST la prolongation du JDR), relance ré-armée', async () => {
       await service.setOptions('p1', 'poll1', 'mj1', { options: keep, expiresAt: dayIn(20) });
       expect(prisma.sessionPoll.update).toHaveBeenCalledWith({
         where: { id: 'poll1' },
-        data: { expiresAt: new Date(`${dayIn(20)}T23:59:59.999Z`) },
+        data: { expiresAt: new Date(`${dayIn(20)}T23:59:59.999Z`), relanceSentAt: null },
       });
     });
 
@@ -981,6 +1004,135 @@ describe('PollService', () => {
       expect(dto.membersCount).toBe(4);
       expect(dto.id).toBe('poll1');
     });
+
+    describe('durée du rendez-vous (Story 47.4)', () => {
+      it('durée absente : verrous seulement (port appelé sans durée), réconciliation, réponses gardées', async () => {
+        duration.setDurationInTx.mockResolvedValue({ changed: false, durationSlots: 3 });
+
+        const dto = await service.setOptions('p1', 'poll1', 'mj1', { options: keep });
+
+        expect(duration.setDurationInTx).toHaveBeenCalledWith(
+          expect.anything(),
+          'poll1',
+          undefined,
+        );
+        expect(prisma.pollOption.deleteMany).not.toHaveBeenCalled();
+        expect(prisma.pollOption.createMany).not.toHaveBeenCalled();
+        expect(dto.durationSlots).toBe(3);
+      });
+
+      it('durée changée : écrite AVANT les options, toutes recréées (réponses effacées), relance ré-armée', async () => {
+        duration.setDurationInTx.mockResolvedValue({ changed: true, durationSlots: 6 });
+
+        const dto = await service.setOptions('p1', 'poll1', 'mj1', {
+          options: keep,
+          durationSlots: 6,
+        });
+
+        expect(duration.setDurationInTx).toHaveBeenCalledWith(expect.anything(), 'poll1', 6);
+        expect(prisma.pollOption.deleteMany).toHaveBeenCalledWith({ where: { pollId: 'poll1' } });
+        const created = callArg<{ data: { pollId: string; slot: string }[] }>(
+          prisma.pollOption.createMany,
+        ).data;
+        expect(created.map((o) => o.slot)).toEqual(['MORNING', 'AFTERNOON']);
+        expect(prisma.sessionPoll.update).toHaveBeenCalledWith({
+          where: { id: 'poll1' },
+          data: { relanceSentAt: null },
+        });
+        expect(duration.setDurationInTx.mock.invocationCallOrder[0]).toBeLessThan(
+          prisma.pollOption.deleteMany.mock.invocationCallOrder[0],
+        );
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(dto.durationSlots).toBe(6);
+      });
+
+      it('même durée renvoyée : le port dit « inchangée », aucune purge', async () => {
+        duration.setDurationInTx.mockResolvedValue({ changed: false, durationSlots: 3 });
+
+        await service.setOptions('p1', 'poll1', 'mj1', { options: keep, durationSlots: 3 });
+
+        expect(prisma.pollOption.deleteMany).not.toHaveBeenCalled();
+        expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+      });
+
+      it('journée entière avec une durée effective de 3 → 400 français, aucune option écrite', async () => {
+        duration.setDurationInTx.mockResolvedValue({ changed: true, durationSlots: 3 });
+
+        await expect(
+          service.setOptions('p1', 'poll1', 'mj1', {
+            options: [opt('2026-08-01', 'FULL_DAY'), opt('2026-08-02', 'AFTERNOON')],
+            durationSlots: 3,
+          }),
+        ).rejects.toThrow(POLL_FULL_DAY_SPAN_MESSAGE);
+        expect(prisma.pollOption.deleteMany).not.toHaveBeenCalled();
+        expect(prisma.pollOption.createMany).not.toHaveBeenCalled();
+        expect(realtimeEvents.emit).not.toHaveBeenCalled();
+      });
+
+      it('journée entière à 1 créneau : acceptée', async () => {
+        await service.setOptions('p1', 'poll1', 'mj1', {
+          options: [opt('2026-08-01', 'FULL_DAY'), opt('2026-08-02', 'AFTERNOON')],
+        });
+        expect(prisma.pollOption.createMany).toHaveBeenCalledTimes(1);
+      });
+
+      it('le port refuse (vote sans rendez-vous, 404) : l’erreur remonte, rien n’est écrit', async () => {
+        duration.setDurationInTx.mockRejectedValue(
+          new NotFoundException('Rendez-vous introuvable'),
+        );
+
+        await expect(
+          service.setOptions('p1', 'poll1', 'mj1', { options: keep, durationSlots: 2 }),
+        ).rejects.toThrow(NotFoundException);
+        expect(prisma.pollOption.deleteMany).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('create() avec la durée du rendez-vous (Story 47.4)', () => {
+    it('l’écriture rendue à l’appelant crée le vote dans SA transaction, avec la durée effective', async () => {
+      prisma.sessionPoll.create.mockResolvedValue(makePoll());
+      const tx = { sessionPoll: { create: jest.fn().mockResolvedValue(makePoll()) } };
+
+      const dto = await service.create(
+        GRANT_P1,
+        'mj1',
+        { options: [opt('2026-08-01', 'EVENING'), opt('2026-08-08', 'EVENING')] },
+        async (write) => {
+          await write(tx as never, 6);
+        },
+      );
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.sessionPoll.create).toHaveBeenCalledTimes(1);
+      expect(dto.durationSlots).toBe(6);
+      expect(realtimeEvents.emit).toHaveBeenCalledWith(partieTopic('p1'));
+    });
+
+    it('journée entière pour 2 créneaux → 400 ; l’erreur remonte par l’appelant, rien n’est émis', async () => {
+      const tx = { sessionPoll: { create: jest.fn() } };
+
+      await expect(
+        service.create(
+          GRANT_P1,
+          'mj1',
+          { options: [opt('2026-08-01', 'FULL_DAY'), opt('2026-08-08', 'EVENING')] },
+          async (write) => {
+            await write(tx as never, 2);
+          },
+        ),
+      ).rejects.toThrow(POLL_FULL_DAY_SPAN_MESSAGE);
+      expect(tx.sessionPoll.create).not.toHaveBeenCalled();
+      expect(realtimeEvents.emit).not.toHaveBeenCalled();
+    });
+
+    it('sans appelant : vote seul, d’une durée 1', async () => {
+      prisma.sessionPoll.create.mockResolvedValue(makePoll());
+      const dto = await service.create(GRANT_P1, 'mj1', {
+        options: [opt('2026-08-01', 'MORNING'), opt('2026-08-02', 'AFTERNOON')],
+      });
+      expect(dto.durationSlots).toBe(1);
+    });
   });
 
   // ─── Sondage de dates d'une conjonction de groupe (Story 40.5) ───────────────────────────────
@@ -1086,7 +1238,7 @@ describe('PollService', () => {
     });
   });
 
-  describe('updateInTx() — modification du sondage d’une conjonction (Story 40.5)', () => {
+  describe('setOptionsInTx() — créneaux et échéance d’un sondage ouvert (Story 40.5, 47.4)', () => {
     const day = (key: string) => new Date(`${key}T00:00:00.000Z`);
     const future = new Date(Date.now() + 5 * 86_400_000);
     const existing = [
@@ -1118,14 +1270,17 @@ describe('PollService', () => {
       bounds: GROUP_POLL_OPTION_BOUNDS,
     });
 
+    const NO_PURGE = { purge: false };
+
     it('réconcilie sur la clé date|slot : le créneau conservé n’est pas touché, le retiré est supprimé, le nouveau créé', async () => {
-      await service.updateInTx(
+      await service.setOptionsInTx(
         tx as never,
         'poll1',
         input([
           { date: day('2026-11-14'), slot: 'EVENING' }, // conservé (o1)
           { date: day('2026-11-20'), slot: 'AFTERNOON' }, // nouveau ; o2 retiré
         ]),
+        NO_PURGE,
       );
 
       expect(tx.pollOption.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['o2'] } } });
@@ -1135,13 +1290,45 @@ describe('PollService', () => {
       expect(tx.pollOption.update).not.toHaveBeenCalled();
     });
 
+    it('purge (la durée vient de changer) : toutes les options supprimées puis recréées, relance ré-armée', async () => {
+      await service.setOptionsInTx(tx as never, 'poll1', input(keep), { purge: true });
+
+      expect(tx.pollOption.deleteMany).toHaveBeenCalledWith({ where: { pollId: 'poll1' } });
+      expect(tx.pollOption.createMany).toHaveBeenCalledWith({
+        data: keep.map((o) => ({ pollId: 'poll1', date: o.date, slot: o.slot })),
+      });
+      expect(tx.sessionPoll.update).toHaveBeenCalledWith({
+        where: { id: 'poll1' },
+        data: { relanceSentAt: null },
+      });
+    });
+
+    it('purge avec doublons → 400, rien n’est supprimé', async () => {
+      await expect(
+        service.setOptionsInTx(tx as never, 'poll1', input([keep[0], { ...keep[0] }]), {
+          purge: true,
+        }),
+      ).rejects.toThrow('Options dupliquées');
+      expect(tx.pollOption.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('échéance absente : gardée, jamais écrite', async () => {
+      await service.setOptionsInTx(
+        tx as never,
+        'poll1',
+        { options: keep, bounds: GROUP_POLL_OPTION_BOUNDS },
+        NO_PURGE,
+      );
+      expect(tx.sessionPoll.update).not.toHaveBeenCalled();
+    });
+
     it('l’échéance modifiée est écrite ; inchangée, rien n’est écrit', async () => {
-      await service.updateInTx(tx as never, 'poll1', input(keep));
+      await service.setOptionsInTx(tx as never, 'poll1', input(keep), NO_PURGE);
       expect(tx.sessionPoll.update).not.toHaveBeenCalled();
       expect(tx.pollOption.deleteMany).not.toHaveBeenCalled();
 
       const later = new Date(future.getTime() + 86_400_000);
-      await service.updateInTx(tx as never, 'poll1', input(keep, later));
+      await service.setOptionsInTx(tx as never, 'poll1', input(keep, later), NO_PURGE);
       expect(tx.sessionPoll.update).toHaveBeenCalledWith({
         where: { id: 'poll1' },
         // Story 40.7 : une nouvelle échéance ré-arme la relance de la veille.
@@ -1151,9 +1338,9 @@ describe('PollService', () => {
 
     it('une NOUVELLE échéance passée → 400, rien n’est écrit ; une échéance passée INCHANGÉE est acceptée', async () => {
       const past = new Date(Date.now() - 86_400_000);
-      await expect(service.updateInTx(tx as never, 'poll1', input(keep, past))).rejects.toThrow(
-        POLL_DEADLINE_PAST_MESSAGE,
-      );
+      await expect(
+        service.setOptionsInTx(tx as never, 'poll1', input(keep, past), NO_PURGE),
+      ).rejects.toThrow(POLL_DEADLINE_PAST_MESSAGE);
       expect(tx.sessionPoll.update).not.toHaveBeenCalled();
 
       tx.sessionPoll.findUnique.mockResolvedValue({
@@ -1162,7 +1349,7 @@ describe('PollService', () => {
         options: existing,
       });
       await expect(
-        service.updateInTx(tx as never, 'poll1', input(keep, past)),
+        service.setOptionsInTx(tx as never, 'poll1', input(keep, past), NO_PURGE),
       ).resolves.toBeUndefined();
     });
 
@@ -1172,16 +1359,16 @@ describe('PollService', () => {
         expiresAt: future,
         options: existing,
       });
-      await expect(service.updateInTx(tx as never, 'poll1', input(keep))).rejects.toThrow(
-        'déjà fermé',
-      );
+      await expect(
+        service.setOptionsInTx(tx as never, 'poll1', input(keep), NO_PURGE),
+      ).rejects.toThrow('déjà fermé');
       tx.sessionPoll.findUnique.mockResolvedValueOnce(null);
-      await expect(service.updateInTx(tx as never, 'poll1', input(keep))).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.updateInTx(tx as never, 'poll1', input([keep[0]]))).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.setOptionsInTx(tx as never, 'poll1', input(keep), NO_PURGE),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.setOptionsInTx(tx as never, 'poll1', input([keep[0]]), NO_PURGE),
+      ).rejects.toThrow(BadRequestException);
       expect(tx.pollOption.deleteMany).not.toHaveBeenCalled();
     });
   });

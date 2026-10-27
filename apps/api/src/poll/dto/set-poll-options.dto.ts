@@ -5,12 +5,22 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   Matches,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import type { DaySlot } from '@master-jdr/shared';
+// Import RUNTIME : le plafond est une valeur (un `import type` l'effacerait).
+import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+
+/** Story 47.4 : refus d'une durée hors bornes — mêmes textes que `events/seance-span.ts` (la couche 1
+ *  n'importe pas `events/`). */
+export const POLL_DURATION_INVALID_MESSAGE = 'La durée doit être un entier d’au moins 1 créneau';
+export const POLL_DURATION_CAP_MESSAGE = '15 jours au plus : au-delà, créez deux rendez-vous.';
 
 // Copie exacte de la validation de PollOptionInput (apps/api/src/poll/dto/create-poll.dto.ts) —
 // même patron que create-seance-poll.dto.ts (Story 8.7). Pas de scenarioRef ici : le vote existe
@@ -43,4 +53,11 @@ export class SetPollOptionsDto {
   @IsString({ message: "L'échéance du vote doit être au format AAAA-MM-JJ" })
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "L'échéance du vote doit être au format AAAA-MM-JJ" })
   expiresAt?: string;
+
+  /** Story 47.4 — nouvelle durée du rendez-vous, en créneaux ; absente = inchangée. */
+  @IsOptional()
+  @IsInt({ message: POLL_DURATION_INVALID_MESSAGE })
+  @Min(1, { message: POLL_DURATION_INVALID_MESSAGE })
+  @Max(MAX_SLOT_WINDOW_SLOTS, { message: POLL_DURATION_CAP_MESSAGE })
+  durationSlots?: number;
 }

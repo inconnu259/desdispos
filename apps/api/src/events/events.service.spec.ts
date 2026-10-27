@@ -851,22 +851,33 @@ describe('EventsService (Story 37.3)', () => {
         expect(data).toEqual(expect.objectContaining({ lieu: 'Chez Marc', durationSlots: 2, endSlot: 'MORNING' }));
       });
 
-      it('séance au vote ouvert et sans date : changer la durée → 400, rien n’est écrit', async () => {
+      it('Story 47.4 — vote ouvert sans date : la durée changée par le composer est écrite AVANT les créneaux, purgés', async () => {
         existing({ startDate: null, startSlot: null, pollId: 'poll-1', durationSlots: 1 });
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: null,
+          startSlot: null,
+          pollId: 'poll-1',
+        });
         const updatePoll = jest.fn();
 
-        await expect(
-          service.updateHosted(GRANT_E1, 'e1', {
-            title: 'Week-end',
-            seance: { ...BASE, date: null, slot: null, updatePoll, durationSlots: 3 },
-          }),
-        ).rejects.toThrow('La durée d’un rendez-vous au vote ouvert se règle dans le composer de dates.');
-        expect(updatePoll).not.toHaveBeenCalled();
-        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
-        expect(realtime.emit).not.toHaveBeenCalled();
+        await service.updateHosted(GRANT_E1, 'e1', {
+          title: 'Week-end',
+          seance: { ...BASE, date: null, slot: null, updatePoll, durationSlots: 2 },
+        });
+
+        expect(prisma.tx.seance.update).toHaveBeenNthCalledWith(1, {
+          where: { id: 'se1' },
+          data: { durationSlots: 2, endDate: null, endSlot: null },
+        });
+        expect(updatePoll).toHaveBeenCalledWith(prisma.tx, 'poll-1', { purge: true });
+        expect(prisma.tx.seance.update.mock.invocationCallOrder[0]).toBeLessThan(
+          updatePoll.mock.invocationCallOrder[0],
+        );
+        expect(realtime.emit).toHaveBeenCalledWith(partieTopic('p1'));
       });
 
-      it('séance au vote ouvert : la même durée (renvoyée par le formulaire) est acceptée', async () => {
+      it('séance au vote ouvert : la même durée (renvoyée par le formulaire) réconcilie sans purge', async () => {
         existing({ startDate: null, startSlot: null, pollId: 'poll-1', durationSlots: 3 });
         const updatePoll = jest.fn();
 
@@ -875,7 +886,27 @@ describe('EventsService (Story 37.3)', () => {
           seance: { ...BASE, date: null, slot: null, updatePoll, durationSlots: 3 },
         });
 
-        expect(updatePoll).toHaveBeenCalledWith(prisma.tx, 'poll-1');
+        expect(updatePoll).toHaveBeenCalledWith(prisma.tx, 'poll-1', { purge: false });
+        expect(prisma.tx.seance.update).toHaveBeenCalledTimes(1);
+      });
+
+      it('Story 47.4 — l’écriture des créneaux échoue : l’erreur remonte, rien n’est émis', async () => {
+        existing({ startDate: null, startSlot: null, pollId: 'poll-1', durationSlots: 1 });
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: null,
+          startSlot: null,
+          pollId: 'poll-1',
+        });
+        const updatePoll = jest.fn().mockRejectedValue(new Error('créneaux refusés'));
+
+        await expect(
+          service.updateHosted(GRANT_E1, 'e1', {
+            title: 'Week-end',
+            seance: { ...BASE, date: null, slot: null, updatePoll, durationSlots: 2 },
+          }),
+        ).rejects.toThrow('créneaux refusés');
+        expect(realtime.emit).not.toHaveBeenCalled();
       });
     });
 
@@ -1131,22 +1162,193 @@ describe('EventsService (Story 37.3)', () => {
     it('createSeancePoll() refuse une séance déjà liée AVANT de créer le vote', async () => {
       const createPoll = jest.fn();
 
-      await expect(service.createSeancePoll(GRANT_P1, seance, createPoll)).rejects.toThrow(
-        'Cette séance est déjà liée à un vote de date',
-      );
+      await expect(
+        service.createSeancePoll(GRANT_P1, seance, undefined, createPoll),
+      ).rejects.toThrow('Cette séance est déjà liée à un vote de date');
       expect(createPoll).not.toHaveBeenCalled();
     });
 
-    it('createSeancePoll() pose Seance.pollId du vote créé par l’appelant et émet', async () => {
+    it('createSeancePoll() pose Seance.pollId du vote créé par l’appelant, dans la transaction, et émet', async () => {
+      prisma.tx.seance.findUnique.mockResolvedValue({ pollId: null, durationSlots: 1 });
       const createPoll = jest.fn().mockResolvedValue({ id: 'poll9' });
 
-      await service.createSeancePoll(GRANT_P1, { ...seance, pollId: null }, createPoll);
+      await service.createSeancePoll(GRANT_P1, { ...seance, pollId: null }, undefined, createPoll);
 
-      expect(prisma.seance.update).toHaveBeenCalledWith({
+      expect(createPoll).toHaveBeenCalledWith(prisma.tx, 1);
+      expect(prisma.tx.seance.update).toHaveBeenCalledWith({
         where: { id: 'se2' },
         data: { pollId: 'poll9' },
       });
       expect(realtime.emit).toHaveBeenCalledWith(partieTopic('p1'));
+    });
+
+    describe('createSeancePoll() atomique (Story 47.4)', () => {
+      const free = { ...seance, pollId: null };
+
+      it('verrou de la partie puis de l’événement, durée écrite, vote créé avec cette durée, puis pollId', async () => {
+        prisma.tx.seance.findUnique
+          .mockResolvedValueOnce({ pollId: null, durationSlots: 1 })
+          .mockResolvedValueOnce({ durationSlots: 1, startDate: null, startSlot: null, pollId: null });
+        const createPoll = jest.fn().mockResolvedValue({ id: 'poll9' });
+
+        await service.createSeancePoll(GRANT_P1, free, 6, createPoll);
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        const locks = prisma.tx.$queryRaw.mock.calls.map((c) => (c[0] as string[]).join('?'));
+        expect(locks[0]).toContain('FROM "Partie"');
+        expect(locks[1]).toContain('FROM "Event"');
+        expect(prisma.tx.seance.update).toHaveBeenNthCalledWith(1, {
+          where: { id: 'se2' },
+          data: { durationSlots: 6, endDate: null, endSlot: null },
+        });
+        expect(createPoll).toHaveBeenCalledWith(prisma.tx, 6);
+        expect(prisma.tx.seance.update).toHaveBeenNthCalledWith(2, {
+          where: { id: 'se2' },
+          data: { pollId: 'poll9' },
+        });
+      });
+
+      it('durée absente : la durée actuelle de la séance est celle du vote, rien d’autre n’est écrit', async () => {
+        prisma.tx.seance.findUnique.mockResolvedValueOnce({ pollId: null, durationSlots: 3 });
+        const createPoll = jest.fn().mockResolvedValue({ id: 'poll9' });
+
+        await service.createSeancePoll(GRANT_P1, free, undefined, createPoll);
+
+        expect(createPoll).toHaveBeenCalledWith(prisma.tx, 3);
+        expect(prisma.tx.seance.update).toHaveBeenCalledTimes(1);
+      });
+
+      it('la création du vote échoue : l’erreur remonte, aucune émission (la transaction annule la durée)', async () => {
+        prisma.tx.seance.findUnique
+          .mockResolvedValueOnce({ pollId: null, durationSlots: 1 })
+          .mockResolvedValueOnce({ durationSlots: 1, startDate: null, startSlot: null, pollId: null });
+        const createPoll = jest.fn().mockRejectedValue(new Error('vote refusé'));
+
+        await expect(service.createSeancePoll(GRANT_P1, free, 6, createPoll)).rejects.toThrow(
+          'vote refusé',
+        );
+        // Le pollId n'est jamais posé ; la durée écrite l'a été dans la transaction qui échoue.
+        expect(prisma.tx.seance.update).not.toHaveBeenCalledWith(
+          expect.objectContaining({ data: { pollId: expect.anything() } }),
+        );
+        expect(realtime.emit).not.toHaveBeenCalled();
+      });
+
+      it('déjà liée sous les verrous (création concurrente) → 400, aucun vote créé', async () => {
+        prisma.tx.seance.findUnique.mockResolvedValueOnce({ pollId: 'autre', durationSlots: 1 });
+        const createPoll = jest.fn();
+
+        await expect(service.createSeancePoll(GRANT_P1, free, 6, createPoll)).rejects.toThrow(
+          'Cette séance est déjà liée à un vote de date',
+        );
+        expect(createPoll).not.toHaveBeenCalled();
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+      });
+
+      it('durée hors bornes → 400 avant toute transaction', async () => {
+        await expect(service.createSeancePoll(GRANT_P1, free, 46, jest.fn())).rejects.toThrow(
+          '15 jours au plus',
+        );
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('RendezVousDurationPort (Story 47.4)', () => {
+      const tx = () => prisma.tx as unknown as Prisma.TransactionClient;
+
+      it('setDurationInTx() verrouille la partie puis l’événement du vote, puis écrit la durée (vote ouvert accepté)', async () => {
+        prisma.tx.sessionPoll.findUnique.mockResolvedValue({
+          partieId: 'p1',
+          seance: { id: 'se2', eventId: 'e1' },
+        });
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 1,
+          startDate: null,
+          startSlot: null,
+          pollId: 'poll1',
+        });
+
+        await expect(service.setDurationInTx(tx(), 'poll1', 3)).resolves.toEqual({
+          changed: true,
+          durationSlots: 3,
+        });
+
+        const locks = prisma.tx.$queryRaw.mock.calls.map((c) => (c[0] as string[]).join('?'));
+        expect(locks[0]).toContain('FROM "Partie"');
+        expect(prisma.tx.$queryRaw.mock.calls[0][1]).toBe('p1');
+        expect(locks[1]).toContain('FROM "Event"');
+        expect(prisma.tx.$queryRaw.mock.calls[1][1]).toBe('e1');
+        expect(prisma.tx.seance.update).toHaveBeenCalledWith({
+          where: { id: 'se2' },
+          data: { durationSlots: 3, endDate: null, endSlot: null },
+        });
+      });
+
+      it('même durée : rien n’est écrit, changed faux', async () => {
+        prisma.tx.sessionPoll.findUnique.mockResolvedValue({
+          partieId: 'p1',
+          seance: { id: 'se2', eventId: 'e1' },
+        });
+        prisma.tx.seance.findUnique.mockResolvedValue({
+          durationSlots: 3,
+          startDate: null,
+          startSlot: null,
+          pollId: 'poll1',
+        });
+
+        await expect(service.setDurationInTx(tx(), 'poll1', 3)).resolves.toEqual({
+          changed: false,
+          durationSlots: 3,
+        });
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+      });
+
+      it('durée absente : verrous seulement, durée relue sous les verrous', async () => {
+        prisma.tx.sessionPoll.findUnique.mockResolvedValue({
+          partieId: 'p1',
+          seance: { id: 'se2', eventId: 'e1' },
+        });
+        prisma.tx.seance.findUnique.mockResolvedValue({ durationSlots: 4 });
+
+        await expect(service.setDurationInTx(tx(), 'poll1')).resolves.toEqual({
+          changed: false,
+          durationSlots: 4,
+        });
+        expect(prisma.tx.$queryRaw).toHaveBeenCalledTimes(2);
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+      });
+
+      it('vote introuvable → 404 ; vote sans séance : 404 pour une durée donnée, 1 sinon', async () => {
+        prisma.tx.sessionPoll.findUnique.mockResolvedValueOnce(null);
+        await expect(service.setDurationInTx(tx(), 'nope', 2)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+
+        prisma.tx.sessionPoll.findUnique.mockResolvedValue({ partieId: 'p1', seance: null });
+        await expect(service.setDurationInTx(tx(), 'legacy', 2)).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+        await expect(service.setDurationInTx(tx(), 'legacy')).resolves.toEqual({
+          changed: false,
+          durationSlots: 1,
+        });
+        expect(prisma.tx.seance.update).not.toHaveBeenCalled();
+      });
+
+      it('durationsOf() : une lecture, 1 pour un vote sans séance', async () => {
+        prisma.seance.findMany.mockResolvedValue([{ pollId: 'a', durationSlots: 6 }]);
+
+        const durations = await service.durationsOf(['a', 'b']);
+
+        expect(prisma.seance.findMany).toHaveBeenCalledTimes(1);
+        expect([...durations.entries()]).toEqual([
+          ['a', 6],
+          ['b', 1],
+        ]);
+        prisma.seance.findMany.mockClear();
+        expect((await service.durationsOf([])).size).toBe(0);
+        expect(prisma.seance.findMany).not.toHaveBeenCalled();
+      });
     });
 
     it('chooseDate() pose une plage start = end sur la séance du vote, sans émettre', async () => {
@@ -3179,7 +3381,7 @@ describe('EventsService (Story 37.3)', () => {
           seance: { ...SEANCE_POLL, capacity: 6, updatePoll },
         });
 
-        expect(updatePoll).toHaveBeenCalledWith(prisma.tx, 'poll-1');
+        expect(updatePoll).toHaveBeenCalledWith(prisma.tx, 'poll-1', { purge: false });
         expect(prisma.tx.seance.update).toHaveBeenCalledWith({
           where: { id: 'se1' },
           data: { lieu: 'Lyon 3e', heureRdv: null, notePratique: null, inscriptionMax: 6 },

@@ -22,6 +22,10 @@ import { GROUP_POLL_CHOOSE_PORT, type GroupPollChoosePort } from './ports/group-
 import { GROUP_POLL_EXTEND_PORT, type GroupPollExtendPort } from './ports/group-poll-extend.port';
 import { GROUP_POLL_VOTE_PORT, type GroupPollVotePort } from './ports/group-poll-vote.port';
 import { PARTIE_SIGNALS_PORT, type PartieSignalsPort } from './ports/partie-signals.port';
+import {
+  RENDEZ_VOUS_DURATION_PORT,
+  type RendezVousDurationPort,
+} from './ports/rendez-vous-duration.port';
 import { SEANCE_DATE_PORT, type SeanceDatePort } from './ports/seance-date.port';
 
 /** Refus de fixer la date d'une conjonction dont la date est déjà fixée (Story 40.6). */
@@ -46,6 +50,19 @@ export const GROUP_POLL_OPTION_BOUNDS = { min: 2, max: 200 } as const;
 
 /** Refus de fixer une échéance de vote déjà passée (Story 40.5). */
 export const POLL_DEADLINE_PAST_MESSAGE = "L'échéance du vote ne peut pas être passée";
+
+/** Story 47.4 : refus d'un créneau « journée entière » proposé pour un rendez-vous de plusieurs créneaux. */
+export const POLL_FULL_DAY_SPAN_MESSAGE =
+  'Une journée entière ne dure qu’un créneau : retirez-la ou ramenez la durée à 1.';
+
+/**
+ * Story 47.4 — écrit, dans la transaction ouverte par l'appelant (celle qui pose aussi la durée et
+ * `Seance.pollId`), le vote créé par `create()` : `durationSlots` est la durée EFFECTIVE du rendez-vous.
+ */
+export type PollWrite = (
+  tx: Prisma.TransactionClient,
+  durationSlots: number,
+) => Promise<{ id: string }>;
 
 /** Bornes du nombre de créneaux d'un sondage. */
 export interface PollOptionBounds {
@@ -93,12 +110,23 @@ export class PollService {
     // Story 40.7 : prolonger le vote d'une conjonction — le droit d'hôte est celui de `events/`, derrière
     // ce port ; `poll/` garde l'écriture du sondage.
     @Inject(GROUP_POLL_EXTEND_PORT) private readonly groupExtension: GroupPollExtendPort,
+    // Story 47.4 : la durée du rendez-vous voté (`Seance.durationSlots`) est lue et écrite par `events/`,
+    // derrière ce port — `poll/` ne touche jamais la séance.
+    @Inject(RENDEZ_VOUS_DURATION_PORT) private readonly duration: RendezVousDurationPort,
   ) {}
 
   /** Crée un vote de date sur la partie de l'autorisation. Seul appelant :
    *  `ScenariosService.createSeancePoll()`, qui a déjà obtenu l'autorisation `SEANCE_POLL_CREATE`
-   *  pour la séance visée (Story 37.6 : plus de second contrôle de droit ici). */
-  async create(grant: PartieGrant, userId: string, dto: CreatePollDto): Promise<SessionPollDto> {
+   *  pour la séance visée (Story 37.6 : plus de second contrôle de droit ici).
+   *
+   *  Story 47.4 : `persist` reçoit l'écriture du vote et l'exécute dans SA transaction (verrous, durée,
+   *  `Seance.pollId` : `EventsService.createSeancePoll`) ; absent, le vote est écrit seul, d'une durée 1. */
+  async create(
+    grant: PartieGrant,
+    userId: string,
+    dto: CreatePollDto,
+    persist?: (write: PollWrite) => Promise<void>,
+  ): Promise<SessionPollDto> {
     const partieId = grant.partieId;
 
     // Story 8.8 (Décision 2) : un seul vote actif par Séance, pas par Partie — plusieurs
@@ -110,18 +138,29 @@ export class PollService {
     assertNoDuplicateOptions(options);
     // Story 45.4 — la fin du vote choisie par le MJ (refusée si passée) ; absente, la fonction partagée la propose.
     const expiresAt = dto.expiresAt === undefined ? undefined : deadlineFromDay(dto.expiresAt);
-    const poll = await this.prisma.$transaction((tx) =>
-      this.createInTx(tx, partieId, userId, {
+    const written: { poll: PollWithOptions; durationSlots: number }[] = [];
+    const write: PollWrite = async (tx, durationSlots) => {
+      const poll = await this.createInTx(tx, partieId, userId, {
         options,
         scenarioRef: dto.scenarioRef ?? null,
         expiresAt,
-      }),
-    );
+        durationSlots,
+      });
+      written.push({ poll, durationSlots });
+      return poll;
+    };
+    if (persist) {
+      await persist(write);
+    } else {
+      await this.prisma.$transaction((tx) => write(tx, 1));
+    }
+    const result = written.at(-1);
+    if (!result) throw new NotFoundException('Poll introuvable');
     this.realtimeEvents.emit(partieTopic(partieId));
     // AUCUNE_DATE_NI_VOTE (Story 29.7, AD-14) : en plus de partieTopic ci-dessus, jamais en
     // remplacement.
     await this.partieSignals.notifyChanged(partieId);
-    return toDto(poll, await countParticipants(this.prisma, partieId));
+    return toDto(result.poll, await countParticipants(this.prisma, partieId), result.durationSlots);
   }
 
   /**
@@ -134,7 +173,8 @@ export class PollService {
    * `expiresAt` absent → l'échéance par défaut du JDR. `bounds` absentes → aucune borne vérifiée ici
    * (le DTO du JDR les porte déjà) ; présentes, le nombre de créneaux y est contrôlé. Les doublons
    * (clé `date|slot` normalisée par `optionKey()`, la MÊME que celle de `setOptions()`) sont toujours
-   * refusés.
+   * refusés. Story 47.4 : `durationSlots` (durée effective du rendez-vous, 1 si absente) refuse un créneau
+   * `FULL_DAY` au-delà d'un créneau.
    */
   async createInTx(
     tx: Prisma.TransactionClient,
@@ -145,13 +185,15 @@ export class PollService {
       scenarioRef?: string | null;
       expiresAt?: Date;
       bounds?: PollOptionBounds;
+      durationSlots?: number;
     },
-  ): Promise<Prisma.SessionPollGetPayload<{ include: typeof POLL_INCLUDE }>> {
+  ): Promise<PollWithOptions> {
     // Revue de code (Story 36.10) — clé normalisée par `optionKey()` : comparer la chaîne brute reçue
     // laissait deux dates représentant le même instant (composante horaire ou décalage différents)
     // passer pour distinctes, ce que `@IsDateString()` autorise en entrée.
     assertOptionBounds(input.options.length, input.bounds);
     assertNoDuplicateOptions(input.options);
+    assertFullDayAlone(input.options, input.durationSlots ?? 1);
     return tx.sessionPoll.create({
       data: {
         partieId,
@@ -166,18 +208,28 @@ export class PollService {
   }
 
   /**
-   * Story 40.5 — met à jour, dans la transaction de l'appelant, le sondage d'une conjonction : les
-   * créneaux (RÉCONCILIATION sur la clé `date|slot`, comme `setOptions()` : un créneau conservé garde
-   * son identifiant et ses réponses, seuls les retirés perdent les leurs) et l'échéance. Refuse un
-   * sondage introuvable (404) ou déjà fermé (400), un nombre de créneaux hors `bounds`, des doublons,
-   * et une NOUVELLE échéance déjà passée (400) — une échéance inchangée est toujours acceptée, pour
-   * qu'on puisse corriger le lieu d'une conjonction dont le vote est terminé. Aucun droit décidé ici :
-   * l'appelant a obtenu `EVENT_UPDATE` (hôte). N'émet rien.
+   * Story 47.4 — l'UNIQUE écriture des créneaux et de l'échéance d'un sondage OUVERT, dans la transaction
+   * de l'appelant, qui a déjà posé les verrous (partie puis événement) et la durée du rendez-vous
+   * (`RendezVousDurationPort.setDurationInTx`, ou `EventsService.updateHosted` pour une conjonction).
+   * Partagée par le JDR (`setOptions`, `PUT …/options`) et le groupe (modification d'une conjonction).
+   *
+   * - `purge` faux (durée inchangée) : RÉCONCILIATION sur la clé `date|slot` (Story 36.10) — un créneau
+   *   conservé garde son identifiant et ses réponses, seuls les retirés perdent les leurs.
+   * - `purge` vrai (la durée vient de changer, seule source : le retour de `setDurationInTx`) : toutes
+   *   les options sont supprimées (leurs réponses partent en cascade) puis recréées, et la relance de la
+   *   veille est ré-armée — chaque option propose désormais une autre plage.
+   *
+   * Échéance : `expiresAt` absent = gardée ; « changée » se compare par JOUR (les deux appelants passent
+   * une fin de jour, et une fin écrite avant la 45.4 n'est pas « changée » par un client qui renvoie son
+   * jour) ; une NOUVELLE échéance déjà passée est refusée (400), une échéance inchangée toujours acceptée.
+   * Une échéance changée ré-arme aussi la relance. Refuse un sondage introuvable (404) ou fermé (400), un
+   * nombre de créneaux hors `bounds` et des doublons. Aucun droit décidé ici. N'émet rien.
    */
-  async updateInTx(
+  async setOptionsInTx(
     tx: Prisma.TransactionClient,
     pollId: string,
-    input: { options: PollOptionInput[]; expiresAt: Date; bounds: PollOptionBounds },
+    input: { options: PollOptionInput[]; expiresAt?: Date; bounds: PollOptionBounds },
+    { purge }: { purge: boolean },
   ): Promise<void> {
     const poll = await tx.sessionPoll.findUnique({
       where: { id: pollId },
@@ -191,26 +243,40 @@ export class PollService {
     if (poll.status !== 'OPEN') throw new BadRequestException('Le poll est déjà fermé');
     assertOptionBounds(input.options.length, input.bounds);
 
+    // Le plan refuse aussi les doublons du jeu voulu — même en cas de purge.
     const plan = planOptions(poll.options, input.options);
-    const deadlineChanged = poll.expiresAt?.getTime() !== input.expiresAt.getTime();
-    if (deadlineChanged && input.expiresAt.getTime() < Date.now()) {
+    const newDeadline = input.expiresAt;
+    const deadlineChanged =
+      newDeadline !== undefined &&
+      (!poll.expiresAt || dayKeyUtc(poll.expiresAt) !== dayKeyUtc(newDeadline));
+    if (deadlineChanged && dayKeyUtc(newDeadline) < dayKeyUtc(new Date())) {
       throw new BadRequestException(POLL_DEADLINE_PAST_MESSAGE);
     }
-    if (plan.toDeleteIds.length > 0) {
-      // La cascade `onDelete: Cascade` de PollVote → PollOption emporte les réponses de ces
-      // options, et d'elles seules.
-      await tx.pollOption.deleteMany({ where: { id: { in: plan.toDeleteIds } } });
-    }
-    if (plan.toCreate.length > 0) {
+
+    if (purge) {
+      // La cascade `onDelete: Cascade` de PollVote → PollOption emporte TOUTES les réponses : l'écran les
+      // a annoncées avant la validation (« Changer la durée efface les {n} réponses déjà données. »).
+      await tx.pollOption.deleteMany({ where: { pollId } });
       await tx.pollOption.createMany({
-        data: plan.toCreate.map((o) => ({ pollId, date: o.date, slot: o.slot })),
+        data: input.options.map((o) => ({ pollId, date: o.date, slot: o.slot })),
       });
+    } else {
+      if (plan.toDeleteIds.length > 0) {
+        // La cascade `onDelete: Cascade` de PollVote → PollOption emporte les réponses de ces
+        // options, et d'elles seules.
+        await tx.pollOption.deleteMany({ where: { id: { in: plan.toDeleteIds } } });
+      }
+      if (plan.toCreate.length > 0) {
+        await tx.pollOption.createMany({
+          data: plan.toCreate.map((o) => ({ pollId, date: o.date, slot: o.slot })),
+        });
+      }
     }
-    if (deadlineChanged) {
-      // Story 40.7 : une nouvelle échéance ré-arme la relance de la veille (comme « Prolonger le vote »).
+    if (deadlineChanged || purge) {
+      // Story 40.7 : une nouvelle échéance — ou de nouvelles plages — ré-arme la relance de la veille.
       await tx.sessionPoll.update({
         where: { id: pollId },
-        data: { expiresAt: input.expiresAt, relanceSentAt: null },
+        data: { ...(deadlineChanged ? { expiresAt: newDeadline } : {}), relanceSentAt: null },
       });
     }
   }
@@ -237,7 +303,9 @@ export class PollService {
         : { partieId, status: 'OPEN' },
       include: POLL_INCLUDE,
     });
-    return poll ? toDto(poll, await countParticipants(this.prisma, partieId)) : null;
+    if (!poll) return null;
+    const durations = await this.duration.durationsOf([poll.id]);
+    return toDto(poll, await countParticipants(this.prisma, partieId), durations.get(poll.id) ?? 1);
   }
 
   async castVote(
@@ -528,6 +596,11 @@ export class PollService {
    * leurs réponses, ce que Q-22 autorise sous avertissement préalable côté client.
    *
    * Le jeu reçu est **déclaratif et complet** : ce qui n'y est pas est retiré.
+   *
+   * Story 47.4 : `durationSlots` (absent = inchangée) est écrit dans la MÊME transaction, d'abord, sous
+   * les verrous de la partie puis de l'événement (`RendezVousDurationPort.setDurationInTx`) ; une durée
+   * réellement changée recrée toutes les options (`purge`), une durée inchangée réconcilie comme avant.
+   * Un créneau `FULL_DAY` est refusé dès que la durée effective dépasse 1 (rien n'est écrit).
    */
   async setOptions(
     partieId: string,
@@ -539,7 +612,7 @@ export class PollService {
 
     const poll = await this.prisma.sessionPoll.findUnique({
       where: { id: pollId },
-      include: POLL_INCLUDE,
+      select: { partieId: true, status: true },
     });
     // Le poll doit appartenir à la partie de l'URL : sans cette vérification, un MJ pourrait
     // muter le vote d'une AUTRE partie en forgeant un pollId (même garde que castVote/choose).
@@ -549,40 +622,25 @@ export class PollService {
     // Bornes redites ici, en plus du DTO : le service est appelable sans passer par le pipe de
     // validation (tests, orchestration cross-module), et c'est lui qui porte l'invariant.
     assertOptionBounds(dto.options.length, JDR_POLL_OPTION_BOUNDS);
-
-    const plan = planOptions(
-      poll.options,
-      dto.options.map((o) => ({ date: new Date(o.date), slot: o.slot })),
-    );
-    const toDeleteIds = plan.toDeleteIds;
-    const toCreate = plan.toCreate.map((o) => ({ pollId, date: o.date, slot: o.slot }));
+    const options = dto.options.map((o) => ({ date: new Date(o.date), slot: o.slot }));
 
     // Story 45.4 — une NOUVELLE fin du vote (repousser la fin d'un vote de JDR EST sa prolongation) ; une fin
-    // inchangée est toujours acceptée, même passée : on peut corriger les créneaux d'un vote terminé.
-    const newDeadline = dto.expiresAt === undefined ? null : deadlineFromDay(dto.expiresAt, false);
-    // Comparée par JOUR : une fin écrite avant la 45.4 (un instant, « maintenant + 14 jours ») n'est pas « changée »
-    // par un client qui renvoie son jour tel qu'il l'a lu.
-    const deadlineChanged =
-      newDeadline !== null && (!poll.expiresAt || dayKeyUtc(poll.expiresAt) !== dto.expiresAt);
-    if (deadlineChanged && dto.expiresAt! < dayKeyUtc(new Date())) {
-      throw new BadRequestException(POLL_DEADLINE_PAST_MESSAGE);
-    }
+    // inchangée est toujours acceptée, même passée : on peut corriger les créneaux d'un vote terminé (la
+    // comparaison, par jour, est celle de `setOptionsInTx`).
+    const expiresAt =
+      dto.expiresAt === undefined ? undefined : deadlineFromDay(dto.expiresAt, false);
 
-    // Une seule transaction : un retrait appliqué sans son ajout laisserait le vote dans un état
-    // que le MJ n'a jamais demandé.
-    await this.prisma.$transaction(async (tx) => {
-      if (toDeleteIds.length > 0) {
-        // La cascade `onDelete: Cascade` de PollVote → PollOption emporte les réponses de ces
-        // options, et d'elles seules.
-        await tx.pollOption.deleteMany({ where: { id: { in: toDeleteIds } } });
-      }
-      if (toCreate.length > 0) {
-        await tx.pollOption.createMany({ data: toCreate });
-      }
-      if (deadlineChanged) {
-        // JDR : aucune relance à ré-armer (elle n'existe que pour les conjonctions de groupe).
-        await tx.sessionPoll.update({ where: { id: pollId }, data: { expiresAt: newDeadline } });
-      }
+    // Une seule transaction : la durée, un retrait et son ajout sont écrits ensemble ou pas du tout.
+    const durationSlots = await this.prisma.$transaction(async (tx) => {
+      const written = await this.duration.setDurationInTx(tx, pollId, dto.durationSlots);
+      assertFullDayAlone(options, written.durationSlots);
+      await this.setOptionsInTx(
+        tx,
+        pollId,
+        { options, expiresAt, bounds: JDR_POLL_OPTION_BOUNDS },
+        { purge: written.changed },
+      );
+      return written.durationSlots;
     });
 
     const updated = await this.prisma.sessionPoll.findUnique({
@@ -598,7 +656,7 @@ export class PollService {
     // signal chez les membres qui avaient tout répondu ; en retirer une peut le faire
     // disparaître. En plus de partieTopic ci-dessus, jamais en remplacement.
     await this.partieSignals.notifyChanged(partieId);
-    return toDto(updated, await countParticipants(this.prisma, partieId));
+    return toDto(updated, await countParticipants(this.prisma, partieId), durationSlots);
   }
 
   async close(partieId: string, pollId: string, userId: string): Promise<void> {
@@ -674,6 +732,16 @@ function assertNoDuplicateOptions(options: PollOptionInput[]): void {
   }
 }
 
+/** Story 47.4 : une journée entière (`FULL_DAY`) n'existe qu'à 1 créneau — sinon 400, rien n'est écrit. */
+export function assertFullDayAlone(
+  options: readonly PollOptionInput[],
+  durationSlots: number,
+): void {
+  if (durationSlots > 1 && options.some((o) => o.slot === 'FULL_DAY')) {
+    throw new BadRequestException(POLL_FULL_DAY_SPAN_MESSAGE);
+  }
+}
+
 /** Le nombre de créneaux d'un sondage respecte-t-il ses bornes ? Sans bornes, rien à vérifier. */
 function assertOptionBounds(count: number, bounds: PollOptionBounds | undefined): void {
   if (!bounds) return;
@@ -708,12 +776,13 @@ function planOptions(
   };
 }
 
+/** Un vote tel qu'écrit et relu ici, avec ses options et leurs réponses. */
+type PollWithOptions = Prisma.SessionPollGetPayload<{ include: typeof POLL_INCLUDE }>;
+
 /** Story 36.6 — `membersCount` est passé en paramètre (jamais dérivé de `poll`) : c'est une
- *  propriété de la PARTIE, et le point unique qui la calcule est `countParticipants()`. */
-function toDto(
-  poll: Prisma.SessionPollGetPayload<{ include: typeof POLL_INCLUDE }>,
-  membersCount: number,
-): SessionPollDto {
+ *  propriété de la PARTIE, et le point unique qui la calcule est `countParticipants()`. Story 47.4 :
+ *  `durationSlots` aussi — c'est une propriété de la séance, lue par `RendezVousDurationPort`. */
+function toDto(poll: PollWithOptions, membersCount: number, durationSlots: number): SessionPollDto {
   return {
     id: poll.id,
     partieId: poll.partieId,
@@ -723,6 +792,7 @@ function toDto(
     chosenDate: poll.chosenDate?.toISOString() ?? null,
     chosenSlot: poll.chosenSlot,
     membersCount,
+    durationSlots,
     options: (poll.options ?? []).map((opt) => ({
       id: opt.id,
       date: opt.date.toISOString(),

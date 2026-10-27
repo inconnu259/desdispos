@@ -10,6 +10,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
+import type { SpanStart } from '../../../shared/duration-stepper/duration-labels';
 import { fillTone } from '../../../core/theme/tone-format';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { shortDayLabel } from '../../events/event-card.util';
@@ -34,7 +36,7 @@ import { shortDayLabel } from '../../events/event-card.util';
 @Component({
   selector: 'app-compose-bar',
   standalone: true,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, DurationStepper],
   templateUrl: './compose-bar.html',
   styleUrl: './compose-bar.scss',
 })
@@ -64,7 +66,15 @@ export class ComposeBar {
   /** La fin est déjà passée : marquée en toutes lettres, et « Valider » est bloqué (la raison est dite plus haut). */
   readonly deadlinePast = input(false);
 
+  /** ⚠️ Story 47.4 — la durée du rendez-vous, en créneaux : la ligne « Durée » est TOUJOURS là, initialisée par
+   *  `CalendarView` à la durée de la séance visée. Chaque créneau désigné est le DÉPART d'une plage de cette durée. */
+  readonly durationSlots = input(1);
+  /** Le premier départ désigné : la plage s'écrit en clair sous le compteur (« ven. 6 soir → dim. 8 après-midi »). */
+  readonly durationStart = input<SpanStart | null>(null);
+
   readonly confirmed = output<void>();
+  /** Story 47.4 — une nouvelle durée choisie au compteur. Rien n'est écrit ici. */
+  readonly durationChanged = output<number>();
   readonly cancelled = output<void>();
   /** Un nouveau jour choisi dans la date native. Rien n'est écrit ici. */
   readonly deadlineChanged = output<string>();

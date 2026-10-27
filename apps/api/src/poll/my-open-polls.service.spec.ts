@@ -4,6 +4,7 @@ import { PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MyOpenPollsService } from './my-open-polls.service';
 import type { OpenPollContext, OpenPollContextPort } from './ports/open-poll-context.port';
+import type { RendezVousDurationPort } from './ports/rendez-vous-duration.port';
 
 // Story 44.2 — `GET /me/open-polls` : la forme servie, les ayants droit de chaque famille, l'anonymat
 // et le nombre FIXE de lectures. Les refus contre la vraie base sont dans les tests e2e.
@@ -61,6 +62,7 @@ function build(
   contexts: Record<string, OpenPollContext>,
   memberships: { partieId: string; userId: string }[] = [],
   roles: Record<string, PartieRole> = {},
+  durations: Record<string, number> = {},
 ) {
   const prisma = {
     sessionPoll: { findMany: jest.fn().mockResolvedValue(polls) },
@@ -75,15 +77,39 @@ function build(
       Promise.resolve(new Map(ids.map((id) => [id, roles[id] ?? 'player']))),
     ),
   };
+  // Story 47.4 : la durée de chaque rendez-vous vient du port de `events/` (1 sans séance).
+  const duration = {
+    setDurationInTx: jest.fn(),
+    durationsOf: jest.fn((ids: readonly string[]) =>
+      Promise.resolve(new Map(ids.map((id) => [id, durations[id] ?? 1]))),
+    ),
+  } satisfies RendezVousDurationPort;
   const service = new MyOpenPollsService(
     prisma as unknown as PrismaService,
     permissions as unknown as PermissionService,
     port,
+    duration,
   );
-  return { service, prisma, port, permissions };
+  return { service, prisma, port, permissions, duration };
 }
 
 describe('MyOpenPollsService (Story 44.2)', () => {
+  it('Story 47.4 : la durée du rendez-vous vient du port, en une lecture pour tous les sondages', async () => {
+    const { service, duration } = build(
+      [pollRow('p1', jdr, [option('o1', '2026-11-20', [])])],
+      { p1: context() },
+      [],
+      {},
+      { p1: 6 },
+    );
+
+    const [entry] = await service.list(ME);
+
+    expect(entry.durationSlots).toBe(6);
+    expect(duration.durationsOf).toHaveBeenCalledTimes(1);
+    expect(duration.durationsOf).toHaveBeenCalledWith(['p1']);
+  });
+
   it('JDR : forme servie, effectif = MJ + membres, ma réponse et les compteurs par option', async () => {
     const { service } = build(
       [

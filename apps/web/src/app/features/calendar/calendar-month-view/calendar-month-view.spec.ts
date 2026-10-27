@@ -1983,6 +1983,84 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
     expect(band.classList.contains('band--composed')).toBe(true);
     expect(band.classList.contains('band--selected')).toBe(false);
   });
+
+  // ⚠️ Story 47.4 — l'aperçu de la plage de chaque départ désigné.
+  describe('aperçu des plages (Story 47.4)', () => {
+    const COVER = new Set(['2026-08-21|MORNING', '2026-08-21|AFTERNOON']);
+
+    it('le départ garde son tireté ; les autres bandes de sa plage prennent l’aperçu, un jour vide se déplie', async () => {
+      await createWith({
+        entries: [VOTE_ENTRY],
+        composing: true,
+        composedKeys: new Set(['2026-08-20|EVENING']),
+        composeCoverKeys: COVER,
+        composeDuration: 3,
+      });
+
+      const start = bandOf(20, 2);
+      expect(start.classList.contains('band--composed')).toBe(true);
+      expect(start.classList.contains('band--span-preview')).toBe(false);
+      // Le 21 ne porte rien (case uniforme hors composition) : il montre ses trois créneaux.
+      expect(cellOf(21).querySelectorAll('.band')).toHaveLength(3);
+      expect(bandOf(21, 0).classList.contains('band--span-preview')).toBe(true);
+      expect(bandOf(21, 1).classList.contains('band--span-preview')).toBe(true);
+      expect(bandOf(21, 2).classList.contains('band--span-preview')).toBe(false);
+    });
+
+    it('au survol d’une bande, la plage qu’elle ouvrirait s’allume ; la quitter l’éteint', async () => {
+      const f = await createWith({
+        entries: [VOTE_ENTRY],
+        composing: true,
+        composedKeys: new Set<string>(),
+        composeCoverKeys: new Set<string>(),
+        composeDuration: 2,
+      });
+
+      bandOf(20, 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+      f.detectChanges();
+      expect(bandOf(20, 2).classList.contains('band--span-preview')).toBe(true);
+      expect(bandOf(21, 0).classList.contains('band--span-preview')).toBe(true);
+      expect(bandOf(21, 1).classList.contains('band--span-preview')).toBe(false);
+
+      bandOf(20, 2).dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+      f.detectChanges();
+      expect(el.querySelectorAll('.band--span-preview')).toHaveLength(0);
+      expect(cellOf(21).querySelectorAll('.band')).toHaveLength(1);
+    });
+
+    it('au doigt (entrée émulée sans sortie), ou sur un jour passé, le survol n’allume rien', async () => {
+      const f = await createWith({
+        entries: [VOTE_ENTRY, { ...VOTE_ENTRY, key: 'vote-past', date: '2026-08-05' }],
+        composing: true,
+        composedKeys: new Set<string>(),
+        composeCoverKeys: new Set<string>(),
+        composeDuration: 2,
+      });
+
+      bandOf(20, 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }));
+      f.detectChanges();
+      expect(el.querySelectorAll('.band--span-preview')).toHaveLength(0);
+
+      bandOf(5, 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+      f.detectChanges();
+      expect(el.querySelectorAll('.band--span-preview')).toHaveLength(0);
+    });
+
+    it('à 1 créneau, rien ne change : pas d’aperçu, un jour vide reste une seule bande', async () => {
+      const f = await createWith({
+        entries: [VOTE_ENTRY],
+        composing: true,
+        composedKeys: new Set(['2026-08-20|EVENING']),
+        composeCoverKeys: new Set<string>(),
+        composeDuration: 1,
+      });
+
+      bandOf(20, 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+      f.detectChanges();
+      expect(el.querySelectorAll('.band--span-preview')).toHaveLength(0);
+      expect(cellOf(21).querySelectorAll('.band')).toHaveLength(1);
+    });
+  });
 });
 
 // ─── Story 36.15 — Sceller depuis la barre de sélection (bloc JUMEAU de la vue Semaine) ──────

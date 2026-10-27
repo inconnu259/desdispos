@@ -87,7 +87,10 @@ describe('ComposeBar (Story 36.10)', () => {
 
   it('busy désactive les DEUX boutons (pas de double validation, pas de sortie en cours d’écriture)', async () => {
     const fixture = await render({ busy: true, count: 2 });
-    const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
+    // Story 47.4 — les boutons du compteur de durée (« Raccourcir » / « Allonger ») ne sont pas ceux de la barre.
+    const buttons = [
+      ...fixture.nativeElement.querySelectorAll('.compose-bar > button'),
+    ] as HTMLButtonElement[];
     expect(buttons).toHaveLength(2);
     expect(buttons.every((b) => b.disabled)).toBe(true);
   });
@@ -196,5 +199,54 @@ describe('ComposeBar — fin du vote (Story 45.4)', () => {
     expect((el(f).querySelector('.compose-bar__deadline-btn') as HTMLButtonElement).disabled).toBe(
       true,
     );
+  });
+
+  // ⚠️ Story 47.4 — la ligne « Durée » du composer.
+  describe('ligne « Durée » (Story 47.4)', () => {
+    async function renderDuration(
+      durationSlots: number,
+      start: { date: string; slot: 'EVENING' } | null,
+    ) {
+      await TestBed.configureTestingModule({
+        imports: [ComposeBar],
+        providers: [provideAnimationsAsync()],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(ComposeBar);
+      fixture.componentRef.setInput('count', 1);
+      fixture.componentRef.setInput('targetLabel', 'Créneaux du vote : Week-end');
+      fixture.componentRef.setInput('canConfirm', true);
+      fixture.componentRef.setInput('durationSlots', durationSlots);
+      fixture.componentRef.setInput('durationStart', start);
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    it('toujours présente, à la durée reçue ; la plage s’écrit depuis le premier départ', async () => {
+      const f = await renderDuration(6, { date: '2026-11-06', slot: 'EVENING' });
+      const root = f.nativeElement as HTMLElement;
+
+      expect(root.querySelector('.compose-bar__duration app-duration-stepper')).not.toBeNull();
+      expect(root.querySelector('.ds__value')?.textContent?.trim()).toBe('6 créneaux');
+      expect(root.querySelector('.ds__detail')?.textContent?.trim()).toBe(
+        'ven. 6 soir → dim. 8 après-midi',
+      );
+    });
+
+    it('à 1 créneau (cible d’un créneau), la ligne est là, sans plage', async () => {
+      const f = await renderDuration(1, null);
+      const root = f.nativeElement as HTMLElement;
+      expect(root.querySelector('.ds__value')?.textContent?.trim()).toBe('1 créneau');
+      expect(root.querySelector('.ds__detail')).toBeNull();
+    });
+
+    it('« Allonger » émet la nouvelle durée, sans rien écrire', async () => {
+      const f = await renderDuration(2, null);
+      const changed = vi.fn();
+      f.componentInstance.durationChanged.subscribe(changed);
+
+      (f.nativeElement.querySelector('.ds__step--more') as HTMLButtonElement).click();
+
+      expect(changed).toHaveBeenCalledWith(3);
+    });
   });
 });

@@ -134,3 +134,29 @@ describe('ComposeConfirmDialog — conjonction d’un groupe (Story 40.5b)', () 
     expect(text(el, '.compose-confirm__note')).toBe(GRIMOIRE_TONE['calendar.compose_confirm_note']);
   });
 });
+
+// ⚠️ Story 47.4 — la durée change : toutes les réponses partent, et l'avertissement le dit en ces termes.
+describe('ComposeConfirmDialog — durée changée (Story 47.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('« Changer la durée efface les 4 réponses déjà données. », sans la note des créneaux gardés', async () => {
+    const el = await createComponent(
+      makeData({ removedCount: 0, voterCount: 4, durationChanged: true }),
+    );
+
+    expect(text(el, '.compose-confirm__warning')).toBe(
+      'Changer la durée efface les 4 réponses déjà données.',
+    );
+    expect(el.querySelector('.compose-confirm__note')).toBeNull();
+  });
+
+  it('au singulier, et pour un groupe aussi', async () => {
+    const el = await createComponent(
+      makeData({ removedCount: 0, voterCount: 1, durationChanged: true, group: true }),
+    );
+
+    expect(text(el, '.compose-confirm__warning')).toBe(
+      'Changer la durée efface la réponse déjà donnée.',
+    );
+  });
+});

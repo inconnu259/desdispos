@@ -87,3 +87,9 @@
   font-size: 0.8rem;
   color: var(--mat-sys-on-surface-variant);
 }
+
+/* Story 47.4 — la ligne « Durée » : le compteur partagé, sur toute la largeur de la barre (il porte sa plage dessous). */
+.compose-bar__duration {
+  display: flex;
+  flex-basis: 100%;
+}

@@ -707,13 +707,14 @@ export class ScenariosService {
   // ScenariosModule importe PollModule (lecture ET écriture ici, via PollService.create()) mais
   // PollModule/CreatePollDto restent inchangés (P2-AD-2) : aucune connaissance de Seance/Scenario
   // n'est ajoutée côté PollModule, c'est ScenariosService qui orchestre les deux écritures.
-  // Non-atomique par construction (deux écritures séparées, cf. `[ASSUMPTION]` Dev Notes Story 8.7)
-  // — risque accepté (revue de code Story 8.7, confirmé par l'utilisateur).
+  // Story 47.4 : la non-atomicité de la 8.7 est levée — durée, vote et `Seance.pollId` sont écrits dans
+  // UNE transaction (`EventsService.createSeancePoll`, sous les verrous de la partie puis de l'événement).
   async createSeancePoll(
     seanceId: string,
     mjId: string,
     options: { date: string; slot: DaySlot }[],
     expiresAt?: string,
+    durationSlots?: number,
   ): Promise<ScenarioDto> {
     const grant = await this.permissions.assert(mjId, 'SEANCE_POLL_CREATE', { seanceId });
     const seance = await this.prisma.seance.findUnique({
@@ -735,11 +736,10 @@ export class ScenariosService {
     // `PollService` (seul écrivain de SessionPoll), pose `Seance.pollId` et émet `partie:`.
     // Story 37.6 : l'autorisation `SEANCE_POLL_CREATE` couvre aussi la création du vote — plus de
     // second contrôle de droit dans `PollService.create()`.
-    await this.events.createSeancePoll(grant, seance, () =>
-      this.pollService.create(grant, mjId, {
-        options,
-        expiresAt,
-      }),
+    // Story 47.4 : `PollService` prépare le vote, `EventsService` ouvre la transaction et y écrit la durée,
+    // le vote (par l'écriture rendue) puis `Seance.pollId`.
+    await this.pollService.create(grant, mjId, { options, expiresAt }, (write) =>
+      this.events.createSeancePoll(grant, seance, durationSlots, write),
     );
 
     const updated = await this.reloadScenario(scenario.id);
@@ -1169,6 +1169,8 @@ const SEANCE_INCLUDE = {
 function toSessionPollDto(
   poll: Prisma.SessionPollGetPayload<typeof SEANCE_INCLUDE.poll>,
   membersCount: number,
+  // Story 47.4 : la durée du rendez-vous voté, lue de la séance qui porte le vote.
+  durationSlots: number,
 ): SessionPollDto {
   return {
     id: poll.id,
@@ -1179,6 +1181,7 @@ function toSessionPollDto(
     chosenDate: poll.chosenDate?.toISOString() ?? null,
     chosenSlot: poll.chosenSlot,
     membersCount,
+    durationSlots,
     options: (poll.options ?? []).map((opt) => ({
       id: opt.id,
       date: opt.date.toISOString(),
@@ -1227,7 +1230,9 @@ function toSeanceDto(
     id: seance.id,
     // Story 37.3 : le contrat garde `scenarioId` — même valeur que `Seance.eventId`.
     scenarioId: seance.eventId,
-    poll: seance.poll ? toSessionPollDto(seance.poll, membersCount) : undefined,
+    poll: seance.poll
+      ? toSessionPollDto(seance.poll, membersCount, seance.durationSlots)
+      : undefined,
     inscription:
       seance.inscriptionMax != null
         ? {

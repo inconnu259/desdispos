@@ -65,6 +65,7 @@ function pollCard(over: Partial<EventCardDto['poll'] & object> = {}, host = HOST
       expiresAt: '2026-10-20T23:59:59.999Z',
       status: 'OPEN',
       eligibleVoterIds: [HOST, ME, OTHER],
+      durationSlots: 1,
       options: [
         { id: 'o1', date: '2026-10-24', slot: 'EVENING', availableCount: 2 },
         { id: 'o2', date: '2026-10-25', slot: 'MORNING', availableCount: 1 },

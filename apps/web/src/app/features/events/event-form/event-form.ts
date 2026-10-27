@@ -253,6 +253,8 @@ export class EventForm implements OnInit {
     this.participation.set(draft.participation);
     this.places.set(Math.max(MIN_PLACES, draft.places));
     this.reserved.set(draft.participation === 'limited' ? [...draft.reserved] : []);
+    // Story 47.4 : la durée revient du composer avec les créneaux.
+    this.durationSlots.set(draft.durationSlots ?? 1);
   }
 
   /** Story 40.5b : instantané des champs, pour le brouillon qui fait l'aller-retour par le calendrier.
@@ -269,6 +271,8 @@ export class EventForm implements OnInit {
       participation: this.participation(),
       places: this.places(),
       reserved: [...this.reserved()],
+      // Story 47.4 : la durée part avec le brouillon — le composer s'y initialise.
+      durationSlots: this.durationSlots(),
     };
   }
 

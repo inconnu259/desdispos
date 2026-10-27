@@ -50,6 +50,16 @@
     </span>
   }
 
+  <!-- ⚠️ Story 47.4 — la ligne « Durée » : le compteur partagé (47.1), toujours présent ; la plage s'écrit depuis
+       le premier départ désigné. -->
+  <span class="compose-bar__duration">
+    <app-duration-stepper
+      [value]="durationSlots()"
+      [start]="durationStart()"
+      (valueChange)="durationChanged.emit($event)"
+    />
+  </span>
+
   @if (blockedReason()) {
     <span class="compose-bar__blocked">{{ blockedReason() }}</span>
   }

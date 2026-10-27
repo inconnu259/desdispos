@@ -296,6 +296,17 @@
   outline-offset: -2px;
 }
 
+/* ⚠️ Story 47.4 (DESIGN `preview`) — les autres bandes de la plage d'un départ désigné, ou de celle qu'ouvrirait la
+   bande survolée : l'état d'aperçu existant (fond accent 22 %, pointillé 1,5 px accent). Aucune teinte nouvelle ; le
+   départ, lui, garde son tireté. Bloc JUMEAU de `.slot-cell--span-preview` (vue Semaine). */
+.band--span-preview {
+  box-shadow:
+    inset 0 0 0 100px
+    color-mix(in srgb, var(--jdr-accent-1, var(--mat-sys-primary, #6750a4)) 22%, transparent);
+  outline: 1.5px dotted var(--jdr-accent-1, var(--mat-sys-primary, #6750a4));
+  outline-offset: -2px;
+}
+
 
 /* Le titre de la séance ou le libellé du vote, tronqué à l'ellipse et jamais reformaté.
    Il disparaît sous le seuil de densité (voir plus bas) : la forme survit, le texte cède. */

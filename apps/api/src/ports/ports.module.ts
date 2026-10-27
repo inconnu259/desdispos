@@ -16,6 +16,7 @@ import { GROUP_POLL_EXTEND_PORT } from '../poll/ports/group-poll-extend.port';
 import { GROUP_POLL_VOTE_PORT } from '../poll/ports/group-poll-vote.port';
 import { OPEN_POLL_CONTEXT_PORT } from '../poll/ports/open-poll-context.port';
 import { PARTIE_SIGNALS_PORT } from '../poll/ports/partie-signals.port';
+import { RENDEZ_VOUS_DURATION_PORT } from '../poll/ports/rendez-vous-duration.port';
 import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
 
 /**
@@ -26,8 +27,8 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
  * `AvailabilityModule` et `PollModule` n'importent plus `PartiesModule`, `EventsModule` ni
  * `ScenariosModule`.
  *
- * - `OccupiedSpansPort`, `OwnEventsPort`, `SeanceDatePort`, `GroupPollVotePort` (Story 40.5) →
- *   `EventsService` ;
+ * - `OccupiedSpansPort`, `OwnEventsPort`, `SeanceDatePort`, `GroupPollVotePort` (Story 40.5),
+ *   `RendezVousDurationPort` (Story 47.4) → `EventsService` ;
  * - `GroupPollChoosePort` (Story 40.6) → `GroupPollChoiceService` ;
  * - `GroupPollExtendPort` (Story 40.7) → `GroupPollExtensionService` ;
  * - `OpenPollContextPort` (Story 44.2) → `OpenPollContextService` ;
@@ -42,6 +43,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
     { provide: OWN_EVENTS_PORT, useExisting: EventsService },
     { provide: SEANCE_DATE_PORT, useExisting: EventsService },
     { provide: GROUP_POLL_VOTE_PORT, useExisting: EventsService },
+    { provide: RENDEZ_VOUS_DURATION_PORT, useExisting: EventsService },
     { provide: GROUP_POLL_CHOOSE_PORT, useExisting: GroupPollChoiceService },
     { provide: GROUP_POLL_EXTEND_PORT, useExisting: GroupPollExtensionService },
     { provide: OPEN_POLL_CONTEXT_PORT, useExisting: OpenPollContextService },
@@ -53,6 +55,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
     OWN_EVENTS_PORT,
     SEANCE_DATE_PORT,
     GROUP_POLL_VOTE_PORT,
+    RENDEZ_VOUS_DURATION_PORT,
     GROUP_POLL_CHOOSE_PORT,
     GROUP_POLL_EXTEND_PORT,
     OPEN_POLL_CONTEXT_PORT,

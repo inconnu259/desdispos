@@ -473,6 +473,7 @@ describe('event-card.util (Story 40.1)', () => {
           expiresAt: '2026-10-20T23:59:59.999Z',
           status: 'OPEN',
           eligibleVoterIds: [HOST, 'a', 'b'],
+          durationSlots: 1,
           options: [
             { id: 'o1', date: '2026-10-24', slot: 'EVENING', availableCount: 2 },
             { id: 'o2', date: '2026-10-25', slot: 'MORNING', availableCount: 1 },
@@ -678,6 +679,7 @@ describe('event-card.util (Story 40.1)', () => {
           expiresAt: '2026-10-20T23:59:59.999Z',
           status: 'OPEN',
           eligibleVoterIds: [HOST, 'a', 'b', 'c'],
+          durationSlots: 1,
           options: slots,
           votes,
           ...over,
@@ -788,6 +790,7 @@ describe('event-card.util (Story 40.1)', () => {
           expiresAt: '2026-10-24T23:59:59.999Z',
           status: 'OPEN',
           eligibleVoterIds: [HOST, 'a'],
+          durationSlots: 1,
           options: [{ id: 'o1', date: '2026-10-28', slot: 'EVENING', availableCount: 1 }],
           votes: [],
           ...pollOver,

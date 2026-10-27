@@ -5,6 +5,10 @@ import { isHiddenDraft, isSpoilRestricted } from '../permissions/scenario-visibi
 import { PrismaService } from '../prisma/prisma.service';
 import { pollVoters } from './poll-voters';
 import { OPEN_POLL_CONTEXT_PORT, type OpenPollContextPort } from './ports/open-poll-context.port';
+import {
+  RENDEZ_VOUS_DURATION_PORT,
+  type RendezVousDurationPort,
+} from './ports/rendez-vous-duration.port';
 
 /**
  * `GET /me/open-polls` (Story 44.2, AR1/AR2) — tous MES sondages de dates ouverts, de toutes les familles
@@ -23,6 +27,7 @@ export class MyOpenPollsService {
     // jamais en comparant le propriétaire de la partie.
     private readonly permissions: PermissionService,
     @Inject(OPEN_POLL_CONTEXT_PORT) private readonly context: OpenPollContextPort,
+    @Inject(RENDEZ_VOUS_DURATION_PORT) private readonly duration: RendezVousDurationPort,
   ) {}
 
   async list(userId: string): Promise<OpenPollEntry[]> {
@@ -79,7 +84,7 @@ export class MyOpenPollsService {
           .map((p) => p.partie.id),
       ),
     ];
-    const [contexts, memberships] = await Promise.all([
+    const [contexts, memberships, durations] = await Promise.all([
       this.context.contextOf(
         userId,
         polls.map((p) => p.id),
@@ -90,6 +95,8 @@ export class MyOpenPollsService {
             where: { partieId: { in: jdrPartieIds } },
             select: { partieId: true, userId: true },
           }),
+      // Story 47.4 : la durée de chaque rendez-vous, en une lecture (1 pour un sondage sans séance).
+      this.duration.durationsOf(polls.map((p) => p.id)),
     ]);
     const memberIdsByPartie = new Map<string, string[]>();
     for (const m of memberships) {
@@ -132,7 +139,7 @@ export class MyOpenPollsService {
         seanceId: ctx.seanceId,
         title: ctx.title,
         expiresAt: poll.expiresAt?.toISOString() ?? null,
-        durationSlots: 1,
+        durationSlots: durations.get(poll.id) ?? 1,
         options: poll.options.map((o) => {
           const mine = o.votes.find((v) => v.userId === userId);
           return {

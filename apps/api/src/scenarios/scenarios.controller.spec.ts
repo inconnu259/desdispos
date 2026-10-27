@@ -138,7 +138,13 @@ describe('ScenariosController', () => {
       { date: '2026-08-02T00:00:00.000Z', slot: 'AFTERNOON' as const },
     ];
     await controller.createSeancePoll('seance1', user, { options });
-    expect(scenarios.createSeancePoll).toHaveBeenCalledWith('seance1', 'mj1', options, undefined);
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith(
+      'seance1',
+      'mj1',
+      options,
+      undefined,
+      undefined,
+    );
   });
 
   it('Story 45.4 — createSeancePoll() transmet la fin du vote choisie', async () => {
@@ -152,7 +158,17 @@ describe('ScenariosController', () => {
       'mj1',
       options,
       '2026-07-30',
+      undefined,
     );
+  });
+
+  it('Story 47.4 — createSeancePoll() transmet la durée du rendez-vous', async () => {
+    const options = [
+      { date: '2026-08-01T00:00:00.000Z', slot: 'EVENING' as const },
+      { date: '2026-08-08T00:00:00.000Z', slot: 'EVENING' as const },
+    ];
+    await controller.createSeancePoll('seance1', user, { options, durationSlots: 6 });
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith('seance1', 'mj1', options, undefined, 6);
   });
 
   it('resetSeanceDate() route seanceId/user vers ScenariosService.resetSeanceDate', async () => {

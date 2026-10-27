@@ -1255,6 +1255,44 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
     expect(cell.classList.contains('slot-cell--composed')).toBe(true);
     expect(cell.classList.contains('selected')).toBe(false);
   });
+
+  // ⚠️ Story 47.4 — bloc JUMEAU de la vue Mois : l'aperçu des plages.
+  it('Story 47.4 — le départ garde son tireté, les créneaux couverts prennent l’aperçu', () => {
+    create({
+      composing: true,
+      composedKeys: new Set([`${dayKey(2)}|EVENING`]),
+      composeCoverKeys: new Set([`${dayKey(3)}|MORNING`, `${dayKey(3)}|AFTERNOON`]),
+      composeDuration: 3,
+    });
+
+    expect(cellAt('EVENING', 2).classList.contains('slot-cell--span-preview')).toBe(false);
+    expect(cellAt('MORNING', 3).classList.contains('slot-cell--span-preview')).toBe(true);
+    expect(cellAt('AFTERNOON', 3).classList.contains('slot-cell--span-preview')).toBe(true);
+    expect(cellAt('EVENING', 3).classList.contains('slot-cell--span-preview')).toBe(false);
+  });
+
+  it('Story 47.4 — au survol, la plage qu’ouvrirait la cellule s’allume ; à 1 créneau, rien', () => {
+    create({ composing: true, composedKeys: new Set<string>(), composeDuration: 2 });
+
+    cellAt('EVENING', 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    fixture.detectChanges();
+    expect(cellAt('EVENING', 2).classList.contains('slot-cell--span-preview')).toBe(true);
+    expect(cellAt('MORNING', 3).classList.contains('slot-cell--span-preview')).toBe(true);
+
+    cellAt('EVENING', 2).dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.slot-cell--span-preview')).toHaveLength(0);
+
+    // Au doigt, l'entrée émulée après un tap n'a pas de sortie : elle n'allume rien.
+    cellAt('EVENING', 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }));
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.slot-cell--span-preview')).toHaveLength(0);
+
+    fixture.componentRef.setInput('composeDuration', 1);
+    cellAt('EVENING', 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.slot-cell--span-preview')).toHaveLength(0);
+  });
 });
 
 // ─── Story 36.15 — Sceller depuis la barre de sélection ──────────────────────

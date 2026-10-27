@@ -58,6 +58,19 @@ describe('ConjonctionDraftService (Story 40.5b)', () => {
     expect(svc.takeReopen('g1')?.pollOptions).toEqual([{ date: '2026-11-24', slot: 'EVENING' }]);
   });
 
+  it('Story 47.4 — la durée validée par le composer rejoint le brouillon ; renoncer la garde', () => {
+    const svc = new ConjonctionDraftService();
+    svc.beginCompose({ ...draft(), durationSlots: 2 });
+    svc.takeComposeRequest('g1');
+    svc.finishCompose('g1', [{ date: '2026-11-24', slot: 'EVENING' }], 6);
+    expect(svc.takeReopen('g1')?.durationSlots).toBe(6);
+
+    svc.beginCompose({ ...draft(), durationSlots: 2 });
+    svc.takeComposeRequest('g1');
+    svc.finishCompose('g1');
+    expect(svc.takeReopen('g1')?.durationSlots).toBe(2);
+  });
+
   it('un brouillon d’une autre partie n’est jamais rendu, et « clear » abandonne tout', () => {
     const svc = new ConjonctionDraftService();
     svc.beginCompose(draft());

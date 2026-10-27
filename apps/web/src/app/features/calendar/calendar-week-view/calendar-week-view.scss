@@ -206,6 +206,18 @@
     outline-offset: -2px;
   }
 
+  /* ⚠️ Story 47.4 (DESIGN `preview`) — bloc JUMEAU de `.band--span-preview` (vue Mois) : les autres créneaux de la
+     plage d'un départ désigné, ou de celle qu'ouvrirait la cellule survolée. Fond accent 22 %, pointillé 1,5 px. */
+  &.slot-cell--span-preview {
+    background: color-mix(
+      in srgb,
+      var(--jdr-accent-1, var(--mat-sys-primary, #6750a4)) 22%,
+      transparent
+    );
+    outline: 1.5px dotted var(--jdr-accent-1, var(--mat-sys-primary, #6750a4));
+    outline-offset: -2px;
+  }
+
   /* Story 36.3, AC16 — la cellule courante : la dernière cliquée. Distinguée de `.selected` par
      la FORME (tirets contre plein) autant que par l'épaisseur, jamais par la seule couleur —
      et la sélection l'emporte quand les deux portent sur la même cellule. */

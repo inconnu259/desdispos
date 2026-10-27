@@ -132,6 +132,7 @@ describe('la couche 1 n’importe que son dossier et les modules transverses (St
         'poll/poll.module.ts',
         'poll/ports/seance-date.port.ts',
         'poll/ports/partie-signals.port.ts',
+        'poll/ports/rendez-vous-duration.port.ts',
       ]),
     );
     expect(sources.some((rel) => rel.endsWith('.spec.ts'))).toBe(false);

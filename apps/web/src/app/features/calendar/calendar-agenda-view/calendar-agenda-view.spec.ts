@@ -697,3 +697,50 @@ describe('CalendarAgendaView — la séance sans date proposée (AC5, AC13)', ()
     expect(entryTitles(fixture)).toEqual(['Les Cendres d’Ashal', 'Le Convoi du Nord — Séance 4']);
   });
 });
+
+describe('CalendarAgendaView — une plage tient en UNE ligne (Story 47.3)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const WEEKEND: AgendaEntry = {
+    key: 'seance-w',
+    type: 'mes-seances',
+    date: '2026-09-04',
+    slot: 'EVENING',
+    endDate: '2026-09-06',
+    endSlot: 'AFTERNOON',
+    label: 'Week-end jeux',
+    partieId: 'p1',
+    scenarioId: 'sc1',
+    seanceId: 'w',
+  };
+
+  it('une seule ligne « début → fin », dans la section de son début', async () => {
+    const fixture = await createAgenda([WEEKEND]);
+    expect(entryTitles(fixture)).toEqual(['Week-end jeux']);
+    const meta = fixture.nativeElement.querySelector('.agenda-entry__meta').textContent;
+    expect(meta).toContain('ven. 4 sept. soir → dim. 6 sept. après-midi');
+  });
+
+  it('commencée mais pas finie : encore « à venir » ; finie : elle quitte cette section', async () => {
+    const started = await createAgenda(
+      [{ ...WEEKEND, date: '2026-08-21', endDate: '2026-08-23', compteRenduManquant: true }],
+      false,
+      TODAY,
+    );
+    expect(sectionTitles(started)).toEqual([GRIMOIRE_TONE['calendar.agenda.section_scheduled']]);
+    TestBed.resetTestingModule();
+
+    const ended = await createAgenda(
+      [{ ...WEEKEND, date: '2026-08-19', endDate: '2026-08-21', compteRenduManquant: true }],
+      false,
+      TODAY,
+    );
+    expect(sectionTitles(ended)).not.toContain(GRIMOIRE_TONE['calendar.agenda.section_scheduled']);
+  });
+
+  it('un créneau seul : la ligne d’avant', async () => {
+    const fixture = await createAgenda([{ ...WEEKEND, endDate: undefined, endSlot: undefined }]);
+    const meta = fixture.nativeElement.querySelector('.agenda-entry__meta').textContent;
+    expect(meta).not.toContain('→');
+  });
+});

@@ -1452,3 +1452,103 @@ describe('CalendarWeekView — fenêtre de l’automate sélectionnée (Story 46
     );
   });
 });
+
+describe('CalendarWeekView — une plage sur la semaine (Story 47.3)', () => {
+  let fixture: ComponentFixture<CalendarWeekView>;
+  let el: HTMLElement;
+
+  const futureStart = new Date();
+  futureStart.setDate(futureStart.getDate() + 14);
+  const weekStart = getWeekStart(
+    new Date(Date.UTC(futureStart.getFullYear(), futureStart.getMonth(), futureStart.getDate())),
+  );
+  const dayKey = (i: number): string => {
+    const d = new Date(
+      weekStart.getUTCFullYear(),
+      weekStart.getUTCMonth(),
+      weekStart.getUTCDate() + i,
+    );
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const cellAt = (slot: string, dayIndex: number): HTMLElement =>
+    Array.from(el.querySelectorAll<HTMLElement>(`.slot-cell[data-cell-slot="${slot}"]`))[dayIndex];
+
+  /** Vendredi soir → dimanche après-midi (jours 4 à 6 de la semaine). */
+  const weekend = (over: Partial<AgendaEntry> = {}): AgendaEntry => ({
+    key: 'seance-w',
+    type: 'mes-seances',
+    date: dayKey(4),
+    slot: 'EVENING',
+    endDate: dayKey(6),
+    endSlot: 'AFTERNOON',
+    label: 'Week-end jeux',
+    partieId: 'p1',
+    scenarioId: 's1',
+    ...over,
+  });
+
+  function create(entries: AgendaEntry[], layers: CalendarLayerKey[] = ['mes-seances']): void {
+    TestBed.configureTestingModule({ imports: [CalendarWeekView] });
+    fixture = TestBed.createComponent(CalendarWeekView);
+    fixture.componentRef.setInput('startDate', futureStart);
+    fixture.componentRef.setInput('entries', entries);
+    fixture.componentRef.setInput('activeLayers', layers);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('les 6 cellules couvertes sont marquées comme une séance, le soir du dimanche reste libre', () => {
+    create([weekend()]);
+    const winners = [
+      cellAt('EVENING', 4),
+      cellAt('MORNING', 5),
+      cellAt('AFTERNOON', 5),
+      cellAt('EVENING', 5),
+      cellAt('MORNING', 6),
+      cellAt('AFTERNOON', 6),
+    ].map((c) => c.getAttribute('data-winner'));
+    expect(winners).toEqual(Array(6).fill('seance'));
+    expect(cellAt('EVENING', 6).getAttribute('data-winner')).not.toBe('seance');
+    expect(cellAt('MORNING', 4).getAttribute('data-winner')).not.toBe('seance');
+  });
+
+  it('le nom n’est écrit qu’une fois dans la semaine ; chaque cellule couverte dit la plage entière', () => {
+    create([weekend()]);
+    const titles = Array.from(el.querySelectorAll('.ev-title')).map((n) => n.textContent?.trim());
+    expect(titles).toEqual(['Week-end jeux']);
+    const label = cellAt('AFTERNOON', 5).getAttribute('aria-label') ?? '';
+    expect(label).toContain('Week-end jeux, du vendredi');
+    expect(label).toContain('au dimanche');
+  });
+
+  it('chaque cellule couverte garde le style d\'une cellule d\'événement, même sans texte', () => {
+    create([weekend()]);
+    expect(cellAt('AFTERNOON', 5).classList.contains('has-event')).toBe(true);
+    expect(cellAt('EVENING', 5).classList.contains('has-event')).toBe(true);
+    expect(cellAt('EVENING', 6).classList.contains('has-event')).toBe(false);
+  });
+
+  it('connecteurs : le soir continue, le matin suivant vient de la veille', () => {
+    create([weekend()]);
+    expect(cellAt('EVENING', 4).classList.contains('slot-cell--span-next')).toBe(true);
+    expect(cellAt('MORNING', 5).classList.contains('slot-cell--span-prev')).toBe(true);
+    expect(cellAt('EVENING', 5).classList.contains('slot-cell--span-next')).toBe(true);
+    expect(cellAt('MORNING', 6).classList.contains('slot-cell--span-prev')).toBe(true);
+    expect(cellAt('AFTERNOON', 5).classList.contains('slot-cell--span-next')).toBe(false);
+    expect(cellAt('AFTERNOON', 6).classList.contains('slot-cell--span-next')).toBe(false);
+  });
+
+  it('une plage commencée la semaine d’avant : la première cellule visible reprend « ← »', () => {
+    create([weekend({ date: dayKey(-2), slot: 'EVENING', endDate: dayKey(1), endSlot: 'AFTERNOON' })]);
+    const titles = Array.from(el.querySelectorAll('.ev-title')).map((n) => n.textContent?.trim());
+    expect(titles).toEqual(['← Week-end jeux']);
+  });
+
+  it('un créneau seul : ni connecteur ni plage', () => {
+    create([weekend({ endDate: undefined, endSlot: undefined })]);
+    expect(el.querySelector('.slot-cell--span-next, .slot-cell--span-prev')).toBeNull();
+    expect(cellAt('MORNING', 5).getAttribute('data-winner')).not.toBe('seance');
+  });
+});

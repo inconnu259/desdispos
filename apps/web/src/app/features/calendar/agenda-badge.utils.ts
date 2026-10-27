@@ -84,7 +84,8 @@ export function sectionIdFor(entry: AgendaEntry, todayKey: string): AgendaSectio
   )
     return 'awaiting';
   if (entry.type !== 'mes-seances' || !entry.date) return null;
-  if (entry.date >= todayKey) return 'scheduled';
+  // Story 47.3 : une plage n'est « passée » qu'une fois sa FIN passée — commencée, elle reste à venir.
+  if ((entry.endDate ?? entry.date) >= todayKey) return 'scheduled';
   return entry.compteRenduManquant ? 'past' : null;
 }
 

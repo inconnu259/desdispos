@@ -146,6 +146,8 @@
                     [class.preview]="band.preview !== null"
                     [class.band--selected]="isBandSelected(cell, band.slot)"
                     [class.band--gauge]="bandHasGauge(band)"
+                    [class.band--span-next]="band.span?.continuesAfter"
+                    [class.band--span-prev]="band.span?.continuesBefore"
                     [class.band--composed]="isBandComposed(cell, band.slot)"
                     [class.band--window]="isBandWindow(cell, band.slot)"
                     [attr.aria-label]="

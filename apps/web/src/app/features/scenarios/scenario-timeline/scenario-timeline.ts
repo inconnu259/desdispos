@@ -396,7 +396,12 @@ export class ScenarioTimeline {
   // que SeanceList (poll.chosenDate ?? dateValidee racine ?? inscription.dateValidee).
   protected seanceDateLabel(seance: SeanceDto): string {
     const iso = seanceIso(seance);
-    return iso ? formatDayMonth(iso) : this.theme.tone()['common.date_a_definir'];
+    if (!iso) return this.theme.tone()['common.date_a_definir'];
+    // Story 47.3 : une plage de plusieurs jours s'écrit « 6 nov. → 8 nov. » (un seul jour : inchangé).
+    if (seance.endDate && seance.endDate.substring(0, 10) > iso.substring(0, 10)) {
+      return `${formatDayMonth(iso)} → ${formatDayMonth(seance.endDate)}`;
+    }
+    return formatDayMonth(iso);
   }
 
   protected onCardKeydown(event: KeyboardEvent, scenario: ScenarioDto): void {

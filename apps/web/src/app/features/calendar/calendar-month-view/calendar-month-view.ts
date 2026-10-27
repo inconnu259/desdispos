@@ -30,6 +30,7 @@ import {
   type SlotWinner,
   bandsAreUniform,
   buildMonthDetails,
+  type SlotSpan,
   composeSeanceInfo,
   dateKeyToLocalMidnight,
   toDateKey,
@@ -106,9 +107,12 @@ export interface DayBand {
   group: GroupAvailability | null;
   /** Aperçu live pendant l'édition dans `ConstraintPanel` — `null` si identique au réel. */
   preview: SlotStatus | null;
+  /** Story 47.3 — la plage de plusieurs créneaux que cette bande couvre, ou `null`. Porte les connecteurs et le nom
+   *  accessible complet ; le NOM VISIBLE (`text`) n'est écrit que sur la première bande de chaque ligne de semaine. */
+  span: SlotSpan | null;
 }
 
-interface DayCell {
+export interface DayCell {
   date: Date;
   isCurrentMonth: boolean;
   isToday: boolean;
@@ -132,6 +136,27 @@ function toFakeDecl(dto: CreateAvailabilityDto): AvailabilityDeclarationDto {
     expiresAt: dto.expiresAt || '2099-12-31T23:59:59.000Z',
     createdAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Story 47.3 (UX-DR9) — le nom d'une plage n'est écrit que sur la PREMIÈRE bande visible de chaque ligne de
+ * semaine (dans l'ordre de lecture : jour après jour, matin → soir), précédé de « ← » quand cette bande n'est pas
+ * le début de la plage. Les autres bandes de la ligne restent sans texte : leur nom accessible, lui, est complet.
+ */
+export function nameSpansOncePerRow(week: readonly DayCell[]): void {
+  const named = new Set<string>();
+  for (const cell of week) {
+    for (const band of cell.bands) {
+      const span = band.span;
+      if (!span) continue;
+      if (named.has(span.key)) {
+        band.text = null;
+        continue;
+      }
+      named.add(span.key);
+      if (span.index > span.startIndex) band.text = `← ${band.text ?? span.label}`;
+    }
+  }
 }
 
 export function buildMonth(
@@ -210,6 +235,7 @@ export function buildMonth(
             // Story 36.8 — 🚨 AUCUNE condition de rang ici, et c'est délibéré (cf. `DayBand.group`).
             group: s.group,
             preview: previewStatus !== null && previewStatus !== s.status ? previewStatus : null,
+            span: s.span,
           };
         }),
         // Story 36.8, AC11 — la couche « disponibilité du groupe » allumée INTERDIT la fusion.
@@ -221,6 +247,7 @@ export function buildMonth(
         uniform: bandsAreUniform(previewDetail ?? detail) && !hasGroupChannel(detail),
       });
     }
+    nameSpansOncePerRow(week);
     weeks.push(week);
   }
 
@@ -692,11 +719,14 @@ export class CalendarMonthView {
 
     // Story 36.5, AC13 : les informations pratiques sont ANNONCÉES, pas seulement affichées —
     // et à l'oreille elles ne sont jamais tronquées, contrairement à l'ellipse visuelle.
-    if (band.text) {
+    // Story 47.3 : une bande de plage dit le rendez-vous ET sa plage entière — même quand son texte visible
+    // est tu (nom une fois par ligne) : le lecteur d'écran ne voit ni connecteur ni flèche.
+    const named = band.span ? `${band.span.label}, ${band.span.range}` : band.text;
+    if (named) {
       // Story 36.6, AC14 — la piste code par la PROPORTION : sans ce texte, elle n'existe pas
       // pour un lecteur d'écran. Elle s'ajoute au titre du vote, elle ne le remplace pas.
       const participation = band.vote ? participationAriaLabel(band.vote, tone) : '';
-      const parts = [`${band.label} : ${band.text}`];
+      const parts = [`${band.label} : ${named}`];
       if (band.info) parts.push(band.info);
       if (participation) parts.push(participation);
       if (groupe) parts.push(groupe);

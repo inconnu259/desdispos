@@ -46,6 +46,9 @@
             (click)="onActivate(s)"
           >
             <b>{{ s.seanceLabel }}</b>
+            @if (spanLine(s); as line) {
+              <span class="m m--span">{{ line }}</span>
+            }
             <!-- Story 36.5 — le rail est la surface la plus riche : il demande le niveau
                  complet, contrairement à la bande. Interpolation seule (AC9). -->
             @if (seanceInfo(s)) {
@@ -55,6 +58,9 @@
         } @else if (s.seanceLabel) {
           <span class="v">
             <b>{{ s.seanceLabel }}</b>
+            @if (spanLine(s); as line) {
+              <span class="m m--span">{{ line }}</span>
+            }
             @if (seanceInfo(s)) {
               <span class="m">{{ seanceInfo(s) }}</span>
             }

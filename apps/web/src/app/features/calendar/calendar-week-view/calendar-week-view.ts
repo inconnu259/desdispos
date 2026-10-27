@@ -691,7 +691,40 @@ export class CalendarWeekView {
   protected eventTitle(slotData: SlotData): string | null {
     const d = slotData.detail;
     if (!d) return null;
-    return d.winner === 'seance' ? d.seanceLabel : d.winner === 'vote' ? d.pollLabel : null;
+    const title =
+      d.winner === 'seance' ? d.seanceLabel : d.winner === 'vote' ? d.pollLabel : null;
+    // Story 47.3 : une plage n'est NOMMÉE que sur sa première cellule visible de la semaine, avec « ← » quand
+    // cette cellule n'est pas son début ; les autres cellules couvertes restent marquées mais sans texte.
+    const span = d.span;
+    if (title && span) {
+      if (span.index !== this.firstSpanIndex().get(span.key)) return null;
+      return span.index > span.startIndex ? `← ${title}` : title;
+    }
+    return title;
+  }
+
+  /** Story 47.3 — pour chaque plage de la semaine affichée, le rang linéaire de sa première cellule visible
+   *  (ordre de lecture : jour après jour, matin → soir = ordre croissant des rangs). */
+  private readonly firstSpanIndex = computed<Map<string, number>>(() => {
+    const first = new Map<string, number>();
+    for (const cell of this.cells()) {
+      for (const slot of [cell.morning, cell.afternoon, cell.evening]) {
+        const span = slot.detail?.span;
+        if (!span) continue;
+        const seen = first.get(span.key);
+        if (seen === undefined || span.index < seen) first.set(span.key, span.index);
+      }
+    }
+    return first;
+  });
+
+  /** Story 47.3 — classes de connecteur d'une cellule : la plage continue après le soir / vient de la veille. */
+  protected spanNext(slotData: SlotData): boolean {
+    return slotData.detail?.span?.continuesAfter ?? false;
+  }
+
+  protected spanPrev(slotData: SlotData): boolean {
+    return slotData.detail?.span?.continuesBefore ?? false;
   }
 
   /** AC4/AC7 — les informations pratiques, composées par le POINT UNIQUE. Niveau `compact` : la
@@ -756,8 +789,10 @@ export class CalendarWeekView {
     // AC12 — ce que le CSS tronque visuellement n'est JAMAIS tronqué ici. Les informations
     // pratiques sont annoncées au niveau `full`, pas au niveau `compact` de la cellule : c'est le
     // défaut exact relevé en revue de code de la story 36.5 sur le rail (`openLabel()`).
-    const title = this.eventTitle(slotData);
     const d = slotData.detail;
+    // Story 47.3 : toute cellule d'une plage dit le rendez-vous ET sa plage entière, même quand son texte
+    // visible est tu (nom une fois par semaine) — le connecteur et la flèche ne se lisent pas à l'oreille.
+    const title = d?.span ? `${d.span.label}, ${d.span.range}` : this.eventTitle(slotData);
     const info = d && d.winner === 'seance' ? composeSeanceInfo(d, 'full') : '';
     const parts = [`${slotName}, ${fullDate} : ${labels[status]}`];
     if (title) parts.push(title);

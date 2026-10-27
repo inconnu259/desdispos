@@ -1676,6 +1676,85 @@ describe('CalendarView — onBatchDeclareRequested (Story 30.3)', () => {
     expect(data.conflicts.map((c: { batchIndex: number }) => c.batchIndex)).not.toContain(0);
   });
 
+  it('Story 47.3 : une cellule du 2ᵉ jour d’une plage figure aussi en exception', async () => {
+    const availabilitySvc = rejectingBatch([conflict('2026-08-11', 1)]);
+    availabilitySvc.getMyCalendar = vi.fn().mockResolvedValue({
+      'mes-indisponibilites': [],
+      'mes-disponibilites': [],
+      'mes-seances': [
+        {
+          seanceId: 's1',
+          partieId: 'p1',
+          partieName: 'Partie',
+          scenarioId: 'sc1',
+          scenarioTitle: 'Le Convoi',
+          // Commence le 9 au soir et couvre le 10 au soir : la cellule testée n'est PAS son premier jour.
+          date: '2026-08-09',
+          slot: 'EVENING',
+          endDate: '2026-08-10',
+          endSlot: 'EVENING',
+          durationSlots: 4,
+        },
+      ],
+      'votes-en-cours': [],
+      'inscriptions-ouvertes': [],
+    });
+    const { fixture, dialog } = await createCalendarView({ mode: 'personal', availabilitySvc });
+    const comp = fixture.componentInstance as any;
+
+    await comp.onBatchDeclareRequested({ cells: CELLS, kind: 'AVAILABLE' });
+
+    expect(dialog.open.mock.calls[0][1]!.data.seanceExceptions).toHaveLength(1);
+  });
+
+  it('Story 47.3 : l’entrée du calendrier personnel porte la fin d’une plage, pas celle d’un créneau seul', async () => {
+    const availabilitySvc = makeAvailabilityService();
+    availabilitySvc.getMyCalendar = vi.fn().mockResolvedValue({
+      'mes-indisponibilites': [],
+      'mes-disponibilites': [],
+      'mes-seances': [
+        {
+          seanceId: 'w',
+          partieId: 'p1',
+          partieName: 'Partie',
+          scenarioId: 'sc1',
+          scenarioTitle: 'Week-end',
+          date: '2026-08-14',
+          slot: 'EVENING',
+          endDate: '2026-08-16',
+          endSlot: 'AFTERNOON',
+          durationSlots: 6,
+        },
+        {
+          seanceId: 'u',
+          partieId: 'p1',
+          partieName: 'Partie',
+          scenarioId: 'sc2',
+          scenarioTitle: 'Soirée',
+          date: '2026-08-20',
+          slot: 'EVENING',
+          endDate: '2026-08-20',
+          endSlot: 'EVENING',
+          durationSlots: 1,
+        },
+      ],
+      'votes-en-cours': [],
+      'inscriptions-ouvertes': [],
+    });
+    const { fixture } = await createCalendarView({ mode: 'personal', availabilitySvc });
+    const entries = (fixture.componentInstance as any).allCalendarEntries() as {
+      seanceId?: string;
+      endDate?: string;
+      endSlot?: string;
+    }[];
+
+    expect(entries.find((e) => e.seanceId === 'w')).toMatchObject({
+      endDate: '2026-08-16',
+      endSlot: 'AFTERNOON',
+    });
+    expect(entries.find((e) => e.seanceId === 'u')?.endDate).toBeUndefined();
+  });
+
   it('AC11 : sans séance recouverte, aucune exception n’est transmise au dialogue', async () => {
     const availabilitySvc = rejectingBatch([conflict('2026-08-11', 1)]);
     const { fixture, dialog } = await createCalendarView({ mode: 'personal', availabilitySvc });

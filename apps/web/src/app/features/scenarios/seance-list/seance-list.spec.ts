@@ -974,6 +974,35 @@ describe('SeanceList', () => {
       );
     });
 
+    it('Story 47.3 : une plage de plusieurs créneaux se lit du début à la fin ; un créneau seul garde son texte', async () => {
+      const ranged = {
+        ...SEANCE_NO_POLL,
+        dateValidee: '2026-11-06T00:00:00.000Z',
+        slotValidee: 'EVENING' as const,
+        endDate: '2026-11-08T00:00:00.000Z',
+        endSlot: 'AFTERNOON' as const,
+      };
+      const { fixture } = await createComponent(
+        { ...SCENARIO, seances: [ranged] },
+        { isMj: false },
+      );
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('.seance-row__chosen-date')?.textContent).toContain(
+        'ven. 6 nov. soir → dim. 8 nov. après-midi',
+      );
+
+      TestBed.resetTestingModule();
+      const single = {
+        ...ranged,
+        endDate: '2026-11-06T00:00:00.000Z',
+        endSlot: 'EVENING' as const,
+      };
+      const { fixture: f2 } = await createComponent({ ...SCENARIO, seances: [single] });
+      expect(
+        (f2.nativeElement as HTMLElement).querySelector('.seance-row__chosen-date')?.textContent,
+      ).not.toContain('→');
+    });
+
     it('AC1 : enregistrer appelle le service avec les trois valeurs et émet seanceLinked', async () => {
       const { fixture, scenariosSvc } = await createComponent(
         { ...SCENARIO, seances: [SEANCE_AVEC_INFOS] },

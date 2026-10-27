@@ -215,6 +215,37 @@
   }
 }
 
+/* Story 47.3 (UX-DR9) — le CONNECTEUR d'une plage en vue Semaine : le même triangle de 5 px que la bande du Mois,
+   posé au bord de la cellule (soir : la plage continue ; matin : elle vient de la veille). Jamais seul : le nom
+   accessible de la cellule dit la plage entière. Teinte du rang gagnant, aucune teinte nouvelle. */
+.slot-cell--span-next::after,
+.slot-cell--span-prev::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  margin-top: -4px;
+  z-index: 2;
+  border: 4px solid transparent;
+  border-left: 5px solid var(--span-connector, currentColor);
+  pointer-events: none;
+}
+
+.slot-cell--span-next::after {
+  right: 0;
+}
+
+.slot-cell--span-prev::before {
+  left: 0;
+}
+
+.slot-cell[data-winner='seance'] {
+  --span-connector: var(--jdr-status-soon, #ff7ad9);
+}
+
+.slot-cell[data-winner='vote'] {
+  --span-connector: var(--jdr-status-todo, #f0a030);
+}
+
 @keyframes slotPulse {
   from { opacity: 0.4; }
   to   { opacity: 0.9; }

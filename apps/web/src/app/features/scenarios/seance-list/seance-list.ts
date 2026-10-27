@@ -31,6 +31,7 @@ import { FillIndicator } from '../fill-indicator/fill-indicator';
 import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 import { seanceState, type StatusBadgeState } from '../../../core/status/status-derivation';
+import { isSpan, spanShortLabel } from '../../calendar/span-label';
 
 /** Même forme que côté serveur (`set-infos-pratiques.dto.ts`) : sert uniquement à détecter une
  *  valeur stockée hors app (écriture directe en base) que le widget natif `type="time"` rendrait
@@ -243,6 +244,13 @@ export class SeanceList {
   /** Libellé « Date retenue ». Le créneau n'existe que sur un vote scellé, d'où les deux mises en
    *  forme — `formatChosenDate()` l'ajoute, `formatValidatedDate()` n'a rien à ajouter. */
   protected formatSeanceDate(seance: SeanceDto): string {
+    // Story 47.3 : une plage de plusieurs créneaux s'écrit du départ à la fin.
+    const startIso = this.resolvedDate(seance);
+    if (startIso && seance.endDate) {
+      const start = { date: startIso.substring(0, 10), slot: seance.poll?.chosenSlot ?? seance.slotValidee };
+      const end = { date: seance.endDate.substring(0, 10), slot: seance.endSlot };
+      if (isSpan(start, end)) return spanShortLabel(start, end);
+    }
     return seance.poll?.chosenDate
       ? this.formatChosenDate(seance.poll)
       : this.formatValidatedDate(this.resolvedDate(seance)!);

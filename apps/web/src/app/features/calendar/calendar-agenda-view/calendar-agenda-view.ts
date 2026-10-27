@@ -27,6 +27,7 @@ import {
   pollGroupBadge,
   sectionIdFor,
 } from '../agenda-badge.utils';
+import { isSpan, spanShortLabel } from '../span-label';
 
 /** Type d'entrée affichée dans la vue Agenda (Story 30.6, AC2) — un par couche pertinente.
  *
@@ -67,6 +68,11 @@ export interface AgendaEntry {
    *  exploitable pour ranger l'entrée dans la bonne ligne. `undefined` = créneau inconnu, traité
    *  comme `FULL_DAY` en lecture (même convention que `compute-display-status.ts`). */
   slot?: DaySlot;
+  /** Story 47.3 — fin de la plage d'un rendez-vous de plusieurs créneaux (`YYYY-MM-DD` et créneau). Absentes pour
+   *  un créneau seul : `date` / `slot` en sont alors le début ET la fin. UNE entrée par rendez-vous — la grille et
+   *  le rail la déplient (`entryCoversCell`), l'Agenda l'écrit « début → fin ». */
+  endDate?: string;
+  endSlot?: DaySlot;
   /** Story 36.1, Task 4 bis : identifiants de navigation. Renseignés uniquement pour les entrées
    *  ouvrables — aujourd'hui les séances, dont on ouvre le SCÉNARIO qui les porte (aucun écran de
    *  séance n'existe). Absents pour toute entrée non ouvrable. */
@@ -393,7 +399,14 @@ export class CalendarAgendaView {
    */
   protected metaLine(entry: AgendaEntry): string {
     const parts: string[] = [];
-    if (entry.date) parts.push(this.dateWithSlot(entry.date, entry.slot));
+    if (entry.date) {
+      // Story 47.3 : UNE ligne par rendez-vous — « ven. 6 nov. soir → dim. 8 nov. après-midi » pour une plage.
+      const start = { date: entry.date, slot: entry.slot };
+      const end = entry.endDate ? { date: entry.endDate, slot: entry.endSlot } : null;
+      parts.push(
+        isSpan(start, end) ? spanShortLabel(start, end) : this.dateWithSlot(entry.date, entry.slot),
+      );
+    }
     if (entry.type === 'inscriptions-ouvertes') {
       if (entry.detail) parts.push(entry.detail);
       // Revue de code de la 36.11 : ce libellé était codé en dur alors que tous les autres

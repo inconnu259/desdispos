@@ -436,3 +436,7 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/spec-47-2-etre-occupe-sur-toute-la-plage-dun-rendez-vous.md`
   summary: Le gabarit `conjonction-relance.hbs` avec `durationLabel` n'est pas rendu par un test (l'intégration Mailpit s'ignore sans Mailpit) ; ajouter un cas de rendu avec et sans durée.
   evidence: Seule la donnée passée à `sendMail` est vérifiée ; renommer la variable du gabarit ne ferait échouer aucun test (relecteur Verification Gap, story 47.2).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-47-3-voir-une-plage-sur-tous-ses-jours.md`
+  summary: Le badge d'imminence de la carte d'événement, la distance en jours de l'Agenda et le compte à rebours du tableau de bord comptent encore depuis le jour de début d'une plage commencée ; à passer à la fin quand ce libellé gênera (avec l'affichage des votes en plage, 47.5).
+  evidence: Les règles « passée » (carte, Agenda, état de séance, serveur) lisent la fin ; seuls ces libellés d'échéance restent sur le début (relecteur Blind Hunter, story 47.3).

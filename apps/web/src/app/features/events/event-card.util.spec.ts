@@ -881,3 +881,28 @@ describe('event-card.util (Story 40.1)', () => {
     });
   });
 });
+
+describe('isPastEvent — une plage commencée reste à venir (Story 47.3)', () => {
+  const ranged = (date: string, endDate: string): EventCardDto => {
+    const base = card('w', date);
+    return { ...base, seance: { ...base.seance!, endDate, endSlot: 'AFTERNOON' } };
+  };
+
+  it('commencée hier et finissant demain : à venir ; finie hier : passée', () => {
+    expect(isPastEvent(ranged('2026-10-16', '2026-10-18'), TODAY)).toBe(false);
+    expect(isPastEvent(ranged('2026-10-14', '2026-10-16'), TODAY)).toBe(true);
+    expect(isPastEvent(card('a', '2026-10-16'), TODAY)).toBe(true);
+  });
+});
+
+describe('eventDateLabel — une plage (Story 47.3)', () => {
+  it('une plage de plusieurs créneaux se lit du début à la fin ; un créneau seul garde son texte', () => {
+    const base = card('w', '2026-11-06');
+    const ranged: EventCardDto = {
+      ...base,
+      seance: { ...base.seance!, endDate: '2026-11-08', endSlot: 'AFTERNOON' },
+    };
+    expect(eventDateLabel(ranged, TONE)).toBe('Ven. 6 nov. soir → dim. 8 nov. après-midi');
+    expect(eventDateLabel(base, TONE)).toBe('Ven. 6 nov. · soir');
+  });
+});

@@ -11,6 +11,7 @@ import {
   dateKeyToLocalMidnight,
   composeSeanceInfo,
 } from '../day-detail.utils';
+import { SPAN_CONTINUED } from '../span-label';
 import { GroupGauge } from '../group-gauge/group-gauge';
 import {
   type GroupAvailability,
@@ -103,13 +104,27 @@ export class CalendarDetailRail {
     return composeSeanceInfo(slot, 'full');
   }
 
+  /**
+   * Story 47.3 — la ligne de plage d'un créneau couvert par un rendez-vous de plusieurs créneaux : « (suite) »
+   * sur les jours qui suivent le premier, puis la plage « ven. 6 nov. soir → dim. 8 nov. après-midi ». `''` pour
+   * un créneau seul (la ligne n'est alors pas rendue). Le rail est la surface où la plage se lit jour par jour.
+   */
+  protected spanLine(slot: DaySlotDetail): string {
+    const span = slot.span;
+    if (!span || !slot.seanceLabel) return '';
+    return span.isFirstDay ? span.shortRange : `${SPAN_CONTINUED} · ${span.shortRange}`;
+  }
+
   /** Nom accessible de la ligne activable : il annonce le SCÉNARIO, pas la séance — la promesse
    *  faite au lecteur d'écran doit correspondre à l'endroit où il atterrit. `aria-label` écrasant
    *  tout contenu visuel, les informations pratiques doivent y être repliées (AC13). */
   protected openLabel(slot: DaySlotDetail): string {
     const info = this.seanceInfo(slot);
     const tone = this.theme.tone();
-    const label = slot.seanceLabel ?? '';
+    // Story 47.3 : la plage entière fait partie de ce que la ligne annonce.
+    const label = slot.span
+      ? `${slot.seanceLabel ?? ''}, ${slot.span.range}`
+      : (slot.seanceLabel ?? '');
     return info
       ? fillTone(tone['common.ouvrir_le_scenario_label_info'], { label, info })
       : fillTone(tone['common.ouvrir_le_scenario_label'], { label });

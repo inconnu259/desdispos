@@ -99,7 +99,11 @@
             [class.slot-cell--window]="isCellWindow(cell, row.slot)"
             [class.current]="isCurrentCell(cell, row.slot)"
             [class.slot-cell--dim]="isDayDimmed(cell)"
-            [class.has-event]="!!eventTitle(getSlotData(cell, row.key))"
+            [class.has-event]="
+              !!eventTitle(getSlotData(cell, row.key)) || !!getSlotData(cell, row.key).detail?.span
+            "
+            [class.slot-cell--span-next]="spanNext(getSlotData(cell, row.key))"
+            [class.slot-cell--span-prev]="spanPrev(getSlotData(cell, row.key))"
             [attr.role]="cell.isPast ? 'presentation' : 'button'"
             [attr.tabindex]="cell.isPast ? null : 0"
             [attr.aria-label]="

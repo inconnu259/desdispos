@@ -97,7 +97,7 @@ import {
   type RailTarget,
   buildDayDetail,
   dateKeyToLocalMidnight,
-  entryCoversSlot,
+  entryCoversCell,
   entryPartieId,
   nextMeaningfulDate,
   toDateKey,
@@ -152,6 +152,7 @@ import {
   type ExtendVoteData,
 } from '../../events/extend-vote-dialog/extend-vote-dialog';
 import { PollMissingPanel } from '../poll-missing/poll-missing';
+import { isSpan } from '../span-label';
 
 /** Story 8.8, AC7/AC8 : un vote actif, étiqueté par son scénario (et sa séance si le scénario en a
  * plusieurs) — remplace le signal `activePoll` unique qui ne représentait qu'« un » poll par Partie. */
@@ -254,6 +255,25 @@ export interface EligibleSeanceEntry {
   scenario: ScenarioDto;
   seance: SeanceDto;
   seanceIndex: number;
+}
+
+/**
+ * Story 47.3 — les champs de fin d'une entrée de séance : présents SEULEMENT pour une plage de plusieurs
+ * créneaux (la fin diffère du début). Un créneau seul n'émet rien, donc ses entrées — et tous les tests qui
+ * les comparent — restent exactement ce qu'elles étaient. `end` est une clé `YYYY-MM-DD` ou un ISO complet.
+ */
+function spanEndOf(
+  startDate: string,
+  startSlot: DaySlot | undefined,
+  end: string | null | undefined,
+  endSlot: DaySlot | null | undefined,
+): { endDate?: string; endSlot?: DaySlot } {
+  if (!end) return {};
+  const endDate = end.substring(0, 10);
+  if (!isSpan({ date: startDate.substring(0, 10), slot: startSlot }, { date: endDate, slot: endSlot })) {
+    return {};
+  }
+  return { endDate, ...(endSlot ? { endSlot } : {}) };
 }
 
 @Component({
@@ -755,6 +775,14 @@ export class CalendarView implements OnInit {
             seanceHeure: seance.heureRdv,
             seanceLieu: seance.lieu,
             seanceNote: seance.notePratique,
+            // Story 47.3 — la fin de la plage, lue de la séance : une plage de plusieurs créneaux
+            // reste UNE entrée, la grille et le rail la déplient.
+            ...spanEndOf(
+              date.substring(0, 10),
+              seance.poll?.chosenSlot ?? 'FULL_DAY',
+              seance.endDate,
+              seance.endSlot,
+            ),
             // Story 36.11 — ce qui fait entrer une séance JOUÉE dans « C'est passé ». Gratuit
             // ici, le SeanceDto complet est déjà chargé. 🚨 Renseigné dans cette branche
             // SEULEMENT : `MyCalendarSeanceEntry` n'a pas de `compteRendu`, et le calendrier
@@ -924,6 +952,8 @@ export class CalendarView implements OnInit {
             seanceHeure: s.heureRdv,
             seanceLieu: s.lieu,
             seanceNote: s.notePratique,
+            // Story 47.3 — la fin de la plage, servie par le calendrier personnel.
+            ...spanEndOf(s.date, s.slot, s.endDate, s.endSlot),
             compteRenduManquant: s.compteRenduManquant,
           });
         }
@@ -3455,7 +3485,9 @@ export class CalendarView implements OnInit {
     cells.forEach((cell, index) => {
       if (conflicted.has(index)) return;
       const key = toDateKey(cell.date);
-      const covered = seances.some((e) => e.date === key && entryCoversSlot(e.slot, cell.slot));
+      // Story 47.3 : la règle de couverture est celle de la projection (une plage couvre chaque jour, pas
+      // seulement son premier).
+      const covered = seances.some((e) => entryCoversCell(e, key, cell.slot));
       if (covered) labels.push(this.describeCell(cell));
     });
     return labels;

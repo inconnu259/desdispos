@@ -1241,6 +1241,88 @@ describe('CalendarMonthView — les trois bandes', () => {
 // Story 36.8 — la disponibilité du groupe sur un canal séparé
 // ─────────────────────────────────────────────────────────────────────────────
 
+describe('CalendarMonthView — une plage de plusieurs créneaux (Story 47.3)', () => {
+  let fixture: any;
+  let el: HTMLElement;
+
+  // Août 2026 : le vendredi 21 au soir → le dimanche 23 après-midi (une seule ligne de semaine).
+  const WEEKEND = {
+    key: 'seance-w',
+    type: 'mes-seances',
+    date: '2026-08-21',
+    slot: 'EVENING',
+    endDate: '2026-08-23',
+    endSlot: 'AFTERNOON',
+    label: 'Week-end jeux',
+    partieId: 'p1',
+    scenarioId: 'sc1',
+    seanceId: 'w',
+  } as any;
+
+  async function createWith(entries: any[]) {
+    await TestBed.configureTestingModule({
+      imports: [CalendarMonthView],
+      providers: [provideAnimationsAsync()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(CalendarMonthView);
+    fixture.componentRef.setInput('activeLayers', ['mes-seances']);
+    fixture.componentRef.setInput('initialDate', new Date(2026, 7, 15));
+    fixture.componentRef.setInput('entries', entries);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  const bandsOf = (day: number): HTMLElement[] => {
+    const cell = el.querySelector(`.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`);
+    return Array.from(cell!.querySelectorAll<HTMLElement>('.band'));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 10));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
+
+  it('les bandes couvertes portent le rang séance, les connecteurs sont aux changements de jour', async () => {
+    await createWith([WEEKEND]);
+    const [friM, friA, friE] = bandsOf(21);
+    const [satM, satA, satE] = bandsOf(22);
+    const [sunM, sunA, sunE] = bandsOf(23);
+
+    expect([friM, friA].map((b) => b.dataset['winner'])).not.toContain('seance');
+    for (const band of [friE, satM, satA, satE, sunM, sunA]) {
+      expect(band.dataset['winner']).toBe('seance');
+    }
+    expect(sunE.dataset['winner']).not.toBe('seance');
+
+    expect(friE.classList.contains('band--span-next')).toBe(true);
+    expect(satM.classList.contains('band--span-prev')).toBe(true);
+    expect(satE.classList.contains('band--span-next')).toBe(true);
+    expect(sunM.classList.contains('band--span-prev')).toBe(true);
+    expect(satA.classList.contains('band--span-next')).toBe(false);
+    expect(sunA.classList.contains('band--span-next')).toBe(false);
+  });
+
+  it('le nom visible n’est écrit qu’une fois ; chaque bande couverte dit la plage entière', async () => {
+    await createWith([WEEKEND]);
+    const labels = Array.from(el.querySelectorAll('.band__label')).map((n) => n.textContent?.trim());
+    expect(labels).toEqual(['Week-end jeux']);
+
+    const aria = bandsOf(22)[1].getAttribute('aria-label') ?? '';
+    expect(aria).toContain('Week-end jeux, du vendredi 21 soir au dimanche 23 après-midi');
+  });
+
+  it('un créneau seul : la bande est celle d’avant, sans connecteur', async () => {
+    await createWith([{ ...WEEKEND, endDate: undefined, endSlot: undefined }]);
+    expect(el.querySelector('.band--span-next, .band--span-prev')).toBeNull();
+    expect(bandsOf(21)[2].getAttribute('aria-label')).not.toContain('du vendredi');
+  });
+});
+
 describe('CalendarMonthView — le canal de groupe (Story 36.8)', () => {
   let el: HTMLElement;
 

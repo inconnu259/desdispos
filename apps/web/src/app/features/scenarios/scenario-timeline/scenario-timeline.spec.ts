@@ -699,6 +699,59 @@ describe('ScenarioTimeline', () => {
       expect(fixture.nativeElement.textContent).toContain('août');
     });
 
+    it('Story 47.3 : une séance sur plusieurs jours s\'écrit « début → fin » sur la carte', async () => {
+      const scenario = makeScenario({
+        id: 's-plage',
+        status: 'COURANT',
+        seances: [
+          {
+            endDate: '2026-11-08T00:00:00.000Z',
+            endSlot: 'AFTERNOON',
+            durationSlots: 6,
+            id: 'seance1',
+            scenarioId: 's-plage',
+            dateValidee: '2026-11-06T00:00:00.000Z',
+            slotValidee: 'EVENING',
+            compteRendu: null,
+            heureRdv: null,
+            lieu: null,
+            notePratique: null,
+            createdAt: '2026-07-01T00:00:00.000Z',
+            can: { propose: false, edit: false, choose: false, extend: false },
+          },
+        ],
+      });
+      const { fixture } = await createComponent([scenario]);
+      const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+      expect(text).toMatch(/6 nov\.? → 8 nov\.?/);
+    });
+
+    it('Story 47.3 : fin le même jour que le début → une seule date, sans flèche', async () => {
+      const scenario = makeScenario({
+        id: 's-un-jour',
+        status: 'COURANT',
+        seances: [
+          {
+            endDate: '2026-11-06T00:00:00.000Z',
+            endSlot: 'EVENING',
+            durationSlots: 1,
+            id: 'seance1',
+            scenarioId: 's-un-jour',
+            dateValidee: '2026-11-06T00:00:00.000Z',
+            slotValidee: 'EVENING',
+            compteRendu: null,
+            heureRdv: null,
+            lieu: null,
+            notePratique: null,
+            createdAt: '2026-07-01T00:00:00.000Z',
+            can: { propose: false, edit: false, choose: false, extend: false },
+          },
+        ],
+      });
+      const { fixture } = await createComponent([scenario]);
+      expect(fixture.nativeElement.textContent).not.toContain('→');
+    });
+
     it('scénario avec séance non datée → "Date à définir" affiché', async () => {
       const scenarioWithSeances = makeScenario({
         id: 's-non-datee',

@@ -503,3 +503,51 @@ describe('CalendarDetailRail — la disponibilité du groupe (Story 36.8)', () =
     expect((fixture.nativeElement as HTMLElement).querySelector('.grp')).toBeNull();
   });
 });
+
+describe('CalendarDetailRail — une plage jour par jour (Story 47.3)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const WEEKEND: AgendaEntry = {
+    ...SEANCE,
+    key: 'seance-w',
+    date: '2026-11-06',
+    slot: 'EVENING',
+    endDate: '2026-11-08',
+    endSlot: 'AFTERNOON',
+    label: 'Week-end jeux',
+  };
+
+  it('le premier jour écrit la plage, sans « (suite) »', async () => {
+    const detail = buildDayDetail('2026-11-06', [WEEKEND], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('ven. 6 nov. soir → dim. 8 nov. après-midi');
+    expect(text).not.toContain('(suite)');
+  });
+
+  it('les jours suivants écrivent « (suite) » et la plage, sur chaque créneau couvert', async () => {
+    const detail = buildDayDetail('2026-11-07', [WEEKEND], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const lines = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.m--span'));
+    expect(lines).toHaveLength(3);
+    for (const line of lines) {
+      expect(line.textContent).toContain('(suite)');
+      expect(line.textContent).toContain('ven. 6 nov. soir → dim. 8 nov. après-midi');
+    }
+  });
+
+  it('la ligne activable annonce la plage entière', async () => {
+    const detail = buildDayDetail('2026-11-07', [WEEKEND], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button.v--action');
+    expect(button?.getAttribute('aria-label')).toContain(
+      'du vendredi 6 soir au dimanche 8 après-midi',
+    );
+  });
+
+  it('un créneau seul : aucune ligne de plage', async () => {
+    const detail = buildDayDetail('2026-08-20', [SEANCE], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    expect((fixture.nativeElement as HTMLElement).querySelector('.m--span')).toBeNull();
+  });
+});

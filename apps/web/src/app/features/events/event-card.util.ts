@@ -9,6 +9,7 @@ import type { StatusBadgeState } from '../../core/status/status-derivation';
 import { daysBetweenKeys, imminenceIntensity } from '../../core/status/status-badge.model';
 import { fillTone } from '../../core/theme/tone-format';
 import { SLOT_LABELS } from '../calendar/agenda-badge.utils';
+import { isSpan, spanShortLabel } from '../calendar/span-label';
 
 /**
  * Story 40.1 — dérivations PURES de la carte d'une conjonction (testables sans TestBed). Le jour de
@@ -33,7 +34,10 @@ export function isCancelled(card: EventCardDto): boolean {
 /** Passée : son jour est AVANT aujourd'hui (aujourd'hui reste « À venir »). Sans date : à venir. */
 export function isPastEvent(card: EventCardDto, todayKey: string): boolean {
   const day = eventDayKey(card);
-  return day !== null && day < todayKey;
+  // Story 47.3 : une plage de plusieurs créneaux n'est passée qu'une fois sa FIN passée — le serveur la tient pour
+  // modifiable et annulable jusque-là.
+  const last = card.seance?.endDate && day && card.seance.endDate > day ? card.seance.endDate : day;
+  return last !== null && last < todayKey;
 }
 
 /** Imminente : à venir et au palier `imminent` (aujourd'hui ou demain) de `imminenceIntensity`. */
@@ -188,6 +192,12 @@ export function eventDateLabel(card: EventCardDto, tone: EventTone): string {
   }).format(new Date(Date.UTC(y, m - 1, d)));
   const date = formatted.charAt(0).toLocaleUpperCase('fr-FR') + formatted.slice(1);
   const slot: DaySlot | null = card.seance?.slot ?? null;
+  // Story 47.3 : une plage de plusieurs créneaux se lit du début à la fin (« Ven. 6 nov. soir → dim. 8 nov. après-midi »).
+  const endDate = card.seance?.endDate;
+  if (endDate && isSpan({ date: day, slot }, { date: endDate, slot: card.seance?.endSlot })) {
+    const range = spanShortLabel({ date: day, slot }, { date: endDate, slot: card.seance?.endSlot });
+    return range.charAt(0).toLocaleUpperCase('fr-FR') + range.slice(1);
+  }
   return slot ? `${date} · ${SLOT_LABELS[slot].toLocaleLowerCase('fr-FR')}` : date;
 }
 

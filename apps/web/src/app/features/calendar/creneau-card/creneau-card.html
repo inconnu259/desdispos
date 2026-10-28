@@ -10,8 +10,12 @@
 >
   <header class="creneau-card__header">
     <ng-template #headText>
-      <span class="creneau-card__date">{{ formatDate(slot().date) }}</span>
-      <span class="creneau-card__slot">{{ slotLabel(slot().slot) }}</span>
+      @if (rangeLabel(); as range) {
+        <span class="creneau-card__date creneau-card__range">{{ range }}</span>
+      } @else {
+        <span class="creneau-card__date">{{ formatDate(slot().date) }}</span>
+        <span class="creneau-card__slot">{{ slotLabel(slot().slot) }}</span>
+      }
     </ng-template>
     @if (selectable()) {
       <button

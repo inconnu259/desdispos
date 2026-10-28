@@ -8215,8 +8215,8 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', () => {
   const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
-  const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[] };
-  const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[] };
+  const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[], durationSlots: 1 };
+  const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[], durationSlots: 1 };
   const KEY_A = '2030-03-06|EVENING';
 
   beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
@@ -8404,8 +8404,8 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
   const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
-  const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[] };
-  const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[] };
+  const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[], durationSlots: 1 };
+  const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[], durationSlots: 1 };
 
   beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
   afterEach(() => {
@@ -9119,5 +9119,197 @@ describe('CalendarView — voter et fixer une plage (Story 47.5)', () => {
       'ven. 15 mars soir → dim. 17 mars après-midi',
       'ven. 1 mars soir → dim. 3 mars après-midi',
     ]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 47.6 — faire chercher à l'automate des fenêtres de la bonne durée
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CalendarView — fenêtres de la bonne durée (Story 47.6)', () => {
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+  const win = (date: string, slot: string, durationSlots: number) => ({
+    date,
+    slot,
+    members: [] as any[],
+    durationSlots,
+  });
+  const WIN_1 = win('2030-03-06', 'EVENING', 1);
+  const WIN_2 = win('2030-03-09', 'AFTERNOON', 2);
+
+  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((n) => n.remove());
+    TestBed.resetTestingModule();
+  });
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+
+  /** Un scénario à une séance sans date ni vote, de `durationSlots` créneaux. */
+  function scenario(id: string, durationSlots: number) {
+    return {
+      id,
+      partieId: 'partie-1',
+      title: 'Chapitre',
+      description: null,
+      status: 'COURANT',
+      dureeHeures: null,
+      dureeSeances: null,
+      resumeFin: null,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      closedAt: null,
+      seances: [
+        {
+          id: `${id}-s1`,
+          scenarioId: id,
+          compteRendu: null,
+          createdAt: '2026-07-13T00:00:00.000Z',
+          can: ORGANIZER,
+          durationSlots,
+        },
+      ],
+    };
+  }
+
+  async function atelier(durationSlots = 1, served: any[] = [WIN_1]) {
+    const ctx = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [scenario('sc1', durationSlots)],
+      partie: { name: 'La Tour' },
+    });
+    const comp = ctx.fixture.componentInstance as any;
+    comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
+    comp.availableSlots.set(served);
+    await tick(ctx.fixture);
+    return { ...ctx, comp };
+  }
+  const spans = (pollSvc: any) => pollSvc.getAvailableSlots.mock.calls.map((c: any[]) => c[4]);
+  const keys = (comp: any) => comp.composedCells().map((c: any) => composeCellKey(c.date, c.slot));
+
+  it('hors composer, la liste demande span = 1 explicitement', async () => {
+    const { pollSvc } = await atelier();
+    expect(pollSvc.getAvailableSlots).toHaveBeenCalled();
+    expect(new Set(spans(pollSvc))).toEqual(new Set([1]));
+  });
+
+  it('stepper 1 → 2 : la colonne se relit avec span = 2 et les cartes montrent leur plage ; fermer le composer revient à 1', async () => {
+    const { fixture, comp, pollSvc } = await atelier();
+    comp.startCompose('sc1-s1');
+    await tick(fixture);
+    // Armer à la durée 1 de la cible : pas de relecture inutile.
+    expect(new Set(spans(pollSvc))).toEqual(new Set([1]));
+
+    pollSvc.getAvailableSlots.mockResolvedValue([WIN_2]);
+    comp.onComposeDurationChanged(2);
+    await tick(fixture);
+
+    expect(spans(pollSvc).at(-1)).toBe(2);
+    const card = root(fixture).querySelector('.mj-results-panel .creneau-card')!;
+    const range = card.querySelector('.creneau-card__range')!;
+    expect(range.textContent).toContain('→');
+    expect(range.textContent).toContain('après-midi');
+    expect(range.textContent).toContain('soir');
+    expect(card.querySelector('.creneau-card__slot')).toBeNull();
+
+    pollSvc.getAvailableSlots.mockResolvedValue([WIN_1]);
+    comp.cancelCompose();
+    await tick(fixture);
+    expect(spans(pollSvc).at(-1)).toBe(1);
+    expect(root(fixture).querySelector('.mj-results-panel .creneau-card__range')).toBeNull();
+  });
+
+  it('une réponse périmée (durée changée entre-temps) est ignorée', async () => {
+    const { fixture, comp, pollSvc } = await atelier();
+    comp.startCompose('sc1-s1');
+    await tick(fixture);
+    const pending: ((v: any[]) => void)[] = [];
+    pollSvc.getAvailableSlots.mockImplementation(
+      () => new Promise<any[]>((resolve) => pending.push(resolve)),
+    );
+
+    comp.onComposeDurationChanged(2);
+    await tick(fixture);
+    comp.onComposeDurationChanged(3);
+    await tick(fixture);
+    expect(spans(pollSvc).slice(-2)).toEqual([2, 3]);
+
+    // La réponse la plus récente arrive d'abord, la périmée ensuite : seule la récente compte.
+    pending[1]([win('2030-03-12', 'MORNING', 3)]);
+    await tick(fixture);
+    pending[0]([win('2030-03-13', 'MORNING', 2)]);
+    await tick(fixture);
+
+    expect(comp.availableSlots().map((s: any) => s.date)).toEqual(['2030-03-12']);
+    expect(comp.slotsLoading()).toBe(false);
+  });
+
+  it('composer à 2 créneaux : une fenêtre de 2 créneaux s’y ajoute comme un départ', async () => {
+    const { fixture, comp, pollSvc } = await atelier(2, [WIN_2]);
+    // Le composer s'arme à 2 créneaux : la liste se relit à cette durée et sert la fenêtre de 2 créneaux.
+    pollSvc.getAvailableSlots.mockResolvedValue([WIN_2]);
+    comp.startCompose('sc1-s1');
+    expect(comp.composeDuration()).toBe(2);
+    comp.onWindowSelected(WIN_2);
+    await tick(fixture);
+
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    expect(keys(comp)).toEqual(['2030-03-09|AFTERNOON']);
+    expect(comp.composeRefusal()).toBeNull();
+  });
+
+  it('liste à 1, rendez-vous de 3 créneaux : le composer s’ouvre à 3 sans la fenêtre, la liste se relit à 3 et le dit', async () => {
+    const { fixture, comp, pollSvc } = await atelier(3, [WIN_1]);
+    comp.onWindowSelected(WIN_1);
+    await tick(fixture);
+    pollSvc.getAvailableSlots.mockResolvedValue([win('2030-03-09', 'MORNING', 3)]);
+
+    comp.addSelectedWindow();
+    await tick(fixture);
+
+    expect(comp.composing()).toBe(true);
+    expect(comp.composeDuration()).toBe(3);
+    expect(keys(comp)).toEqual([]);
+    expect(comp.composeRefusal()).toBe(
+      'Cette fenêtre ne dure pas 3 créneaux : elle n’a pas été ajoutée.',
+    );
+    expect(comp.selectedWindow()).toBeNull();
+    expect(spans(pollSvc).at(-1)).toBe(3);
+  });
+
+  it('une fenêtre servie à une autre durée que la composition ne s’y ajoute pas (liste périmée)', async () => {
+    const { fixture, comp } = await atelier(2, [WIN_1]);
+    comp.startCompose('sc1-s1');
+    comp.onWindowSelected(WIN_1);
+    await tick(fixture);
+
+    comp.addSelectedWindow(WIN_1);
+    await tick(fixture);
+
+    expect(keys(comp)).toEqual([]);
+    expect(comp.composeRefusal()).toBe(
+      'Cette fenêtre ne dure pas 2 créneaux : elle n’a pas été ajoutée.',
+    );
+  });
+
+  it('la durée 1 du composer : le message s’accorde au singulier', async () => {
+    const { fixture, comp } = await atelier(1, [WIN_2]);
+    comp.startCompose('sc1-s1');
+    comp.onWindowSelected(WIN_2);
+    await tick(fixture);
+
+    comp.addSelectedWindow(WIN_2);
+
+    expect(keys(comp)).toEqual([]);
+    expect(comp.composeRefusal()).toBe(
+      'Cette fenêtre ne dure pas 1 créneau : elle n’a pas été ajoutée.',
+    );
   });
 });

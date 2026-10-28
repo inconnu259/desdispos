@@ -371,6 +371,107 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
     });
   });
 
+  describe('fenêtres de plusieurs créneaux (Story 47.6)', () => {
+    type Served = {
+      date: string;
+      slot: string;
+      durationSlots?: number;
+      members?: { userId: string; status: string }[];
+    };
+
+    it('span classe sur le pire statut de la plage, porte durationSlots, et se borne à 1..45 en français', async () => {
+      const mjA = await h.createUser('mj-span-a');
+      const mjB = await h.createUser('mj-span-b');
+      const joueur = await h.createUser('joueur-span');
+      const { id: partieA } = await h.createPartie(mjA, 'CAMPAGNE_LINEAIRE', 'span-a');
+      const { id: partieB } = await h.createPartie(mjB, 'ONE_SHOT', 'span-b');
+      await h.addMember(partieA, joueur);
+      await h.addMember(partieB, joueur);
+      const day = isoDay(15);
+      const scenariosRes = await mjB.agent.get(`/parties/${partieB}/scenarios`).expect(200);
+      const seanceId = body<ScenarioDtoLike[]>(scenariosRes)[0].seances[0].id;
+      // Le joueur est occupé le seul soir de ce jour-là (séance d'une autre partie, 1 créneau).
+      await datePourVote(
+        mjB,
+        partieB,
+        seanceId,
+        [
+          { date: day, slot: 'EVENING' },
+          { date: isoDay(17), slot: 'EVENING' },
+        ],
+        0,
+      );
+
+      const read = async (span?: number) =>
+        body<Served[]>(
+          await mjA.agent
+            .get(`/parties/${partieA}/available-slots`)
+            .query({ from: day, to: day, ...(span === undefined ? {} : { span }) })
+            .expect(200),
+        );
+      const statusOf = (list: Served[], slot: string) =>
+        list
+          .find((s) => s.date === day && s.slot === slot)
+          ?.members?.find((m) => m.userId === joueur.id)?.status;
+
+      // Sans span : une fenêtre par créneau, durée 1, comme avant.
+      const one = await read();
+      expect(one).toHaveLength(3);
+      expect(one.every((s) => s.durationSlots === 1)).toBe(true);
+      expect(statusOf(one, 'AFTERNOON')).toBe('UNKNOWN');
+      expect(statusOf(one, 'EVENING')).toBe('UNAVAILABLE');
+
+      // Span 2 : la fenêtre de l'après-midi touche le soir occupé ; celle du matin non.
+      const two = await read(2);
+      expect(two).toHaveLength(3);
+      expect(two.every((s) => s.durationSlots === 2)).toBe(true);
+      expect(statusOf(two, 'MORNING')).toBe('UNKNOWN');
+      expect(statusOf(two, 'AFTERNOON')).toBe('UNAVAILABLE');
+      expect(statusOf(two, 'EVENING')).toBe('UNAVAILABLE');
+
+      for (const span of ['0', '46', 'x', '1.5']) {
+        const res = await mjA.agent
+          .get(`/parties/${partieA}/available-slots`)
+          .query({ from: day, to: day, span })
+          .expect(400);
+        expect(JSON.stringify(res.body)).toContain('entier de 1 à 45 créneaux');
+      }
+    });
+
+    it('exclusion et vue des joueurs : une plage déjà proposée ne se repropose qu’à sa durée ; le joueur garde sa vue agrégée', async () => {
+      const mjA = await h.createUser('mj-span-excl');
+      const joueur = await h.createUser('joueur-span-excl');
+      const { id: partieId } = await h.createPartie(mjA, 'ONE_SHOT', 'span-excl');
+      await h.addMember(partieId, joueur);
+      const scenariosRes = await mjA.agent.get(`/parties/${partieId}/scenarios`).expect(200);
+      const seanceId = body<ScenarioDtoLike[]>(scenariosRes)[0].seances[0].id;
+      const proposed = { date: isoDay(21), slot: 'AFTERNOON' };
+      const range = { from: isoDay(20), to: isoDay(24) };
+      const read = async (user: TestUser, span: number) =>
+        body<Served[]>(
+          await user.agent
+            .get(`/parties/${partieId}/available-slots`)
+            .query({ ...range, span })
+            .expect(200),
+        );
+      const has = (list: Served[]) =>
+        list.some((s) => s.date === proposed.date && s.slot === proposed.slot);
+
+      await mjA.agent
+        .post(`/scenarios/seances/${seanceId}/poll`)
+        .send({ options: [proposed, { date: isoDay(23), slot: 'EVENING' }], durationSlots: 2 })
+        .expect(201);
+
+      expect(has(await read(mjA, 2))).toBe(false);
+      expect(has(await read(mjA, 1))).toBe(true);
+      expect(has(await read(mjA, 3))).toBe(true);
+
+      const playerList = await read(joueur, 2);
+      expect(has(playerList)).toBe(true);
+      expect(playerList.every((s) => !('members' in s) && !('durationSlots' in s))).toBe(true);
+    });
+  });
+
   describe('masquer une fenêtre de l’automate (Story 46.4)', () => {
     const range = { from: isoDay(20), to: isoDay(24) };
     const hidden = { date: isoDay(21), startSlot: 'EVENING', durationSlots: 1 };

@@ -4,6 +4,7 @@ import type { AvailableSlotDto, DaySlot, SlotStatus } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { ambiguousUserIds } from '../../../shared/identity/identity-ambiguity.util';
+import { candidateSpanShort } from '../span-label';
 
 const SLOT_LABELS: Record<string, string> = {
   MORNING: 'Matin',
@@ -45,6 +46,12 @@ export class CreneauCard {
     if (this.canAdd()) this.addRequested.emit();
   }
   protected readonly theme = inject(ThemeToneService);
+
+  /** Story 47.6 — une fenêtre de plusieurs créneaux s'écrit sur UNE ligne « début → fin » (`span-label`), jamais en
+   *  deux lignes jour/créneau ; un créneau seul garde son écriture. */
+  protected readonly rangeLabel = computed(() =>
+    candidateSpanShort({ date: this.slot().date, slot: this.slot().slot }, this.slot().durationSlots),
+  );
 
   protected readonly allAvailable = computed(() =>
     this.slot().members.every((m) => m.status === 'AVAILABLE'),

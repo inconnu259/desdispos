@@ -20,6 +20,7 @@ import type {
   PartieProgress,
   PartieRole,
   PartieStatus,
+  SlotStatus,
 } from '@master-jdr/shared';
 // Imports RUNTIME de `@master-jdr/shared` dans ce service : la matrice de conversion (Story 29.14,
 // partagée avec le formulaire d'édition) et les lecteurs du registre des systèmes (Story 37.5,
@@ -33,7 +34,9 @@ import {
   familyOf,
   isOpenForCreation,
   kindsOf,
+  MAX_SLOT_WINDOW_SLOTS,
   partieStatus,
+  spanSlots,
 } from '@master-jdr/shared';
 import { AvailabilityService } from '../availability/availability.service';
 import { EventCancellationMailer } from '../events/event-cancellation-mailer.service';
@@ -59,6 +62,7 @@ import {
 import { UPLOADS_ROOT } from '../common/uploads-root';
 import { ConvertPartieKindDto } from './dto/convert-partie-kind.dto';
 import { CreatePartieDto } from './dto/create-partie.dto';
+import { SPAN_MESSAGE } from './dto/get-available-slots.dto';
 import { SetMemberRoleDto } from './dto/set-member-role.dto';
 import { SetVisibilityLocksDto } from './dto/set-visibility-locks.dto';
 import { UpdatePartieDto } from './dto/update-partie.dto';
@@ -1522,6 +1526,7 @@ export class PartiesService implements PartieSignalsPort {
     weeks: number,
     from?: string,
     to?: string,
+    span = 1,
   ): Promise<AvailableSlotDto[] | AggregatedSlotDto[]> {
     const { partie, role } = await this.permissions.assert(userId, 'PARTIE_AVAILABILITY_READ', {
       partieId,
@@ -1540,60 +1545,69 @@ export class PartiesService implements PartieSignalsPort {
     if (!!from !== !!to) {
       throw new BadRequestException('from and to must both be provided together');
     }
+    // Story 47.6 : la durée des fenêtres, en créneaux (filet de sécurité derrière le DTO).
+    if (!Number.isInteger(span) || span < 1 || span > MAX_SLOT_WINDOW_SLOTS) {
+      throw new BadRequestException(SPAN_MESSAGE);
+    }
 
     const SLOTS = ['MORNING', 'AFTERNOON', 'EVENING'] as const;
-    const all: AvailableSlotDto[] = [];
 
+    // Les jours de DÉPART des fenêtres (UTC) : la plage demandée, ou les `weeks` prochaines semaines.
+    const startDays: number[] = [];
     if (from && to) {
       const fromMs = new Date(from + 'T00:00:00Z').getTime();
       const toMs = new Date(to + 'T00:00:00Z').getTime();
       if (fromMs > toMs) throw new BadRequestException('from must be before or equal to to');
       if (toMs - fromMs > 366 * 86_400_000)
         throw new BadRequestException('Date range cannot exceed 366 days');
-      for (let ms = fromMs; ms <= toMs; ms += 86_400_000) {
-        const dateUtc = new Date(ms);
-        for (const slot of SLOTS) {
-          const members = participants.map((p) => ({
-            userId: p.userId,
-            pseudo: p.pseudo,
-            displayName: p.displayName,
-            status: this.availability.computeSlotStatus(
-              declarationsMap.get(p.userId) ?? [],
-              dateUtc,
-              slot,
-            ),
-          }));
-          all.push({
-            date: dateUtc.toISOString().substring(0, 10),
-            slot,
-            members,
-            durationSlots: 1,
-          });
-        }
-      }
+      for (let ms = fromMs; ms <= toMs; ms += 86_400_000) startDays.push(ms);
     } else {
       const now = new Date();
       const todayUtcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-      for (let d = 0; d < weeks * 7; d++) {
-        const dateUtc = new Date(todayUtcMidnight + d * 86_400_000);
-        for (const slot of SLOTS) {
-          const members = participants.map((p) => ({
+      for (let d = 0; d < weeks * 7; d++) startDays.push(todayUtcMidnight + d * 86_400_000);
+    }
+
+    // Story 47.6 : le statut de chaque membre sur un créneau précis est calculé UNE fois (clé `jour|créneau`),
+    // puis relu par chaque fenêtre qui le recouvre — jamais recalculé par fenêtre.
+    const statusGrid = new Map<string, SlotStatus[]>();
+    const statusesAt = (date: string, slot: (typeof SLOTS)[number]): SlotStatus[] => {
+      const key = `${date}|${slot}`;
+      let row = statusGrid.get(key);
+      if (!row) {
+        const dateUtc = new Date(`${date}T00:00:00Z`);
+        row = participants.map((p) =>
+          this.availability.computeSlotStatus(declarationsMap.get(p.userId) ?? [], dateUtc, slot),
+        );
+        statusGrid.set(key, row);
+      }
+      return row;
+    };
+    // Le pire statut d'un membre sur la plage : UNAVAILABLE > UNKNOWN > AVAILABLE.
+    const worst = (a: SlotStatus, b: SlotStatus): SlotStatus => {
+      if (a === 'UNAVAILABLE' || b === 'UNAVAILABLE') return 'UNAVAILABLE';
+      if (a === 'UNKNOWN' || b === 'UNKNOWN') return 'UNKNOWN';
+      return 'AVAILABLE';
+    };
+
+    const all: AvailableSlotDto[] = [];
+    for (const ms of startDays) {
+      const date = new Date(ms).toISOString().substring(0, 10);
+      for (const slot of SLOTS) {
+        const covered = spanSlots(date, slot, span);
+        const statuses = covered
+          .map((c) => statusesAt(c.date, c.slot as (typeof SLOTS)[number]))
+          .reduce((acc, row) => acc.map((st, i) => worst(st, row[i])));
+        all.push({
+          date,
+          slot,
+          members: participants.map((p, i) => ({
             userId: p.userId,
             pseudo: p.pseudo,
             displayName: p.displayName,
-            status: this.availability.computeSlotStatus(
-              declarationsMap.get(p.userId) ?? [],
-              dateUtc,
-              slot,
-            ),
-          }));
-          all.push({
-            date: dateUtc.toISOString().substring(0, 10),
-            slot,
-            members,
-            durationSlots: 1,
-          });
-        }
+            status: statuses[i],
+          })),
+          durationSlots: span,
+        });
       }
     }
 
@@ -1635,14 +1649,15 @@ export class PartiesService implements PartieSignalsPort {
     const proposed = nominative
       ? await this.polls.openOptionKeys(this.prisma, partieId)
       : new Set<string>();
-    const open = sorted.filter((s) => !proposed.has(`${s.date}|${s.slot}`));
+    // Story 47.6 : l'exclusion compare le départ ET la durée (clé `jour|créneau|durée`).
+    const open = sorted.filter((s) => !proposed.has(`${s.date}|${s.slot}|${s.durationSlots}`));
 
     if (nominative) {
       // Story 46.4 — les fenêtres que CE MJ a masquées : retirées AVANT le plafond de 20, puis servies à part, après
       // les visibles, marquées `hidden`. Une ligne dont la date est passée est ignorée. Chaque fenêtre porte sa durée
-      // en créneaux (1 jusqu'à l'épic 47).
+      // en créneaux : on ne masque une fenêtre que pour cette durée-là (Story 47.6).
       const hidden = await this.hiddenWindowKeys(partieId, userId);
-      const hiddenKey = (s: AvailableSlotDto) => `${s.date}|${s.slot}|1`;
+      const hiddenKey = (s: AvailableSlotDto) => `${s.date}|${s.slot}|${s.durationSlots}`;
       const visible = open.filter((s) => !hidden.has(hiddenKey(s))).slice(0, 20);
       const apart = open
         .filter((s) => hidden.has(hiddenKey(s)))

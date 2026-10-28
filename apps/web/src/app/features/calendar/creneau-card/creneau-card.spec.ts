@@ -41,6 +41,21 @@ describe('CreneauCard', () => {
     expect(el.textContent).toContain('Matin');
   });
 
+  it('Story 47.6 — une fenêtre de plusieurs créneaux s’écrit sur une ligne « début → fin »', () => {
+    create(makeSlot({ date: '2026-07-04', slot: 'AFTERNOON', durationSlots: 2 }));
+    const range = el.querySelector('.creneau-card__range')!;
+    expect(range.textContent).toContain('après-midi');
+    expect(range.textContent).toContain('→');
+    expect(range.textContent).toContain('soir');
+    expect(el.querySelector('.creneau-card__slot')).toBeNull();
+  });
+
+  it('Story 47.6 — une fenêtre d’un créneau garde ses deux lignes jour et créneau', () => {
+    create(makeSlot({ date: '2026-07-04', slot: 'AFTERNOON', durationSlots: 1 }));
+    expect(el.querySelector('.creneau-card__range')).toBeNull();
+    expect(el.querySelector('.creneau-card__slot')!.textContent).toContain('Après-midi');
+  });
+
   it('affiche le tag "Guilde complète" quand tous les membres sont AVAILABLE', () => {
     create(
       makeSlot({

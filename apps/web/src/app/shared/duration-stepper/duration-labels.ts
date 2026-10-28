@@ -34,7 +34,17 @@ export const DURATION_TEXT = {
   /** Story 47.5 — le pire nombre de disponibles d'une plage candidate, sur la carte du tableau de vote. */
   worstAvailability: '{n} dispos sur toute la plage',
   worstAvailabilityOne: '{n} dispo sur toute la plage',
+  /** Story 47.6 — une fenêtre de l'automate d'une autre durée que le rendez-vous composé ne s'y ajoute pas. */
+  windowDurationMismatch: 'Cette fenêtre ne dure pas {n} créneaux : elle n’a pas été ajoutée.',
+  windowDurationMismatchOne: 'Cette fenêtre ne dure pas 1 créneau : elle n’a pas été ajoutée.',
 } as const;
+
+/** Story 47.6 — « Cette fenêtre ne dure pas 2 créneaux : elle n'a pas été ajoutée. » */
+export function windowDurationRefusal(durationSlots: number): string {
+  return durationSlots === 1
+    ? DURATION_TEXT.windowDurationMismatchOne
+    : DURATION_TEXT.windowDurationMismatch.replace('{n}', String(durationSlots));
+}
 
 /** Story 47.5 — « ×2 ». */
 export function overlapMarkLabel(n: number): string {

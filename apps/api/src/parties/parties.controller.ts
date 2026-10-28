@@ -65,7 +65,14 @@ export class PartiesController {
     @Param('id') id: string,
     @Query() q: GetAvailableSlotsDto,
   ) {
-    return this.parties.getAvailableSlots(id, user.id, q.weeks ?? DEFAULT_WEEKS, q.from, q.to);
+    return this.parties.getAvailableSlots(
+      id,
+      user.id,
+      q.weeks ?? DEFAULT_WEEKS,
+      q.from,
+      q.to,
+      q.span ?? 1,
+    );
   }
 
   /** Story 46.4 : masquer une fenêtre de l'automate (MJ d'un JDR, pour lui seul). La fenêtre est celle que

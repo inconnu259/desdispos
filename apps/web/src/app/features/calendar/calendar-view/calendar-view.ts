@@ -160,6 +160,7 @@ import { composeSpanKeys, earliestStart } from '../compose-span.utils';
 import { composeLoss, type LossOption } from '../compose-loss.utils';
 import {
   DURATION_TEXT,
+  windowDurationRefusal,
   type SpanStart,
   worstAvailabilityLabel,
 } from '../../../shared/duration-stepper/duration-labels';
@@ -1432,7 +1433,12 @@ export class CalendarView implements OnInit {
   // de l'automate. Priorité unique des modes : composer > fenêtre sélectionnée > Destinée (`destinyDates`,
   // `destinyPresentable`). Elle n'existe que pour la vue nominative du MJ, à l'atelier.
 
-  protected readonly selectedWindow = signal<{ date: string; slot: DaySlot } | null>(null);
+  protected readonly selectedWindow = signal<{
+    date: string;
+    slot: DaySlot;
+    /** Story 47.6 — la durée de la fenêtre telle que servie : elle ne rejoint qu'une composition de la même durée. */
+    durationSlots: number;
+  } | null>(null);
 
   /** La clé de la fenêtre sélectionnée, dans le format des grilles (`AAAA-MM-JJ|créneau`). */
   protected readonly selectedWindowKey = computed(() => {
@@ -1457,7 +1463,7 @@ export class CalendarView implements OnInit {
       this.selectedWindow.set(null);
       return;
     }
-    this.selectedWindow.set({ date: slot.date, slot: slot.slot });
+    this.selectedWindow.set({ date: slot.date, slot: slot.slot, durationSlots: slot.durationSlots });
     this.moveGridTo(slot.date);
   }
 
@@ -2002,6 +2008,10 @@ export class CalendarView implements OnInit {
    *  avertissement de perte). */
   private readonly composeTargetDuration = signal(1);
 
+  /** ⚠️ Story 47.6 — la durée que la liste de l'automate demande au serveur : celle du composer pendant la composition,
+   *  1 sinon. Le serveur est seul à classer les fenêtres (pire statut sur la plage) : aucune règle ici. */
+  protected readonly slotsSpan = computed(() => (this.composing() ? this.composeDuration() : 1));
+
   /** Les créneaux qu'allument les plages des départs désignés (départs exclus) — vide à 1 créneau. */
   protected readonly composeCoverKeys = computed<ReadonlySet<string> | null>(() =>
     this.composing() ? composeSpanKeys(this.composedCells(), this.composeDuration()) : null,
@@ -2245,7 +2255,11 @@ export class CalendarView implements OnInit {
    *  l'automate (rendez-vous composables : à dater, ou au vote ouvert). */
   protected readonly rendezvousPickerMode = signal<'propose' | 'window'>('propose');
   /** Story 46.3 — la fenêtre que le MJ veut verser au vote, en attente du choix du rendez-vous. */
-  private readonly pendingWindow = signal<{ date: string; slot: DaySlot } | null>(null);
+  private readonly pendingWindow = signal<{
+    date: string;
+    slot: DaySlot;
+    durationSlots: number;
+  } | null>(null);
   private readonly proposeButtonRef = viewChild('proposeBtn', {
     read: ElementRef<HTMLButtonElement>,
   });
@@ -2407,7 +2421,9 @@ export class CalendarView implements OnInit {
    * la validation du composer reste le seul chemin d'écriture.
    */
   protected addSelectedWindow(slot?: AvailableSlotDto): void {
-    const window = slot ? { date: slot.date, slot: slot.slot } : this.selectedWindow();
+    const window = slot
+      ? { date: slot.date, slot: slot.slot, durationSlots: slot.durationSlots }
+      : this.selectedWindow();
     if (!window) return;
     if (this.composing()) {
       this.addWindowCell(window);
@@ -2429,7 +2445,15 @@ export class CalendarView implements OnInit {
 
   /** Verse une fenêtre dans les créneaux composés (sans doublon) et la désélectionne : elle est désormais une cellule
    *  du composer, et quitte la liste de l'automate. */
-  private addWindowCell(window: { date: string; slot: DaySlot }): void {
+  private addWindowCell(window: { date: string; slot: DaySlot; durationSlots: number }): void {
+    // ⚠️ Story 47.6 — une fenêtre ne rejoint que la composition de SA durée : un départ de 2 créneaux dans un vote de
+    // 3 raconterait une plage que le vote n'a pas. Le composer est déjà armé à la durée du rendez-vous (la liste se
+    // relit à cette durée) ; la fenêtre ne l'y suit pas, et le dit.
+    if (window.durationSlots !== this.composeDuration()) {
+      this.composeRefusal.set(windowDurationRefusal(this.composeDuration()));
+      this.selectedWindow.set(null);
+      return;
+    }
     const cell: SelectedCell = { date: dateKeyToLocalMidnight(window.date), slot: window.slot };
     const key = composeCellKey(cell.date, cell.slot);
     this.composedCells.update((cells) =>
@@ -3182,8 +3206,24 @@ export class CalendarView implements OnInit {
         !this.isLayerActive('disponibilite-groupe') ||
         this.view() === 'agenda' ||
         (!this.slotsLoading() &&
-          !this.availableSlots().some((s) => availableSlotKey(s) === availableSlotKey(sel)));
+          !this.availableSlots().some(
+            (s) =>
+              availableSlotKey(s) === availableSlotKey(sel) &&
+              // Story 47.6 — la même date servie à une autre durée est une autre fenêtre.
+              ('durationSlots' in s ? s.durationSlots : 1) === sel.durationSlots,
+          ));
       if (gone) untracked(() => this.selectedWindow.set(null));
+    });
+
+    // ⚠️ Story 47.6 — la liste de l'automate suit la durée du composer : elle se relit quand le compteur bouge (ou quand
+    // le composer s'ouvre ou se ferme sur une autre durée que celle déjà demandée).
+    effect(() => {
+      const span = this.slotsSpan();
+      untracked(() => {
+        const id = this.partieId();
+        if (!id || this.isGroup() || span === this.slotsSpanAsked) return;
+        void this.loadAvailableSlots(id, this.fromDateStr(), this.toDateStr());
+      });
     });
 
     // Story 44.7 — le lien attend les sondages ouverts et, à l'atelier, les données de la partie.
@@ -4143,15 +4183,27 @@ export class CalendarView implements OnInit {
     }
   }
 
+  /** Story 47.6 — compteur de requêtes de la liste de l'automate : une réponse périmée (durée changée entre-temps)
+   *  est ignorée. */
+  private slotsReqId = 0;
+  /** Story 47.6 — la durée demandée par la dernière lecture : l'effet de rechargement ne relit que si elle change. */
+  private slotsSpanAsked = 1;
+
   private async loadAvailableSlots(id: string, from?: string, to?: string): Promise<void> {
     if (this.isGroup()) return;
+    const reqId = ++this.slotsReqId;
+    const span = this.slotsSpan();
+    this.slotsSpanAsked = span;
     this.slotsLoading.set(true);
     try {
-      this.availableSlots.set(await this.pollSvc.getAvailableSlots(id, undefined, from, to));
+      const result = await this.pollSvc.getAvailableSlots(id, undefined, from, to, span);
+      if (reqId !== this.slotsReqId) return;
+      this.availableSlots.set(result);
     } catch {
+      if (reqId !== this.slotsReqId) return;
       this.slotsError.set(this.theme.tone()['calendar.view_load_slots_error']);
     } finally {
-      this.slotsLoading.set(false);
+      if (reqId === this.slotsReqId) this.slotsLoading.set(false);
     }
   }
 

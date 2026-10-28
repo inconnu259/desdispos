@@ -2712,7 +2712,7 @@ describe('PartiesService', () => {
       const TO = '2030-03-14'; // 11 jours = 33 créneaux : le plafond de 20 joue
 
       it('le MJ ne reçoit pas une fenêtre qui coïncide avec une option d’un sondage ouvert', async () => {
-        polls.openOptionKeys.mockResolvedValue(new Set(['2030-03-04|MORNING']));
+        polls.openOptionKeys.mockResolvedValue(new Set(['2030-03-04|MORNING|1']));
         const results = (await service.getAvailableSlots(
           'p1',
           'mj1',
@@ -2729,7 +2729,7 @@ describe('PartiesService', () => {
 
       it('l’exclusion précède le plafond : la liste garde ses 20 fenêtres', async () => {
         polls.openOptionKeys.mockResolvedValue(
-          new Set(['2030-03-04|MORNING', '2030-03-04|AFTERNOON', '2030-03-04|EVENING']),
+          new Set(['2030-03-04|MORNING|1', '2030-03-04|AFTERNOON|1', '2030-03-04|EVENING|1']),
         );
         const results = await service.getAvailableSlots('p1', 'mj1', 1, FROM, TO);
         expect(results).toHaveLength(20);
@@ -2761,6 +2761,139 @@ describe('PartiesService', () => {
         expect(polls.openOptionKeys).not.toHaveBeenCalled();
         expect(results[0]).toMatchObject({ date: '2030-03-04', slot: 'MORNING' });
         expect(results[0]).not.toHaveProperty('members');
+      });
+    });
+
+    describe('fenêtres de plusieurs créneaux (Story 47.6)', () => {
+      const FROM = '2030-03-08'; // un vendredi
+      const TO = '2030-03-10';
+      const dateOf = (d: Date) => d.toISOString().substring(0, 10);
+      type Decls = { who: string }[];
+      /** Statut par (membre, jour, créneau) précis ; tout le reste est AVAILABLE. */
+      const statusMap = (busy: Record<string, string>) =>
+        avail.computeSlotStatus.mockImplementation(
+          (decls: Decls, d: Date, slot: string) =>
+            busy[`${decls[0]?.who}|${dateOf(d)}|${slot}`] ?? 'AVAILABLE',
+        );
+      const row = (date: string, startSlot: string, durationSlots: number) => ({
+        date: new Date(`${date}T00:00:00.000Z`),
+        startSlot,
+        durationSlots,
+      });
+      const ask = (span?: number, userId = 'mj1') =>
+        service.getAvailableSlots('p1', userId, 1, FROM, TO, span);
+
+      beforeEach(() => {
+        avail.getActiveDeclarationsWithSeances.mockResolvedValue(
+          new Map([
+            ['u1', [{ who: 'u1' }]],
+            ['u2', [{ who: 'u2' }]],
+          ]),
+        );
+        prisma.slotWindowHidden.findMany.mockResolvedValue([]);
+      });
+
+      it('span 2 : un refus du SEUL soir classe la fenêtre de l’après-midi « avec refus » ; vendredi soir → samedi matin reste tout-libre', async () => {
+        statusMap({ 'u1|2030-03-09|EVENING': 'UNAVAILABLE' });
+        const results = (await ask(2)) as AvailableSlotDto[];
+
+        expect(results.every((r) => r.durationSlots === 2)).toBe(true);
+        const sat = results.find((r) => r.date === '2030-03-09' && r.slot === 'AFTERNOON')!;
+        expect(sat.members.find((m) => m.userId === 'u1')!.status).toBe('UNAVAILABLE');
+        const fri = results.find((r) => r.date === '2030-03-08' && r.slot === 'EVENING')!;
+        expect(fri.members.every((m) => m.status === 'AVAILABLE')).toBe(true);
+        // Les fenêtres tout-libres passent avant celle qui a un refus.
+        expect(results.indexOf(fri)).toBeLessThan(results.indexOf(sat));
+        // Chaque créneau précis n'est calculé qu'une fois par membre (pas de recalcul par fenêtre).
+        const keys = avail.computeSlotStatus.mock.calls.map(
+          (c: [Decls, Date, string]) => `${c[0][0]?.who}|${dateOf(c[1])}|${c[2]}`,
+        );
+        expect(new Set(keys).size).toBe(keys.length);
+      });
+
+      it('le pire statut gagne : UNAVAILABLE > UNKNOWN > AVAILABLE', async () => {
+        statusMap({
+          'u1|2030-03-09|MORNING': 'UNKNOWN',
+          'u2|2030-03-09|MORNING': 'UNKNOWN',
+          'u2|2030-03-09|AFTERNOON': 'UNAVAILABLE',
+        });
+        const results = (await ask(2)) as AvailableSlotDto[];
+        const w = results.find((r) => r.date === '2030-03-09' && r.slot === 'MORNING')!;
+        expect(w.members.map((m) => m.status)).toEqual(['UNKNOWN', 'UNAVAILABLE']);
+      });
+
+      it('une fenêtre qui déborde de « to » est servie (ses créneaux dépassent la plage)', async () => {
+        statusMap({ 'u1|2030-03-11|MORNING': 'UNAVAILABLE' });
+        const results = (await ask(2)) as AvailableSlotDto[];
+        const w = results.find((r) => r.date === '2030-03-10' && r.slot === 'EVENING')!;
+        expect(w.members.find((m) => m.userId === 'u1')!.status).toBe('UNAVAILABLE');
+      });
+
+      it('le MJ indisponible sur le 2e créneau exclut la fenêtre', async () => {
+        prisma.user.findUnique.mockResolvedValue({ id: 'mj1', pseudo: 'MJ' });
+        prisma.membership.findMany.mockResolvedValue([
+          { userId: 'u1', user: { id: 'u1', pseudo: 'Alice' } },
+        ]);
+        avail.getActiveDeclarationsWithSeances.mockResolvedValue(
+          new Map([
+            ['mj1', [{ who: 'mj1' }]],
+            ['u1', [{ who: 'u1' }]],
+          ]),
+        );
+        statusMap({ 'mj1|2030-03-09|AFTERNOON': 'UNAVAILABLE' });
+        const results = (await ask(2)) as AvailableSlotDto[];
+        // Départ samedi matin (couvre samedi après-midi) et départ samedi après-midi : exclus.
+        expect(results.some((r) => r.date === '2030-03-09' && r.slot === 'MORNING')).toBe(false);
+        expect(results.some((r) => r.date === '2030-03-09' && r.slot === 'AFTERNOON')).toBe(false);
+        expect(results.some((r) => r.date === '2030-03-09' && r.slot === 'EVENING')).toBe(true);
+      });
+
+      it('sans span : durationSlots 1, une fenêtre par créneau, statuts du créneau', async () => {
+        statusMap({ 'u1|2030-03-09|EVENING': 'UNAVAILABLE' });
+        const results = (await ask()) as AvailableSlotDto[];
+        expect(results).toHaveLength(9);
+        expect(results.every((r) => r.durationSlots === 1)).toBe(true);
+        const w = results.find((r) => r.date === '2030-03-09' && r.slot === 'AFTERNOON')!;
+        expect(w.members.every((m) => m.status === 'AVAILABLE')).toBe(true);
+      });
+
+      it('l’exclusion compare le départ ET la durée', async () => {
+        polls.openOptionKeys.mockResolvedValue(new Set(['2030-03-09|AFTERNOON|2']));
+        const two = (await ask(2)) as AvailableSlotDto[];
+        expect(two.some((r) => r.date === '2030-03-09' && r.slot === 'AFTERNOON')).toBe(false);
+        const one = (await ask(1)) as AvailableSlotDto[];
+        expect(one.some((r) => r.date === '2030-03-09' && r.slot === 'AFTERNOON')).toBe(true);
+      });
+
+      it('le masquage ne vaut que pour la durée de la fenêtre masquée', async () => {
+        prisma.slotWindowHidden.findMany.mockResolvedValue([row('2030-03-09', 'AFTERNOON', 2)]);
+        const two = (await ask(2)) as AvailableSlotDto[];
+        expect(two.filter((r) => r.hidden).map((r) => `${r.date}|${r.slot}`)).toEqual([
+          '2030-03-09|AFTERNOON',
+        ]);
+        const one = (await ask(1)) as AvailableSlotDto[];
+        expect(one.some((r) => r.hidden)).toBe(false);
+      });
+
+      it('un joueur demande span 3 : lignes agrégées au pire statut, sans exclusion ni forme nouvelle', async () => {
+        prisma.membership.findUnique.mockResolvedValue({ userId: 'u1', partieId: 'p1' });
+        polls.openOptionKeys.mockResolvedValue(new Set(['2030-03-09|AFTERNOON|3']));
+        statusMap({ 'u2|2030-03-09|EVENING': 'UNAVAILABLE' });
+        const results = (await ask(3, 'u1')) as AggregatedSlotDto[];
+        expect(polls.openOptionKeys).not.toHaveBeenCalled();
+        const w = results.find((r) => r.date === '2030-03-09' && r.slot === 'AFTERNOON')!;
+        expect(w).toEqual({
+          date: '2030-03-09',
+          slot: 'AFTERNOON',
+          available: 1,
+          unavailable: 1,
+          unknown: 0,
+          total: 2,
+        });
+      });
+
+      it.each([0, 46, 1.5, Number.NaN])('span %p : refusé en français', async (span) => {
+        await expect(ask(span)).rejects.toThrow(/entier de 1 à 45 créneaux/);
       });
     });
 

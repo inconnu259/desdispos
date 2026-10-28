@@ -151,3 +151,9 @@
 .creneau-card--hidden .creneau-card__action {
   opacity: 1;
 }
+
+/* Story 47.6 — la plage d'une fenêtre de plusieurs créneaux (« sam. 9 mars après-midi → sam. 9 mars soir ») : une
+   seule ligne, écrite par `span-label`, donc sans majuscule forcée sur chaque mot. */
+.creneau-card__range {
+  text-transform: none;
+}

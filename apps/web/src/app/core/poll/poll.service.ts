@@ -22,7 +22,10 @@ export class PollService {
     weeks?: number,
     from?: string,
     to?: string,
+    span?: number,
   ): Promise<(AvailableSlotDto | AggregatedSlotDto)[]> {
+    // Story 47.6 — `span` : la durée des fenêtres, en créneaux (absente = 1 côté serveur).
+    const spanQuery = span === undefined ? '' : `span=${span}`;
     let url: string;
     if (from && to) {
       url = `${API_BASE}/parties/${partieId}/available-slots?from=${from}&to=${to}`;
@@ -31,6 +34,7 @@ export class PollService {
     } else {
       url = `${API_BASE}/parties/${partieId}/available-slots`;
     }
+    if (spanQuery) url += `${url.includes('?') ? '&' : '?'}${spanQuery}`;
     return firstValueFrom(
       this.http.get<(AvailableSlotDto | AggregatedSlotDto)[]>(url, { withCredentials: true }),
     );

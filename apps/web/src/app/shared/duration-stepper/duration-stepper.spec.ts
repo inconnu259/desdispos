@@ -1,7 +1,14 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { DaySlot } from '@master-jdr/shared';
-import { DURATION_TEXT, durationDetail, durationSlotsLabel } from './duration-labels';
+import {
+  DURATION_TEXT,
+  durationDetail,
+  durationSlotsLabel,
+  overlapAriaLabel,
+  overlapMarkLabel,
+  worstAvailabilityLabel,
+} from './duration-labels';
 import { DurationStepper } from './duration-stepper';
 
 @Component({
@@ -157,5 +164,28 @@ describe('libellés de durée (Story 47.1)', () => {
 
   it('journée entière au-delà d’un créneau : pas de plage, la longueur en jours', () => {
     expect(durationDetail(3, { date: '2026-11-14', slot: 'FULL_DAY' })).toBe('soit 1 jour');
+  });
+});
+
+describe('mots de la plage votée (Story 47.5)', () => {
+  it('la marque de recouvrement et son nom accessible', () => {
+    expect(overlapMarkLabel(2)).toBe('×2');
+    expect(overlapAriaLabel(3)).toBe('3 plages se superposent (×3)');
+  });
+
+  it('la pire disponibilité s’écrit au pluriel, au singulier, et à zéro', () => {
+    expect(worstAvailabilityLabel(2)).toBe('2 dispos sur toute la plage');
+    expect(worstAvailabilityLabel(1)).toBe('1 dispo sur toute la plage');
+    expect(worstAvailabilityLabel(0)).toBe('0 dispo sur toute la plage');
+  });
+
+  it('l’annonce d’un créneau candidat en plage', () => {
+    expect(
+      DURATION_TEXT.announceSpan
+        .replace('{n}', '2')
+        .replace('{total}', '5')
+        .replace('{range}', 'du vendredi 6 soir au dimanche 8 après-midi')
+        .replace('{yes}', '4 oui'),
+    ).toBe('Créneau 2 sur 5, du vendredi 6 soir au dimanche 8 après-midi, 4 oui');
   });
 });

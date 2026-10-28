@@ -724,9 +724,12 @@
     <app-vote-answer-picker
       [vote]="vote"
       [slotLabel]="pickerLabel()"
+      [lines]="pickerLines()"
       [busy]="pollActionPending()"
       (answerChosen)="onVoteAnswerChosen($event)"
       (withdrawRequested)="onVoteWithdrawn()"
+      (lineAnswerChosen)="onVoteAnswerChosen($event.answer, $event.vote)"
+      (lineWithdrawn)="onVoteWithdrawn($event)"
     />
   </ng-template>
 }

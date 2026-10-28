@@ -1323,6 +1323,127 @@ describe('CalendarMonthView — une plage de plusieurs créneaux (Story 47.3)', 
   });
 });
 
+describe('CalendarMonthView — plusieurs plages d’un même vote (Story 47.5)', () => {
+  let fixture: any;
+  let el: HTMLElement;
+
+  const participation = (optionId: string) => ({
+    partieId: 'p1',
+    pollId: 'poll-1',
+    optionId,
+    yes: 1,
+    maybe: 0,
+    no: 0,
+    total: 4,
+    myAnswer: null,
+  });
+  // Août 2026, durée 3 : (a) samedi 22 matin → soir ; (b) samedi 22 après-midi → dimanche 23 matin.
+  // Elles se recouvrent le samedi après-midi et le samedi soir.
+  const optionA = {
+    key: 'poll-1-a',
+    type: 'votes-en-cours',
+    date: '2026-08-22',
+    slot: 'MORNING',
+    endDate: '2026-08-22',
+    endSlot: 'EVENING',
+    label: 'Week-end jeux',
+    vote: participation('a'),
+  } as any;
+  const optionB = {
+    key: 'poll-1-b',
+    type: 'votes-en-cours',
+    date: '2026-08-22',
+    slot: 'AFTERNOON',
+    endDate: '2026-08-23',
+    endSlot: 'MORNING',
+    label: 'Week-end jeux',
+    vote: participation('b'),
+  } as any;
+
+  async function createWith(entries: any[], layers = ['votes-en-cours']) {
+    await TestBed.configureTestingModule({
+      imports: [CalendarMonthView],
+      providers: [provideAnimationsAsync()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(CalendarMonthView);
+    fixture.componentRef.setInput('activeLayers', layers);
+    fixture.componentRef.setInput('initialDate', new Date(2026, 7, 15));
+    fixture.componentRef.setInput('entries', entries);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  const bandsOf = (day: number): HTMLElement[] => {
+    const cell = el.querySelector(`.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`);
+    return Array.from(cell!.querySelectorAll<HTMLElement>('.band'));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 10));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
+
+  it('« ×2 » sur chaque bande recouverte deux fois, rien ailleurs ; il entre dans le nom accessible', async () => {
+    await createWith([optionA, optionB]);
+    const [satM, satA, satE] = bandsOf(22);
+    const [sunM] = bandsOf(23);
+
+    expect(satA.querySelector('.band__overlap')?.textContent?.trim()).toBe('×2');
+    expect(satE.querySelector('.band__overlap')?.textContent?.trim()).toBe('×2');
+    expect(satM.querySelector('.band__overlap')).toBeNull();
+    expect(sunM.querySelector('.band__overlap')).toBeNull();
+    expect(satA.getAttribute('aria-label')).toContain('2 plages se superposent (×2)');
+    expect(satM.getAttribute('aria-label')).not.toContain('×');
+  });
+
+  it('une seule plage sur le créneau : pas de « ×n »', async () => {
+    await createWith([optionA]);
+    expect(el.querySelector('.band__overlap')).toBeNull();
+  });
+
+  it('un créneau seul : la sortie d’avant (pas de marque)', async () => {
+    await createWith([{ ...optionA, endDate: undefined, endSlot: undefined }]);
+    expect(el.querySelector('.band__overlap')).toBeNull();
+  });
+
+  it('toucher la bande recouverte signale TOUTES les plages qui la couvrent, dans l’ordre de leur début', async () => {
+    await createWith([optionB, optionA]);
+    const emitted: any[] = [];
+    fixture.componentInstance.voteOptionActivated.subscribe((e: any) => emitted.push(e));
+
+    bandsOf(22)[1].click();
+    fixture.detectChanges();
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].lines.map((l: any) => l.vote.optionId)).toEqual(['a', 'b']);
+    expect(emitted[0].lines.map((l: any) => l.range)).toEqual([
+      'sam. 22 matin → sam. 22 soir',
+      'sam. 22 après-midi → dim. 23 matin',
+    ]);
+  });
+
+  it('toucher une bande couverte une seule fois : une seule ligne', async () => {
+    await createWith([optionA, optionB]);
+    const emitted: any[] = [];
+    fixture.componentInstance.voteOptionActivated.subscribe((e: any) => emitted.push(e));
+
+    bandsOf(22)[0].click();
+    fixture.detectChanges();
+
+    expect(emitted[0].lines.map((l: any) => l.vote.optionId)).toEqual(['a']);
+  });
+
+  it('couche « votes en cours » éteinte : ni marque ni signal', async () => {
+    await createWith([optionA, optionB], ['mes-seances']);
+    expect(el.querySelector('.band__overlap')).toBeNull();
+  });
+});
+
 describe('CalendarMonthView — le canal de groupe (Story 36.8)', () => {
   let el: HTMLElement;
 
@@ -2127,6 +2248,16 @@ describe('CalendarMonthView — sceller depuis la barre de sélection (Story 36.
       dateLabel: expect.stringContaining('soir'),
       pollLabel: 'Chapitre 1',
     });
+  });
+
+  it('Story 47.5 — sealCandidate d’une plage porte « début → fin », pas seulement le créneau de départ', async () => {
+    await createWith({
+      canSeal: true,
+      entries: [{ ...VOTE_ENTRY, endDate: '2026-08-22', endSlot: 'AFTERNOON' }],
+    });
+    selectSingle(20, 'EVENING');
+    const candidate = (fixture.componentInstance as any).sealCandidate();
+    expect(candidate.dateLabel).toBe('jeu. 20 août soir → sam. 22 août après-midi');
   });
 
   it('AC1 — le bouton Sceller est rendu dans la barre de sélection', async () => {

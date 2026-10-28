@@ -301,12 +301,12 @@ export class EventForm implements OnInit {
   }
 
   protected slotLabel(option: EventPollOptionInput): string {
-    return pollSlotLabel(option);
+    return pollSlotLabel(option, this.durationSlots());
   }
 
   protected slotRemoveAria(option: EventPollOptionInput): string {
     return fillTone(this.theme.tone()['partie.ralliement_event_poll_slot_remove_aria'], {
-      slot: pollSlotLabel(option),
+      slot: pollSlotLabel(option, this.durationSlots()),
     });
   }
 

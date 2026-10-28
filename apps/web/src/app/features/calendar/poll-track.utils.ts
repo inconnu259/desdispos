@@ -62,9 +62,19 @@ export interface VoteParticipation {
  */
 export interface VoteOptionActivatedEvent {
   vote: VoteParticipation;
+  /** Story 47.5 — TOUTES les options du vote qui couvrent le créneau touché (une ligne par plage), telles que
+   *  `buildDayDetail()` les a projetées (`pollVotes`). Absent ou d'une seule entrée = le sélecteur d'avant. */
+  lines?: readonly VoteLine[];
   date: Date;
   slot: DaySlot;
   anchor: HTMLElement;
+}
+
+/** Story 47.5 — une option de vote qui couvre un créneau, pour une ligne du sélecteur de réponse. */
+export interface VoteLine {
+  vote: VoteParticipation;
+  /** « ven. 6 soir → dim. 8 après-midi » ; vide pour un créneau seul. */
+  range: string;
 }
 
 /** Largeurs des trois segments, en pourcentage de l'effectif TOTAL. Le reste de la piste n'est pas

@@ -9,7 +9,7 @@ import type { StatusBadgeState } from '../../core/status/status-derivation';
 import { daysBetweenKeys, imminenceIntensity } from '../../core/status/status-badge.model';
 import { fillTone } from '../../core/theme/tone-format';
 import { SLOT_LABELS } from '../calendar/agenda-badge.utils';
-import { isSpan, spanShortLabel } from '../calendar/span-label';
+import { candidateSpanShort, isSpan, spanShortLabel } from '../calendar/span-label';
 
 /**
  * Story 40.1 — dérivations PURES de la carte d'une conjonction (testables sans TestBed). Le jour de
@@ -412,8 +412,11 @@ export function pollRangeLabel(keys: readonly string[]): string {
   return `${shortDayLabel(first, !sameMonth)} → ${shortDayLabel(last)}`;
 }
 
-/** Créneau candidat écrit : « sam. 25 oct. · soir ». */
-export function pollSlotLabel(option: { date: string; slot: DaySlot }): string {
+/** Créneau candidat écrit : « sam. 25 oct. · soir ». Story 47.5 : un candidat de plusieurs créneaux s'écrit de son
+ *  début à sa fin (« ven. 6 nov. soir → dim. 8 nov. après-midi ») ; un créneau seul est inchangé. */
+export function pollSlotLabel(option: { date: string; slot: DaySlot }, durationSlots = 1): string {
+  const span = candidateSpanShort(option, durationSlots);
+  if (span) return span;
   return `${shortDayLabel(option.date)} · ${SLOT_LABELS[option.slot].toLocaleLowerCase('fr-FR')}`;
 }
 
@@ -545,7 +548,7 @@ export function pollPanel(
   const best = pollBestSlot(card);
   const bestLine = best
     ? fillTone(tone['partie.ralliement_event_poll_best'], {
-        date: pollSlotLabel(best.option),
+        date: pollSlotLabel(best.option, poll.durationSlots),
         n: best.yes,
       })
     : null;
@@ -616,7 +619,7 @@ export function pollSlotRows(
 ): { id: string; label: string; available: string }[] {
   return (card.poll?.options ?? []).map((o) => ({
     id: o.id,
-    label: pollSlotLabel(o),
+    label: pollSlotLabel(o, card.poll?.durationSlots),
     available: frUnit(tone['partie.ralliement_event_unit_available'], o.availableCount),
   }));
 }
@@ -665,7 +668,7 @@ export function rankedPollSlots(card: EventCardDto, todayKey: string): RankedPol
           id: option.id,
           date: option.date,
           slot: option.slot,
-          label: pollSlotLabel(option),
+          label: pollSlotLabel(option, poll.durationSlots),
           yes: votes.filter((v) => v.answer === 'YES').length,
           maybe: votes.filter((v) => v.answer === 'MAYBE').length,
           no: votes.filter((v) => v.answer === 'NO').length,
@@ -692,13 +695,14 @@ export function rankedPollSlots(card: EventCardDto, todayKey: string): RankedPol
 export function rankedEntrySlots(
   options: readonly OpenPollOption[],
   todayKey: string,
+  durationSlots = 1,
 ): RankedPollSlot[] {
   return options
     .map((o) => ({
       id: o.optionId,
       date: o.date,
       slot: o.slot,
-      label: pollSlotLabel(o),
+      label: pollSlotLabel(o, durationSlots),
       yes: o.yes,
       maybe: o.maybe,
       no: o.no,

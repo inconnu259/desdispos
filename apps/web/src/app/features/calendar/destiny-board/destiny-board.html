@@ -22,6 +22,9 @@
             }
             <span class="destiny-board__yes">{{ slot.yesText }}</span>
           </span>
+          @if (slot.availabilityText) {
+            <span class="destiny-board__availability">{{ slot.availabilityText }}</span>
+          }
           <span class="destiny-board__bar" aria-hidden="true">
             <span class="destiny-board__bar-fill" [style.width.%]="slot.ratio * 100"></span>
           </span>

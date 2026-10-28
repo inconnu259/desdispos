@@ -12,6 +12,7 @@ import type {
 import { getMissingVoters, getMissingVotersForOption } from '../../../core/poll/poll.util';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
+import { candidateSpanShort } from '../../calendar/span-label';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { ConfirmDialog } from '../../parties/confirm-dialog/confirm-dialog';
 
@@ -70,6 +71,15 @@ export class PollStatusPanel {
     }).format(d);
   }
 
+  /** « sam. 25 oct. — Soir » ; Story 47.5 : un candidat de plusieurs créneaux s'écrit de son début à sa fin
+   *  (« ven. 6 nov. soir → dim. 8 nov. après-midi »). Un créneau seul est inchangé. */
+  protected optionLabel(opt: PollOptionDto): string {
+    return (
+      candidateSpanShort(opt, this.poll().durationSlots) ??
+      `${this.formatDate(opt.date)} — ${SLOT_LABELS[opt.slot]}`
+    );
+  }
+
   protected countByAnswer(opt: PollOptionDto, answer: VoteAnswer): number {
     return opt.votes.filter((v) => v.answer === answer).length;
   }
@@ -103,13 +113,20 @@ export class PollStatusPanel {
       const tone = this.theme.tone();
       const noVoteWarning = tone['pollui.status_choose_no_vote_warning'];
       const warning = opt.votes.length === 0 ? ` ${noVoteWarning}` : '';
+      // Story 47.5 : une plage se scelle écrite de son début à sa fin (pas de « — créneau » en plus).
+      const span = candidateSpanShort(opt, this.poll().durationSlots);
+      const question = span
+        ? fillTone(tone['pollui.status_choose_confirm'], { date: span, slot: '' }).replace(
+            `${span} — `,
+            span,
+          )
+        : fillTone(tone['pollui.status_choose_confirm'], {
+            date: this.formatDate(opt.date),
+            slot: SLOT_LABELS[opt.slot],
+          });
       const ref = this.dialog.open(ConfirmDialog, {
         data: {
-          message:
-            fillTone(tone['pollui.status_choose_confirm'], {
-              date: this.formatDate(opt.date),
-              slot: SLOT_LABELS[opt.slot],
-            }) + warning,
+          message: question + warning,
           confirmLabel: tone['cta.choose_date'],
         },
       });

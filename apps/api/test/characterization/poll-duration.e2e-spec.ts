@@ -19,6 +19,9 @@ type CardLike = {
   poll: { id: string; durationSlots: number; options: { id: string }[]; votes: unknown[] } | null;
 };
 
+// Story 47.5 (AD-11) — fixer une plage : la fixation prend les mêmes verrous qu'un changement de durée, relit le
+// vote et l'option dessous, et écrit la plage entière (début → fin) ; un participant est occupé sur chaque créneau.
+
 describe('Proposer des plages dans le composer — Story 47.4', () => {
   let h: Harness;
   let mj: TestUser;
@@ -296,6 +299,127 @@ describe('Proposer des plages dans le composer — Story 47.4', () => {
         .expect(403);
 
       expect((await dbSeance(card.seance!.id)).durationSlots).toBe(1);
+    });
+  });
+
+  describe('fixer une plage (Story 47.5)', () => {
+    type SlotLike = { date: string; slot: string; members: { userId: string; status: string }[] };
+
+    /** Les week-ends sont proposés du vendredi soir ; on fixe le deuxième. */
+    it('fixer le 2e des 3 week-ends : séance début/fin = la plage, vote clos, participants occupés sur chaque créneau', async () => {
+      const { seanceId, poll } = await votedPoll('Fixer la plage', 6);
+      const second = poll.options.find((o) => o.date.startsWith(isoDay(17)))!;
+      const viewer = await h.createUser('pl-vue');
+      const { id: viewId } = await h.createPartie(viewer, 'ONE_SHOT', 'pl-vue-partie');
+      await h.addMember(viewId, player);
+
+      await mj.agent
+        .patch(`/parties/${jdrId}/poll/${poll.id}/choose`)
+        .send({ optionId: second.id })
+        .expect(200);
+
+      const row = await dbSeance(seanceId);
+      const key = (d: Date | null) => d?.toISOString().substring(0, 10);
+      expect([key(row.startDate), row.startSlot]).toEqual([isoDay(17), 'EVENING']);
+      expect([key(row.endDate), row.endSlot]).toEqual([isoDay(19), 'AFTERNOON']);
+      expect(row.durationSlots).toBe(6);
+      expect(row.reminderSentAt).toBeNull();
+      const closed = await h.prisma.sessionPoll.findUniqueOrThrow({ where: { id: poll.id } });
+      expect(closed.status).toBe('CLOSED');
+
+      const slots = body<SlotLike[]>(
+        await viewer.agent
+          .get(`/parties/${viewId}/available-slots`)
+          .query({ from: isoDay(17), to: isoDay(19) })
+          .expect(200),
+      );
+      const statusOf = (date: string, slot: string) =>
+        slots.find((x) => x.date === date && x.slot === slot)?.members.find((m) => m.userId === player.id)
+          ?.status;
+      const covered: [string, string][] = [
+        [isoDay(17), 'EVENING'],
+        [isoDay(18), 'MORNING'],
+        [isoDay(18), 'AFTERNOON'],
+        [isoDay(18), 'EVENING'],
+        [isoDay(19), 'MORNING'],
+        [isoDay(19), 'AFTERNOON'],
+      ];
+      for (const [date, slot] of covered) expect(statusOf(date, slot)).toBe('UNAVAILABLE');
+      // La plage s'arrête à son dernier créneau, et ne commence pas avant son départ.
+      expect(statusOf(isoDay(19), 'EVENING')).toBe('UNKNOWN');
+      expect(statusOf(isoDay(17), 'AFTERNOON')).toBe('UNKNOWN');
+    });
+
+    it('concurrence : fixer et changer la durée en même temps sont sérialisés (la date lit une option fraîche)', async () => {
+      const { seanceId, poll } = await votedPoll('Fixer en concurrence', 6);
+      const target = poll.options.find((o) => o.date.startsWith(isoDay(10)))!;
+
+      const [fix, change] = await Promise.all([
+        mj.agent.patch(`/parties/${jdrId}/poll/${poll.id}/choose`).send({ optionId: target.id }),
+        put(mj, poll.id, { options: fridays, durationSlots: 3 }),
+      ]);
+
+      const row = await dbSeance(seanceId);
+      if (fix.status === 200) {
+        // La fixation est passée la première : la plage écrite est celle de la durée de 6.
+        expect(row.durationSlots).toBe(6);
+        expect(row.endDate?.toISOString().substring(0, 10)).toBe(isoDay(12));
+        expect(change.status).toBe(400);
+      } else {
+        // Le changement de durée a recréé les options avant : l'ancienne n'existe plus, rien n'est écrit.
+        expect([fix.status, change.status]).toEqual([404, 200]);
+        expect(row.startDate).toBeNull();
+        expect(row.durationSlots).toBe(3);
+        const stillOpen = await h.prisma.sessionPoll.findUniqueOrThrow({ where: { id: poll.id } });
+        expect(stillOpen.status).toBe('OPEN');
+      }
+    });
+
+    it('option disparue (purgée par un changement de durée) : 404 « Option introuvable », rien n’est écrit', async () => {
+      const { seanceId, poll } = await votedPoll('Option purgée', 3);
+      const stale = poll.options[1];
+      await put(mj, poll.id, { options: fridays, durationSlots: 6 }).expect(200);
+
+      const res = await mj.agent
+        .patch(`/parties/${jdrId}/poll/${poll.id}/choose`)
+        .send({ optionId: stale.id });
+
+      expect(res.status).toBe(404);
+      expect(JSON.stringify(res.body)).toContain('Option introuvable');
+      expect((await dbSeance(seanceId)).startDate).toBeNull();
+    });
+
+    it('refus : un joueur ne fixe pas la date (403), rien n’est écrit', async () => {
+      const { seanceId, poll } = await votedPoll('Refus fixer', 6);
+
+      await player.agent
+        .patch(`/parties/${jdrId}/poll/${poll.id}/choose`)
+        .send({ optionId: poll.options[0].id })
+        .expect(403);
+
+      expect((await dbSeance(seanceId)).startDate).toBeNull();
+    });
+
+    it('groupe : option disparue (purgée par une durée changée) → 404, la conjonction reste sans date', async () => {
+      const card = body<CardLike>(
+        await host.agent
+          .post(`/parties/${groupId}/events`)
+          .send({ title: 'Plage purgée', pollOptions: fridays, pollDeadline: isoDay(5) })
+          .expect(201),
+      );
+      const stale = card.poll!.options[0];
+      await host.agent
+        .patch(`/parties/${groupId}/events/${card.id}`)
+        .send({ title: 'Plage purgée', pollOptions: fridays, pollDeadline: isoDay(5), durationSlots: 2 })
+        .expect(200);
+
+      const res = await host.agent
+        .patch(`/parties/${groupId}/poll/${card.poll!.id}/choose`)
+        .send({ optionId: stale.id });
+
+      expect(res.status).toBe(404);
+      expect(JSON.stringify(res.body)).toContain('Option introuvable');
+      expect((await dbSeance(card.seance!.id)).startDate).toBeNull();
     });
   });
 });

@@ -142,6 +142,13 @@
             @if (eventVote(getSlotData(cell, row.key)); as vote) {
               <app-poll-track class="ev-track in-week track-sm" [vote]="vote" />
             }
+            <!-- Story 47.5 — plusieurs plages du même vote se superposent sur ce créneau : « ×n », coin haut
+                 droit. Décoratif (`aria-hidden`) : le nom de la cellule le dit. -->
+            @if (eventOverlap(getSlotData(cell, row.key)); as overlap) {
+              @if (overlap >= 2) {
+                <span class="ev-overlap" aria-hidden="true">{{ overlapMark(overlap) }}</span>
+              }
+            }
             <!-- Story 36.8 — le CANAL SÉPARÉ. 🚨 Aucune garde de rang : il survit sous une
                  séance et sous un vote (AC2). Descendante de `.slot-cell` (qui porte
                  `data-cell-date`) et en `pointer-events: none`, comme tout ce que cette cellule

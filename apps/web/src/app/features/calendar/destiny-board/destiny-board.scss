@@ -87,6 +87,13 @@
   white-space: nowrap;
 }
 
+/* ⚠️ Story 47.5 — la pire disponibilité d'une plage candidate, sous son nom : texte, sans teinte nouvelle. */
+.destiny-board__availability {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
 .destiny-board__bar {
   display: block;
   height: 4px;

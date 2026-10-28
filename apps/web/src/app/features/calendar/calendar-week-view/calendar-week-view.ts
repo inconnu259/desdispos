@@ -22,6 +22,8 @@ import type {
 import { computeDisplayStatus } from '../../../core/availability/compute-display-status';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { SLOT_LABELS } from '../agenda-badge.utils';
+import { entrySpanShortLabel } from '../span-label';
+import { overlapAriaLabel, overlapMarkLabel } from '../../../shared/duration-stepper/duration-labels';
 import type { AgendaEntry, AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import {
   buildMonthDetails,
@@ -30,6 +32,7 @@ import {
   toDateKey,
   type DayDetail,
   type DaySlotDetail,
+  type SlotPollVote,
 } from '../day-detail.utils';
 import { SlotSelectedEvent } from '../calendar-month-view/calendar-month-view';
 import { SelectionBar } from '../selection-bar/selection-bar';
@@ -492,7 +495,8 @@ export class CalendarWeekView {
       partieId: entry.vote.partieId,
       pollId: entry.vote.pollId,
       optionId: entry.vote.optionId,
-      dateLabel: CalendarWeekView.sealDateLabel(entry.date, entry.slot),
+      // Story 47.5 — une plage se scelle écrite de son début à sa fin.
+      dateLabel: entrySpanShortLabel(entry) ?? CalendarWeekView.sealDateLabel(entry.date, entry.slot),
       pollLabel: entry.label,
     };
   });
@@ -657,9 +661,11 @@ export class CalendarWeekView {
     // on ne pose pas une seconde table. `FULL_DAY` n'y figure pas et ne porte donc jamais de vote.
     const cell = this.cells().find((c) => c.date.getTime() === date.getTime());
     const key = this.SLOT_ROWS.find((r) => r.slot === slot)?.key;
-    const vote = cell && key ? this.eventVote(this.getSlotData(cell, key)) : null;
+    const slotData = cell && key ? this.getSlotData(cell, key) : null;
+    const vote = slotData ? this.eventVote(slotData) : null;
     if (vote && anchor) {
-      this.voteOptionActivated.emit({ vote, date, slot, anchor });
+      // Story 47.5 — toutes les plages du vote qui couvrent ce créneau : une ligne chacune dans le sélecteur.
+      this.voteOptionActivated.emit({ vote, lines: this.eventVotes(slotData!), date, slot, anchor });
     }
   }
 
@@ -771,6 +777,22 @@ export class CalendarWeekView {
     return d.pollVote;
   }
 
+  /** Story 47.5 — toutes les options du vote qui couvrent la cellule (rang GAGNANT « vote » seulement). */
+  protected eventVotes(slotData: SlotData): SlotPollVote[] {
+    const d = slotData.detail;
+    return d && d.winner === 'vote' ? d.pollVotes : [];
+  }
+
+  /** Story 47.5 — « ×n » : combien de plages du vote recouvrent la cellule (0 hors rang « vote »). */
+  protected eventOverlap(slotData: SlotData): number {
+    const d = slotData.detail;
+    return d && d.winner === 'vote' ? d.pollCount : 0;
+  }
+
+  protected overlapMark(n: number): string {
+    return overlapMarkLabel(n);
+  }
+
   /**
    * Story 36.8 — la disponibilité du groupe, sur un **canal séparé** (FR-53).
    *
@@ -817,6 +839,9 @@ export class CalendarWeekView {
     // que si le nom accessible la dit. Même garde `winner` que `eventInfo()`.
     const participation = this.eventVote(slotData);
     if (participation) parts.push(participationAriaLabel(participation, tone));
+    // Story 47.5 — plusieurs plages du vote sur ce créneau : « ×n » se dit aussi (la marque est visuelle).
+    const overlap = this.eventOverlap(slotData);
+    if (overlap >= 2) parts.push(overlapAriaLabel(overlap));
     // Story 36.8, AC15 — 🚨 `.slot-cell` porte son propre `aria-label`, qui ÉCRASE le nom
     // accessible de `<app-group-gauge>` qu'elle contient désormais. Sans ce repli, le canal
     // serait purement visuel en vue Semaine — même régression que celle corrigée en revue de la

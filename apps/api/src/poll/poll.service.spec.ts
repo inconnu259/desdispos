@@ -633,7 +633,18 @@ describe('PollService', () => {
     prisma.partie.update.mockResolvedValue({});
     // Client de transaction DISTINCT du client racine : une écriture faite hors transaction
     // passerait par `prisma.sessionPoll.update` et ferait échouer ce test.
-    const tx = { sessionPoll: { update: jest.fn().mockResolvedValue({}) } };
+    // Story 47.5 : le vote et l'option sont relus DANS la transaction, donc sur ce client-là.
+    const tx = {
+      sessionPoll: {
+        update: jest.fn().mockResolvedValue({}),
+        findUnique: jest.fn().mockResolvedValue({ id: 'poll1', partieId: 'p1', status: 'OPEN' }),
+      },
+      pollOption: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'opt1', pollId: 'poll1', date: d, slot: 'MORNING' }),
+      },
+    };
     prisma.$transaction.mockImplementationOnce((fn: (t: never) => unknown) => fn(tx as never));
     await service.choose('p1', 'poll1', 'mj1', { optionId: 'opt1' });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -734,6 +745,119 @@ describe('PollService', () => {
     await service.choose('p1', 'poll1', 'mj1', { optionId: 'opt1' });
     expect(prisma.partie.update).not.toHaveBeenCalled();
     expect(seanceDate.chooseDate).toHaveBeenCalledWith(anyOf(Object), 'poll1', d, 'MORNING');
+  });
+
+  describe('choose() JDR — fixation sous verrou (Story 47.5, AD-11)', () => {
+    const d = new Date('2026-11-13T00:00:00.000Z');
+    beforeEach(() => {
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
+      prisma.sessionPoll.findUnique.mockResolvedValue({
+        id: 'poll1',
+        partieId: 'p1',
+        status: 'OPEN',
+      });
+      prisma.pollOption.findUnique.mockResolvedValue({
+        id: 'opt2',
+        pollId: 'poll1',
+        date: d,
+        slot: 'EVENING',
+      });
+      prisma.sessionPoll.update.mockResolvedValue({});
+    });
+
+    it('prend le verrou (durée absente = verrous seulement) AVANT de relire le vote et l’option, puis ferme et écrit la date', async () => {
+      const order: string[] = [];
+      duration.setDurationInTx.mockImplementation(() => {
+        order.push('verrou');
+        return Promise.resolve({ changed: false, durationSlots: 6 });
+      });
+      let reads = 0;
+      prisma.sessionPoll.findUnique.mockImplementation(() => {
+        // 1re lecture : à qui est le vote (avant tout verrou) ; 2e : relecture complète sous le verrou.
+        order.push(++reads === 1 ? 'proprietaire' : 'relit-vote');
+        return Promise.resolve({ id: 'poll1', partieId: 'p1', status: 'OPEN' });
+      });
+      prisma.pollOption.findUnique.mockImplementation(() => {
+        order.push('relit-option');
+        return Promise.resolve({ id: 'opt2', pollId: 'poll1', date: d, slot: 'EVENING' });
+      });
+      prisma.sessionPoll.update.mockImplementation(() => {
+        order.push('ferme');
+        return Promise.resolve({});
+      });
+      seanceDate.chooseDate.mockImplementation(() => {
+        order.push('date');
+        return Promise.resolve();
+      });
+
+      await service.choose('p1', 'poll1', 'mj1', { optionId: 'opt2' });
+
+      expect(duration.setDurationInTx).toHaveBeenCalledWith(anyOf(Object), 'poll1');
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(order).toEqual(['proprietaire', 'verrou', 'relit-vote', 'relit-option', 'ferme', 'date']);
+      // La date écrite vient de l'option RELUE sous le verrou.
+      expect(seanceDate.chooseDate).toHaveBeenCalledWith(anyOf(Object), 'poll1', d, 'EVENING');
+    });
+
+    it('option disparue (purgée par un changement de durée) → 404 « Option introuvable », rien n’est écrit ni émis', async () => {
+      prisma.pollOption.findUnique.mockResolvedValue(null);
+
+      const refusal = service.choose('p1', 'poll1', 'mj1', { optionId: 'opt2' });
+      await expect(refusal).rejects.toBeInstanceOf(NotFoundException);
+      await expect(refusal).rejects.toThrow('Option introuvable');
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+      expect(seanceDate.chooseDate).not.toHaveBeenCalled();
+      expect(realtimeEvents.emit).not.toHaveBeenCalled();
+      expect(partieSignals.notifyChanged).not.toHaveBeenCalled();
+    });
+
+    it('vote fermé ou d’une autre partie, relu sous le verrou → refus, rien n’est écrit', async () => {
+      prisma.sessionPoll.findUnique.mockResolvedValue({
+        id: 'poll1',
+        partieId: 'p1',
+        status: 'CLOSED',
+      });
+      await expect(service.choose('p1', 'poll1', 'mj1', { optionId: 'opt2' })).rejects.toThrow(
+        BadRequestException,
+      );
+      prisma.sessionPoll.findUnique.mockResolvedValue({
+        id: 'poll1',
+        partieId: 'autre',
+        status: 'OPEN',
+      });
+      await expect(service.choose('p1', 'poll1', 'mj1', { optionId: 'opt2' })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+      expect(seanceDate.chooseDate).not.toHaveBeenCalled();
+    });
+
+    it('vote d’une AUTRE partie ou inconnu → 404 AVANT tout verrou : le port de durée n’est jamais appelé', async () => {
+      prisma.sessionPoll.findUnique.mockResolvedValue({ id: 'poll1', partieId: 'autre' });
+      await expect(service.choose('p1', 'poll1', 'mj1', { optionId: 'opt2' })).rejects.toThrow(
+        NotFoundException,
+      );
+      prisma.sessionPoll.findUnique.mockResolvedValue(null);
+      await expect(service.choose('p1', 'poll1', 'mj1', { optionId: 'opt2' })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(duration.setDurationInTx).not.toHaveBeenCalled();
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+      expect(seanceDate.chooseDate).not.toHaveBeenCalled();
+    });
+
+    it('option d’un AUTRE vote → 404', async () => {
+      prisma.pollOption.findUnique.mockResolvedValue({
+        id: 'opt2',
+        pollId: 'autre',
+        date: d,
+        slot: 'EVENING',
+      });
+      await expect(service.choose('p1', 'poll1', 'mj1', { optionId: 'opt2' })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+    });
   });
 
   it('close() sur un poll OPEN → le ferme', async () => {
@@ -1611,6 +1735,18 @@ describe('PollService', () => {
         NotFoundException,
       );
       expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+    });
+
+    it('option disparue (purgée entre-temps) → 404 « Option introuvable », rien n’est écrit, la date n’est pas posée', async () => {
+      prisma.pollOption.findUnique.mockResolvedValue(null);
+
+      const refusal = service.choose('g1', 'poll1', 'hote', { optionId: 'opt1' });
+      await expect(refusal).rejects.toBeInstanceOf(NotFoundException);
+      await expect(refusal).rejects.toThrow('Option introuvable');
+      expect(prisma.sessionPoll.update).not.toHaveBeenCalled();
+      expect(seanceDate.chooseDate).not.toHaveBeenCalled();
+      expect(realtimeEvents.emit).not.toHaveBeenCalled();
+      expect(groupChoice.notifyDateFixed).not.toHaveBeenCalled();
     });
 
     it('option d’un AUTRE sondage ou inconnue → 404, sondage non fermé', async () => {

@@ -1008,6 +1008,32 @@ describe('SeanceList', () => {
       ).not.toContain('→');
     });
 
+    it('Story 47.5 : un vote CLOSED dont la date retenue est une plage se lit « début → fin », côté MJ comme côté joueur', async () => {
+      const closedRange: SeanceDto = {
+        ...SEANCE_NO_POLL,
+        poll: {
+          ...POLL,
+          status: 'CLOSED',
+          chosenDate: '2026-11-06T00:00:00.000Z',
+          chosenSlot: 'EVENING',
+          durationSlots: 6,
+        },
+        endDate: '2026-11-08T00:00:00.000Z',
+        endSlot: 'AFTERNOON',
+        durationSlots: 6,
+      };
+      for (const isMj of [true, false]) {
+        const { fixture } = await createComponent(
+          { ...SCENARIO, seances: [closedRange] },
+          { isMj },
+        );
+        const text = (fixture.nativeElement as HTMLElement).querySelector('.seance-row__chosen-date')
+          ?.textContent;
+        expect(text, isMj ? 'MJ' : 'joueur').toContain('ven. 6 nov. soir → dim. 8 nov. après-midi');
+        TestBed.resetTestingModule();
+      }
+    });
+
     it('AC1 : enregistrer appelle le service avec les trois valeurs et émet seanceLinked', async () => {
       const { fixture, scenariosSvc } = await createComponent(
         { ...SCENARIO, seances: [SEANCE_AVEC_INFOS] },

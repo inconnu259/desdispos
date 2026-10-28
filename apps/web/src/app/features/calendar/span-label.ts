@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import { spanEnd, type DaySlot } from '@master-jdr/shared';
 import { SLOT_LABELS } from './agenda-badge.utils';
 
 /**
@@ -76,3 +76,69 @@ export function spanSentence(start: SpanPoint, end: SpanPoint): string {
 /** « (suite) » — écrit après le nom d'une plage sur les jours qui suivent le premier (rail). Mot fonctionnel,
  *  identique dans les trois thèmes (UX-DR14), donc hors du registre des tons. */
 export const SPAN_CONTINUED = '(suite)';
+
+/**
+ * Story 47.5 (FR-20) — la fin d'un créneau candidat de `durationSlots` créneaux, ou `null` pour un créneau seul
+ * (durée 1, journée entière, durée incohérente). Seul passage par `spanEnd` (`@master-jdr/shared`) des libellés de
+ * candidats : la plage d'un vote se dit partout de la même façon, jamais recalculée à la main.
+ */
+function candidateEnd(
+  option: { date: string; slot: DaySlot },
+  durationSlots: number,
+): SpanPoint | null {
+  if (!Number.isInteger(durationSlots) || durationSlots <= 1 || option.slot === 'FULL_DAY') {
+    return null;
+  }
+  const day = option.date.substring(0, 10);
+  const end = spanEnd(day, option.slot, durationSlots);
+  return { date: end.date, slot: end.slot };
+}
+
+/** « ven. 6 nov. soir → dim. 8 nov. après-midi » pour un candidat de plusieurs créneaux, `null` pour un créneau seul. */
+export function candidateSpanShort(
+  option: { date: string; slot: DaySlot },
+  durationSlots: number,
+): string | null {
+  const end = candidateEnd(option, durationSlots);
+  return end
+    ? spanShortLabel({ date: option.date.substring(0, 10), slot: option.slot }, end)
+    : null;
+}
+
+/** « du vendredi 6 soir au dimanche 8 après-midi » pour un candidat de plusieurs créneaux, `null` pour un seul. */
+export function candidateSpanSentence(
+  option: { date: string; slot: DaySlot },
+  durationSlots: number,
+): string | null {
+  const end = candidateEnd(option, durationSlots);
+  return end
+    ? spanSentence({ date: option.date.substring(0, 10), slot: option.slot }, end)
+    : null;
+}
+
+/** « ven. 6 soir → dim. 8 après-midi » — la forme compacte (sans mois) des lignes du sélecteur de réponse. */
+export function spanCompactLabel(start: SpanPoint, end: SpanPoint): string {
+  const side = (p: SpanPoint) => {
+    const [y, m, d] = p.date.split('-').map(Number);
+    const day = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(Date.UTC(y, m - 1, d)));
+    return [day, slotWord(p.slot)].filter(Boolean).join(' ');
+  };
+  return `${side(start)} → ${side(end)}`;
+}
+
+/** Story 47.5 — l'entrée de calendrier (option de vote ou séance) écrite « début → fin » si c'est une plage, sinon
+ *  `null` : le créneau seul garde l'écriture de chaque surface. */
+export function entrySpanShortLabel(entry: {
+  date: string;
+  slot?: DaySlot | null;
+  endDate?: string;
+  endSlot?: DaySlot | null;
+}): string | null {
+  const start = { date: entry.date, slot: entry.slot };
+  const end = entry.endDate ? { date: entry.endDate, slot: entry.endSlot } : null;
+  return end && isSpan(start, end) ? spanShortLabel(start, end) : null;
+}

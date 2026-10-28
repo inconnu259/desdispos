@@ -211,7 +211,7 @@
           } @else {
             <p class="seance-row__chosen-date">
               @if (seance.poll.chosenDate) {
-                {{ dateRetenue(formatChosenDate(seance.poll)) }}
+                {{ dateRetenue(formatSeanceDate(seance)) }}
               } @else {
                 {{ theme.tone()['common.vote_cloture_sans_date_retenue'] }}
               }
@@ -236,7 +236,7 @@
           } @else {
             <p class="seance-row__chosen-date">
               @if (seance.poll.chosenDate) {
-                {{ dateRetenue(formatChosenDate(seance.poll)) }}
+                {{ dateRetenue(formatSeanceDate(seance)) }}
               } @else {
                 {{ theme.tone()['common.vote_cloture_sans_date_retenue'] }}
               }

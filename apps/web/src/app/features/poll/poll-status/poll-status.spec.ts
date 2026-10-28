@@ -2,10 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
-import { vi } from 'vitest';
+import { it, vi } from 'vitest';
 import type { PartieMemberDto, SessionPollDto } from '@master-jdr/shared';
 import { PollStatusPanel } from './poll-status';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { TONE_MAP } from '../../../core/theme/tones';
 
 const alice: PartieMemberDto = {
   role: 'MEMBER',
@@ -276,5 +277,50 @@ describe('PollStatusPanel', () => {
         .missingVotersForOption(pollWithPartialVote.options[1])
         .map((m: PartieMemberDto) => m.pseudo),
     ).toEqual(['Dana']);
+  });
+});
+
+describe('PollStatusPanel — vote de plusieurs créneaux (Story 47.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const longPoll: SessionPollDto = { ...fakePoll, durationSlots: 6 };
+
+  it('chaque option s’écrit de son début à sa fin ; un vote d’un créneau garde « date — créneau »', async () => {
+    const { fixture } = await createComponent(longPoll);
+    const dates = [...fixture.nativeElement.querySelectorAll('.poll-status__date')].map((n) =>
+      (n as HTMLElement).textContent?.trim(),
+    );
+    expect(dates).toEqual([
+      'sam. 1 août matin → dim. 2 août soir',
+      'sam. 8 août après-midi → lun. 10 août matin',
+    ]);
+    TestBed.resetTestingModule();
+
+    const single = await createComponent(fakePoll);
+    const first = single.fixture.nativeElement.querySelector('.poll-status__date') as HTMLElement;
+    expect(first.textContent?.trim()).toBe('sam. 1 août — Matin');
+  });
+
+  it('la confirmation de scellement nomme la plage, sans « — créneau » en plus', async () => {
+    const { fixture, dialog } = await createComponent(longPoll, true);
+
+    await (fixture.componentInstance as any).onChooseClick(longPoll.options[0]);
+
+    expect(dialog.open.mock.calls[0][1].data.message).toBe(
+      'Confirmer sam. 1 août matin → dim. 2 août soir comme date de la prochaine séance ?',
+    );
+  });
+});
+
+describe('PollStatusPanel — gabarit réel de la confirmation de scellement (Story 47.5)', () => {
+  // Pour une plage, `onChooseClick` remplit {date} par la plage « début → fin » et {slot} par du vide, puis retire le
+  // séparateur « {date} — » pour ne pas écrire un « — » orphelin. Cette retouche repose sur le motif exact
+  // « {date} — {slot} » : si un thème change son gabarit, ce test casse AVANT que la phrase ne soit fausse à l'écran.
+  it.each([
+    ['atelier-cuivre', TONE_MAP['atelier-cuivre']],
+    ['foret-ancienne', TONE_MAP['foret-ancienne']],
+    ['grimoire-emeraude', TONE_MAP['grimoire-emeraude']],
+  ])('%s : « pollui.status_choose_confirm » contient « {date} — {slot} »', (_name, tone) => {
+    expect(tone['pollui.status_choose_confirm']).toContain('{date} — {slot}');
   });
 });

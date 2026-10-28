@@ -182,6 +182,13 @@
                     @if (band.vote) {
                       <app-poll-track class="band__track in-month" [vote]="band.vote" />
                     }
+                    <!-- Story 47.5 — plusieurs plages du même vote se superposent sur ce créneau : « ×n »,
+                         coin haut droit. Décoratif (`aria-hidden`) : le nom de la bande le dit. -->
+                    @if (band.overlap >= 2) {
+                      <span class="band__overlap" aria-hidden="true">{{
+                        overlapMark(band.overlap)
+                      }}</span>
+                    }
                     <!-- Story 36.8 — le CANAL SÉPARÉ. 🚨 Émis sans AUCUNE condition de rang :
                          il survit sous une séance et sous un vote (AC2), et c'est tout l'intérêt
                          de la séparation. Descendant de `.band`, qui porte `data-cell-date` et

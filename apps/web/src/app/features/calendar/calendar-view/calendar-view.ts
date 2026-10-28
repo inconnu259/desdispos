@@ -98,6 +98,7 @@ import {
   type RailTarget,
   buildDayDetail,
   dateKeyToLocalMidnight,
+  entryCoveredDays,
   entryCoversCell,
   entryPartieId,
   nextMeaningfulDate,
@@ -139,7 +140,7 @@ import { AvailableSlotsPanel, availableSlotKey } from '../available-slots/availa
 import { ColumnDockService } from '../side-dock/column-dock.service';
 import { SideDock } from '../side-dock/side-dock';
 import { VoteAnswerPicker } from '../vote-answer-picker/vote-answer-picker';
-import type { VoteOptionActivatedEvent, VoteParticipation } from '../poll-track.utils';
+import type { VoteLine, VoteOptionActivatedEvent, VoteParticipation } from '../poll-track.utils';
 import {
   ConjonctionDraftService,
   type ConjonctionDraft,
@@ -153,10 +154,15 @@ import {
   type ExtendVoteData,
 } from '../../events/extend-vote-dialog/extend-vote-dialog';
 import { PollMissingPanel } from '../poll-missing/poll-missing';
-import { isSpan } from '../span-label';
+import { worstAvailability } from '../group-availability.utils';
+import { candidateSpanSentence, candidateSpanShort, isSpan } from '../span-label';
 import { composeSpanKeys, earliestStart } from '../compose-span.utils';
 import { composeLoss, type LossOption } from '../compose-loss.utils';
-import { DURATION_TEXT, type SpanStart } from '../../../shared/duration-stepper/duration-labels';
+import {
+  DURATION_TEXT,
+  type SpanStart,
+  worstAvailabilityLabel,
+} from '../../../shared/duration-stepper/duration-labels';
 
 /** Story 8.8, AC7/AC8 : un vote actif, étiqueté par son scénario (et sa séance si le scénario en a
  * plusieurs) — remplace le signal `activePoll` unique qui ne représentait qu'« un » poll par Partie. */
@@ -1233,7 +1239,8 @@ export class CalendarView implements OnInit {
     const dates = new Set<string>();
     for (const e of this.allCalendarEntries()) {
       if (e.type !== 'votes-en-cours' || e.vote?.pollId !== current.pollId) continue;
-      if (e.date) dates.add(e.date);
+      // Story 47.5 — une plage couvre tous ses jours : aucun n'est estompé.
+      for (const day of entryCoveredDays(e)) dates.add(day);
     }
     return dates;
   });
@@ -1627,6 +1634,12 @@ export class CalendarView implements OnInit {
             });
     const position = this.destinySlotPosition();
     const current = position > 0 ? slots[position - 1] : null;
+    // Story 47.5 — un candidat de plusieurs créneaux s'écrit de son début à sa fin ; sa pire disponibilité sur la
+    // plage ne se lit qu'en JDR, avec la carte de chaleur de CETTE partie déjà chargée (jamais au groupe).
+    const duration = entry.durationSlots;
+    const heat = this.heatmap();
+    const showWorst =
+      duration > 1 && entry.family === 'jdr' && this.partieId() === entry.partieId && heat.length > 0;
     return {
       title: entry.title,
       subtitle,
@@ -1634,8 +1647,9 @@ export class CalendarView implements OnInit {
       bestLabel: tone['calendar.destiny_board_best'],
       slots: slots.map((o) => ({
         optionId: o.optionId,
-        label: `${shortDayLabel(o.date)} · ${SLOT_LABELS[o.slot]}`,
+        label: candidateSpanShort(o, duration) ?? `${shortDayLabel(o.date)} · ${SLOT_LABELS[o.slot]}`,
         yesText: fillTone(tone['calendar.destiny_board_yes'], { n: o.yes }),
+        availabilityText: this.worstAvailabilityText(showWorst ? heat : null, o, duration),
         ratio: eligible > 0 ? Math.min(1, o.yes / eligible) : 0,
         best: best?.optionId === o.optionId,
         current: o.optionId === currentId,
@@ -1648,16 +1662,48 @@ export class CalendarView implements OnInit {
           ? tone['calendar.destiny_reopen_vote']
           : null,
       announcement: current
-        ? fillTone(tone['calendar.destiny_board_announce'], {
-            n: position,
-            total: slots.length,
-            date: DESTINY_ANNOUNCE_DATE_FORMAT.format(new Date(`${current.date}T00:00:00Z`)),
-            slot: SLOT_LABELS[current.slot].toLowerCase(),
-            yes: current.yes,
-          })
+        ? this.announceCandidate(position, slots.length, current, duration)
         : '',
     };
   });
+
+  /** Story 47.5 — « 2 dispos sur toute la plage », ou `null` (créneau seul, carte non chargée, cellule manquante). */
+  private worstAvailabilityText(
+    heat: readonly AggregatedSlotDto[] | null,
+    option: { date: string; slot: DaySlot },
+    durationSlots: number,
+  ): string | null {
+    if (!heat || durationSlots <= 1) return null;
+    const worst = worstAvailability(heat, option, durationSlots);
+    return worst === null ? null : worstAvailabilityLabel(worst);
+  }
+
+  /** Story 47.5 — l'annonce du créneau courant : la phrase d'un créneau seul est celle d'avant ; une plage dit
+   *  « Créneau 2 sur 5, du vendredi 6 soir au dimanche 8 après-midi, 4 oui ». */
+  private announceCandidate(
+    n: number,
+    total: number,
+    current: { date: string; slot: DaySlot; yes: number },
+    durationSlots: number,
+  ): string {
+    const tone = this.theme.tone();
+    const sentence = candidateSpanSentence(current, durationSlots);
+    if (sentence) {
+      return fillTone(DURATION_TEXT.announceSpan, {
+        n,
+        total,
+        range: sentence,
+        yes: fillTone(tone['calendar.destiny_board_yes'], { n: current.yes }),
+      });
+    }
+    return fillTone(tone['calendar.destiny_board_announce'], {
+      n,
+      total,
+      date: DESTINY_ANNOUNCE_DATE_FORMAT.format(new Date(`${current.date}T00:00:00Z`)),
+      slot: SLOT_LABELS[current.slot].toLowerCase(),
+      yes: current.yes,
+    });
+  }
 
   // ─── Story 44.5 — le tiroir de la destinée, sous 768 px ───────────────────────
   //
@@ -1688,7 +1734,10 @@ export class CalendarView implements OnInit {
     // « 2 / 5 · sam. 18 oct. soir · 4 oui · fin du vote ven. 30 oct. » : chaque morceau absent est omis.
     const parts = [
       current ? `${position} / ${slots.length}` : null,
-      current ? `${shortDayLabel(current.date)} ${SLOT_LABELS[current.slot].toLowerCase()}` : null,
+      current
+        ? (candidateSpanShort(current, entry.durationSlots) ??
+          `${shortDayLabel(current.date)} ${SLOT_LABELS[current.slot].toLowerCase()}`)
+        : null,
       current ? fillTone(tone['calendar.destiny_board_yes'], { n: current.yes }) : null,
       deadline === null
         ? null
@@ -1793,7 +1842,7 @@ export class CalendarView implements OnInit {
     const entry = this.destinyEntry();
     if (!entry || !entry.can.choose || this.pollActionPending()) return;
     const todayKey = this.todayKey;
-    const slots = rankedEntrySlots(entry.options, todayKey);
+    const slots = rankedEntrySlots(entry.options, todayKey, entry.durationSlots);
     const confirm = (optionId: string) =>
       this.pollSvc.chooseDate(entry.partieId, entry.pollId, { optionId });
     // Posé AVANT d'ouvrir la fenêtre : deux touchers rapprochés n'en ouvrent pas deux.
@@ -2989,6 +3038,10 @@ export class CalendarView implements OnInit {
   protected readonly pickerVote = signal<VoteParticipation | null>(null);
   protected readonly pickerAnchor = signal<HTMLElement | null>(null);
   protected readonly pickerLabel = signal('');
+  /** Story 47.5 — les plages du vote qui couvrent le créneau touché, UNE LIGNE CHACUNE, la courante d'abord
+   *  (celle de la Destinée si elle couvre le créneau, sinon l'ordre chronologique que `buildDayDetail()` a posé).
+   *  Moins de deux : le sélecteur d'avant. */
+  protected readonly pickerLines = signal<readonly VoteLine[]>([]);
   /** L'élément à qui rendre le focus à la fermeture — sans quoi un utilisateur clavier retombe
    *  en haut du document (AC7). */
   private pickerReturnFocus: HTMLElement | null = null;
@@ -3762,10 +3815,25 @@ export class CalendarView implements OnInit {
       const entry = this.groupPolls().find((e) => e.poll.id === event.vote.pollId);
       if (!entry || !this.canVoteGroupPoll(entry.poll)) return;
     }
-    this.pickerVote.set(event.vote);
+    const lines = this.orderPickerLines(event.lines ?? []);
+    this.pickerLines.set(lines);
+    // Plusieurs plages : le vote courant du sélecteur est celui de la première ligne.
+    this.pickerVote.set(lines.length >= 2 ? lines[0].vote : event.vote);
     this.pickerAnchor.set(event.anchor);
     this.pickerLabel.set(this.composePickerLabel(event.date, event.slot));
     this.pickerReturnFocus = event.anchor;
+  }
+
+  /**
+   * Story 47.5 — la plage COURANTE d'abord : l'option de la Destinée si elle couvre le créneau, sinon l'ordre
+   * chronologique reçu tel quel. Moins de deux lignes : aucune (le sélecteur d'une plage). La couverture n'est pas
+   * recalculée ici — les lignes sont celles de `buildDayDetail()`.
+   */
+  private orderPickerLines(lines: readonly VoteLine[]): readonly VoteLine[] {
+    if (lines.length < 2) return [];
+    const current = this.destinyOptionId();
+    const at = current === null ? -1 : lines.findIndex((l) => l.vote.optionId === current);
+    return at <= 0 ? lines : [lines[at], ...lines.slice(0, at), ...lines.slice(at + 1)];
   }
 
   /** « ven. 28 août — soir ». Composé ICI et non dans le sélecteur : les formateurs vivent déjà
@@ -3777,6 +3845,7 @@ export class CalendarView implements OnInit {
 
   protected closePicker(): void {
     this.pickerVote.set(null);
+    this.pickerLines.set([]);
     this.pickerAnchor.set(null);
     // Le focus revient à la ligne ou à la bande d'où l'on vient (AC7). `isConnected` : la surface
     // a pu être re-rendue entre-temps (rechargement après écriture).
@@ -3798,8 +3867,9 @@ export class CalendarView implements OnInit {
   }
 
   /** AC8/AC9/AC10/AC11 — répondre. */
-  protected async onVoteAnswerChosen(answer: VoteAnswer): Promise<void> {
-    const vote = this.pickerVote();
+  protected async onVoteAnswerChosen(answer: VoteAnswer, chosen?: VoteParticipation): Promise<void> {
+    // Story 47.5 — avec plusieurs plages, la ligne touchée NOMME l'option ; sinon, l'unique vote du sélecteur.
+    const vote = chosen ?? this.pickerVote();
     if (!vote || this.pollActionPending()) return;
     await this.writeVote(
       vote,
@@ -3810,8 +3880,8 @@ export class CalendarView implements OnInit {
   }
 
   /** AC3 — retirer. **Seul chemin de retrait du calendrier** depuis cette story. */
-  protected async onVoteWithdrawn(): Promise<void> {
-    const vote = this.pickerVote();
+  protected async onVoteWithdrawn(chosen?: VoteParticipation): Promise<void> {
+    const vote = chosen ?? this.pickerVote();
     if (!vote || this.pollActionPending()) return;
     await this.writeVote(
       vote,

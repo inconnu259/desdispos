@@ -744,3 +744,41 @@ describe('CalendarAgendaView — une plage tient en UNE ligne (Story 47.3)', () 
     expect(meta).not.toContain('→');
   });
 });
+
+describe('CalendarAgendaView — options de plusieurs créneaux, écrites de bout en bout (Story 47.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const spanned = (): AgendaEntry[] =>
+    options(0, 3, 1).map((o) => ({
+      ...o,
+      slot: 'EVENING' as const,
+      endDate: (
+        { '2026-08-28': '2026-08-30', '2026-08-29': '2026-08-31', '2026-08-30': '2026-09-01' } as Record<
+          string,
+          string
+        >
+      )[o.date],
+      endSlot: 'AFTERNOON' as const,
+    }));
+
+  it('chaque option dépliée dit son début et sa fin', async () => {
+    const fixture = await createAgenda(spanned());
+    expect(optionLabels(fixture)).toEqual([
+      'sam. 29 août soir → lun. 31 août après-midi',
+      'dim. 30 août soir → mar. 1 sept. après-midi',
+      'ven. 28 août soir → dim. 30 août après-midi',
+    ]);
+  });
+
+  it('la demande de scellement porte la plage écrite', async () => {
+    const fixture = await createMjAgenda(spanned());
+    const requests: { dateLabel: string; optionId: string }[] = [];
+    fixture.componentInstance.sealRequested.subscribe((r: { dateLabel: string; optionId: string }) =>
+      requests.push(r),
+    );
+    (fixture.nativeElement.querySelector('.agenda-option__seal') as HTMLButtonElement).click();
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0].dateLabel).toBe('sam. 29 août soir → lun. 31 août après-midi');
+  });
+});

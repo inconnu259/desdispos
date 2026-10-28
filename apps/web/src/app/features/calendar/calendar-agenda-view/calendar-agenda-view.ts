@@ -27,7 +27,7 @@ import {
   pollGroupBadge,
   sectionIdFor,
 } from '../agenda-badge.utils';
-import { isSpan, spanShortLabel } from '../span-label';
+import { entrySpanShortLabel, isSpan, spanShortLabel } from '../span-label';
 
 /** Type d'entrée affichée dans la vue Agenda (Story 30.6, AC2) — un par couche pertinente.
  *
@@ -615,6 +615,10 @@ export class CalendarAgendaView {
 
   /** Le créneau proposé, lu en colonne : « ven. 28 août, soir ». */
   protected optionLabel(entry: AgendaEntry): string {
+    // Story 47.5 — un candidat de plusieurs créneaux s'écrit de son début à sa fin, ici comme dans la confirmation
+    // de scellement (qui réutilise ce libellé) ; un créneau seul reste inchangé.
+    const span = entrySpanShortLabel(entry);
+    if (span) return span;
     const date = OPTION_DATE_FORMAT.format(dateKeyToLocalMidnight(entry.date));
     return entry.slot && entry.slot !== 'FULL_DAY'
       ? `${date}, ${SLOT_LABELS[entry.slot].toLowerCase()}`

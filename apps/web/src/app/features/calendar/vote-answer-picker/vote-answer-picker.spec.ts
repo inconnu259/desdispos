@@ -127,3 +127,113 @@ describe('VoteAnswerPicker', () => {
     expect(withdrawBtn(fixture)!.getAttribute('role')).toBe('menuitem');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 47.5 — plusieurs plages du vote sur le créneau : une ligne par plage
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('VoteAnswerPicker — une ligne par plage (Story 47.5)', () => {
+  beforeEach(() => TestBed.configureTestingModule({ imports: [VoteAnswerPicker] }));
+
+  const first = vote({ optionId: 'o1', myAnswer: 'MAYBE' });
+  const second = vote({ optionId: 'o2' });
+  const lines = [
+    { vote: first, range: 'ven. 6 soir → dim. 8 après-midi' },
+    { vote: second, range: 'ven. 13 soir → dim. 15 après-midi' },
+  ];
+
+  async function createMulti() {
+    const fixture = TestBed.createComponent(VoteAnswerPicker);
+    fixture.componentRef.setInput('vote', first);
+    fixture.componentRef.setInput('lines', lines);
+    fixture.componentRef.setInput('slotLabel', 'sam. 14 — après-midi');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('deux plages : deux groupes nommés par leur plage, chacun avec ses trois réponses', async () => {
+    const fixture = await createMulti();
+    const groups = [...fixture.nativeElement.querySelectorAll('.picker__line')] as HTMLElement[];
+
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(lines.map((l) => l.range));
+    expect(groups.map((g) => g.getAttribute('role'))).toEqual(['group', 'group']);
+    for (const g of groups) {
+      expect([...g.querySelectorAll('.opt2--answer')].map((b) => b.textContent?.trim())).toEqual([
+        'oui',
+        'peut-être',
+        'non',
+      ]);
+    }
+  });
+
+  it('la première ligne est la courante : son bouton « peut-être » (ma réponse) prend le focus', async () => {
+    const fixture = await createMulti();
+    const focused = document.activeElement as HTMLElement | null;
+    expect(focused?.dataset['option']).toBe('o1');
+    expect(focused?.dataset['answer']).toBe('MAYBE');
+  });
+
+  it('répondre sur une ligne NOMME l’option : c’est lineAnswerChosen qui part, pas answerChosen', async () => {
+    const fixture = await createMulti();
+    const chosen: { vote: VoteParticipation; answer: VoteAnswer }[] = [];
+    const plain: VoteAnswer[] = [];
+    fixture.componentInstance.lineAnswerChosen.subscribe((e) => chosen.push(e));
+    fixture.componentInstance.answerChosen.subscribe((a: VoteAnswer) => plain.push(a));
+
+    const secondYes = fixture.nativeElement.querySelector(
+      '.opt2--answer[data-option="o2"][data-answer="YES"]',
+    ) as HTMLButtonElement;
+    secondYes.click();
+
+    expect(chosen).toEqual([{ vote: second, answer: 'YES' }]);
+    expect(plain).toEqual([]);
+  });
+
+  it('le retrait n’existe que sur la ligne où une réponse est posée, et nomme son option', async () => {
+    const fixture = await createMulti();
+    const withdrawn: VoteParticipation[] = [];
+    fixture.componentInstance.lineWithdrawn.subscribe((v) => withdrawn.push(v));
+
+    const buttons = [
+      ...fixture.nativeElement.querySelectorAll('.opt2--withdraw'),
+    ] as HTMLButtonElement[];
+    expect(buttons.map((b) => b.dataset['option'])).toEqual(['o1']);
+    buttons[0].click();
+
+    expect(withdrawn).toEqual([first]);
+  });
+
+  it('une ligne : le sélecteur d’avant, sans groupe ni titre de plage', async () => {
+    const fixture = TestBed.createComponent(VoteAnswerPicker);
+    fixture.componentRef.setInput('vote', first);
+    fixture.componentRef.setInput('lines', [lines[0]]);
+    fixture.componentRef.setInput('slotLabel', 'sam. 14 — après-midi');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('.picker__line')).toBeNull();
+    const emitted: VoteAnswer[] = [];
+    fixture.componentInstance.answerChosen.subscribe((a: VoteAnswer) => emitted.push(a));
+    (fixture.nativeElement.querySelector('.opt2--answer') as HTMLButtonElement).click();
+    expect(emitted).toEqual(['YES']);
+  });
+
+  it('occupé : aucune ligne ne répond', async () => {
+    const fixture = TestBed.createComponent(VoteAnswerPicker);
+    fixture.componentRef.setInput('vote', first);
+    fixture.componentRef.setInput('lines', lines);
+    fixture.componentRef.setInput('slotLabel', 'x');
+    fixture.componentRef.setInput('busy', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const emitted: unknown[] = [];
+    fixture.componentInstance.lineAnswerChosen.subscribe((e) => emitted.push(e));
+    const btn = fixture.nativeElement.querySelector('.opt2--answer') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    btn.click();
+    expect(emitted).toEqual([]);
+  });
+});

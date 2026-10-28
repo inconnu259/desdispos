@@ -25,7 +25,34 @@ export const DURATION_TEXT = {
   /** Story 47.4 — au-delà d'un créneau, une journée entière ne se désigne pas. */
   fullDayRefused:
     'Une journée entière ne dure qu’un créneau : choisissez un matin, un après-midi ou un soir.',
+  /** Story 47.5 — plusieurs plages d'un même vote se superposent sur un créneau : la marque « ×2 » du coin. */
+  overlapMark: '×{n}',
+  /** Story 47.5 — le nom accessible de cette marque (la bande se lit sans la voir). */
+  overlapAria: '{n} plages se superposent (×{n})',
+  /** Story 47.5 — l'annonce du créneau courant du tableau de vote quand le candidat est une plage. */
+  announceSpan: 'Créneau {n} sur {total}, {range}, {yes}',
+  /** Story 47.5 — le pire nombre de disponibles d'une plage candidate, sur la carte du tableau de vote. */
+  worstAvailability: '{n} dispos sur toute la plage',
+  worstAvailabilityOne: '{n} dispo sur toute la plage',
 } as const;
+
+/** Story 47.5 — « ×2 ». */
+export function overlapMarkLabel(n: number): string {
+  return DURATION_TEXT.overlapMark.replace('{n}', String(n));
+}
+
+/** Story 47.5 — « 2 plages se superposent (×2) ». */
+export function overlapAriaLabel(n: number): string {
+  return DURATION_TEXT.overlapAria.replaceAll('{n}', String(n));
+}
+
+/** Story 47.5 — « 2 dispos sur toute la plage » (« 1 dispo … » au singulier ; 0 s'écrit « 0 dispo »). */
+export function worstAvailabilityLabel(n: number): string {
+  return (n > 1 ? DURATION_TEXT.worstAvailability : DURATION_TEXT.worstAvailabilityOne).replace(
+    '{n}',
+    String(n),
+  );
+}
 
 /** Story 47.4 — « Changer la durée efface les 4 réponses déjà données. » */
 export function durationLossLabel(answers: number): string {

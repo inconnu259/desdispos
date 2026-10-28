@@ -90,6 +90,20 @@ describe('EventForm — modification d’une conjonction à sondage (Story 40.5)
     return { fixture, form, el, setDeadline };
   }
 
+  it('Story 47.5 — durée 3 : chaque puce de créneau écrit sa plage, de son début à sa fin ; durée 1 : le texte d’avant', async () => {
+    const base = pollCard(dayKey(5));
+    const long = { ...base, seance: { ...base.seance!, durationSlots: 3 } };
+    const { el } = await mount(long);
+    const chips = Array.from(el.querySelectorAll('.ec__chip-label')).map((n) => n.textContent ?? '');
+    expect(chips).toHaveLength(2);
+    for (const text of chips) expect(text).toContain('→');
+    TestBed.resetTestingModule();
+
+    const single = await mount(base);
+    const plain = Array.from(single.el.querySelectorAll('.ec__chip-label')).map((n) => n.textContent ?? '');
+    for (const text of plain) expect(text).not.toContain('→');
+  });
+
   it('mode sondage, bascule figée, créneaux triés et échéance préremplis ; le dto envoie pollOptions + pollDeadline sans date ni créneau', async () => {
     const { form, el } = await mount(pollCard(dayKey(5)));
 

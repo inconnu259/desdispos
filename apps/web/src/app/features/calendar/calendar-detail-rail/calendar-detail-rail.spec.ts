@@ -388,6 +388,27 @@ describe('CalendarDetailRail — le chemin CLAVIER vers le sélecteur de répons
     expect(emitted[0].date.getDate()).toBe(20);
   });
 
+  it('Story 47.5 — l’activer signale TOUTES les plages du vote qui couvrent le créneau', async () => {
+    const other: AgendaEntry = {
+      ...VOTE,
+      key: 'poll-p1-o2',
+      date: '2026-08-19',
+      slot: 'EVENING',
+      endDate: '2026-08-20',
+      endSlot: 'AFTERNOON',
+      vote: { ...VOTE.vote!, optionId: 'o2' },
+    };
+    const detail = buildDayDetail('2026-08-20', [VOTE, other], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const emitted: any[] = [];
+    fixture.componentInstance.voteOptionActivated.subscribe((e: any) => emitted.push(e));
+
+    (fixture.nativeElement.querySelector('button.v--vote') as HTMLElement).click();
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].lines.map((l: any) => l.vote.optionId).sort()).toEqual(['o1', 'o2']);
+  });
+
   it('AC12 — sans participation servie, la ligne de vote n’est pas activable', async () => {
     // Dégradation honnête héritée de la 36.6 : pas d'agrégats ⇒ pas de piste, donc pas de
     // sélecteur non plus. Une ligne cliquable qui ne saurait pas quoi ouvrir serait un piège.

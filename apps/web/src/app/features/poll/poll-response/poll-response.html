@@ -7,7 +7,7 @@
   @for (opt of poll().options; track opt.id) {
     <div class="poll-response__option" [class.poll-response__option--failed]="failedOptionIds().has(opt.id)">
       <span class="poll-response__date">
-        {{ formatDate(opt.date) }} — {{ SLOT_LABELS[opt.slot] }}
+        {{ optionLabel(opt) }}
       </span>
       <div class="poll-response__buttons">
         @for (a of VOTE_OPTIONS; track a) {

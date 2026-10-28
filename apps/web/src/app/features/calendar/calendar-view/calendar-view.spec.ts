@@ -8805,3 +8805,319 @@ describe('CalendarView — masquer une fenêtre de l’automate (Story 46.4)', (
     expect(root(fixture).querySelector('.creneau-card__action')).toBeNull();
   });
 });
+
+// ─── Story 47.5 — voter et fixer une plage ────────────────────────────────────
+
+describe('CalendarView — voter et fixer une plage (Story 47.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
+
+  const opt = (optionId: string, date: string, slot = 'EVENING', yes = 0) => ({
+    optionId,
+    date,
+    slot: slot as 'MORNING' | 'AFTERNOON' | 'EVENING',
+    yes,
+    maybe: 0,
+    no: 0,
+    myAnswer: null,
+  });
+
+  // Trois week-ends (vendredis soir) d'une plage de 6 créneaux, dans le futur lointain.
+  const weekends = (over: Partial<OpenPollEntry> = {}) =>
+    openPollEntry({
+      pollId: 'poll-w',
+      partieId: 'partie-A',
+      partieName: 'Les Cendres',
+      title: 'Week-end jeux',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      eligibleCount: 5,
+      answeredCount: 4,
+      durationSlots: 6,
+      can: ORGANIZER,
+      options: [
+        opt('w1', '2030-03-01', 'EVENING', 1),
+        opt('w2', '2030-03-08', 'EVENING', 4),
+        opt('w3', '2030-03-15', 'EVENING', 2),
+      ],
+      ...over,
+    });
+
+  const root = (fixture: any) => fixture.nativeElement as HTMLElement;
+
+  it('plateau : chaque candidat s’écrit de son début à sa fin ; l’annonce du créneau courant dit la plage', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [weekends()] });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-w');
+    comp.chooseDestinySlot('w2');
+    await tick(fixture);
+
+    expect(comp.destinyBoard().slots.map((s: any) => s.label)).toEqual([
+      'ven. 1 mars soir → dim. 3 mars après-midi',
+      'ven. 8 mars soir → dim. 10 mars après-midi',
+      'ven. 15 mars soir → dim. 17 mars après-midi',
+    ]);
+    expect(comp.destinyBoard().announcement).toBe(
+      'Créneau 2 sur 3, du vendredi 8 soir au dimanche 10 après-midi, 4 oui',
+    );
+  });
+
+  it('un vote d’un créneau : libellé et annonce d’avant, aucune disponibilité', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [weekends({ durationSlots: 1 })],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-w');
+    comp.chooseDestinySlot('w2');
+    await tick(fixture);
+
+    expect(comp.destinyBoard().slots[1].label).toBe('ven. 8 mars · Soir');
+    expect(comp.destinyBoard().announcement).toContain('vendredi 8 mars, soir, 4 oui');
+    expect(comp.destinyBoard().slots[1].availabilityText).toBeNull();
+  });
+
+  it('tiroir replié : « n / N · départ → fin · x oui · fin du vote … »', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      desktop: false,
+      openPolls: [weekends()],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-w');
+    comp.chooseDestinySlot('w2');
+    await tick(fixture);
+
+    expect(comp.destinySheet().summary).toMatch(
+      /^2 \/ 3 · ven\. 8 mars soir → dim\. 10 mars après-midi · 4 oui · fin du vote /,
+    );
+  });
+
+  it('Destinée : les jours couverts par une plage ne sont pas estompés', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [weekends()] });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-w');
+    await tick(fixture);
+
+    expect([...comp.destinyDates()].sort()).toEqual([
+      '2030-03-01',
+      '2030-03-02',
+      '2030-03-03',
+      '2030-03-08',
+      '2030-03-09',
+      '2030-03-10',
+      '2030-03-15',
+      '2030-03-16',
+      '2030-03-17',
+    ]);
+  });
+
+  describe('pire disponibilité d’une plage candidate', () => {
+    const cells = (week: string[], available: number[]) =>
+      week.map((key, i) => {
+        const [date, slot] = key.split('|');
+        return { date, slot, available: available[i], unavailable: 0, unknown: 0, total: 5 };
+      });
+    const second = [
+      '2030-03-08|EVENING',
+      '2030-03-09|MORNING',
+      '2030-03-09|AFTERNOON',
+      '2030-03-09|EVENING',
+      '2030-03-10|MORNING',
+      '2030-03-10|AFTERNOON',
+    ];
+
+    it('JDR, carte de chaleur chargée : « 2 dispos sur toute la plage » sur la carte de 6 créneaux', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [TWO_OPTION_POLL_SCENARIO],
+        openPolls: [weekends({ pollId: 'poll1', partieId: 'partie-1' })],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.chooseDestiny('poll1');
+      await tick(fixture);
+
+      comp.heatmap.set(cells(second, [5, 2, 4, 5, 5, 5]));
+      await tick(fixture);
+
+      const slots = comp.destinyBoard().slots;
+      expect(slots[1].availabilityText).toBe('2 dispos sur toute la plage');
+      // Les autres semaines ne sont pas dans la carte : pas de chiffre.
+      expect(slots[0].availabilityText).toBeNull();
+      expect(slots[2].availabilityText).toBeNull();
+      expect(root(fixture).querySelector('.destiny-board__availability')?.textContent).toContain(
+        '2 dispos sur toute la plage',
+      );
+    });
+
+    it('une cellule manquante : aucun chiffre', async () => {
+      const { fixture } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [TWO_OPTION_POLL_SCENARIO],
+        openPolls: [weekends({ pollId: 'poll1', partieId: 'partie-1' })],
+      });
+      const comp = fixture.componentInstance as any;
+      comp.chooseDestiny('poll1');
+      await tick(fixture);
+
+      comp.heatmap.set(cells(second.slice(0, 5), [5, 2, 4, 5, 5]));
+      await tick(fixture);
+
+      expect(comp.destinyBoard().slots[1].availabilityText).toBeNull();
+    });
+
+    it('calendrier personnel ou créneau seul : rien', async () => {
+      const personal = await createCalendarView({ mode: 'personal', openPolls: [weekends()] });
+      const pc = personal.fixture.componentInstance as any;
+      pc.chooseDestiny('poll-w');
+      await tick(personal.fixture);
+
+      pc.heatmap.set(cells(second, [5, 2, 4, 5, 5, 5]));
+      await tick(personal.fixture);
+      expect(pc.destinyBoard().slots[1].availabilityText).toBeNull();
+      TestBed.resetTestingModule();
+
+      const single = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        scenarios: [TWO_OPTION_POLL_SCENARIO],
+        openPolls: [weekends({ pollId: 'poll1', partieId: 'partie-1', durationSlots: 1 })],
+      });
+      const sc = single.fixture.componentInstance as any;
+      sc.chooseDestiny('poll1');
+      await tick(single.fixture);
+
+      sc.heatmap.set(cells(second, [5, 2, 4, 5, 5, 5]));
+      await tick(single.fixture);
+      expect(sc.destinyBoard().slots[1].availabilityText).toBeNull();
+    });
+  });
+
+  describe('sélecteur de réponse : une ligne par plage', () => {
+    const lineOf = (optionId: string, range: string, myAnswer: any = null) => ({
+      vote: {
+        partieId: 'partie-A',
+        pollId: 'poll-w',
+        optionId,
+        yes: 1,
+        maybe: 0,
+        no: 0,
+        total: 5,
+        myAnswer,
+      },
+      range,
+    });
+
+    async function open(destinyOption: string | null, lines: any[]) {
+      const ctx = await createCalendarView({ mode: 'personal', openPolls: [weekends()] });
+      const comp = ctx.fixture.componentInstance as any;
+      comp.chooseDestiny('poll-w');
+      if (destinyOption) comp.chooseDestinySlot(destinyOption);
+      await tick(ctx.fixture);
+      const anchor = document.createElement('button');
+      document.body.appendChild(anchor);
+      comp.onVoteOptionActivated({
+        vote: lines[0].vote,
+        lines,
+        anchor,
+        date: new Date(2030, 2, 9),
+        slot: 'AFTERNOON',
+      });
+      await tick(ctx.fixture);
+      return { ...ctx, comp };
+    }
+
+    const lines = () => [
+      lineOf('w1', 'ven. 1 soir → dim. 3 après-midi'),
+      lineOf('w2', 'ven. 8 soir → dim. 10 après-midi'),
+    ];
+
+    it('deux plages : deux lignes, la plage courante de la Destinée d’abord', async () => {
+      const { comp } = await open('w2', lines());
+      expect(comp.pickerLines().map((l: any) => l.vote.optionId)).toEqual(['w2', 'w1']);
+      expect(comp.pickerVote().optionId).toBe('w2');
+      const groups = [...document.body.querySelectorAll('.picker__line')];
+      expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual([
+        'ven. 8 soir → dim. 10 après-midi',
+        'ven. 1 soir → dim. 3 après-midi',
+      ]);
+    });
+
+    it('sans plage courante couvrant le créneau : l’ordre chronologique reçu', async () => {
+      const { comp } = await open(null, lines());
+      expect(comp.pickerLines().map((l: any) => l.vote.optionId)).toEqual(['w1', 'w2']);
+    });
+
+    it('répondre sur une ligne écrit pour CETTE option, pas pour la première', async () => {
+      const { comp, pollSvc, fixture } = await open('w2', lines());
+      document.body
+        .querySelector<HTMLButtonElement>(
+          'app-vote-answer-picker .opt2--answer[data-option="w1"][data-answer="NO"]',
+        )!
+        .click();
+      await tick(fixture);
+
+      expect(pollSvc.castVote).toHaveBeenCalledWith('partie-A', 'poll-w', {
+        optionId: 'w1',
+        answer: 'NO',
+      });
+      expect(comp.pickerVote()).toBeNull();
+      expect(comp.pickerLines()).toEqual([]);
+    });
+
+    it('retirer sur une ligne retire la réponse de CETTE option', async () => {
+      const withMine = [lineOf('w1', 'a', 'YES'), lineOf('w2', 'b')];
+      const { pollSvc, fixture } = await open(null, withMine);
+      document.body
+        .querySelector<HTMLButtonElement>('app-vote-answer-picker .opt2--withdraw')!
+        .click();
+      await tick(fixture);
+
+      expect(pollSvc.withdrawVote).toHaveBeenCalledWith('partie-A', 'poll-w', 'w1');
+    });
+
+    it('une seule plage : le sélecteur d’avant (aucune ligne), la réponse part pour l’option touchée', async () => {
+      const { comp, pollSvc, fixture } = await open(null, [lines()[1]]);
+      expect(comp.pickerLines()).toEqual([]);
+      expect(document.body.querySelector('.picker__line')).toBeNull();
+      document.body
+        .querySelector<HTMLButtonElement>('app-vote-answer-picker .opt2--answer[data-answer="YES"]')!
+        .click();
+      await tick(fixture);
+
+      expect(pollSvc.castVote).toHaveBeenCalledWith('partie-A', 'poll-w', {
+        optionId: 'w2',
+        answer: 'YES',
+      });
+    });
+  });
+
+  it('fixer la date : la confirmation liste chaque candidat de début à fin', async () => {
+    const { fixture, dialog } = await createCalendarView({
+      mode: 'personal',
+      openPolls: [weekends()],
+    });
+    const comp = fixture.componentInstance as any;
+    comp.chooseDestiny('poll-w');
+    await tick(fixture);
+    dialog.open.mockReturnValueOnce({ afterClosed: () => of(false) } as any);
+
+    await comp.openDestinyFix();
+
+    const data = (dialog.open.mock.calls.at(-1) as any)[1].data;
+    expect(data.slots.map((s: any) => s.label)).toEqual([
+      'ven. 8 mars soir → dim. 10 mars après-midi',
+      'ven. 15 mars soir → dim. 17 mars après-midi',
+      'ven. 1 mars soir → dim. 3 mars après-midi',
+    ]);
+  });
+});

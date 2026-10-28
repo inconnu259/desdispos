@@ -37,6 +37,7 @@ import {
   pollSlotLabel,
   pollSlotRows,
   pollSummaryLabel,
+  rankedEntrySlots,
   rankedPollSlots,
   respondentIds,
   shortDayLabel,
@@ -654,6 +655,26 @@ describe('event-card.util (Story 40.1)', () => {
         { id: 'o2', label: 'dim. 25 oct. · matin', available: '1 inscrit disponible' },
       ]);
     });
+
+    it('plage (Story 47.5) : « meilleur créneau » du panneau et lignes de créneau de la fiche s’écrivent de début à fin', () => {
+      const long = pollCard({
+        durationSlots: 6,
+        votes: [
+          { optionId: 'o1', userId: 'a', answer: 'YES' },
+          { optionId: 'o2', userId: 'a', answer: 'MAYBE' },
+        ],
+      });
+      const panel = pollPanel(long, 'a', TODAY, TONE, name)!;
+      expect(panel.bestLine).toBe(
+        'Meilleur créneau pour l’instant : sam. 24 oct. soir → lun. 26 oct. après-midi — 1 oui',
+      );
+      expect(pollSlotRows(long, TONE).map((r) => r.label)).toEqual([
+        'sam. 24 oct. soir → lun. 26 oct. après-midi',
+        'dim. 25 oct. matin → lun. 26 oct. soir',
+      ]);
+      // Un créneau seul : le texte d’avant.
+      expect(pollPanel(pollCard({ votes: long.poll!.votes }), 'a', TODAY, TONE, name)!.bestLine).not.toContain('→');
+    });
   });
 
   describe('fixer la date (Story 40.6)', () => {
@@ -712,6 +733,28 @@ describe('event-card.util (Story 40.1)', () => {
       expect(ranked[0].label).toBe('dim. 25 oct. · soir');
       // Story 44.3 : `bestOption` classe sur le jour et le moment du créneau.
       expect(ranked[0]).toMatchObject({ date: '2026-10-25', slot: 'EVENING' });
+    });
+
+    it('plage (Story 47.5) : chaque candidat s’écrit de son début à sa fin, un créneau seul est inchangé', () => {
+      const long = rankedPollSlots(pollCard([], { durationSlots: 6 }), TODAY);
+      expect(long.map((r) => r.label)).toEqual([
+        'sam. 24 oct. soir → lun. 26 oct. après-midi',
+        'dim. 25 oct. matin → lun. 26 oct. soir',
+        'dim. 25 oct. soir → mar. 27 oct. après-midi',
+        'sam. 31 oct. soir → lun. 2 nov. après-midi',
+      ]);
+      expect(rankedPollSlots(pollCard([]), TODAY)[0].label).toBe('sam. 24 oct. · soir');
+      expect(pollSlotLabel({ date: '2026-10-24', slot: 'EVENING' }, 6)).toBe(
+        'sam. 24 oct. soir → lun. 26 oct. après-midi',
+      );
+      expect(pollSlotLabel({ date: '2026-10-24', slot: 'EVENING' }, 1)).toBe('sam. 24 oct. · soir');
+      expect(
+        rankedEntrySlots(
+          [{ optionId: 'x', date: '2026-10-24', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null }],
+          TODAY,
+          6,
+        )[0].label,
+      ).toBe('sam. 24 oct. soir → lun. 26 oct. après-midi');
     });
 
     it('à égalité parfaite : le plus proche d’abord, le matin avant le soir d’un même jour ; sans réponse, ordre chronologique', () => {

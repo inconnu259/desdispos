@@ -10,7 +10,7 @@
     @for (opt of poll().options; track opt.id) {
       <li class="poll-status__option" [class.poll-status__option--all-yes]="isAllYes(opt)">
         <div class="poll-status__option-header">
-          <span class="poll-status__date">{{ formatDate(opt.date) }} — {{ SLOT_LABELS[opt.slot] }}</span>
+          <span class="poll-status__date">{{ optionLabel(opt) }}</span>
           <span class="poll-status__breakdown">
             ✅ {{ countByAnswer(opt, 'YES') }} · ❌ {{ countByAnswer(opt, 'NO') }} · ❔ {{ countByAnswer(opt, 'MAYBE') }}
           </span>

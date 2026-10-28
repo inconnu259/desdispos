@@ -462,21 +462,31 @@ export class PollService {
       await this.chooseGroupDate(partie, pollId, userId, dto);
       return;
     }
-    const poll = await this.prisma.sessionPoll.findUnique({
-      where: { id: pollId },
-    });
-    if (!poll || poll.partieId !== partieId) throw new NotFoundException('Poll introuvable');
-    if (poll.status !== 'OPEN') throw new BadRequestException('Le poll est déjà fermé');
-    const option = await this.prisma.pollOption.findUnique({
-      where: { id: dto.optionId },
-    });
-    if (!option || option.pollId !== pollId) throw new NotFoundException('Option introuvable');
+    // Story 47.5 (AD-11) : la fixation prend le verrou de la partie puis de l'événement (le même que
+    // celui d'un changement de durée : `RendezVousDurationPort.setDurationInTx` sans durée = verrous
+    // seulement), PUIS relit le vote (ouvert, de la partie) et l'option — une durée changée ou des
+    // options recréées en même temps sont sérialisées, la date est écrite depuis l'option relue.
+    //
     // Story 37.8 (AD-15) : le vote clos, la plage de la séance rattachée et la prochaine séance de
     // la partie sont écrits ensemble ou pas du tout. Ce service n'écrit QUE le vote : la date de
     // séance et `Partie.nextSessionDate/Slot` (recalculé comme la plus proche séance à venir, une
     // date passée n'est pas retenue) sont l'affaire du port, dans cette même transaction. Le même
-    // port ré-arme le rappel de la veille de la séance (`Seance.reminderSentAt`, Story 37.9).
+    // port ré-arme le rappel de la veille de la séance (`Seance.reminderSentAt`, Story 37.9) et écrit
+    // la plage entière (`fin = spanEnd(début, durée)`, Story 47.2).
     await this.prisma.$transaction(async (tx) => {
+      // Le vote doit être celui de CETTE partie AVANT de prendre le moindre verrou : un MJ ne retient jamais les
+      // lignes d'une autre partie en visant son vote.
+      const owner = await tx.sessionPoll.findUnique({
+        where: { id: pollId },
+        select: { partieId: true },
+      });
+      if (!owner || owner.partieId !== partieId) throw new NotFoundException('Poll introuvable');
+      await this.duration.setDurationInTx(tx, pollId);
+      const poll = await tx.sessionPoll.findUnique({ where: { id: pollId } });
+      if (!poll || poll.partieId !== partieId) throw new NotFoundException('Poll introuvable');
+      if (poll.status !== 'OPEN') throw new BadRequestException('Le poll est déjà fermé');
+      const option = await tx.pollOption.findUnique({ where: { id: dto.optionId } });
+      if (!option || option.pollId !== pollId) throw new NotFoundException('Option introuvable');
       await tx.sessionPoll.update({
         where: { id: pollId },
         data: {

@@ -11,6 +11,7 @@ import {
   memberStatusGlyph,
   memberStatusWord,
   showsMemberPastilles,
+  worstAvailability,
 } from './group-availability.utils';
 
 // Thème de référence pour les cas courants ; le bloc « voix par thème » en bas vérifie les autres.
@@ -201,5 +202,54 @@ describe('voix par thème — le ton passé est celui qui parle', () => {
       groupAriaLabel(group({ unavailable: 4, total: 4 }), TONE_MAP[theme]),
     );
     expect(new Set(labels).size).toBe(THEMES.length);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 47.5 — la pire disponibilité d’une plage candidate
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('worstAvailability — le plus petit nombre de disponibles sur la plage (Story 47.5)', () => {
+  const cell = (date: string, slot: 'MORNING' | 'AFTERNOON' | 'EVENING', available: number) => ({
+    date,
+    slot,
+    available,
+  });
+  // Vendredi soir → dimanche après-midi : 6 créneaux.
+  const weekend = [
+    cell('2026-11-06', 'EVENING', 5),
+    cell('2026-11-07', 'MORNING', 2),
+    cell('2026-11-07', 'AFTERNOON', 4),
+    cell('2026-11-07', 'EVENING', 6),
+    cell('2026-11-08', 'MORNING', 3),
+    cell('2026-11-08', 'AFTERNOON', 5),
+  ];
+
+  it('6 créneaux, 5, 2, 4… : le pire est 2', () => {
+    expect(worstAvailability(weekend, { date: '2026-11-06', slot: 'EVENING' }, 6)).toBe(2);
+  });
+
+  it('une cellule manquante : pas de chiffre (jamais un chiffre partiel)', () => {
+    const missing = weekend.filter((c) => !(c.date === '2026-11-08' && c.slot === 'AFTERNOON'));
+    expect(worstAvailability(missing, { date: '2026-11-06', slot: 'EVENING' }, 6)).toBeNull();
+  });
+
+  it('une carte vide : pas de chiffre', () => {
+    expect(worstAvailability([], { date: '2026-11-06', slot: 'EVENING' }, 6)).toBeNull();
+  });
+
+  it('une durée invalide : pas de chiffre', () => {
+    expect(worstAvailability(weekend, { date: '2026-11-06', slot: 'EVENING' }, 0)).toBeNull();
+    expect(worstAvailability(weekend, { date: '2026-11-06', slot: 'FULL_DAY' }, 3)).toBeNull();
+  });
+
+  it('un zéro est un chiffre (personne de libre sur toute la plage)', () => {
+    const zero = weekend.map((c) => (c.slot === 'MORNING' && c.date === '2026-11-07' ? cell(c.date, 'MORNING', 0) : c));
+    expect(worstAvailability(zero, { date: '2026-11-06', slot: 'EVENING' }, 6)).toBe(0);
+  });
+
+  it('accepte une date ISO complète côté carte comme côté départ', () => {
+    const iso = weekend.map((c) => ({ ...c, date: `${c.date}T00:00:00.000Z` }));
+    expect(worstAvailability(iso, { date: '2026-11-06T00:00:00.000Z', slot: 'EVENING' }, 6)).toBe(2);
   });
 });

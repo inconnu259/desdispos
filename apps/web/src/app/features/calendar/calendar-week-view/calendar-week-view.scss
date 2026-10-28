@@ -276,6 +276,20 @@
   text-overflow: ellipsis;
 }
 
+/* Story 47.5 — « ×n » : plusieurs plages d'un même vote recouvrent ce créneau. 9 px, coin haut droit de la cellule,
+   couleur de texte (aucune teinte nouvelle) ; sans interaction (le tap ouvre le sélecteur de la cellule). */
+.ev-overlap {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  z-index: 3;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mat-sys-on-surface);
+  pointer-events: none;
+}
+
 .ev-title {
   font-size: 0.65rem;
   font-weight: 700;

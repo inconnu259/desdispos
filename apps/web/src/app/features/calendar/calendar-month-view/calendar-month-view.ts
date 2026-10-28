@@ -24,6 +24,8 @@ import { fillTone } from '../../../core/theme/tone-format';
 import { SelectionBar } from '../selection-bar/selection-bar';
 import { composeSpanKeys } from '../compose-span.utils';
 import { SLOT_LABELS } from '../agenda-badge.utils';
+import { entrySpanShortLabel } from '../span-label';
+import { overlapAriaLabel, overlapMarkLabel } from '../../../shared/duration-stepper/duration-labels';
 import type { AgendaEntry, AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import {
   type DayDetail,
@@ -31,6 +33,7 @@ import {
   type SlotWinner,
   bandsAreUniform,
   buildMonthDetails,
+  type SlotPollVote,
   type SlotSpan,
   composeSeanceInfo,
   dateKeyToLocalMidnight,
@@ -98,6 +101,11 @@ export interface DayBand {
    *  et `info`. `null` dès que le rang n'est pas « vote » : une séance confirmée qui l'emporte
    *  n'affiche jamais la piste d'un vote concurrent (encadré n°8 de la story). */
   vote: VoteParticipation | null;
+  /** Story 47.5 — toutes les options du vote qui couvrent ce créneau (rang gagnant « vote » seulement) : le
+   *  sélecteur de réponse en fait une ligne par plage. Vide hors rang « vote ». */
+  votes: SlotPollVote[];
+  /** Story 47.5 — le nombre de plages du vote qui couvrent la bande : « ×n » à partir de 2. 0 hors rang « vote ». */
+  overlap: number;
   /** Story 36.8 — la disponibilité du groupe sur ce créneau, sur un **canal séparé** (FR-53).
    *
    *  🚨 **Contrairement à `text`, `info` et `vote` juste au-dessus, ce champ NE SUIT PAS le rang
@@ -233,6 +241,9 @@ export function buildMonth(
             // Story 36.6 — même règle que `text` et `info` : la piste suit le rang GAGNANT.
             // `s.pollVote` est déjà gouverné par la couche `votes-en-cours` (buildDayDetail).
             vote: s.winner === 'vote' ? s.pollVote : null,
+            // Story 47.5 — même règle : la liste des plages et leur compte suivent le rang GAGNANT.
+            votes: s.winner === 'vote' ? s.pollVotes : [],
+            overlap: s.winner === 'vote' ? s.pollCount : 0,
             // Story 36.8 — 🚨 AUCUNE condition de rang ici, et c'est délibéré (cf. `DayBand.group`).
             group: s.group,
             preview: previewStatus !== null && previewStatus !== s.status ? previewStatus : null,
@@ -472,7 +483,8 @@ export class CalendarMonthView {
       partieId: entry.vote.partieId,
       pollId: entry.vote.pollId,
       optionId: entry.vote.optionId,
-      dateLabel: CalendarMonthView.sealDateLabel(entry.date, entry.slot),
+      // Story 47.5 — une plage se scelle écrite de son début à sa fin.
+      dateLabel: entrySpanShortLabel(entry) ?? CalendarMonthView.sealDateLabel(entry.date, entry.slot),
       pollLabel: entry.label,
     };
   });
@@ -678,21 +690,28 @@ export class CalendarMonthView {
     // Story 36.7, AC1 — hors sélection, une bande portant une option de vote ouvre le sélecteur
     // de réponse. La condition est la MÊME que celle qui fait rendre la piste (`band.vote`), donc
     // couche éteinte et rang « séance » gagnant excluent l'ouverture sans une ligne de plus.
-    const vote = this.voteAt(date, slot);
-    if (vote && event?.currentTarget instanceof HTMLElement) {
-      this.voteOptionActivated.emit({ vote, date, slot, anchor: event.currentTarget });
+    const band = this.voteBandAt(date, slot);
+    const vote = band?.vote ?? null;
+    if (band && vote && event?.currentTarget instanceof HTMLElement) {
+      this.voteOptionActivated.emit({
+        vote,
+        lines: band.votes,
+        date,
+        slot,
+        anchor: event.currentTarget,
+      });
     }
   }
 
   /** La participation portée par la bande de ce créneau, ou `null`. Lue sur le modèle DÉJÀ
    *  calculé (`weeks()` ← `buildDayDetail`) : aucune règle de préséance n'est réécrite ici. */
-  private voteAt(date: Date, slot: DaySlot): VoteParticipation | null {
+  private voteBandAt(date: Date, slot: DaySlot): DayBand | null {
     const cell = this.allCells().find((c) => c.date.getTime() === date.getTime());
     if (!cell) return null;
     // Un jour uniforme n'a qu'une bande fusionnée, et « uniforme » veut précisément dire qu'aucun
     // événement n'y est posé (AC4 de la 36.2) : il ne peut donc pas porter de vote.
     const band = cell.bands.find((b) => b.slot === slot);
-    return band?.vote ?? null;
+    return band ?? null;
   }
 
   /** Sélection d'une seule cellule, armée par `Espace` ou par `1`/`2`/`3` (AC7, AC15).
@@ -722,6 +741,11 @@ export class CalendarMonthView {
     this.armSelection(cell.date, slot);
   }
 
+  /** Story 47.5 — « ×2 » : la marque du coin d'une bande couverte par plusieurs plages du même vote. */
+  protected overlapMark(n: number): string {
+    return overlapMarkLabel(n);
+  }
+
   /** Story 36.2, AC12 — le nom accessible d'une bande dit son créneau ET son état EN TOUTES
    *  LETTRES : un lecteur d'écran ne voit ni fond, ni filet, ni trame. Quand un événement est
    *  posé et nommé, c'est son titre qui fait l'état (« Soir : Le Convoi du Nord ») ; quand la
@@ -739,6 +763,8 @@ export class CalendarMonthView {
     // Story 47.3 : une bande de plage dit le rendez-vous ET sa plage entière — même quand son texte visible
     // est tu (nom une fois par ligne) : le lecteur d'écran ne voit ni connecteur ni flèche.
     const named = band.span ? `${band.span.label}, ${band.span.range}` : band.text;
+    // Story 47.5 — plusieurs plages du vote sur ce créneau : « ×n » se dit aussi (la marque est visuelle).
+    const overlap = band.overlap >= 2 ? overlapAriaLabel(band.overlap) : '';
     if (named) {
       // Story 36.6, AC14 — la piste code par la PROPORTION : sans ce texte, elle n'existe pas
       // pour un lecteur d'écran. Elle s'ajoute au titre du vote, elle ne le remplace pas.
@@ -746,6 +772,7 @@ export class CalendarMonthView {
       const parts = [`${band.label} : ${named}`];
       if (band.info) parts.push(band.info);
       if (participation) parts.push(participation);
+      if (overlap) parts.push(overlap);
       if (groupe) parts.push(groupe);
       // Story 36.10, AC16 — l'état composé est ANNONCÉ. Le liseré qui le montre n'existe pas pour
       // un lecteur d'écran, et « jamais la couleur seule » (P-1) vaut aussi pour un filet.

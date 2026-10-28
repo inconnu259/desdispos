@@ -7,6 +7,9 @@ export interface DestinyBoardSlot {
   label: string;
   /** « 4 oui ». */
   yesText: string;
+  /** ⚠️ Story 47.5 — « 2 dispos sur toute la plage » : le pire nombre de disponibles d'une plage candidate (JDR, carte
+   *  de chaleur chargée). Absent ou `null` : rien (créneau seul, groupe, carte manquante). */
+  availabilityText?: string | null;
   /** La part des oui sur l'effectif, entre 0 et 1 (la barre). */
   ratio: number;
   /** Porte l'étiquette « meilleur » : seulement `bestOption`, donc jamais sans un oui. */

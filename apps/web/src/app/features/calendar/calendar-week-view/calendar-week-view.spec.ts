@@ -1386,6 +1386,24 @@ describe('CalendarWeekView — sceller depuis la barre de sélection (Story 36.1
     });
   });
 
+  it('Story 47.5 — sealCandidate d’une plage porte « début → fin », pas seulement le créneau de départ', () => {
+    create({
+      canSeal: true,
+      entries: [{ ...voteEntry(2, 'EVENING'), endDate: dayKey(4), endSlot: 'AFTERNOON' } as AgendaEntry],
+    });
+    selectSingle(2, 'EVENING');
+    const candidate = (fixture.componentInstance as any).sealCandidate();
+    expect(candidate.dateLabel).toMatch(
+      /^[^ ]+\. \d{1,2} [^ ]+ soir → [^ ]+\. \d{1,2} [^ ]+ après-midi$/,
+    );
+    // Un créneau seul garde son écriture d'avant (sans flèche).
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [CalendarWeekView] });
+    create({ canSeal: true, entries: [voteEntry(2, 'EVENING')] });
+    selectSingle(2, 'EVENING');
+    expect((fixture.componentInstance as any).sealCandidate().dateLabel).not.toContain('→');
+  });
+
   it('AC1 — le bouton Sceller est rendu dans la barre de sélection', () => {
     create({ canSeal: true, entries: [voteEntry(2)] });
     selectSingle(2, 'EVENING');
@@ -1588,5 +1606,127 @@ describe('CalendarWeekView — une plage sur la semaine (Story 47.3)', () => {
     create([weekend({ endDate: undefined, endSlot: undefined })]);
     expect(el.querySelector('.slot-cell--span-next, .slot-cell--span-prev')).toBeNull();
     expect(cellAt('MORNING', 5).getAttribute('data-winner')).not.toBe('seance');
+  });
+});
+
+describe('CalendarWeekView — plusieurs plages d’un même vote (Story 47.5)', () => {
+  let fixture: ComponentFixture<CalendarWeekView>;
+  let el: HTMLElement;
+
+  const futureStart = new Date();
+  futureStart.setDate(futureStart.getDate() + 14);
+  const weekStart = getWeekStart(
+    new Date(Date.UTC(futureStart.getFullYear(), futureStart.getMonth(), futureStart.getDate())),
+  );
+  const dayKey = (i: number): string => {
+    const d = new Date(
+      weekStart.getUTCFullYear(),
+      weekStart.getUTCMonth(),
+      weekStart.getUTCDate() + i,
+    );
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const cellAt = (slot: string, dayIndex: number): HTMLElement =>
+    Array.from(el.querySelectorAll<HTMLElement>(`.slot-cell[data-cell-slot="${slot}"]`))[dayIndex];
+
+  const participation = (optionId: string) => ({
+    partieId: 'p1',
+    pollId: 'poll-1',
+    optionId,
+    yes: 1,
+    maybe: 0,
+    no: 0,
+    total: 4,
+    myAnswer: null,
+  });
+  // Durée 3 : (a) jour 5 matin → soir ; (b) jour 5 après-midi → jour 6 matin. Recouvrement : après-midi et soir du jour 5.
+  const optionA: AgendaEntry = {
+    key: 'poll-1-a',
+    type: 'votes-en-cours',
+    date: dayKey(5),
+    slot: 'MORNING',
+    endDate: dayKey(5),
+    endSlot: 'EVENING',
+    label: 'Week-end jeux',
+    vote: participation('a'),
+  };
+  const optionB: AgendaEntry = {
+    key: 'poll-1-b',
+    type: 'votes-en-cours',
+    date: dayKey(5),
+    slot: 'AFTERNOON',
+    endDate: dayKey(6),
+    endSlot: 'MORNING',
+    label: 'Week-end jeux',
+    vote: participation('b'),
+  };
+
+  function create(entries: AgendaEntry[], layers: CalendarLayerKey[] = ['votes-en-cours']): void {
+    TestBed.configureTestingModule({ imports: [CalendarWeekView] });
+    fixture = TestBed.createComponent(CalendarWeekView);
+    fixture.componentRef.setInput('startDate', futureStart);
+    fixture.componentRef.setInput('entries', entries);
+    fixture.componentRef.setInput('activeLayers', layers);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  /** Le tap de la vue Semaine est synthétisé par `onGridPointerUp()` (cf. Story 36.7). */
+  function tap(cell: HTMLElement): void {
+    const grid = el.querySelector('.week-grid') as HTMLElement;
+    const ev = (type: string) =>
+      new PointerEvent(type, { clientX: 10, clientY: 10, pointerType: 'mouse', bubbles: true });
+    cell.dispatchEvent(ev('pointerdown'));
+    grid.dispatchEvent(ev('pointerup'));
+    fixture.detectChanges();
+  }
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('« ×2 » sur chaque cellule recouverte deux fois, rien ailleurs ; il entre dans le nom accessible', () => {
+    create([optionA, optionB]);
+
+    expect(cellAt('AFTERNOON', 5).querySelector('.ev-overlap')?.textContent?.trim()).toBe('×2');
+    expect(cellAt('EVENING', 5).querySelector('.ev-overlap')?.textContent?.trim()).toBe('×2');
+    expect(cellAt('MORNING', 5).querySelector('.ev-overlap')).toBeNull();
+    expect(cellAt('MORNING', 6).querySelector('.ev-overlap')).toBeNull();
+    expect(cellAt('AFTERNOON', 5).getAttribute('aria-label')).toContain(
+      '2 plages se superposent (×2)',
+    );
+    expect(cellAt('MORNING', 5).getAttribute('aria-label')).not.toContain('×');
+  });
+
+  it('une seule plage sur le créneau, ou un créneau seul : pas de « ×n »', () => {
+    create([optionA]);
+    expect(el.querySelector('.ev-overlap')).toBeNull();
+    TestBed.resetTestingModule();
+    create([{ ...optionA, endDate: undefined, endSlot: undefined }]);
+    expect(el.querySelector('.ev-overlap')).toBeNull();
+  });
+
+  it('toucher la cellule recouverte signale TOUTES les plages qui la couvrent, dans l’ordre de leur début', () => {
+    create([optionB, optionA]);
+    const emitted: any[] = [];
+    fixture.componentInstance.voteOptionActivated.subscribe((e: any) => emitted.push(e));
+
+    tap(cellAt('AFTERNOON', 5));
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].lines.map((l: any) => l.vote.optionId)).toEqual(['a', 'b']);
+  });
+
+  it('toucher une cellule couverte une seule fois : une seule ligne', () => {
+    create([optionA, optionB]);
+    const emitted: any[] = [];
+    fixture.componentInstance.voteOptionActivated.subscribe((e: any) => emitted.push(e));
+
+    tap(cellAt('MORNING', 5));
+
+    expect(emitted[0].lines.map((l: any) => l.vote.optionId)).toEqual(['a']);
+  });
+
+  it('couche « votes en cours » éteinte : ni marque ni signal', () => {
+    create([optionA, optionB], ['mes-seances']);
+    expect(el.querySelector('.ev-overlap')).toBeNull();
   });
 });

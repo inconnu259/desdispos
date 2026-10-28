@@ -356,3 +356,21 @@ describe('PollResponseComponent', () => {
     });
   });
 });
+
+describe('PollResponseComponent — vote de plusieurs créneaux (Story 47.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('chaque option s’écrit de son début à sa fin', async () => {
+    const { fixture } = await createComponent({ ...fakePoll, durationSlots: 6 });
+    const first = fixture.nativeElement.querySelector('.poll-response__date') as HTMLElement;
+    expect(first.textContent).toContain('→');
+    expect(first.textContent).not.toContain('—');
+  });
+
+  it('un vote d’un créneau : « date — créneau » d’avant', async () => {
+    const { fixture } = await createComponent(fakePoll);
+    const first = fixture.nativeElement.querySelector('.poll-response__date') as HTMLElement;
+    expect(first.textContent).toContain('—');
+    expect(first.textContent).not.toContain('→');
+  });
+});

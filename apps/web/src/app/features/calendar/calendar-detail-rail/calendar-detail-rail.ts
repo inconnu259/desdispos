@@ -203,6 +203,8 @@ export class CalendarDetailRail {
     if (!detail || !vote || !(event.currentTarget instanceof HTMLElement)) return;
     this.voteOptionActivated.emit({
       vote,
+      // Story 47.5 — toutes les plages du vote qui couvrent ce créneau : une ligne chacune dans le sélecteur.
+      lines: slot.pollVotes,
       date: dateKeyToLocalMidnight(detail.date),
       slot: slot.slot,
       anchor: event.currentTarget,

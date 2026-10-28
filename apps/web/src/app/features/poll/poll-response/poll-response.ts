@@ -10,11 +10,18 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import type { CastVoteDto, DaySlot, SessionPollDto, VoteAnswer } from '@master-jdr/shared';
+import type {
+  CastVoteDto,
+  DaySlot,
+  PollOptionDto,
+  SessionPollDto,
+  VoteAnswer,
+} from '@master-jdr/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
+import { candidateSpanShort } from '../../calendar/span-label';
 
 const SLOT_LABELS: Record<DaySlot, string> = {
   MORNING: 'Matin',
@@ -99,6 +106,14 @@ export class PollResponseComponent {
     const m = new Map(this.pendingAnswers());
     m.set(optionId, answer);
     this.pendingAnswers.set(m);
+  }
+
+  /** « sam. 25 oct. — Soir » ; Story 47.5 : un candidat de plusieurs créneaux s'écrit de son début à sa fin. */
+  protected optionLabel(opt: PollOptionDto): string {
+    return (
+      candidateSpanShort(opt, this.poll().durationSlots) ??
+      `${this.formatDate(opt.date)} — ${SLOT_LABELS[opt.slot]}`
+    );
   }
 
   protected getAnswer(optionId: string): VoteAnswer | null {

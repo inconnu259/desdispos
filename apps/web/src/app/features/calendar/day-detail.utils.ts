@@ -1,3 +1,4 @@
+import { spanSlots } from '@master-jdr/shared';
 import type {
   AvailabilityDeclarationDto,
   CalendarLayerKey,
@@ -8,7 +9,7 @@ import { computeDisplayStatus } from '../../core/availability/compute-display-st
 import type { AgendaEntry } from './calendar-agenda-view/calendar-agenda-view';
 import type { VoteParticipation } from './poll-track.utils';
 import type { GroupAvailability } from './group-availability.utils';
-import { isSpan, spanSentence, spanShortLabel } from './span-label';
+import { isSpan, spanCompactLabel, spanSentence, spanShortLabel } from './span-label';
 
 /**
  * Story 36.1 — modèle du rail de détail.
@@ -95,6 +96,15 @@ export interface DaySlotDetail {
    *  seulement quand le rang gagnant est `'vote'` — le texte suit le rang, la piste aussi
    *  (une séance confirmée qui l'emporte n'affiche pas la piste d'un vote concurrent). */
   pollVote: VoteParticipation | null;
+  /** Story 47.5 — TOUTES les options du vote qui couvrent ce créneau (une par option, dans l'ordre de leur
+   *  début), chacune avec sa plage écrite. `pollVote` en est la première et garde son sens : pour un créneau
+   *  couvert une seule fois (ou un créneau seul), la liste n'a qu'une entrée. Même gouvernance que `pollVote`
+   *  (couche `votes-en-cours`) ; c'est LA source du sélecteur de réponse (une ligne par plage) — aucune vue ne
+   *  refiltre. Vide si aucune option ne porte de participation. */
+  pollVotes: SlotPollVote[];
+  /** Story 47.5 — combien de plages de ce vote couvrent le créneau (« ×n » quand n ≥ 2). Même gouvernance que
+   *  `pollVote` ; 0 sans vote affiché. */
+  pollCount: number;
   /** Story 36.8 — la disponibilité du groupe sur ce créneau (FR-53), ou `null`.
    *
    *  🚨 **CE CHAMP NE SUIT PAS LE RANG GAGNANT**, contrairement à `seanceLabel`, `pollLabel` et
@@ -111,6 +121,19 @@ export interface DaySlotDetail {
    *  l'objet nommé n'est pas une plage). Suit le rang GAGNANT et la gouvernance des couches comme le texte : une
    *  couche éteinte n'a ni nom ni connecteur, jamais moins d'indisponibilité. */
   span: SlotSpan | null;
+}
+
+/** Story 47.5 — une option de vote qui couvre un créneau : sa participation et sa plage écrite. */
+export interface SlotPollVote {
+  vote: VoteParticipation;
+  /** « ven. 6 soir → dim. 8 après-midi » — la ligne du sélecteur ; vide pour un créneau seul. */
+  range: string;
+  /** « du vendredi 6 soir au dimanche 8 après-midi » — pour les noms accessibles ; vide pour un créneau seul. */
+  rangeSentence: string;
+  /** « ven. 6 nov. soir → dim. 8 nov. après-midi » — la forme courte des cartes ; vide pour un créneau seul. */
+  rangeShort: string;
+  /** Rang linéaire du premier créneau de l'option : ordre chronologique des lignes. */
+  startIndex: number;
 }
 
 /** Story 47.3 (UX-DR9) — ce qu'une bande ou une ligne du rail sait de la plage qui la couvre. */
@@ -209,6 +232,24 @@ export function entryCoversCell(e: AgendaEntry, dateKey: string, slot: DaySlot):
   return range[0] <= cellTo && cellFrom <= range[1];
 }
 
+/**
+ * Story 47.5 — les jours (`YYYY-MM-DD`, dans l'ordre) que couvre une entrée : son jour, ou tous les jours d'une
+ * plage. Dérivé de `spanSlots` (`@master-jdr/shared`, LA fonction des créneaux couverts) sur le nombre de créneaux
+ * que `entryIndexRange` lit dans l'entrée — jamais un second parcours de calendrier. Une entrée sans date : aucun.
+ */
+export function entryCoveredDays(e: AgendaEntry): string[] {
+  const range = entryIndexRange(e);
+  if (!range || !e.date) return [];
+  const count = range[1] - range[0] + 1;
+  const startNamed = e.slot != null && e.slot !== 'FULL_DAY';
+  if (count <= 1 || !startNamed) return [e.date];
+  const days: string[] = [];
+  for (const covered of spanSlots(e.date, e.slot as RailSlot, count)) {
+    if (days[days.length - 1] !== covered.date) days.push(covered.date);
+  }
+  return days;
+}
+
 /** Une entrée touche-t-elle ce jour ? Son jour de début, ou l'un des jours d'une plage. */
 function entryTouchesDay(e: AgendaEntry, dateKey: string): boolean {
   return e.date === dateKey || (!!e.endDate && e.date < dateKey && dateKey <= e.endDate);
@@ -233,6 +274,36 @@ function spanOf(entry: AgendaEntry, dateKey: string, slot: RailSlot): SlotSpan |
     continuesAfter: slot === 'EVENING' && index + 1 <= range[1],
     index,
     startIndex: range[0],
+  };
+}
+
+/**
+ * Story 47.5 — les options du MÊME vote qui couvrent le créneau, dans l'ordre de leur début. C'est la seule règle
+ * de « qui couvre ce créneau » pour le sélecteur et le « ×n » : `entryCoversCell` (47.3) en décide, ce n'est
+ * qu'un regroupement par vote. Un autre vote qui couvre aussi le créneau reste annoncé par « (+1 autre) ».
+ */
+function coveringVotes(first: AgendaEntry | undefined, matches: AgendaEntry[]): AgendaEntry[] {
+  if (!first) return [];
+  const pollId = first.vote?.pollId;
+  const same = pollId ? matches.filter((e) => e.vote?.pollId === pollId) : [first];
+  return same
+    .map((entry, i) => ({ entry, i, start: entryIndexRange(entry)?.[0] ?? 0 }))
+    .sort((a, b) => a.start - b.start || a.i - b.i)
+    .map((x) => x.entry);
+}
+
+function slotPollVote(entry: AgendaEntry): SlotPollVote | null {
+  if (!entry.vote) return null;
+  const range = entryIndexRange(entry);
+  const start = { date: entry.date, slot: entry.slot };
+  const end = entry.endDate ? { date: entry.endDate, slot: entry.endSlot } : null;
+  const long = end && isSpan(start, end) ? end : null;
+  return {
+    vote: entry.vote,
+    range: long ? spanCompactLabel(start, long) : '',
+    rangeSentence: long ? spanSentence(start, long) : '',
+    rangeShort: long ? spanShortLabel(start, long) : '',
+    startIndex: range?.[0] ?? 0,
   };
 }
 
@@ -319,6 +390,9 @@ export function buildDayDetail(
     const seance = seanceMatches[0];
     const blockingSeance = seance ?? allSeanceMatches[0];
     const poll = pollMatches[0];
+    const covering = coveringVotes(poll, pollMatches)
+      .map(slotPollVote)
+      .filter((v): v is SlotPollVote => v !== null);
     // Story 36.8 — le CANAL SÉPARÉ. Résolu ici, avec les autres, pour que grille et rail ne se
     // contredisent jamais (AC16) — mais volontairement HORS de la chaîne `winner` ci-dessous.
     const groupEntry = sameDay.find(
@@ -379,6 +453,10 @@ export function buildDayDetail(
       // piste en même temps que le texte. `?? null` et jamais `undefined` — une seule
       // représentation de « rien à afficher ».
       pollVote: poll && active.has('votes-en-cours') ? (poll.vote ?? null) : null,
+      // Story 47.5 — même gouvernance que `pollVote` (la couche éteinte retire aussi la liste et le compte).
+      pollVotes: poll && active.has('votes-en-cours') ? covering : [],
+      // Le compte est celui des lignes réellement servies : « ×n » ne compte jamais une option sans participation.
+      pollCount: poll && active.has('votes-en-cours') ? covering.length : 0,
       // Story 36.8 — gouverné par SA couche, et par rien d'autre : ni le rang gagnant, ni la
       // présence d'une séance ou d'un vote ne l'effacent (AC2). `?? null` et jamais `undefined`
       // — une seule représentation de « rien à afficher », comme partout dans ce fichier.

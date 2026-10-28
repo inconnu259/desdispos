@@ -236,9 +236,12 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 
 ---
 
-## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production)*
+## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production — PRD final, prochaine étape : UX)*
 
-> Suite du Palier 10, à cadrer (PRD à écrire) une fois celui-ci livré.
+> PRD : `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-28-p10-5/prd.md` (final, 2026-10-29) — FR-1 à FR-10.
+> Retaillé avec l'utilisateur : saisie manuelle seulement (pas d'import BoardGameGeek), « bibliothèque commune » =
+> vue agrégée des jeux des membres, historique des hôtes réduit à un **compteur** (l'historique des événements existe
+> déjà), « envie d'y jouer » minimale sur la fiche de la soirée ; tout reste facultatif ; mode soirée seulement.
 
 - [ ] Liste des jeux possédés par chaque utilisateur (profil), affichée quand il est hôte.
 - [ ] « J'apporte » : un invité coche les jeux qu'il apporte en rejoignant un événement.

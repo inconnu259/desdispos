@@ -440,3 +440,17 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/spec-47-3-voir-une-plage-sur-tous-ses-jours.md`
   summary: Le badge d'imminence de la carte d'événement, la distance en jours de l'Agenda et le compte à rebours du tableau de bord comptent encore depuis le jour de début d'une plage commencée ; à passer à la fin quand ce libellé gênera (avec l'affichage des votes en plage, 47.5).
   evidence: Les règles « passée » (carte, Agenda, état de séance, serveur) lisent la fin ; seuls ces libellés d'échéance restent sur le début (relecteur Blind Hunter, story 47.3).
+
+## Deferred from: code review of epic 37 (Palier 10, revue a posteriori du 2026-10-29)
+
+- [P:MOYENNE] `resetSeanceDate` efface la plage, supprime le sondage puis recalcule la prochaine séance en trois écritures hors transaction et sans le verrou de partie que prend `chooseDate` : un choix de date concurrent peut laisser une séance datée sans `pollId`, et un échec de suppression un `SessionPoll` orphelin. [apps/api/src/events/events.service.ts:1297]
+- [P:MOYENNE] `remindSeance` pose `reminderSentAt` même quand l'envoi à un destinataire a échoué (résultat seulement journalisé) : ce destinataire ne reçoit jamais le rappel de la veille. [apps/api/src/notifications/notifications.service.ts:157]
+- [P:BASSE] Rappel de la veille envoyé destinataire par destinataire avant la marque, sans trace par personne : une interruption au milieu de la boucle renvoie le rappel en double au passage suivant. [apps/api/src/notifications/notifications.service.ts:183]
+- [P:BASSE] `recomputeNextSession` charge toutes les séances de la partie (passées comprises) et trie en mémoire sous le verrou `FOR UPDATE` ; un `findFirst` filtré sur la fin de plage, trié par `startDate`, suffirait. [apps/api/src/events/events.service.ts:2244]
+
+## Deferred from: code review of epic 40 (Palier 10, revue a posteriori du 2026-10-29)
+
+- [P:MOYENNE] La relance de vote (veille de l'échéance) part aussi pour une soirée isolée close : fermer une partie ne ferme pas son sondage, et la requête ne filtre ni `partie.closedAt` ni l'état ouvert ; les invités reçoivent « votez » puis chaque vote est refusé par `assertIsolatedOpen`. [apps/api/src/notifications/notifications.service.ts:200]
+- [P:BASSE] `extend` n'appelle pas `assertIsolatedOpen` : l'hôte prolonge le vote d'une soirée close, ce qui réarme la relance pour un vote impossible. [apps/api/src/poll/poll.service.ts:561]
+- [P:BASSE] `assertCanVote` lit l'éligibilité hors du verrou où le vote est écrit (`lockConjonction` ne revérifie que date et annulation) : un vote en vol pendant une désinscription peut compter un non-votant. [apps/api/src/events/events.service.ts:1994]
+- [P:BASSE] `inscrireConjonction` ne revérifie pas l'appartenance sous verrou (droit calculé avant, seul le verrou de l'événement est pris) : un retrait concurrent par un admin peut laisser une inscription à un ex-membre. [apps/api/src/events/events.service.ts:1575]

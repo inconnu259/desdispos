@@ -454,3 +454,7 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - [P:BASSE] `extend` n'appelle pas `assertIsolatedOpen` : l'hôte prolonge le vote d'une soirée close, ce qui réarme la relance pour un vote impossible. [apps/api/src/poll/poll.service.ts:561]
 - [P:BASSE] `assertCanVote` lit l'éligibilité hors du verrou où le vote est écrit (`lockConjonction` ne revérifie que date et annulation) : un vote en vol pendant une désinscription peut compter un non-votant. [apps/api/src/events/events.service.ts:1994]
 - [P:BASSE] `inscrireConjonction` ne revérifie pas l'appartenance sous verrou (droit calculé avant, seul le verrou de l'événement est pris) : un retrait concurrent par un admin peut laisser une inscription à un ex-membre. [apps/api/src/events/events.service.ts:1575]
+
+## Deferred from: code review of epics 42-43 (Palier 10, revue a posteriori du 2026-10-29)
+
+- [P:BASSE] `cancelUpcomingHostedInTx` renvoie la liste des conjonctions lue AVANT les verrous alors que `updateMany` ne réannule que celles encore ouvertes : une conjonction annulée au même moment par un admin reçoit un second e-mail d'annulation, attribué au départ de l'hôte. Renvoyer les identifiants relus sous verrou. [apps/api/src/events/events.service.ts:1084]

@@ -163,6 +163,14 @@ export const routes: Routes = [
           ),
       },
       { path: 'profile/calendar', loadComponent: calendarView, data: { mode: 'personal' } },
+      // Story 48.1 : ma Ludothèque, ouverte depuis la ligne du compte.
+      {
+        path: 'profile/board-games',
+        loadComponent: () =>
+          import('./features/board-games/board-games-page/board-games-page').then(
+            (m) => m.BoardGamesPage,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

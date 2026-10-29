@@ -60,6 +60,8 @@ const EXCEPTIONS: Readonly<Record<string, string>> = {
     "Hôte de la conjonction (propriétaire de l'événement) transmis à eligibleVoters : sélection de votants, pas un droit ; les droits d'organisateur viennent de PermissionService.organizerCan.",
   'notifications/notifications.service.ts':
     'Destinataires du rappel de la veille de chaque séance (propriétaire + membres de la partie) : sélection de destinataires, pas un droit.',
+  'board-games/board-games.service.ts':
+    "Story 48.1 : `BoardGame.ownerId` (nom imposé par l'épic 48) est le propriétaire d'un JEU, jamais celui d'une partie. Seul écrivain de la table `BoardGame` : colonne écrite à la création et filtre « mes jeux » sur l'utilisateur de la session — aucun identifiant reçu en paramètre, aucune décision de droit sur une partie.",
 };
 
 /** Fichiers sources non-spec de `dir`, chemins relatifs à `SRC_ROOT` (séparateur `/`). */

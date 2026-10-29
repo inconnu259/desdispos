@@ -82,6 +82,47 @@ mat-form-field {
   }
 }
 
+/* ⚠️ Story 48.1 — ligne vers la Ludothèque : toute la ligne est le lien, 44 px au moins. */
+.board-games-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+  margin: 0.75rem 0;
+  padding: 0.25rem 0;
+  color: inherit;
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary, currentColor);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+.board-games-row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.board-games-row__title {
+  font-size: 1rem;
+}
+
+.board-games-row__visibility {
+  font-size: 0.78rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.board-games-row__chevron {
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
 /* ⚠️ Story 43.1 (UX-DR13) — zone sensible : filet, étiquette, phrase en 13 px, pilule à contour rouge.
    Le rouge dit « irréversible » ; l'état est aussi écrit (mot + corbeille), jamais la couleur seule. */
 .danger-zone {

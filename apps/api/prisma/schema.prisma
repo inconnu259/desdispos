@@ -51,6 +51,7 @@ model User {
   hiddenSlotWindows         SlotWindowHidden[]
   announcementReads         AnnouncementRead[]
   calendarLayers            UserCalendarLayer[]
+  boardGames                BoardGame[]
 }
 
 enum PartieKind {
@@ -148,6 +149,24 @@ model PartieHidden {
 
   @@unique([userId, partieId])
   @@index([partieId])
+}
+
+/// Un jeu de la Ludothèque d'une personne (Story 48.1, épic 48). Saisie manuelle seulement : nom
+/// obligatoire, joueurs et durée facultatifs. `nameKey` = `boardGameNameKey(name)` (@master-jdr/shared),
+/// calculée par l'API à l'écriture : deux jeux de même clé sont refusés dans une même Ludothèque.
+/// Seul `board-games/` écrit cette table ; elle disparaît en cascade avec son propriétaire.
+model BoardGame {
+  id          String   @id @default(uuid())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name        String
+  nameKey     String
+  minPlayers  Int?
+  maxPlayers  Int?
+  durationMin Int?
+  createdAt   DateTime @default(now())
+
+  @@unique([ownerId, nameKey])
 }
 
 /// Story 46.4 — une fenêtre de l'automate que le MJ a masquée (« Masquer » dans la liste des éphémérides). Par

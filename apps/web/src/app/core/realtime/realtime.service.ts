@@ -12,6 +12,7 @@ import { AvailabilityService } from '../availability/availability.service';
 import { AnnouncementsService } from '../announcements/announcements.service';
 import { CharacterRolesService } from '../character-roles/character-roles.service';
 import { PartySignalsService } from '../parties/party-signals.service';
+import { BoardGamesService } from '../board-games/board-games.service';
 
 export function partieTopic(partieId: string): string {
   return `partie:${partieId}`;
@@ -60,6 +61,7 @@ export class RealtimeService {
   private readonly announcements = inject(AnnouncementsService);
   private readonly characterRoles = inject(CharacterRolesService);
   private readonly partySignals = inject(PartySignalsService);
+  private readonly boardGames = inject(BoardGamesService);
 
   // Table de correspondance topic-prefix -> services à notifier (AD-3), câblée ici, dans
   // RealtimeService lui-même (jamais par le composant appelant connect()/disconnect()) —
@@ -111,6 +113,10 @@ export class RealtimeService {
     // (contexte personnel) se connecte à user:{id} et recharge GET /me/calendar sur ce même signal
     // `ScenariosService.changed()` — pas de nouveau service, pas de nouvelle méthode.
     { prefix: 'user:', notifyChanged: () => this.scenarios.notifyRealtimeChanged() },
+    // Story 48.1 : ma Ludothèque — toute écriture d'un jeu émet `user:{propriétaire}` ; la page la
+    // relit sur ce signal (autres onglets de la même personne). Préfixe 'user:' seul : le
+    // `partie:{id}` émis en même temps est pour l'onglet des jeux d'une soirée (épic 49).
+    { prefix: 'user:', notifyChanged: () => this.boardGames.notifyChanged() },
   ];
 
   // Une entrée par connexion active (pas par topic) — deux connect() sur le même topic ouvrent

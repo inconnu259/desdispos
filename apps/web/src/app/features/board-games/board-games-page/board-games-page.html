@@ -1,0 +1,106 @@
+<div class="board-games-page">
+  <!-- ⚠️ Story 48.1 — `QuickAddRow` : saisie en série en tête. `Entrée` dans n'importe quel champ
+       ajoute (envoi natif du formulaire) ; nom vide ou max < min : bouton inactif. -->
+  <form class="quick-add" novalidate (submit)="onSubmit($event)">
+    <label class="quick-add__field quick-add__field--name">
+      <span class="quick-add__label">{{ theme.tone()['board_games.field_name'] }}</span>
+      <input
+        #nameInput
+        class="quick-add__input"
+        type="text"
+        name="name"
+        autocomplete="off"
+        maxlength="80"
+        [value]="name()"
+        (input)="onInput('name', $event)"
+      />
+    </label>
+
+    <div class="quick-add__line">
+      <div class="quick-add__field">
+        <span class="quick-add__label" id="quick-add-players-label">{{
+          theme.tone()['board_games.field_players']
+        }}</span>
+        <div class="quick-add__players" role="group" aria-labelledby="quick-add-players-label">
+          <input
+            class="quick-add__input quick-add__input--number"
+            type="number"
+            name="minPlayers"
+            inputmode="numeric"
+            min="1"
+            max="99"
+            step="1"
+            [attr.aria-label]="theme.tone()['board_games.field_players_min_aria']"
+            [value]="minPlayers()"
+            (input)="onInput('min', $event)"
+          />
+          <span class="quick-add__to" aria-hidden="true">{{
+            theme.tone()['board_games.field_players_to']
+          }}</span>
+          <input
+            class="quick-add__input quick-add__input--number"
+            type="number"
+            name="maxPlayers"
+            inputmode="numeric"
+            min="1"
+            max="99"
+            step="1"
+            [attr.aria-label]="theme.tone()['board_games.field_players_max_aria']"
+            [attr.aria-invalid]="maxBelowMin() ? 'true' : null"
+            [attr.aria-describedby]="maxBelowMin() ? 'quick-add-max-below-min' : null"
+            [value]="maxPlayers()"
+            (input)="onInput('max', $event)"
+          />
+        </div>
+        @if (maxBelowMin()) {
+          <p class="quick-add__message" id="quick-add-max-below-min">
+            {{ theme.tone()['board_games.max_below_min'] }}
+          </p>
+        }
+      </div>
+
+      <label class="quick-add__field">
+        <span class="quick-add__label">{{ theme.tone()['board_games.field_duration'] }}</span>
+        <input
+          class="quick-add__input quick-add__input--number"
+          type="number"
+          name="durationMin"
+          inputmode="numeric"
+          min="1"
+          max="1440"
+          step="1"
+          [value]="durationMin()"
+          (input)="onInput('duration', $event)"
+        />
+      </label>
+
+      <button class="quick-add__submit" type="submit" [disabled]="!canSubmit()">
+        {{ theme.tone()['board_games.add_btn'] }}
+      </button>
+    </div>
+
+    <p class="quick-add__hint">{{ theme.tone()['board_games.hint'] }}</p>
+    @if (submitError()) {
+      <p class="quick-add__message" role="alert">{{ submitError() }}</p>
+    }
+  </form>
+
+  @if (loadError()) {
+    <p class="board-games-page__message" role="alert">
+      {{ theme.tone()['board_games.error_fallback'] }}
+    </p>
+  }
+
+  @if (rows().length > 0) {
+    <ul class="board-games-list" [attr.aria-label]="theme.tone()['board_games.title']">
+      @for (row of rows(); track row.id) {
+        <li class="board-games-list__row">
+          <span class="board-games-list__name">{{ row.name }}</span>
+          @if (row.measures) {
+            <span class="board-games-list__measures">{{ row.measures }}</span>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

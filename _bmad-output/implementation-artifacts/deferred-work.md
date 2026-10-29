@@ -468,3 +468,7 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 
 - [P:BASSE] `accept` crée l'adhésion hors du verrou de la partie (P10-AD-7) : course possible avec la suppression du groupe par son dernier admin (500 ou adhésion non comptée). [apps/api/src/invitations/invitations.service.ts:155]
 - [P:BASSE] Rejoindre par un lien laisse en PENDING l'invitation nominative de la même personne pour la même partie (invitation fantôme sur l'accueil et dans la liste de l'hôte). [apps/api/src/invitations/invite-links.service.ts:112]
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-48-1-ajouter-mes-jeux-et-les-retrouver.md`
+  summary: Protected web routes (e.g. `profile/board-games`, `profile/calendar`) have no route-level test that navigating the real route table renders the page.
+  evidence: Only `href` assertions exist (`account.spec.ts`, `shell.spec.ts:105`); `app.config.spec.ts` navigates public routes only, so a path typo or wrong lazy import would fall through to `'**'` unnoticed.

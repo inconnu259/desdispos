@@ -101,6 +101,17 @@
     </div>
   </div>
 
+  <!-- ⚠️ Story 48.1 (EXPERIENCE.md §2.4) — ligne vers la Ludothèque, juste après « Ce que révèle mon
+       calendrier » (ordre de la planche), donc avant la zone sensible. Le décompte n'apparaît qu'une
+       fois lu ; aucun texte n'incite à la remplir. -->
+  <a class="board-games-row" routerLink="/profile/board-games">
+    <span class="board-games-row__text">
+      <span class="board-games-row__title">{{ boardGamesRowTitle() }}</span>
+      <span class="board-games-row__visibility">{{ theme.tone()['board_games.visibility'] }}</span>
+    </span>
+    <span class="board-games-row__chevron" aria-hidden="true">›</span>
+  </a>
+
   <div class="readonly-field">
     <span class="lbl">{{ theme.tone()['account.password_title'] }}</span>
     @if (!editingPassword()) {

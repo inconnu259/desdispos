@@ -14,6 +14,7 @@ import { TONE_MAP } from '../../core/theme/tones';
 import { MatDialog } from '@angular/material/dialog';
 import { DeleteAccountDialog } from './delete-account-dialog/delete-account-dialog';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
+import { BoardGamesService } from '../../core/board-games/board-games.service';
 
 function makeUser(overrides: Partial<AuthUser> = {}): AuthUser {
   return {
@@ -87,6 +88,12 @@ function makeThemeService() {
       // Story 34.2 — libellés du bouton de révélation du mot de passe.
       'auth.password_show': 'Afficher le mot de passe',
       'auth.password_hide': 'Masquer le mot de passe',
+      // Story 48.1 — ligne vers la Ludothèque.
+      'board_games.title': 'Mon cabinet de reliques',
+      'board_games.visibility':
+        'Visible par les membres de vos groupes et les invités de vos conjonctions.',
+      'board_games.count_one': '{n} jeu',
+      'board_games.count_many': '{n} jeux',
     }),
     // ThemeSelector (intégré à l'écran de compte, Story 28.4) a besoin de ces membres.
     activeTheme: signal('grimoire-emeraude'),
@@ -100,6 +107,11 @@ function makeThemeService() {
   };
 }
 
+/** Story 48.1 : la ligne du compte lit le décompte de ma Ludothèque à l'ouverture. */
+function makeBoardGamesService(list = vi.fn().mockResolvedValue([])) {
+  return { list, changed: signal(0), notifyChanged: vi.fn() };
+}
+
 async function createFixture(
   currentUser = makeUser(),
   accountSvc: Record<string, ReturnType<typeof vi.fn>> = {
@@ -109,6 +121,7 @@ async function createFixture(
     requestEmailChange: vi.fn(),
     updatePreferences: vi.fn(),
   },
+  boardGamesSvc = makeBoardGamesService(),
 ) {
   const currentUserSignal = signal<AuthUser | null>(currentUser);
   const authSvc = { currentUser: currentUserSignal, logout: vi.fn().mockResolvedValue(undefined) };
@@ -119,6 +132,7 @@ async function createFixture(
       { provide: AuthService, useValue: authSvc },
       { provide: AccountService, useValue: accountSvc },
       { provide: ThemeToneService, useValue: makeThemeService() },
+      { provide: BoardGamesService, useValue: boardGamesSvc },
     ],
   }).compileComponents();
 
@@ -965,6 +979,7 @@ describe('Account — zone sensible (Story 43.1)', () => {
         { provide: AuthService, useValue: { currentUser } },
         { provide: AccountService, useValue: accountSvc },
         { provide: MatDialog, useValue: dialog },
+        { provide: BoardGamesService, useValue: makeBoardGamesService() },
         {
           provide: ThemeToneService,
           useValue: {
@@ -1064,5 +1079,67 @@ describe('Account — zone sensible (Story 43.1)', () => {
 
     expect(currentUser()).not.toBeNull();
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+// ⚠️ Story 48.1 — la ligne vers la Ludothèque, après « Ce que révèle mon calendrier », avant la zone sensible.
+describe('Account — ligne de la Ludothèque (Story 48.1)', () => {
+  const GAME = {
+    id: 'g',
+    name: 'Azul',
+    nameKey: 'azul',
+    minPlayers: null,
+    maxPlayers: null,
+    durationMin: null,
+    createdAt: '2026-10-29T10:00:00.000Z',
+  };
+  const row = (el: HTMLElement) => el.querySelector<HTMLAnchorElement>('a.board-games-row')!;
+
+  it('« Mon cabinet de reliques · 0 jeu › » et la phrase de visibilité, lien vers la page', async () => {
+    const { fixture } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(row(el).querySelector('.board-games-row__title')?.textContent?.trim()).toBe(
+      'Mon cabinet de reliques · 0 jeu',
+    );
+    expect(row(el).querySelector('.board-games-row__visibility')?.textContent?.trim()).toBe(
+      'Visible par les membres de vos groupes et les invités de vos conjonctions.',
+    );
+    expect(row(el).querySelector('.board-games-row__chevron')?.textContent?.trim()).toBe('›');
+    expect(row(el).getAttribute('href')).toBe('/profile/board-games');
+  });
+
+  it('placée après les intentions du calendrier et avant la zone sensible', async () => {
+    const { fixture } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const intents = el.querySelector('.calendar-intents')!;
+    const danger = el.querySelector('.danger-zone')!;
+    expect(
+      intents.compareDocumentPosition(row(el)) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(row(el).compareDocumentPosition(danger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('pluriel au-delà d’un jeu : « 3 jeux »', async () => {
+    const list = vi.fn().mockResolvedValue([GAME, { ...GAME, id: 'h' }, { ...GAME, id: 'i' }]);
+    const { fixture } = await createFixture(makeUser(), undefined, makeBoardGamesService(list));
+
+    expect(list).toHaveBeenCalledTimes(1);
+    const title = row(fixture.nativeElement as HTMLElement).querySelector(
+      '.board-games-row__title',
+    );
+    expect(title?.textContent).toContain('· 3 jeux');
+  });
+
+  it('lecture du décompte en échec : le titre seul, la ligne reste un lien', async () => {
+    const list = vi.fn().mockRejectedValue(new Error('boom'));
+    const { fixture } = await createFixture(makeUser(), undefined, makeBoardGamesService(list));
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(row(el).querySelector('.board-games-row__title')?.textContent?.trim()).toBe(
+      'Mon cabinet de reliques',
+    );
+    expect(row(el).getAttribute('href')).toBe('/profile/board-games');
   });
 });

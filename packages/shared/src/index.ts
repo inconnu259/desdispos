@@ -2077,3 +2077,43 @@ export interface ChooseArtefactCadeauDto {
 export interface SetReserveSlotDto {
   key: string | null;
 }
+
+// ─── Ludothèque (Palier 10.5, épic 48) ────────────────────────────────────────
+
+/**
+ * Clé de regroupement d'un nom de jeu (Story 48.1) — LA normalisation unique, partagée par toutes
+ * les couches. Dans cet ordre : décomposition NFD ; suppression des seuls diacritiques combinants
+ * latins (U+0300–U+036F — les marques des autres écritures, ex. le dakuten japonais, distinguent des
+ * noms et sont gardées) ; suppression des caractères de format invisibles (`\p{Cf}` : espace sans
+ * chasse, trait d'union conditionnel, BOM…) ; puis bords rognés, espaces intérieurs réduits à un
+ * seul, minuscules. Calculée par l'API à l'écriture et servie dans chaque DTO ; le front regroupe sur
+ * la clé reçue, sans la recalculer.
+ */
+export function boardGameNameKey(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{Cf}/gu, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+/** Un jeu de la Ludothèque d'une personne (Story 48.1) — projection explicite, jamais la ligne brute. */
+export interface BoardGameDto {
+  id: string;
+  name: string;
+  nameKey: string;
+  minPlayers: number | null;
+  maxPlayers: number | null;
+  durationMin: number | null;
+  createdAt: string;
+}
+
+/** Corps de `POST /me/board-games` (Story 48.1) : seul le nom est obligatoire. */
+export interface CreateBoardGameInput {
+  name: string;
+  minPlayers?: number | null;
+  maxPlayers?: number | null;
+  durationMin?: number | null;
+}

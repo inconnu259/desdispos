@@ -140,6 +140,10 @@ describe('Compte — effacer mon compte (Story 43.2)', () => {
         .post(`/parties/${shared.id}/invitations`)
         .send({ inviteeUserId: bystander.id })
         .expect(201);
+      // Story 48.1 : deux jeux dans ma Ludothèque (cascade `BoardGame.owner`).
+      await me.agent.post('/me/board-games').send({ name: 'Azul' }).expect(201);
+      await me.agent.post('/me/board-games').send({ name: 'Skull' }).expect(201);
+      expect(await h.prisma.boardGame.count({ where: { ownerId: me.id } })).toBe(2);
       // Une seconde session.
       const second = request.agent(h.app.getHttpServer());
       await second
@@ -211,6 +215,8 @@ describe('Compte — effacer mon compte (Story 43.2)', () => {
       expect(await membership(me.id, otherQuest.id)).toBeNull();
       // Mes invitations disparaissent avec moi (cascade existante).
       expect(await h.prisma.invitation.count({ where: { inviterId: me.id } })).toBe(0);
+      // Story 48.1 : ma Ludothèque disparaît avec moi (cascade `BoardGame.owner`).
+      expect(await h.prisma.boardGame.count({ where: { ownerId: me.id } })).toBe(0);
       // Les autres comptes restent connectés et intacts.
       for (const other of [admin2, guest, player, gm, bystander]) {
         expect(await userExists(other.id)).toBe(true);

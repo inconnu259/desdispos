@@ -23,6 +23,7 @@ import { ScenariosModule } from './scenarios/scenarios.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { CharacterRolesModule } from './character-roles/character-roles.module';
 import { AccountModule } from './account/account.module';
+import { BoardGamesModule } from './board-games/board-games.module';
 import { PortsModule } from './ports/ports.module';
 
 @Module({
@@ -55,6 +56,8 @@ import { PortsModule } from './ports/ports.module';
     AnnouncementsModule,
     CharacterRolesModule,
     AccountModule,
+    // Story 48.1 : la Ludothèque (couche 2, seul écrivain de `BoardGame`).
+    BoardGamesModule,
     // Story 37.8 : lie les ports de la couche 1 à leurs implémentations (module global).
     PortsModule,
   ],

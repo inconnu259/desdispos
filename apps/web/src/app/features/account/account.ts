@@ -1,6 +1,6 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
@@ -13,6 +13,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { CALENDAR_LAYER_KEYS, type CalendarLayerKey } from '@master-jdr/shared';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountService } from '../../core/account/account.service';
+import { BoardGamesService } from '../../core/board-games/board-games.service';
+import { formatBoardGameCount } from '../board-games/board-game-measures';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
 import { DeleteAccountDialog } from './delete-account-dialog/delete-account-dialog';
@@ -57,6 +59,7 @@ const CALENDAR_INTENTS: readonly CalendarIntent[] = [
   selector: 'app-account',
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
@@ -71,13 +74,14 @@ const CALENDAR_INTENTS: readonly CalendarIntent[] = [
   templateUrl: './account.html',
   styleUrl: './account.scss',
 })
-export class Account {
+export class Account implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly account = inject(AccountService);
   private readonly router = inject(Router);
   private readonly contextualNav = inject(ContextualNavService);
   private readonly dialog = inject(MatDialog);
+  private readonly boardGames = inject(BoardGamesService);
 
   protected readonly theme = inject(ThemeToneService);
 
@@ -124,6 +128,26 @@ export class Account {
   // celui de la fenêtre (Story 43.2).
   protected readonly deleteLoading = signal(false);
   protected readonly deleteError = signal<string | null>(null);
+
+  // ⚠️ Story 48.1 — ligne « {titre du thème} · {n} jeu(x) › » vers la Ludothèque : le décompte est lu
+  // une fois à l'ouverture de l'écran ; tant qu'il n'est pas connu (ou si la lecture échoue), seul le
+  // titre s'affiche.
+  protected readonly boardGamesCount = signal<number | null>(null);
+  protected readonly boardGamesRowTitle = computed(() => {
+    const tone = this.theme.tone();
+    const n = this.boardGamesCount();
+    const title = tone['board_games.title'];
+    return n === null ? title : `${title} · ${formatBoardGameCount(n, tone)}`;
+  });
+
+  ngOnInit(): void {
+    this.boardGames
+      .list()
+      .then((games) => this.boardGamesCount.set(games.length))
+      .catch(() => {
+        // non-bloquant — la ligne reste utilisable sans son décompte
+      });
+  }
 
   async openDeleteAccount(): Promise<void> {
     if (this.deleteLoading()) return;

@@ -294,6 +294,32 @@ export const grimoireEmeraude = {
   'identity.homonymy_change_cta': 'Changer mon nom affiché',
   'identity.homonymy_ignore_cta': 'Passer outre',
 
+  /* ═══ Ludothèque (Story 48.1) ═══ */
+  /* — titre (page et ligne du compte), visibilité, refus d’un doublon — */
+  'board_games.title': 'Mon cabinet de reliques',
+  'board_games.visibility':
+    'Visible par les membres de vos groupes et les invités de vos conjonctions.',
+  'board_games.duplicate': 'Ce jeu est déjà dans votre cabinet.',
+  /* — saisie, mesures et décomptes : neutres (NEUTRAL_KEYS) — */
+  'board_games.field_name': 'Nom',
+  'board_games.field_players': 'Joueurs',
+  'board_games.field_players_to': 'à',
+  'board_games.field_players_min_aria': 'Nombre minimum de joueurs',
+  'board_games.field_players_max_aria': 'Nombre maximum de joueurs',
+  'board_games.field_duration': 'Durée en minutes',
+  'board_games.add_btn': 'Ajouter',
+  'board_games.hint': 'Seul le nom est obligatoire.',
+  'board_games.max_below_min': 'Le maximum ne peut pas être inférieur au minimum.',
+  'board_games.error_fallback': "La requête n'a pas abouti.",
+  'board_games.measure_players_range': '{min}–{max} joueurs',
+  'board_games.measure_players_exact_one': '{n} joueur',
+  'board_games.measure_players_exact_many': '{n} joueurs',
+  'board_games.measure_players_min': '{min}+ joueurs',
+  'board_games.measure_players_max': "jusqu'à {max} joueurs",
+  'board_games.measure_duration': '{d} min',
+  'board_games.count_one': '{n} jeu',
+  'board_games.count_many': '{n} jeux',
+
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */
   'dashboard.title_invitations': 'Missives reçues',

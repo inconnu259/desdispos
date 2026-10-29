@@ -1134,6 +1134,28 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'account.delete_jdr_line_none',
     'account.delete_irreversible',
     'account.delete_confirm_btn',
+    // Story 48.1 : Ludothèque — libellés de saisie (« Nom », « Joueurs », « à », « Durée en minutes »,
+    // « Ajouter », « Seul le nom est obligatoire. »), mesures (« {min}–{max} joueurs », « {d} min » et
+    // formes partielles), décomptes (« {n} jeu(x) »), message max < min et repli d’erreur : mesure ou
+    // saisie, volontairement hors thème (EXPERIENCE.md §3.3) ; seuls titre, visibilité et doublon ont une voix
+    'board_games.field_name',
+    'board_games.field_players',
+    'board_games.field_players_to',
+    'board_games.field_players_min_aria',
+    'board_games.field_players_max_aria',
+    'board_games.field_duration',
+    'board_games.add_btn',
+    'board_games.hint',
+    'board_games.max_below_min',
+    'board_games.error_fallback',
+    'board_games.measure_players_range',
+    'board_games.measure_players_exact_one',
+    'board_games.measure_players_exact_many',
+    'board_games.measure_players_min',
+    'board_games.measure_players_max',
+    'board_games.measure_duration',
+    'board_games.count_one',
+    'board_games.count_many',
   ]);
 
   const REFERENCE =TONE_MAP['grimoire-emeraude'];
@@ -1325,8 +1347,13 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
       'atelier-cuivre':
         /mission|opération|registre|automate|pneumatique|scrutin|consign|équipage|mécanicien|atelier|plaque|badge|composant|calibr|vapeur|purg|ingénieur|établi|fréquence|télégramme|assembl|soute|chargement|rouage/i,
     };
+    // Story 48.1 : les textes neutres recensés (NEUTRAL_KEYS) sont hors thème PAR CONSTRUCTION — ils
+    // n'entrent pas dans la part mesurée, sans quoi chaque lot de libellés de saisie ou de mesure
+    // (ex. la Ludothèque) ferait passer un thème sous le seuil sans qu'aucune voix ne se soit perdue.
     for (const theme of THEMES) {
-      const total = Object.values(TONE_MAP[theme]);
+      const total = Object.entries(TONE_MAP[theme])
+        .filter(([key]) => !NEUTRAL_KEYS.has(key))
+        .map(([, value]) => value);
       const marques = total.filter((value) => univers[theme].test(value));
       expect(marques.length, `${theme} : ${marques.length}/${total.length}`).toBeGreaterThan(
         total.length * 0.35,
@@ -2242,5 +2269,58 @@ describe("Tones — fenêtres de l'automate et colonne de droite (Story 46.1)", 
     const texts = THEMES.map((theme) => TONE_MAP[theme][key]);
     expect(texts[0], key).toBeTruthy();
     expect(new Set(texts).size, key).toBe(1);
+  });
+});
+
+// Story 48.1 — la Ludothèque : titre, visibilité et refus d’un doublon prennent la voix de chaque thème (textes
+// validés le 2026-10-29, EXPERIENCE.md §3.1-3.2) ; tout le reste est neutre.
+describe('Tones — Ludothèque (Story 48.1)', () => {
+  const VOICED: Record<string, Record<string, string>> = {
+    'board_games.title': {
+      'grimoire-emeraude': 'Mon cabinet de reliques',
+      'foret-ancienne': 'Mon coffre aux trésors',
+      'atelier-cuivre': 'Mon râtelier',
+    },
+    'board_games.visibility': {
+      'grimoire-emeraude':
+        'Visible par les membres de vos groupes et les invités de vos conjonctions.',
+      'foret-ancienne': 'Visible par tes cercles et les invités de tes haltes.',
+      'atelier-cuivre': 'Visible par vos équipages et les invités de vos réunions.',
+    },
+    'board_games.duplicate': {
+      'grimoire-emeraude': 'Ce jeu est déjà dans votre cabinet.',
+      'foret-ancienne': 'Ce jeu est déjà dans ton coffre.',
+      'atelier-cuivre': 'Ce jeu est déjà sur votre râtelier.',
+    },
+  };
+
+  for (const theme of THEMES) {
+    it(`${theme} porte le titre, la visibilité et le refus de doublon validés`, () => {
+      for (const [key, byTheme] of Object.entries(VOICED)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(byTheme[theme]);
+      }
+    });
+  }
+
+  it('libellés de saisie, mesures et décomptes : le texte du contrat, identique dans les trois thèmes', () => {
+    const expected: Record<string, string> = {
+      'board_games.field_name': 'Nom',
+      'board_games.field_players': 'Joueurs',
+      'board_games.field_players_to': 'à',
+      'board_games.field_duration': 'Durée en minutes',
+      'board_games.add_btn': 'Ajouter',
+      'board_games.hint': 'Seul le nom est obligatoire.',
+      'board_games.measure_players_range': '{min}–{max} joueurs',
+      'board_games.measure_players_min': '{min}+ joueurs',
+      'board_games.measure_players_max': "jusqu'à {max} joueurs",
+      'board_games.measure_duration': '{d} min',
+      'board_games.count_one': '{n} jeu',
+      'board_games.count_many': '{n} jeux',
+    };
+    for (const theme of THEMES) {
+      for (const [key, text] of Object.entries(expected)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(text);
+      }
+    }
   });
 });

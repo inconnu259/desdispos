@@ -13,6 +13,7 @@ import { MyPartiesService } from '../my-parties/my-parties.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { CharacterRolesService } from '../character-roles/character-roles.service';
 import { PartySignalsService } from '../parties/party-signals.service';
+import { BoardGamesService } from '../board-games/board-games.service';
 import { RealtimeService, matchingHandlers, partieTopic, userTopic } from './realtime.service';
 
 class FakeEventSource {
@@ -92,6 +93,7 @@ describe('RealtimeService', () => {
   let availabilitySvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let characterRolesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let partySignalsSvc: { notifyChanged: ReturnType<typeof vi.fn> };
+  let boardGamesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     originalEventSource = (globalThis as any).EventSource;
@@ -124,6 +126,8 @@ describe('RealtimeService', () => {
     characterRolesSvc = { notifyChanged: vi.fn() };
     // Story 29.7 : PartySignalsService ajoutée au préfixe 'user:' SEUL (AD-3/AD-14).
     partySignalsSvc = { notifyChanged: vi.fn() };
+    // Story 48.1 : BoardGamesService ajoutée au préfixe 'user:' SEUL.
+    boardGamesSvc = { notifyChanged: vi.fn() };
     // RealtimeService injecte désormais PartiesService (Story 18.3, Task 4) — PartiesService
     // injecte lui-même HttpClient, jamais fourni par ce module de test isolé. Mock direct : ce
     // test ne porte pas sur les appels HTTP de PartiesService.
@@ -140,6 +144,7 @@ describe('RealtimeService', () => {
         { provide: AvailabilityService, useValue: availabilitySvc },
         { provide: CharacterRolesService, useValue: characterRolesSvc },
         { provide: PartySignalsService, useValue: partySignalsSvc },
+        { provide: BoardGamesService, useValue: boardGamesSvc },
       ],
     });
     service = TestBed.inject(RealtimeService);
@@ -308,6 +313,19 @@ describe('RealtimeService', () => {
     FakeEventSource.instances[0].emit('open');
 
     expect(partySignalsSvc.notifyChanged).not.toHaveBeenCalled();
+  });
+
+  it("Story 48.1 : ma Ludothèque se relit sur 'user:', jamais sur 'partie:'", () => {
+    service.connect(partieTopic('p1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(boardGamesSvc.notifyChanged).not.toHaveBeenCalled();
+    service.disconnect(partieTopic('p1'));
+
+    service.connect(userTopic('u1'));
+    FakeEventSource.instances[1].emit('open');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(1);
+    FakeEventSource.instances[1].emit('message');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(2);
   });
 
   it("'open' déclenche AUSSI notifyChanged() sur CharacterRolesService — préfixe 'partie:' (Story 27.3, AC3)", () => {

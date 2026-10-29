@@ -236,9 +236,12 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 
 ---
 
-## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production — PRD final, prochaine étape : UX)*
+## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production — PRD et UX finals, prochaine étape : architecture)*
 
-> PRD : `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-28-p10-5/prd.md` (final, 2026-10-29) — FR-1 à FR-10.
+> PRD : `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-28-p10-5/prd.md` (final, 2026-10-29) — FR-1 à FR-10 ;
+> FR-6 amendé par l'UX (un doublon figure à chaque endroit d'une soirée, ×N).
+> UX : `_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-10-29/` (final, 2026-10-29) — onglet des jeux
+> par provenance (Reliques / Trésors / Joyaux), page Ludothèque, onglet du groupe, « Qui reçoit » dans Détails ; 7 écarts ⚠️.
 > Retaillé avec l'utilisateur : saisie manuelle seulement (pas d'import BoardGameGeek), « bibliothèque commune » =
 > vue agrégée des jeux des membres, historique des hôtes réduit à un **compteur** (l'historique des événements existe
 > déjà), « envie d'y jouer » minimale sur la fiche de la soirée ; tout reste facultatif ; mode soirée seulement.

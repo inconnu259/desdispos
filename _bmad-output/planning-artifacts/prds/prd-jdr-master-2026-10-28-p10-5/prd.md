@@ -121,10 +121,10 @@ Un Participant d'une soirée à venir, autre que l'hôte, peut cocher parmi les 
 
 #### FR-6 : Lire les jeux sur place
 
-Toute personne qui voit la fiche d'une soirée voit ses jeux sur place, regroupés par nom. Réalise UJ-1, UJ-2.
+Toute personne qui voit la fiche d'une soirée voit ses jeux sur place, rangés par provenance (chez l'hôte, apportés). Réalise UJ-1, UJ-2.
 
 **Consequences (testable):**
-- Un même nom présent plusieurs fois (hôte et Apport, ou deux Apports) s'affiche une fois, avec la liste de ses propriétaires : c'est ce qui rend le doublon visible avant le départ. Le regroupement se fait par nom normalisé (casse et accents ignorés) ; il n'existe pas d'identité de jeu partagée.
+- Un même nom présent plusieurs fois (hôte et Apport, ou deux Apports) figure à chaque endroit où il se trouve, marqué « ×N » et accompagné du nom des autres détenteurs : c'est ce qui rend le doublon visible avant le départ, et permet aux détenteurs d'annuler ou de se concerter. Le rapprochement se fait par nom normalisé (casse et accents ignorés) ; il n'existe pas d'identité de jeu partagée. *(Amendé par l'UX le 2026-10-29 — `ux-designs/ux-jdr-master-2026-10-29/EXPERIENCE.md` §2.3 ; les Jeux du groupe, FR-8, gardent une ligne par jeu.)*
 - Chaque jeu dont la plage de joueurs contient le nombre actuel de Participants est signalé « jouable à N ». Un jeu sans nombre de joueurs n'est jamais signalé.
 - La liste se met à jour sans recharger la page quand un Apport, une Envie, un Jeu écarté ou un Participant change (voir NFR temps réel).
 - Une fois la soirée passée, la section reste lisible et figée.
@@ -221,11 +221,11 @@ Palier à usage privé : le succès se juge à l'usage par la bande, pas à des 
 
 ## 8. Open Questions
 
-*Aucune ne bloque l'UX ou l'architecture ; toutes sont reportées à l'UX du palier.*
+*Toutes résolues par l'UX le 2026-10-29 (`ux-designs/ux-jdr-master-2026-10-29/`).*
 
-1. Libellés de l'interface (« Ludothèque » ou « Mes jeux », « Jeux sur place », « J'apporte », « Envie ») : à fixer à l'UX, dans la langue du mode soirée.
-2. Faut-il trier les jeux sur place (par Envies, par « jouable à N »), ou l'ordre « hôte puis Apports » suffit-il ?
-3. Les Jeux du groupe ont-ils besoin d'une recherche par nom, ou le filtre par nombre de joueurs suffit-il à 20 membres ?
+1. ~~Libellés de l'interface~~ — fixés par thème (EXPERIENCE.md §3) : onglet Reliques / Trésors / Joyaux, etc.
+2. ~~Tri des jeux sur place~~ — filtres « Jouables à N » et « Les plus … » (par Envies), sections par provenance (EXPERIENCE.md §2.3).
+3. ~~Recherche dans les Jeux du groupe~~ — recherche par nom et filtre « jouable à » (EXPERIENCE.md §2.5).
 
 ## 9. Hypothèses confirmées
 

@@ -236,7 +236,7 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 
 ---
 
-## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production — PRD, UX et architecture finals, prochaine étape : épics et stories)*
+## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production — PRD, UX, architecture et épics finals, prochaine étape : sprint planning)*
 
 > PRD : `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-28-p10-5/prd.md` (final, 2026-10-29) — FR-1 à FR-10 ;
 > FR-6 amendé par l'UX (un doublon figure à chaque endroit d'une soirée, ×N).
@@ -246,6 +246,8 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 > (final, 2026-10-29) — AD-1 à AD-8 : module `board-games/`, jeux d'une soirée dans `events/`, `participantsOf`,
 > `LIBRARY_READ`. Corrections reportées dans le PRD et l'UX : une place réservée n'est pas une participation, l'hôte
 > ne change jamais, une soirée passée ou annulée n'affiche pas ses jeux.
+> Épics : `_bmad-output/planning-artifacts/epics-palier10-5.md` (final, 2026-10-29) — épics 48 à 50, 10 stories :
+> 48 Ludothèque (3), 49 jeux sur place d'une soirée (5), 50 jeux du groupe et qui reçoit (2).
 > Retaillé avec l'utilisateur : saisie manuelle seulement (pas d'import BoardGameGeek), « bibliothèque commune » =
 > vue agrégée des jeux des membres, historique des hôtes réduit à un **compteur** (l'historique des événements existe
 > déjà), « envie d'y jouer » minimale sur la fiche de la soirée ; tout reste facultatif ; mode soirée seulement.

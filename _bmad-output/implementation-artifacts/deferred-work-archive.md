@@ -1112,3 +1112,7 @@ Décision : repris dans des stories planifiées (`sprint-change-proposal-2026-09
 ## Clos par la livraison de la 33.6 (réserve de souffles, 2026-10-03)
 
 - ✅ **RÉSOLU (2026-10-03, story 33-6-reserve-de-souffles)** — Clause d'AC de la 33.4 « la réserve par défaut est imprimée si elle existe » (puis, après le sprint change du 2026-10-02, « si une réserve existe »). La réserve unique portée par la fiche (`sheetData.reserve`) remplit désormais `souffle_1`..`souffle_4` de l'export PDF (nom du souffle de l'emplacement de même numéro, sans son coût ; cases vides si l'emplacement ou la réserve est vide, formats éditable et 2 pages), `nombre_souffles` restant `reserveCapacity(niveau)` = `max(niveau − 1, 0)` et `souffle_actuel` vide. [packages/game-rules/src/ryuutama/homme-dragon-pdf-field-map.ts, apps/api/src/homme-dragon/homme-dragon.pdf.service.ts]
+
+## Clos par la correction du 2026-10-29 (revue a posteriori du Palier 10)
+
+- ✅ **RÉSOLU (2026-10-29)** — Fuite d'e-mails : `listForPartie` renvoyait `invitee.email`, lisible par quiconque crée un groupe et y invite un compte trouvé par pseudo. L'invité est désormais servi avec `id`, `pseudo` et `displayName` (P9-AD-2) ; test unitaire qui fige l'absence de l'e-mail ; le web n'utilisait pas ce champ. [apps/api/src/invitations/invitations.service.ts]

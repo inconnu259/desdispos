@@ -466,6 +466,5 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 
 ## Deferred from: security + code review of epics 38, 39, 41 (Palier 10, revue a posteriori du 2026-10-29)
 
-- [P:HAUTE] Fuite d'e-mails : `listForPartie` renvoie `invitee.email` ; tout utilisateur peut créer un groupe, inviter un compte trouvé par pseudo puis lire son adresse (contraire à P9-AD-2). Le web n'utilise pas ce champ : retirer `email` du `select`. Défaut antérieur (commit 144b52d), étendu par 39.3, 39.4 et 41.3. [apps/api/src/invitations/invitations.service.ts:131]
 - [P:BASSE] `accept` crée l'adhésion hors du verrou de la partie (P10-AD-7) : course possible avec la suppression du groupe par son dernier admin (500 ou adhésion non comptée). [apps/api/src/invitations/invitations.service.ts:155]
 - [P:BASSE] Rejoindre par un lien laisse en PENDING l'invitation nominative de la même personne pour la même partie (invitation fantôme sur l'accueil et dans la liste de l'hôte). [apps/api/src/invitations/invite-links.service.ts:112]

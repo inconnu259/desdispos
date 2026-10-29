@@ -464,6 +464,16 @@ describe('InvitationsService', () => {
     );
   });
 
+  it("listForPartie : l'invité est servi sans son e-mail (P9-AD-2), avec pseudo et nom affiché", async () => {
+    prisma.invitation.findMany.mockResolvedValue([]);
+
+    await service.listForPartie('p1', 'mj1');
+
+    const select = prisma.invitation.findMany.mock.calls[0][0].include.invitee.select;
+    expect(select).toEqual({ id: true, pseudo: true, displayName: true });
+    expect(select).not.toHaveProperty('email');
+  });
+
   it('listForPartie : refus du service de permission propagé, aucune invitation lue', async () => {
     permissions.assert.mockRejectedValue(new ForbiddenException());
 

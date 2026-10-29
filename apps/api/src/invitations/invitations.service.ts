@@ -122,13 +122,17 @@ export class InvitationsService {
     }
   }
 
-  /** Invitations émises pour une partie (vue MJ). */
+  /**
+   * Invitations émises pour une partie (vue MJ). L'invité est identifié par `pseudo` et `displayName`,
+   * jamais par son e-mail (P9-AD-2) : tout utilisateur peut créer un groupe et y inviter n'importe quel
+   * compte trouvé par pseudo — renvoyer l'adresse en ferait un moyen de lire celle de n'importe qui.
+   */
   async listForPartie(partieId: string, mjId: string) {
     await this.permissions.assert(mjId, 'INVITATION_READ', { partieId });
     return this.prisma.invitation.findMany({
       where: { partieId },
       orderBy: { createdAt: 'desc' },
-      include: { invitee: { select: { id: true, pseudo: true, email: true } } },
+      include: { invitee: { select: { id: true, pseudo: true, displayName: true } } },
     });
   }
 

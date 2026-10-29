@@ -458,3 +458,8 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 ## Deferred from: code review of epics 42-43 (Palier 10, revue a posteriori du 2026-10-29)
 
 - [P:BASSE] `cancelUpcomingHostedInTx` renvoie la liste des conjonctions lue AVANT les verrous alors que `updateMany` ne réannule que celles encore ouvertes : une conjonction annulée au même moment par un admin reçoit un second e-mail d'annulation, attribué au départ de l'hôte. Renvoyer les identifiants relus sous verrou. [apps/api/src/events/events.service.ts:1084]
+
+## Deferred from: code review of epics 44-47 (Palier 10.4, revue a posteriori du 2026-10-29)
+
+- [P:BASSE] `bestOption` et `destinyEntryOption` (`RankableOption` sans fin de plage) écartent une option dès que son jour de départ est passé, alors qu'un rendez-vous n'est passé qu'à la fin de sa plage : un week-end consulté le samedi perd son meilleur créneau dans la Destinée et la confirmation « Fixer la date ». [packages/shared/src/index.ts:1174]
+- [P:BASSE] À archiver (constat du 2026-10-29) : deux items plus haut semblent déjà corrigés — les gardes « passé » d'`updateHosted`/`cancelHosted` lisent désormais `isSeancePast(start, end)` (events.service.ts:907, 1035), et `assertFullDayAlone` refuse `FULL_DAY` au-delà d'un créneau à l'écriture du vote (poll.service.ts:196, 646). À vérifier puis déplacer dans `deferred-work-archive.md`.

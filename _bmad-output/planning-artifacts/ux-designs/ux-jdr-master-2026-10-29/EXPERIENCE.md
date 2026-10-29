@@ -50,7 +50,7 @@ Planche des écrans retenus : [`mockups/planche-retenue.html`](mockups/planche-r
 
 De haut en bas :
 
-1. **Résumé** (`GamesSummary`) : « {n} jeux sur place · {k} jouables à {N} », où **N = nombre actuel de Participants**, hôte compris ; puis deux filtres : « Jouables à {N} » et « Les plus {appelées…} » (§3).
+1. **Résumé** (`GamesSummary`) : « {n} jeux sur place · {k} jouables à {N} », où **N = nombre actuel de Participants**, hôte compris (une place réservée pas encore acceptée ne compte pas) ; puis deux filtres : « Jouables à {N} » et « Les plus {appelées…} » (§3).
 2. **Sections repliables** (`GamesSection`), dans cet ordre :
 
 | Section | Contenu | Visible par |
@@ -148,9 +148,9 @@ Toute clé nouvelle a une voix par thème, ou entre dans `NEUTRAL_KEYS` avec sa 
 | État | Ce qu'on voit |
 | --- | --- |
 | Aucun jeu sur place | Résumé « 0 jeu sur place » ; texte « Aucune relique sur place pour l'instant. » ; pour un Participant : section « Dans mon cabinet » (ou, si elle est vide, « Votre cabinet est vide. » + « Remplir mon cabinet ») |
-| Je ne suis pas Participant (membre non inscrit, invité qui a décliné) | Jeux sur place en lecture ; ni ♥, ni « Dans mon … » |
+| Je ne suis pas Participant (membre non inscrit, place réservée pas encore acceptée, invité qui a décliné) | Jeux sur place en lecture ; ni ♥, ni « Dans mon … » |
 | Je suis Participant, hôte | « Chez moi » avec ⋮, « Apportées », section du bas s'il y a des Jeux écartés |
-| Soirée passée, terminée ou annulée | Onglet en lecture seule, figé : pas de ♥ actif, pas de ⋮, pas de « J'apporte », pas de section « Dans mon … » ni du bas |
+| Soirée passée, terminée ou annulée | ⚠️ **Pas d'onglet des jeux** : rien n'est conservé ni affiché (architecture du 2026-10-29, AD-5). Dans `EventDialog`, la fenêtre revient à ses blocs sans onglets |
 | Un jeu sans nombre de joueurs | Jamais « jouable à N » ; exclu par le filtre « Jouables à N » |
 
 ### 5.2 Ludothèque

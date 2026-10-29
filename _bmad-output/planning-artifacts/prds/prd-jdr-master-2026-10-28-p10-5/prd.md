@@ -51,7 +51,7 @@ Rien de tout cela n'est obligatoire : une soirée sans aucun jeu renseigné fonc
 
 - **Jeu** — entrée de la Ludothèque d'une personne : un nom (obligatoire), un nombre de joueurs minimum et maximum, une durée en minutes (facultatifs). Appartient à une seule personne ; deux personnes qui possèdent le même jeu ont chacune leur Jeu.
 - **Ludothèque** — l'ensemble des Jeux d'une personne, qu'elle seule modifie. Peut être vide.
-- **Participant** — personne attendue à une soirée : l'hôte, plus les invités ayant accepté (soirée isolée) ou les membres inscrits et les titulaires d'une place réservée (événement).
+- **Participant** — personne attendue à une soirée : l'hôte, plus les invités ayant accepté (soirée isolée) ou les membres inscrits (événement) ; une place réservée, invitation pas encore acceptée, n'en fait pas partie. *(Corrigé à l'architecture le 2026-10-29.)*
 - **Jeux sur place** — pour une soirée isolée ou un événement : les Jeux de l'hôte non écartés, plus les Apports des autres Participants.
 - **Jeu écarté** — Jeu de l'hôte qu'il retire des jeux sur place d'une soirée précise, sans le retirer de sa Ludothèque.
 - **Apport** — déclaration, par un Participant, qu'il pense apporter l'un de ses Jeux à une soirée précise.
@@ -74,7 +74,7 @@ Tout utilisateur peut ajouter, modifier et supprimer les Jeux de sa Ludothèque.
 - Le nombre de joueurs se saisit en deux entiers, minimum et maximum (un seul nombre ne permettrait pas de dire « jouable à 6 ») ; un maximum inférieur au minimum est refusé.
 - La durée se saisit en minutes, entier positif.
 - Deux Jeux de même nom dans une même Ludothèque sont refusés, la comparaison ignorant casse et accents.
-- Supprimer un Jeu le retire des Apports et des Envies des soirées à venir ; les soirées passées le gardent tel qu'il était.
+- Supprimer un Jeu le retire des Apports et des Envies des soirées à venir ; rien n'est conservé pour les soirées passées, qui n'affichent pas leurs jeux (FR-6). *(Corrigé à l'architecture le 2026-10-29.)*
 - Supprimer son compte supprime sa Ludothèque.
 
 **Out of Scope:**
@@ -99,7 +99,7 @@ Les Jeux de la Ludothèque de l'hôte apparaissent dans les jeux sur place de ch
 
 **Consequences (testable):**
 - Un Jeu ajouté par l'hôte à sa Ludothèque apparaît sur ses soirées à venir.
-- Si l'hôte d'un événement change (départ de l'hôte, Palier 10), les jeux sur place suivent le nouvel hôte.
+- L'hôte d'un événement ne change jamais : s'il quitte le groupe, ses événements à venir sont annulés (Palier 10). *(Corrigé à l'architecture le 2026-10-29.)*
 
 #### FR-4 : Écarter un Jeu pour une soirée
 
@@ -127,7 +127,7 @@ Toute personne qui voit la fiche d'une soirée voit ses jeux sur place, rangés 
 - Un même nom présent plusieurs fois (hôte et Apport, ou deux Apports) figure à chaque endroit où il se trouve, marqué « ×N » et accompagné du nom des autres détenteurs : c'est ce qui rend le doublon visible avant le départ, et permet aux détenteurs d'annuler ou de se concerter. Le rapprochement se fait par nom normalisé (casse et accents ignorés) ; il n'existe pas d'identité de jeu partagée. *(Amendé par l'UX le 2026-10-29 — `ux-designs/ux-jdr-master-2026-10-29/EXPERIENCE.md` §2.3 ; les Jeux du groupe, FR-8, gardent une ligne par jeu.)*
 - Chaque jeu dont la plage de joueurs contient le nombre actuel de Participants est signalé « jouable à N ». Un jeu sans nombre de joueurs n'est jamais signalé.
 - La liste se met à jour sans recharger la page quand un Apport, une Envie, un Jeu écarté ou un Participant change (voir NFR temps réel).
-- Une fois la soirée passée, la section reste lisible et figée.
+- Une soirée passée, terminée ou annulée n'affiche pas ses jeux sur place. *(Corrigé à l'architecture le 2026-10-29.)*
 
 #### FR-7 : Signaler une Envie
 
@@ -235,12 +235,12 @@ Palier à usage privé : le succès se juge à l'usage par la bande, pas à des 
 - §4.1 — Ludothèque gérée depuis « Mon compte ».
 - FR-1 — Nombre de joueurs en deux champs, minimum et maximum.
 - FR-1 — Doublon de nom refusé dans une même Ludothèque, casse et accents ignorés.
-- FR-1 — Supprimer un Jeu le retire des soirées à venir, pas des soirées passées.
+- FR-1 — Supprimer un Jeu le retire des soirées à venir (les soirées passées n'affichent plus de jeux, architecture 2026-10-29).
 - FR-2 — État vide discret avec lien vers sa Ludothèque.
-- FR-3 — Les jeux sur place suivent un changement d'hôte.
+- ~~FR-3 — Les jeux sur place suivent un changement d'hôte.~~ Sans objet : l'hôte ne change jamais (architecture 2026-10-29).
 - FR-5 — Option « J'apporte » inerte avec lien si la Ludothèque est vide.
 - FR-6 — Regroupement par nom normalisé, sans identité de jeu partagée.
-- FR-6 — Section figée et lisible après la soirée.
+- ~~FR-6 — Section figée et lisible après la soirée.~~ Remplacé : une soirée passée ou annulée n'affiche pas ses jeux (architecture 2026-10-29).
 - FR-8 — Filtre par nombre de joueurs dans les Jeux du groupe.
 - FR-9 — Dans une soirée isolée, la Ludothèque est visible de l'hôte et de tous les invités, répondu ou non.
 - FR-10 — Événements d'un ancien membre attribués à personne.

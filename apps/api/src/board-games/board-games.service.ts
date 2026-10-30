@@ -1,12 +1,23 @@
-import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { GAME_SYSTEMS, boardGameNameKey, type BoardGameDto } from '@master-jdr/shared';
 import { hasPrismaErrorCode } from '../common/prisma-error.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import type { CreateBoardGameDto } from './dto/create-board-game.dto';
+import type { UpdateBoardGameDto } from './dto/update-board-game.dto';
 
 /** Plafond d'une Ludothèque (épic 48) : le 501ᵉ jeu est refusé. */
 export const BOARD_GAMES_MAX_PER_OWNER = 500;
+
+/** Refus d'un jeu qui n'est pas à moi (Story 48.2) : le même pour un jeu d'autrui et un inconnu —
+ *  rien ne révèle qu'un identifiant existe ailleurs. */
+export const BOARD_GAME_NOT_FOUND = 'Jeu introuvable dans votre Ludothèque';
 
 /** Systèmes de la famille `ralliement` : seules ces parties (groupes, rencontres isolées) entendent
  *  parler des jeux de leurs membres — une partie de JDR jamais (même copie locale que
@@ -114,6 +125,75 @@ export class BoardGamesService {
     // Après le commit, hors de la transaction : une émission ratée ne défait pas l'écriture.
     await this.emitForOwner(ownerId);
     return toBoardGameDto(row);
+  }
+
+  /**
+   * Corrige un de mes jeux (Story 48.2). Partiel : champ absent = inchangé, `null` efface un nombre.
+   * Mêmes règles qu'à la création : `max ≥ min` vérifié sur les valeurs FUSIONNÉES (400), nouvelle
+   * clé recalculée par la fonction partagée ; même clé qu'un AUTRE de mes jeux → 409 (renommer un jeu
+   * en lui-même, ou n'en changer que la casse ou les accents, garde sa clé : accepté). Un jeu qui
+   * n'est pas à moi — d'une autre personne ou inconnu — répond 404, sans rien écrire ni émettre.
+   */
+  async update(ownerId: string, id: string, dto: UpdateBoardGameDto): Promise<BoardGameDto> {
+    let nameChange: { name: string; nameKey: string } | null = null;
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      const nameKey = boardGameNameKey(name);
+      if (nameKey.length === 0) {
+        throw new BadRequestException('Le nom du jeu est obligatoire');
+      }
+      nameChange = { name, nameKey };
+    }
+
+    let row: BoardGameRow;
+    try {
+      row = await this.prisma.$transaction(async (tx) => {
+        // Verrou sur la ligne du jeu : deux corrections simultanées se suivent, la seconde fusionne
+        // ses bornes avec les valeurs écrites par la première (jamais un `max < min` en base).
+        await tx.$queryRaw`SELECT "id" FROM "BoardGame" WHERE "id" = ${id} AND "ownerId" = ${ownerId} FOR UPDATE`;
+        const current = await tx.boardGame.findFirst({ where: { id, ownerId } });
+        if (!current) {
+          throw new NotFoundException(BOARD_GAME_NOT_FOUND);
+        }
+        const minPlayers = dto.minPlayers !== undefined ? dto.minPlayers : current.minPlayers;
+        const maxPlayers = dto.maxPlayers !== undefined ? dto.maxPlayers : current.maxPlayers;
+        if (minPlayers !== null && maxPlayers !== null && maxPlayers < minPlayers) {
+          throw new BadRequestException(
+            'Le nombre maximum de joueurs doit être supérieur ou égal au nombre minimum',
+          );
+        }
+        return tx.boardGame.update({
+          where: { id: current.id },
+          data: {
+            ...(nameChange ?? {}),
+            ...(dto.minPlayers !== undefined ? { minPlayers: dto.minPlayers } : {}),
+            ...(dto.maxPlayers !== undefined ? { maxPlayers: dto.maxPlayers } : {}),
+            ...(dto.durationMin !== undefined ? { durationMin: dto.durationMin } : {}),
+          },
+        });
+      });
+    } catch (err) {
+      if (hasPrismaErrorCode(err, 'P2002')) {
+        throw new ConflictException('Ce jeu est déjà dans votre Ludothèque');
+      }
+      throw err;
+    }
+
+    await this.emitForOwner(ownerId);
+    return toBoardGameDto(row);
+  }
+
+  /**
+   * Retire un de mes jeux (Story 48.2) — immédiat, sans confirmation préalable (l'épic 49 l'ajoutera).
+   * Suppression filtrée sur le propriétaire : un jeu qui n'est pas à moi n'est jamais touché et répond
+   * 404, avec le même message que la correction.
+   */
+  async remove(ownerId: string, id: string): Promise<void> {
+    const { count } = await this.prisma.boardGame.deleteMany({ where: { id, ownerId } });
+    if (count === 0) {
+      throw new NotFoundException(BOARD_GAME_NOT_FOUND);
+    }
+    await this.emitForOwner(ownerId);
   }
 
   // ─── Temps réel ─────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ import { RealtimeService } from '../../../core/realtime/realtime.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP, type Theme } from '../../../core/theme/tones';
 import { formatBoardGameCount, formatBoardGameMeasures } from '../board-game-measures';
-import { BoardGamesPage } from './board-games-page';
+import { BOARD_GAME_UNDO_DELAY_MS, BoardGamesPage } from './board-games-page';
 
 function game(name: string, nameKey: string, overrides: Partial<BoardGameDto> = {}): BoardGameDto {
   return {
@@ -64,6 +64,8 @@ describe('BoardGamesPage (Story 48.1)', () => {
   let svc: {
     list: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    remove: ReturnType<typeof vi.fn>;
     changed: ReturnType<typeof signal<number>>;
     notifyChanged: () => void;
   };
@@ -89,6 +91,8 @@ describe('BoardGamesPage (Story 48.1)', () => {
           ? vi.fn().mockRejectedValueOnce(initial)
           : vi.fn().mockResolvedValue(initial),
       create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
       changed,
       notifyChanged: () => changed.update((v) => v + 1),
     };
@@ -148,10 +152,14 @@ describe('BoardGamesPage (Story 48.1)', () => {
 
     expect(el.querySelector('.quick-add')).not.toBeNull();
     expect(el.querySelector('.board-games-list')).toBeNull();
+    // Seule la ligne d'état du retrait (Story 48.2) l'accompagne : vide et masquée au repos.
     const outside = Array.from(el.querySelector('.board-games-page')!.children).filter(
       (c) => !c.classList.contains('quick-add'),
     );
-    expect(outside).toHaveLength(0);
+    expect(outside.map((c) => c.className)).toEqual([
+      'board-games-page__status board-games-page__status--idle',
+    ]);
+    expect(outside[0].textContent?.trim()).toBe('');
     expect(el.querySelector('.quick-add__hint')?.textContent?.trim()).toBe(
       'Seul le nom est obligatoire.',
     );
@@ -341,5 +349,446 @@ describe('BoardGamesPage (Story 48.1)', () => {
     resolveOld([game('Ancien', 'ancien')]);
     await settle();
     expect(names()).toEqual(['Skull']);
+  });
+
+  // ─── Story 48.2 : corriger ou retirer un jeu ───────────────────────────────
+
+  describe('corriger ou retirer un jeu (Story 48.2)', () => {
+    const AZUL = game('Azul', 'azul', { minPlayers: 2, maxPlayers: 4, durationMin: 40 });
+    const SKULL = game('Skull', 'skull');
+
+    const editRow = () => el.querySelector<HTMLElement>('.board-games-list__row--editing');
+    const editInput = (name: string) =>
+      editRow()!.querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
+    const editButton = (gameName: string) =>
+      el.querySelector<HTMLButtonElement>(`button[aria-label="Modifier ${gameName}"]`);
+    const buttonByText = (root: Element, text: string) =>
+      Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => b.textContent?.trim() === text,
+      );
+    const status = () => el.querySelector<HTMLElement>('.board-games-page__status')!;
+    const undoButton = () => status().querySelector<HTMLButtonElement>('button');
+
+    function typeEdit(name: string, value: string): void {
+      const field = editInput(name);
+      field.value = value;
+      field.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+
+    async function openEdit(gameName: string): Promise<void> {
+      editButton(gameName)!.click();
+      await settle();
+    }
+
+    async function saveWithEnter(): Promise<void> {
+      editRow()!
+        .querySelector('form')!
+        .dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+    }
+
+    async function clickRemove(): Promise<void> {
+      buttonByText(editRow()!, 'Retirer de mon cabinet')!.click();
+      await settle();
+    }
+
+    it('✎ par ligne : bouton nommé « Modifier {nom} » ; il ouvre la même saisie, préremplie, avec « Enregistrer », « Renoncer » et le retrait du thème', async () => {
+      await setup([AZUL, SKULL]);
+
+      expect(editButton('Azul')?.getAttribute('type')).toBe('button');
+      expect(editButton('Skull')).not.toBeNull();
+      await openEdit('Azul');
+
+      const row = editRow()!;
+      expect(row).not.toBeNull();
+      expect(editInput('name').value).toBe('Azul');
+      expect(editInput('minPlayers').value).toBe('2');
+      expect(editInput('maxPlayers').value).toBe('4');
+      expect(editInput('durationMin').value).toBe('40');
+      expect(buttonByText(row, 'Enregistrer')?.type).toBe('submit');
+      expect(buttonByText(row, 'Renoncer')).toBeDefined();
+      expect(buttonByText(row, 'Retirer de mon cabinet')).toBeDefined();
+      // Le ✎ de la ligne en correction laisse la place à la saisie, le focus va au nom.
+      expect(editButton('Azul')).toBeNull();
+      expect(document.activeElement).toBe(editInput('name'));
+      expect(names()).toEqual(['Skull']);
+    });
+
+    it('retrait du thème : coffre (forêt), râtelier (atelier) ; abandon du thème', async () => {
+      await setup([AZUL]);
+      activeTheme.set('foret-ancienne');
+      await openEdit('Azul');
+      expect(buttonByText(editRow()!, 'Retirer de mon coffre')).toBeDefined();
+      expect(buttonByText(editRow()!, 'Abandonner')).toBeDefined();
+
+      activeTheme.set('atelier-cuivre');
+      await settle();
+      expect(buttonByText(editRow()!, 'Retirer de mon râtelier')).toBeDefined();
+      expect(buttonByText(editRow()!, 'Annuler')).toBeDefined();
+    });
+
+    it('une seule ligne en correction à la fois', async () => {
+      await setup([AZUL, SKULL]);
+      await openEdit('Azul');
+      await openEdit('Skull');
+
+      expect(el.querySelectorAll('.board-games-list__row--editing')).toHaveLength(1);
+      expect(editInput('name').value).toBe('Skull');
+      expect(names()).toEqual(['Azul']);
+    });
+
+    it('`Entrée` enregistre : corps de la correction, liste retriée, saisie fermée, focus rendu au ✎', async () => {
+      await setup([AZUL, SKULL]);
+      svc.update.mockResolvedValue(
+        game('Zoo', 'zoo', { id: AZUL.id, minPlayers: 2, maxPlayers: 4, durationMin: null }),
+      );
+      await openEdit('Azul');
+
+      typeEdit('name', ' Zoo ');
+      typeEdit('durationMin', '');
+      await saveWithEnter();
+
+      expect(svc.update).toHaveBeenCalledWith(AZUL.id, {
+        name: 'Zoo',
+        minPlayers: 2,
+        maxPlayers: 4,
+        durationMin: null,
+      });
+      expect(editRow()).toBeNull();
+      expect(names()).toEqual(['Skull', 'Zoo']);
+      expect(document.activeElement).toBe(editButton('Zoo'));
+    });
+
+    it('max < min : message sous le champ de la correction (`aria-describedby`), enregistrement bloqué', async () => {
+      await setup([AZUL]);
+      await openEdit('Azul');
+
+      typeEdit('minPlayers', '5');
+
+      const message = editRow()!.querySelector('#board-game-edit-max-below-min');
+      expect(message?.textContent?.trim()).toBe(TONE['board_games.max_below_min']);
+      expect(editInput('maxPlayers').getAttribute('aria-describedby')).toBe(
+        'board-game-edit-max-below-min',
+      );
+      expect(buttonByText(editRow()!, 'Enregistrer')!.disabled).toBe(true);
+      await saveWithEnter();
+      expect(svc.update).not.toHaveBeenCalled();
+      // L'ajout en tête garde ses propres identifiants.
+      expect(el.querySelector('#quick-add-max-below-min')).toBeNull();
+    });
+
+    it('doublon (409) : message du thème sous la correction, champs conservés', async () => {
+      await setup([AZUL, SKULL]);
+      svc.update.mockRejectedValue(new HttpErrorResponse({ status: 409 }));
+      await openEdit('Skull');
+
+      typeEdit('name', 'azul');
+      await saveWithEnter();
+
+      expect(editRow()!.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
+        'Ce jeu est déjà dans votre cabinet.',
+      );
+      expect(editInput('name').value).toBe('azul');
+      // L'erreur ne déborde pas sur la saisie d'ajout.
+      expect(el.querySelector('.quick-add--add [role="alert"]')).toBeNull();
+    });
+
+    it('autre refus (400) : le message du serveur sous la correction', async () => {
+      await setup([AZUL]);
+      svc.update.mockRejectedValue(
+        new HttpErrorResponse({
+          status: 400,
+          error: {
+            message: 'Le nombre maximum de joueurs doit être supérieur ou égal au nombre minimum',
+          },
+        }),
+      );
+      await openEdit('Azul');
+      await saveWithEnter();
+
+      expect(editRow()!.querySelector('[role="alert"]')?.textContent?.trim()).toMatch(
+        /maximum de joueurs/,
+      );
+    });
+
+    it('« Renoncer » ou `Échap` : ferme sans enregistrer, focus rendu au ✎', async () => {
+      await setup([AZUL]);
+      await openEdit('Azul');
+      typeEdit('name', 'Autre chose');
+
+      buttonByText(editRow()!, 'Renoncer')!.click();
+      await settle();
+      expect(editRow()).toBeNull();
+      expect(svc.update).not.toHaveBeenCalled();
+      expect(names()).toEqual(['Azul']);
+      expect(document.activeElement).toBe(editButton('Azul'));
+
+      await openEdit('Azul');
+      editInput('name').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await settle();
+      expect(editRow()).toBeNull();
+      expect(svc.update).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(editButton('Azul'));
+    });
+
+    it('correction en 404 (retiré ailleurs) : la liste est relue et la saisie se ferme', async () => {
+      await setup([AZUL, SKULL]);
+      svc.update.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+      svc.list.mockResolvedValue([SKULL]);
+      await openEdit('Azul');
+      await saveWithEnter();
+
+      expect(svc.list).toHaveBeenCalledTimes(2);
+      expect(editRow()).toBeNull();
+      expect(names()).toEqual(['Skull']);
+    });
+
+    it('relecture sur `changed` pendant une correction : les valeurs saisies restent', async () => {
+      await setup([AZUL, SKULL]);
+      await openEdit('Azul');
+      typeEdit('name', 'Azul en cours');
+      typeEdit('durationMin', '55');
+
+      svc.list.mockResolvedValue([
+        { ...AZUL, durationMin: 30 },
+        SKULL,
+        game('Bohnanza', 'bohnanza'),
+      ]);
+      svc.notifyChanged();
+      await settle();
+
+      expect(names()).toEqual(['Skull', 'Bohnanza']);
+      expect(editInput('name').value).toBe('Azul en cours');
+      expect(editInput('durationMin').value).toBe('55');
+    });
+
+    it('relecture sur `changed` : le jeu corrigé a disparu → la saisie se ferme', async () => {
+      await setup([AZUL, SKULL]);
+      await openEdit('Azul');
+
+      svc.list.mockResolvedValue([SKULL]);
+      svc.notifyChanged();
+      await settle();
+
+      expect(editRow()).toBeNull();
+      expect(names()).toEqual(['Skull']);
+      expect(document.activeElement).toBe(input('name'));
+    });
+
+    it('« Retirer » : DELETE aussitôt, la ligne disparaît, « Jeu retiré · Annuler » poli entre la saisie et la liste, focus sur « Annuler »', async () => {
+      await setup([AZUL, SKULL]);
+      svc.remove.mockResolvedValue(undefined);
+      await openEdit('Azul');
+
+      await clickRemove();
+
+      expect(svc.remove).toHaveBeenCalledWith(AZUL.id);
+      expect(names()).toEqual(['Skull']);
+      expect(editRow()).toBeNull();
+      expect(status().getAttribute('aria-live')).toBe('polite');
+      expect(status().getAttribute('role')).toBe('status');
+      expect(status().classList).not.toContain('board-games-page__status--idle');
+      // L'espacement autour de « · » vient de la mise en page (gap), pas du texte.
+      expect(status().textContent?.trim()).toMatch(/^Jeu retiré\s*·\s*Annuler$/);
+      expect(undoButton()?.getAttribute('type')).toBe('button');
+      expect(document.activeElement).toBe(undoButton());
+      // Dans le flux : juste après la saisie, avant la liste.
+      expect(status().previousElementSibling?.classList).toContain('quick-add');
+      expect(status().nextElementSibling?.classList).toContain('board-games-list');
+    });
+
+    it('« Annuler » recrée le jeu avec le même nom, les mêmes joueurs et la même durée', async () => {
+      await setup([AZUL, SKULL]);
+      svc.remove.mockResolvedValue(undefined);
+      svc.create.mockResolvedValue({ ...AZUL, id: 'g-nouveau' });
+      await openEdit('Azul');
+      await clickRemove();
+
+      undoButton()!.click();
+      await settle();
+
+      expect(svc.create).toHaveBeenCalledWith({
+        name: 'Azul',
+        minPlayers: 2,
+        maxPlayers: 4,
+        durationMin: 40,
+      });
+      expect(names()).toEqual(['Azul', 'Skull']);
+      expect(status().textContent?.trim()).toBe('');
+      // Le message s'achève avec le focus dedans : il revient au champ du nom.
+      expect(document.activeElement).toBe(input('name'));
+    });
+
+    it('« Annuler » refusé (409) : le message du thème dans la ligne d’état', async () => {
+      await setup([AZUL]);
+      svc.remove.mockResolvedValue(undefined);
+      svc.create.mockRejectedValue(new HttpErrorResponse({ status: 409 }));
+      await openEdit('Azul');
+      await clickRemove();
+
+      // Le refus relance le minuteur : le message s'efface à son tour au bout de 8 s.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        undoButton()!.click();
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+          fixture.detectChanges();
+        }
+
+        expect(status().textContent?.trim()).toBe('Ce jeu est déjà dans votre cabinet.');
+        expect(undoButton()).toBeNull();
+        expect(document.activeElement).toBe(input('name'));
+
+        vi.advanceTimersByTime(BOARD_GAME_UNDO_DELAY_MS);
+        fixture.detectChanges();
+        expect(status().textContent?.trim()).toBe('');
+        expect(status().classList).toContain('board-games-page__status--idle');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('le message s’efface au bout de 8 s ; le focus qui y était revient au champ du nom', async () => {
+      await setup([AZUL, SKULL]);
+      svc.remove.mockResolvedValue(undefined);
+      await openEdit('Azul');
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        buttonByText(editRow()!, 'Retirer de mon cabinet')!.click();
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+          fixture.detectChanges();
+        }
+        expect(status().textContent).toContain('Jeu retiré');
+        undoButton()!.focus();
+
+        vi.advanceTimersByTime(BOARD_GAME_UNDO_DELAY_MS - 1);
+        fixture.detectChanges();
+        expect(status().textContent).toContain('Jeu retiré');
+
+        vi.advanceTimersByTime(1);
+        fixture.detectChanges();
+        expect(status().textContent?.trim()).toBe('');
+        expect(status().classList).toContain('board-games-page__status--idle');
+        expect(document.activeElement).toBe(input('name'));
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('« Annuler » aboutit alors qu’un retrait plus récent a remplacé le message : le jeu recréé s’affiche, le nouveau message reste', async () => {
+      await setup([AZUL, SKULL]);
+      svc.remove.mockResolvedValue(undefined);
+      let resolveCreate!: (g: BoardGameDto) => void;
+      svc.create.mockReturnValue(new Promise<BoardGameDto>((r) => (resolveCreate = r)));
+      await openEdit('Azul');
+      await clickRemove();
+
+      // « Annuler » part, puis un autre jeu est retiré avant la réponse.
+      undoButton()!.click();
+      await settle();
+      await openEdit('Skull');
+      await clickRemove();
+      expect(names()).toEqual([]);
+
+      resolveCreate({ ...AZUL, id: 'g-nouveau' });
+      await settle();
+
+      expect(names()).toEqual(['Azul']);
+      // Le message du retrait de Skull est intact : « Annuler » y est toujours proposé.
+      expect(status().textContent).toContain('Jeu retiré');
+      expect(undoButton()).not.toBeNull();
+    });
+
+    it('envoi en vol : ouvrir une autre ligne ou « Renoncer » ne change rien', async () => {
+      await setup([AZUL, SKULL]);
+      let resolveUpdate!: (g: BoardGameDto) => void;
+      svc.update.mockReturnValue(new Promise<BoardGameDto>((r) => (resolveUpdate = r)));
+      await openEdit('Azul');
+      typeEdit('name', 'Azul 2');
+      await saveWithEnter();
+      expect(svc.update).toHaveBeenCalledTimes(1);
+
+      // Autre ✎ : la saisie de Azul reste ouverte, avec ce qui a été saisi.
+      editButton('Skull')!.click();
+      await settle();
+      expect(el.querySelectorAll('.board-games-list__row--editing')).toHaveLength(1);
+      expect(editInput('name').value).toBe('Azul 2');
+      expect(names()).toEqual(['Skull']);
+
+      // « Renoncer » et `Échap` ne ferment pas : l'écriture aboutirait quand même.
+      buttonByText(editRow()!, 'Renoncer')!.click();
+      await settle();
+      expect(editRow()).not.toBeNull();
+      editInput('name').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await settle();
+      expect(editRow()).not.toBeNull();
+
+      resolveUpdate(game('Azul 2', 'azul 2', { id: AZUL.id }));
+      await settle();
+      expect(editRow()).toBeNull();
+      expect(names()).toEqual(['Azul 2', 'Skull']);
+    });
+
+    it('retrait refusé (500) : la ligne reste, la saisie reste ouverte, erreur sous la saisie, aucun « Jeu retiré »', async () => {
+      await setup([AZUL, SKULL]);
+      svc.remove.mockRejectedValue(
+        new HttpErrorResponse({ status: 500, error: { message: 'Panne du serveur' } }),
+      );
+      await openEdit('Azul');
+      await clickRemove();
+
+      expect(editRow()).not.toBeNull();
+      expect(editInput('name').value).toBe('Azul');
+      expect(editRow()!.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
+        'Panne du serveur',
+      );
+      expect(names()).toEqual(['Skull']);
+      expect(status().textContent?.trim()).toBe('');
+      expect(status().textContent).not.toContain('Jeu retiré');
+      expect(status().classList).toContain('board-games-page__status--idle');
+      // Le bouton est de nouveau disponible.
+      expect(buttonByText(editRow()!, 'Retirer de mon cabinet')!.disabled).toBe(false);
+    });
+
+    it('retrait en 404 (déjà retiré ailleurs) : la liste est relue, la saisie se ferme, aucun « Jeu retiré »', async () => {
+      await setup([AZUL, SKULL]);
+      svc.remove.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+      svc.list.mockResolvedValue([SKULL]);
+      await openEdit('Azul');
+      await clickRemove();
+
+      expect(svc.list).toHaveBeenCalledTimes(2);
+      expect(editRow()).toBeNull();
+      expect(names()).toEqual(['Skull']);
+      expect(status().textContent?.trim()).toBe('');
+    });
+
+    it('un nouveau retrait remplace le message en attente', async () => {
+      await setup([AZUL, SKULL]);
+      svc.remove.mockResolvedValue(undefined);
+      svc.create.mockResolvedValue({ ...SKULL, id: 'g-nouveau' });
+      await openEdit('Azul');
+      await clickRemove();
+      await openEdit('Skull');
+      await clickRemove();
+
+      expect(names()).toEqual([]);
+      expect(status().querySelectorAll('button')).toHaveLength(1);
+      undoButton()!.click();
+      await settle();
+      expect(svc.create).toHaveBeenCalledTimes(1);
+      expect(svc.create).toHaveBeenCalledWith({
+        name: 'Skull',
+        minPlayers: null,
+        maxPlayers: null,
+        durationMin: null,
+      });
+    });
   });
 });

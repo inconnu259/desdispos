@@ -1,5 +1,6 @@
-/* ⚠️ Story 48.1 — page « Ma Ludothèque » : pleine largeur sous 768 px, colonne de 640 px au plus au-delà.
-   Aucun jeton neuf, aucun rouge, aucune image : les messages restent dans la couleur du texte. */
+/* ⚠️ Stories 48.1, 48.2 — page « Ma Ludothèque » : pleine largeur sous 768 px, colonne de 640 px au plus
+   au-delà. Aucun jeton neuf, aucun rouge, aucune image : les messages — et « Retirer » — restent dans la
+   couleur du texte. */
 :host {
   display: block;
 }
@@ -18,6 +19,56 @@
   &__message {
     margin: 0;
     color: var(--mat-sys-on-surface);
+  }
+
+  /* Story 48.2 — « Jeu retiré · Annuler » : dans le flux, entre la saisie et la liste. Au repos, la
+     région reste dans l'arbre d'accessibilité (annonce fiable) mais sort de la mise en page. */
+  &__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    min-height: 44px;
+    padding: 0 0.25rem;
+    color: var(--mat-sys-on-surface);
+
+    &--idle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      min-height: 0;
+      padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  &__status-sep {
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  &__undo {
+    min-height: 44px;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mat-sys-primary);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 1px;
+    }
   }
 }
 
@@ -104,6 +155,41 @@
     }
   }
 
+  /* Story 48.2 — boutons de la correction en ligne : « Enregistrer », puis l'abandon et le retrait,
+     en contour (jamais de rouge). */
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+
+    .quick-add__submit {
+      margin-left: 0;
+    }
+  }
+
+  &__secondary {
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px solid var(--mat-sys-outline, #888);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+  }
+
   &__hint,
   &__message {
     margin: 0;
@@ -128,11 +214,48 @@
 
   &__row {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
     min-height: 44px;
     padding: 0.4rem 0.25rem;
     border-bottom: 1px solid var(--mat-sys-outline-variant, #ddd);
+
+    /* Story 48.2 — la ligne en correction porte la saisie entière. */
+    &--editing {
+      display: block;
+      padding: 0.4rem 0;
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  /* ✎ : cible de 44 px. */
+  &__edit {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mat-sys-on-surface-variant, #666);
+    font: inherit;
+    font-size: 1.1rem;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mat-sys-on-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+    }
   }
 
   &__name {

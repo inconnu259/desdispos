@@ -312,6 +312,12 @@ export const foretAncienne: Record<ToneKey, string> = {
   'board_games.measure_duration': '{d} min',
   'board_games.count_one': '{n} jeu',
   'board_games.count_many': '{n} jeux',
+  /* — correction et retrait (Story 48.2) : seul le retrait a une voix — */
+  'board_games.remove_btn': 'Retirer de mon coffre',
+  'board_games.save_btn': 'Enregistrer',
+  'board_games.edit_aria': 'Modifier {nom}',
+  'board_games.removed': 'Jeu retiré',
+  'board_games.undo_btn': 'Annuler',
 
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */

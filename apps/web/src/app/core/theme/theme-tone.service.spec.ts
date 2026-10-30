@@ -1156,6 +1156,13 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'board_games.measure_duration',
     'board_games.count_one',
     'board_games.count_many',
+    // Story 48.2 : correction et retrait — « Enregistrer », nom accessible du ✎ (« Modifier {nom} »),
+    // « Jeu retiré » et son « Annuler » : textes fonctionnels du contrat (EXPERIENCE.md §3.3),
+    // volontairement hors thème ; seul « Retirer de mon cabinet / coffre / râtelier » a une voix
+    'board_games.save_btn',
+    'board_games.edit_aria',
+    'board_games.removed',
+    'board_games.undo_btn',
   ]);
 
   const REFERENCE =TONE_MAP['grimoire-emeraude'];
@@ -2292,6 +2299,12 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'foret-ancienne': 'Ce jeu est déjà dans ton coffre.',
       'atelier-cuivre': 'Ce jeu est déjà sur votre râtelier.',
     },
+    // Story 48.2
+    'board_games.remove_btn': {
+      'grimoire-emeraude': 'Retirer de mon cabinet',
+      'foret-ancienne': 'Retirer de mon coffre',
+      'atelier-cuivre': 'Retirer de mon râtelier',
+    },
   };
 
   for (const theme of THEMES) {
@@ -2316,6 +2329,11 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'board_games.measure_duration': '{d} min',
       'board_games.count_one': '{n} jeu',
       'board_games.count_many': '{n} jeux',
+      // Story 48.2
+      'board_games.save_btn': 'Enregistrer',
+      'board_games.edit_aria': 'Modifier {nom}',
+      'board_games.removed': 'Jeu retiré',
+      'board_games.undo_btn': 'Annuler',
     };
     for (const theme of THEMES) {
       for (const [key, text] of Object.entries(expected)) {

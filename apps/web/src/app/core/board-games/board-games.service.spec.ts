@@ -69,6 +69,25 @@ describe('BoardGamesService (Story 48.1)', () => {
     expect(await p).toEqual(AZUL);
   });
 
+  it('update() → PATCH /me/board-games/:id avec le corps partiel et withCredentials', async () => {
+    const p = service.update('g1', { name: 'Azul Summer', durationMin: null });
+    const req = http.expectOne(`${API_BASE}/me/board-games/g1`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.body).toEqual({ name: 'Azul Summer', durationMin: null });
+    req.flush({ ...AZUL, name: 'Azul Summer', nameKey: 'azul summer', durationMin: null });
+    expect((await p).name).toBe('Azul Summer');
+  });
+
+  it('remove() → DELETE /me/board-games/:id avec withCredentials', async () => {
+    const p = service.remove('g1');
+    const req = http.expectOne(`${API_BASE}/me/board-games/g1`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(p).resolves.toBeUndefined();
+  });
+
   it('notifyChanged() incrémente `changed`', () => {
     const before = service.changed();
     service.notifyChanged();

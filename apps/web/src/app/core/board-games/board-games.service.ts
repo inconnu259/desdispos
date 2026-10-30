@@ -1,11 +1,12 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { BoardGameDto, CreateBoardGameInput } from '@master-jdr/shared';
+import type { BoardGameDto, CreateBoardGameInput, UpdateBoardGameInput } from '@master-jdr/shared';
 import { API_BASE } from '../api-base';
 
 /**
- * Ma Ludothèque (Story 48.1) — `GET`/`POST /me/board-games`. Le serveur calcule `nameKey` et trie la
+ * Ma Ludothèque (Stories 48.1, 48.2) — `GET`/`POST /me/board-games`, `PATCH`/`DELETE
+ * /me/board-games/:id`. Le serveur calcule `nameKey` et trie la
  * liste ; le front ne recalcule jamais la clé.
  *
  * Temps réel : `changed` est un compteur incrémenté par `notifyChanged()`, câblé dans
@@ -34,6 +35,25 @@ export class BoardGamesService {
   create(input: CreateBoardGameInput): Promise<BoardGameDto> {
     return firstValueFrom(
       this.http.post<BoardGameDto>(`${API_BASE}/me/board-games`, input, { withCredentials: true }),
+    );
+  }
+
+  /** Corrige un de mes jeux (corps partiel) ; rejette avec la réponse HTTP (409 doublon, 400 bornes,
+   *  404 jeu absent — retiré ailleurs entre-temps). */
+  update(id: string, input: UpdateBoardGameInput): Promise<BoardGameDto> {
+    return firstValueFrom(
+      this.http.patch<BoardGameDto>(`${API_BASE}/me/board-games/${encodeURIComponent(id)}`, input, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Retire un de mes jeux (204) ; rejette avec la réponse HTTP (404 jeu absent). */
+  async remove(id: string): Promise<void> {
+    await firstValueFrom(
+      this.http.delete<void>(`${API_BASE}/me/board-games/${encodeURIComponent(id)}`, {
+        withCredentials: true,
+      }),
     );
   }
 }

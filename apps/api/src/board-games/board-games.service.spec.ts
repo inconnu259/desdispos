@@ -1,10 +1,11 @@
-import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import { callArg } from '../common/test-utils/jest-typed';
 import {
   BOARD_GAMES_MAX_PER_OWNER,
+  BOARD_GAME_NOT_FOUND,
   BoardGamesService,
   toBoardGameDto,
 } from './board-games.service';
@@ -27,7 +28,14 @@ function row(overrides: Record<string, unknown> = {}) {
 
 function makePrisma() {
   const prisma = {
-    boardGame: { findMany: jest.fn(), count: jest.fn(), create: jest.fn() },
+    boardGame: {
+      findMany: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+    },
     membership: { findMany: jest.fn() },
     $transaction: jest.fn(),
     $queryRaw: jest.fn().mockResolvedValue([]),
@@ -237,6 +245,153 @@ describe('BoardGamesService (Story 48.1)', () => {
         await expect(service.create('u1', { name: 'Azul' })).resolves.toEqual(
           toBoardGameDto(row()),
         );
+        expect(warn).toHaveBeenCalledTimes(1);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+  });
+  describe('update (Story 48.2)', () => {
+    it('renomme : nom rogné, clé recalculée, nombres inchangés (champs absents non écrits)', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(row());
+      prisma.boardGame.update.mockResolvedValue(
+        row({ name: 'Azul Summer', nameKey: 'azul summer' }),
+      );
+
+      const dto = await service.update('u1', 'g1', { name: ' Azul Summer ' });
+
+      expect(prisma.boardGame.findFirst).toHaveBeenCalledWith({
+        where: { id: 'g1', ownerId: 'u1' },
+      });
+      expect(prisma.boardGame.update).toHaveBeenCalledWith({
+        where: { id: 'g1' },
+        data: { name: 'Azul Summer', nameKey: 'azul summer' },
+      });
+      expect(dto).toMatchObject({ name: 'Azul Summer', nameKey: 'azul summer', minPlayers: 2 });
+    });
+
+    it('verrouille la ligne du jeu (filtrée sur le propriétaire) avant de la lire', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(row());
+      prisma.boardGame.update.mockResolvedValue(row());
+
+      await service.update('u1', 'g1', { durationMin: 30 });
+
+      const sql = callArg<string[]>(prisma.$queryRaw).join('?');
+      expect(sql).toContain('"BoardGame"');
+      expect(sql).toContain('"ownerId"');
+      expect(sql).toContain('FOR UPDATE');
+      expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        prisma.boardGame.findFirst.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('`null` efface un nombre ; une valeur absente n’est pas écrite', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(row());
+      prisma.boardGame.update.mockResolvedValue(row({ durationMin: null }));
+
+      const dto = await service.update('u1', 'g1', { durationMin: null });
+
+      expect(callArg<{ data: unknown }>(prisma.boardGame.update).data).toEqual({
+        durationMin: null,
+      });
+      expect(dto.durationMin).toBeNull();
+    });
+
+    it('bornes fusionnées : `{min:3,max:5}` puis `{maxPlayers:2}` → 400 en français, rien n’est écrit ni émis', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(row({ minPlayers: 3, maxPlayers: 5 }));
+
+      const err = await service.update('u1', 'g1', { maxPlayers: 2 }).catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).message).toMatch(/maximum de joueurs/);
+      expect(prisma.boardGame.update).not.toHaveBeenCalled();
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it('bornes fusionnées : effacer le min rend tout max acceptable', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(row({ minPlayers: 3, maxPlayers: 5 }));
+      prisma.boardGame.update.mockResolvedValue(row({ minPlayers: null, maxPlayers: 2 }));
+
+      await expect(
+        service.update('u1', 'g1', { minPlayers: null, maxPlayers: 2 }),
+      ).resolves.toBeDefined();
+    });
+
+    it('jeu d’autrui ou inconnu → 404, même message, rien n’est écrit ni émis', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(null);
+
+      const err = await service.update('u1', 'g-autre', { name: 'Azul' }).catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(NotFoundException);
+      expect((err as NotFoundException).message).toBe(BOARD_GAME_NOT_FOUND);
+      expect(prisma.boardGame.update).not.toHaveBeenCalled();
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it('même clé qu’un autre de mes jeux (P2002) → 409, rien n’est émis', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(
+        row({ id: 'g2', name: 'Skull', nameKey: 'skull' }),
+      );
+      prisma.boardGame.update.mockRejectedValue({ code: 'P2002' });
+
+      await expect(service.update('u1', 'g2', { name: 'azul' })).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it('nom réduit à rien par la normalisation → 400, rien n’est lu, écrit ni émis', async () => {
+      await expect(
+        service.update('u1', 'g1', { name: String.fromCharCode(0x0301) }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it('succès : émet comme la création, après l’écriture', async () => {
+      prisma.boardGame.findFirst.mockResolvedValue(row());
+      prisma.boardGame.update.mockResolvedValue(row());
+      prisma.membership.findMany.mockResolvedValue([{ partieId: 'groupe' }]);
+
+      await service.update('u1', 'g1', { name: 'Azul' });
+
+      expect(realtime.emit.mock.calls).toEqual([[userTopic('u1')], [partieTopic('groupe')]]);
+      expect(prisma.boardGame.update.mock.invocationCallOrder[0]).toBeLessThan(
+        realtime.emit.mock.invocationCallOrder[0],
+      );
+    });
+  });
+
+  describe('remove (Story 48.2)', () => {
+    it('supprime filtré sur le propriétaire, puis émet', async () => {
+      prisma.boardGame.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.membership.findMany.mockResolvedValue([{ partieId: 'groupe' }]);
+
+      await expect(service.remove('u1', 'g1')).resolves.toBeUndefined();
+
+      expect(prisma.boardGame.deleteMany).toHaveBeenCalledWith({
+        where: { id: 'g1', ownerId: 'u1' },
+      });
+      expect(realtime.emit.mock.calls).toEqual([[userTopic('u1')], [partieTopic('groupe')]]);
+    });
+
+    it('jeu d’autrui ou inconnu (rien supprimé) → 404, même message, rien n’est émis', async () => {
+      prisma.boardGame.deleteMany.mockResolvedValue({ count: 0 });
+
+      const err = await service.remove('u1', 'g-autre').catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(NotFoundException);
+      expect((err as NotFoundException).message).toBe(BOARD_GAME_NOT_FOUND);
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it('une émission en échec est consignée, la suppression reste un succès', async () => {
+      prisma.boardGame.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.membership.findMany.mockRejectedValue(new Error('panne'));
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+      try {
+        await expect(service.remove('u1', 'g1')).resolves.toBeUndefined();
         expect(warn).toHaveBeenCalledTimes(1);
       } finally {
         warn.mockRestore();

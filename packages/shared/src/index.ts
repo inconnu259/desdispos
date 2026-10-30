@@ -2117,3 +2117,12 @@ export interface CreateBoardGameInput {
   maxPlayers?: number | null;
   durationMin?: number | null;
 }
+
+/** Corps de `PATCH /me/board-games/:id` (Story 48.2) : partiel — champ absent = inchangé, `null`
+ *  efface un nombre ; le nom ne peut être ni `null` ni blanc. */
+export interface UpdateBoardGameInput {
+  name?: string;
+  minPlayers?: number | null;
+  maxPlayers?: number | null;
+  durationMin?: number | null;
+}

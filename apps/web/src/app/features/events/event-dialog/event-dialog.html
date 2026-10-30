@@ -226,7 +226,13 @@
           <ul class="ed__people">
             @for (p of card().participants; track p.userId) {
               <li class="ed__person">
-                <app-participant-chip [participant]="p" [self]="p.userId === currentUserId()" />
+                <!-- ⚠️ Story 48.3 : le nom d'un autre participant (place acceptée) ouvre sa Ludothèque. -->
+                <app-participant-chip
+                  [participant]="p"
+                  [self]="p.userId === currentUserId()"
+                  [libraryEnabled]="true"
+                  (libraryRequested)="openLibrary(p, $event)"
+                />
                 @if (canReserve() && isPending(p)) {
                   <button
                     mat-stroked-button
@@ -369,4 +375,14 @@
       <ng-container [ngTemplateOutlet]="foot" />
     </div>
   </app-detail-surface>
+}
+
+@if (library(); as target) {
+  <!-- ⚠️ Story 48.3 : la Ludothèque de la personne touchée, en tiroir modal au-dessus de la fenêtre. -->
+  <app-library-sheet
+    [userId]="target.userId"
+    [name]="target.name"
+    [returnFocus]="target.trigger"
+    (closed)="closeLibrary()"
+  />
 }

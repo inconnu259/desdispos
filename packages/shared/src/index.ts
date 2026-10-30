@@ -2110,6 +2110,27 @@ export interface BoardGameDto {
   createdAt: string;
 }
 
+/** Identité publique du propriétaire d'une Ludothèque lue par un tiers (Story 48.3) : pseudo et nom
+ *  affiché seulement — jamais d'e-mail. */
+export interface UserLibraryOwnerDto {
+  userId: string;
+  pseudo: string;
+  displayName: string;
+}
+
+/** Ludothèque d'une personne telle que lue par un tiers (`GET /users/:userId/board-games`, Story 48.3) :
+ *  son identité publique et ses jeux, triés comme `GET /me/board-games`. */
+export interface UserLibraryDto {
+  owner: UserLibraryOwnerDto;
+  games: BoardGameDto[];
+}
+
+/** Décision de droit « lire la Ludothèque d'une personne » (Story 48.3). Cible `{ userId }`, décidée
+ *  par `PermissionService.assertLibraryRead` et nulle part ailleurs. Hors de l'union fermée
+ *  `PermissionAction`, dont les tables de politique sont indexées par rôle SUR UNE PARTIE : ici la
+ *  décision porte sur deux personnes, pas sur une partie. */
+export const LIBRARY_READ = 'LIBRARY_READ';
+
 /** Corps de `POST /me/board-games` (Story 48.1) : seul le nom est obligatoire. */
 export interface CreateBoardGameInput {
   name: string;

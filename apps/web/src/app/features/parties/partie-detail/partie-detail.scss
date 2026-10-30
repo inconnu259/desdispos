@@ -393,3 +393,27 @@ mat-tab-group {
     color: var(--color-cancelled-text, #f26a5c);
   }
 }
+
+/* ⚠️ Story 48.3 — le nom d'un autre membre de « Missives » / « Invités » / « Invitations » : un bouton de
+   44 px au moins qui ouvre sa Ludothèque. Même texte que la ligne inerte, souligné en pointillé pour se
+   savoir touchable ; aucun jeton neuf, aucun rouge. */
+.library-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}

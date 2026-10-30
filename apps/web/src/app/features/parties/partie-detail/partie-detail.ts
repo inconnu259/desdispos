@@ -78,6 +78,7 @@ import { scrollToAnnouncement } from '../../../core/announcements/scroll-to-anno
 import { CharacterRolesService } from '../../../core/character-roles/character-roles.service';
 import { HommeDragonAventurePanel } from '../../homme-dragon/homme-dragon-aventure-panel/homme-dragon-aventure-panel';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
+import { LibrarySheet } from '../../board-games/library-sheet/library-sheet';
 import { ConjonctionsTab } from '../../events/conjonctions-tab/conjonctions-tab';
 import { SoireeTab } from '../../events/soiree-tab/soiree-tab';
 import { EventsApiService } from '../../events/events-api.service';
@@ -123,6 +124,7 @@ const SEARCH_DEBOUNCE_MS = 500;
     StatusBadge,
     ConjonctionsTab,
     SoireeTab,
+    LibrarySheet,
   ],
   templateUrl: './partie-detail.html',
   styleUrl: './partie-detail.scss',
@@ -384,6 +386,38 @@ export class PartieDetail implements OnInit {
 
   protected isMemberAmbiguous(userId: string): boolean {
     return this.ambiguousMembers().has(userId);
+  }
+
+  /** ⚠️ Story 48.3 : la Ludothèque ouverte par le nom d'un membre (`null` = fermée). */
+  protected readonly library = signal<{
+    userId: string;
+    name: string;
+    trigger: HTMLElement;
+  } | null>(null);
+
+  /** Nom montré d'un membre ; deux homonymes sont départagés par leur pseudo, comme dans la ligne. */
+  private libraryNameOf(member: PartieMemberDto): string {
+    return this.isMemberAmbiguous(member.userId)
+      ? `${member.displayName} (${member.pseudo})`
+      : member.displayName;
+  }
+
+  protected libraryOpenAria(member: PartieMemberDto): string {
+    return fillTone(this.theme.tone()['board_games.open_aria'], {
+      nom: this.libraryNameOf(member),
+    });
+  }
+
+  protected openLibrary(member: PartieMemberDto, event: Event): void {
+    this.library.set({
+      userId: member.userId,
+      name: this.libraryNameOf(member),
+      trigger: event.currentTarget as HTMLElement,
+    });
+  }
+
+  protected closeLibrary(): void {
+    this.library.set(null);
   }
 
   /** FR-4b/AC1 : l'utilisateur courant partage-t-il son nom affiché avec un autre membre — joueur

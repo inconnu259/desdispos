@@ -9,6 +9,7 @@ import {
   HOST_ONLY_MESSAGE,
   HOST_OR_ADMIN_ONLY_MESSAGE,
   JDR_POLICY,
+  LIBRARY_NOT_FOUND_MESSAGE,
   MJ_ONLY_MESSAGE,
   NO_ACCESS_MESSAGE,
   PermissionService,
@@ -35,7 +36,7 @@ const PARTIE_D = partie('D', MJ, 'draconis');
 
 function makePrisma() {
   return {
-    partie: { findUnique: jest.fn(), findMany: jest.fn() },
+    partie: { findUnique: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
     event: { findUnique: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     seance: { findUnique: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     character: { findUnique: jest.fn() },
@@ -1341,5 +1342,41 @@ describe('PermissionService', () => {
         }
       },
     );
+  });
+
+  describe('assertLibraryRead() — LIBRARY_READ (Story 48.3)', () => {
+    it('la personne elle-même : accordé sans aucune lecture', async () => {
+      await expect(service.assertLibraryRead('u1', 'u1')).resolves.toBeUndefined();
+      expect(prisma.partie.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('une partie de ralliement partagée existe : accordé', async () => {
+      prisma.partie.findFirst.mockResolvedValue({ id: 'groupe' });
+      await expect(service.assertLibraryRead('u1', 'u2')).resolves.toBeUndefined();
+    });
+
+    it('aucune partie partagée : 404, message unique', async () => {
+      prisma.partie.findFirst.mockResolvedValue(null);
+      const err = await service.assertLibraryRead('u1', 'inconnu').catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(NotFoundException);
+      expect((err as NotFoundException).message).toBe(LIBRARY_NOT_FOUND_MESSAGE);
+    });
+
+    it('la requête ne porte que sur la famille ralliement, membres ou rencontre isolée, invités PENDING', async () => {
+      prisma.partie.findFirst.mockResolvedValue({ id: 'x' });
+      await service.assertLibraryRead('u1', 'u2');
+
+      const args = (prisma.partie.findFirst.mock.calls as unknown[][])[0][0];
+      const json = JSON.stringify(args);
+      // Jamais une partie de JDR : seuls les systèmes de la famille ralliement sont retenus.
+      expect(json).toContain('"gameSystemId":{"in":["');
+      expect(json).not.toContain('ryuutama');
+      // Rencontre isolée uniquement pour l'ouverture « invité / hôte ».
+      expect(json).toContain('"kind":"ONE_SHOT"');
+      // Seule une invitation restée sans réponse ouvre.
+      expect(json).toContain('"status":"PENDING"');
+      expect(json).not.toContain('DECLINED');
+      expect(json).not.toContain('REVOKED');
+    });
   });
 });

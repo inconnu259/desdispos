@@ -1,4 +1,5 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, inject, input, output } from '@angular/core';
 import type { EventParticipantDto } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
@@ -15,9 +16,14 @@ import { initialsOf, isPendingParticipant } from '../event-card.util';
  * attente — pastille pointillée, avatar estompé — et dit son état en toutes lettres, à pleine lecture :
  * « *Nom* — invité·e, n'a pas encore accepté ». Le texte n'est jamais estompé (≥ 4,5:1) : seul le
  * disque d'avatar, décoratif, l'est.
+ *
+ * ⚠️ Story 48.3 : avec `libraryEnabled`, la pastille d'un autre participant (ni la sienne, ni une place
+ * réservée) devient un bouton de 44 px dont le nom accessible dit « Voir le cabinet / coffre / râtelier de
+ * {nom} » ; l'activer émet `libraryRequested` avec le bouton touché (le focus lui sera rendu).
  */
 @Component({
   selector: 'app-participant-chip',
+  imports: [NgTemplateOutlet],
   templateUrl: './participant-chip.html',
   styleUrl: './participant-chip.scss',
 })
@@ -27,12 +33,27 @@ export class ParticipantChip {
   readonly participant = input.required<EventParticipantDto>();
   /** La pastille est celle de la personne connectée. */
   readonly self = input(false);
+  /** Story 48.3 : le nom ouvre la Ludothèque de la personne (écran d'un groupe seulement). */
+  readonly libraryEnabled = input(false);
+  /** Story 48.3 : le bouton touché, pour que l'hôte lui rende le focus à la fermeture. */
+  readonly libraryRequested = output<HTMLElement>();
 
   protected readonly initials = computed(() => initialsOf(this.participant().displayName));
+  /** Un bouton seulement pour un AUTRE participant dont la place est acceptée. */
+  protected readonly opensLibrary = computed(
+    () => this.libraryEnabled() && !this.self() && !this.pending(),
+  );
+  protected readonly openAria = computed(() =>
+    fillTone(this.theme.tone()['board_games.open_aria'], { nom: this.participant().displayName }),
+  );
   protected readonly pending = computed(() => isPendingParticipant(this.participant()));
   protected readonly pendingText = computed(() =>
     fillTone(this.theme.tone()['partie.ralliement_event_pending_text'], {
       name: this.participant().displayName,
     }),
   );
+
+  protected openLibrary(event: Event): void {
+    this.libraryRequested.emit(event.currentTarget as HTMLElement);
+  }
 }

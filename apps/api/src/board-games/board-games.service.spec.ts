@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import { callArg } from '../common/test-utils/jest-typed';
@@ -8,6 +9,7 @@ import {
   BOARD_GAME_NOT_FOUND,
   BoardGamesService,
   toBoardGameDto,
+  toUserLibraryDto,
 } from './board-games.service';
 
 const CREATED_AT = new Date('2026-10-29T10:00:00.000Z');
@@ -37,6 +39,7 @@ function makePrisma() {
       deleteMany: jest.fn(),
     },
     membership: { findMany: jest.fn() },
+    user: { findUnique: jest.fn() },
     $transaction: jest.fn(),
     $queryRaw: jest.fn().mockResolvedValue([]),
   };
@@ -49,10 +52,12 @@ describe('BoardGamesService (Story 48.1)', () => {
   let service: BoardGamesService;
   let prisma: ReturnType<typeof makePrisma>;
   let realtime: { emit: jest.Mock };
+  let permissions: { assertLibraryRead: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrisma();
     realtime = { emit: jest.fn() };
+    permissions = { assertLibraryRead: jest.fn().mockResolvedValue(undefined) };
     prisma.boardGame.count.mockResolvedValue(0);
     prisma.membership.findMany.mockResolvedValue([]);
     const module = await Test.createTestingModule({
@@ -60,6 +65,7 @@ describe('BoardGamesService (Story 48.1)', () => {
         BoardGamesService,
         { provide: PrismaService, useValue: prisma },
         { provide: RealtimeEventsService, useValue: realtime },
+        { provide: PermissionService, useValue: permissions },
       ],
     }).compile();
     service = module.get(BoardGamesService);
@@ -90,6 +96,67 @@ describe('BoardGamesService (Story 48.1)', () => {
         orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],
       });
       expect(result).toEqual([toBoardGameDto(row())]);
+    });
+  });
+
+  describe('toUserLibraryDto / listOf (Story 48.3)', () => {
+    const OWNER = { id: 'u2', pseudo: 'zoe', displayName: 'Zoé', email: 'zoe@test.local' };
+
+    it('projette champ par champ : jamais l’e-mail ni le hash du propriétaire', () => {
+      const dto = toUserLibraryDto(OWNER, [row()]);
+
+      expect(dto).toEqual({
+        owner: { userId: 'u2', pseudo: 'zoe', displayName: 'Zoé' },
+        games: [toBoardGameDto(row())],
+      });
+      expect(JSON.stringify(dto)).not.toContain('zoe@test.local');
+      expect(Object.keys(dto.owner).sort()).toEqual(['displayName', 'pseudo', 'userId']);
+    });
+
+    it('décide le droit AVANT de lire, puis lit les jeux de la personne dans l’ordre de listMine', async () => {
+      prisma.user.findUnique.mockResolvedValue(OWNER);
+      prisma.boardGame.findMany.mockResolvedValue([row({ ownerId: 'u2' })]);
+
+      const result = await service.listOf('u1', 'u2');
+
+      expect(permissions.assertLibraryRead).toHaveBeenCalledWith('u1', 'u2');
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'u2' },
+        select: { id: true, pseudo: true, displayName: true },
+      });
+      expect(prisma.boardGame.findMany).toHaveBeenCalledWith({
+        where: { ownerId: 'u2' },
+        orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],
+      });
+      expect(result.games).toHaveLength(1);
+    });
+
+    it('droit refusé : 404 propagé, aucune lecture de jeux ni de compte', async () => {
+      permissions.assertLibraryRead.mockRejectedValue(
+        new NotFoundException('Ludothèque introuvable'),
+      );
+
+      await expect(service.listOf('u1', 'u2')).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+    });
+
+    it('compte introuvable malgré le droit : le même 404', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.boardGame.findMany.mockResolvedValue([]);
+
+      const err = await service.listOf('u1', 'u2').catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(NotFoundException);
+      expect((err as NotFoundException).message).toBe('Ludothèque introuvable');
+    });
+
+    it('Ludothèque vide : 200 avec une liste vide', async () => {
+      prisma.user.findUnique.mockResolvedValue(OWNER);
+      prisma.boardGame.findMany.mockResolvedValue([]);
+
+      expect((await service.listOf('u1', 'u2')).games).toEqual([]);
     });
   });
 

@@ -468,11 +468,29 @@
               <h3>{{ theme.tone()['partie.members_title'] }}</h3>
               @for (m of members(); track m.userId) {
                 <div class="result-row">
-                  <app-identity-label
-                    [playerName]="m.displayName"
-                    [pseudo]="m.pseudo"
-                    [ambiguous]="isMemberAmbiguous(m.userId)"
-                  />
+                  @if (m.userId === auth.currentUser()?.id) {
+                    <app-identity-label
+                      [playerName]="m.displayName"
+                      [pseudo]="m.pseudo"
+                      [ambiguous]="isMemberAmbiguous(m.userId)"
+                    />
+                  } @else {
+                    <!-- ⚠️ Story 48.3 : le nom d'un autre membre ouvre sa Ludothèque (lecture seule). La
+                         ligne propre à la personne connectée reste inerte ; les boutons de gestion
+                         ci-dessous restent des boutons à part. -->
+                    <button
+                      type="button"
+                      class="library-open"
+                      [attr.aria-label]="libraryOpenAria(m)"
+                      (click)="openLibrary(m, $event)"
+                    >
+                      <app-identity-label
+                        [playerName]="m.displayName"
+                        [pseudo]="m.pseudo"
+                        [ambiguous]="isMemberAmbiguous(m.userId)"
+                      />
+                    </button>
+                  }
                   @if (isGroup() && m.role === 'ADMIN') {
                     <!-- Story 39.4 : badge d'administrateur = pictogramme ET mot, jamais la couleur seule. -->
                     <span class="admin-badge">
@@ -510,6 +528,15 @@
               }
               @if (canInviteMembers()) {
                 <ng-container [ngTemplateOutlet]="inviteTools" />
+              }
+              @if (library(); as target) {
+                <!-- ⚠️ Story 48.3 : tiroir modal (sous <body>) ; le focus revient au nom touché. -->
+                <app-library-sheet
+                  [userId]="target.userId"
+                  [name]="target.name"
+                  [returnFocus]="target.trigger"
+                  (closed)="closeLibrary()"
+                />
               }
             </section>
           </mat-tab>

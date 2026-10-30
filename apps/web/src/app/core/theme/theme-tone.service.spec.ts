@@ -1163,6 +1163,9 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'board_games.edit_aria',
     'board_games.removed',
     'board_games.undo_btn',
+    // Story 48.3 : « Fermer » de la feuille d’une Ludothèque — libellé fonctionnel d’un bouton de
+    // fermeture, volontairement hors thème (comme les autres boutons d’action neutres de cette liste)
+    'board_games.sheet_close',
   ]);
 
   const REFERENCE =TONE_MAP['grimoire-emeraude'];
@@ -2305,6 +2308,29 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'foret-ancienne': 'Retirer de mon coffre',
       'atelier-cuivre': 'Retirer de mon râtelier',
     },
+    // Story 48.3 : consulter la Ludothèque d'une personne — nom accessible du bouton sur un nom,
+    // titre du tiroir, ligne de prêt et ligne « vide » : les quatre ont une voix (décision du
+    // 2026-10-30) ; aucune clé neutre n'est ajoutée par cette story
+    'board_games.open_aria': {
+      'grimoire-emeraude': 'Voir le cabinet de {nom}',
+      'foret-ancienne': 'Voir le coffre de {nom}',
+      'atelier-cuivre': 'Voir le râtelier de {nom}',
+    },
+    'board_games.sheet_title': {
+      'grimoire-emeraude': 'Cabinet de {nom} · {n}',
+      'foret-ancienne': 'Coffre de {nom} · {n}',
+      'atelier-cuivre': 'Râtelier de {nom} · {n}',
+    },
+    'board_games.sheet_loan': {
+      'grimoire-emeraude': 'Pour emprunter un jeu, demandez-le à {nom}.',
+      'foret-ancienne': 'Pour emprunter un jeu, demande-le à {nom}.',
+      'atelier-cuivre': 'Pour un prêt, adressez-vous à {nom}.',
+    },
+    'board_games.sheet_empty': {
+      'grimoire-emeraude': 'Le cabinet de {nom} est vide.',
+      'foret-ancienne': 'Le coffre de {nom} est vide.',
+      'atelier-cuivre': 'Le râtelier de {nom} est vide.',
+    },
   };
 
   for (const theme of THEMES) {
@@ -2334,6 +2360,8 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'board_games.edit_aria': 'Modifier {nom}',
       'board_games.removed': 'Jeu retiré',
       'board_games.undo_btn': 'Annuler',
+      // Story 48.3
+      'board_games.sheet_close': 'Fermer',
     };
     for (const theme of THEMES) {
       for (const [key, text] of Object.entries(expected)) {

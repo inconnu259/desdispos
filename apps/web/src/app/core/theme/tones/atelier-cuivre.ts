@@ -322,6 +322,13 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'board_games.edit_aria': 'Modifier {nom}',
   'board_games.removed': 'Jeu retiré',
   'board_games.undo_btn': 'Annuler',
+  /* — consulter la Ludothèque d'une personne (Story 48.3) : les quatre textes ont une voix — */
+  'board_games.open_aria': 'Voir le râtelier de {nom}',
+  'board_games.sheet_title': 'Râtelier de {nom} · {n}',
+  'board_games.sheet_loan': 'Pour un prêt, adressez-vous à {nom}.',
+  'board_games.sheet_empty': 'Le râtelier de {nom} est vide.',
+  /* — bouton « Fermer » de la feuille : neutre (NEUTRAL_KEYS) — */
+  'board_games.sheet_close': 'Fermer',
 
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */

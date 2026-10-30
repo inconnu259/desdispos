@@ -72,3 +72,17 @@
 .pc__name--pending {
   color: var(--mat-sys-on-surface);
 }
+
+/* ⚠️ Story 48.3 — la pastille d'un autre participant devenue bouton : même pastille, cible de 44 px. */
+.pc--button {
+  min-height: 44px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}

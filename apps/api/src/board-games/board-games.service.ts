@@ -5,8 +5,14 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { GAME_SYSTEMS, boardGameNameKey, type BoardGameDto } from '@master-jdr/shared';
+import {
+  GAME_SYSTEMS,
+  boardGameNameKey,
+  type BoardGameDto,
+  type UserLibraryDto,
+} from '@master-jdr/shared';
 import { hasPrismaErrorCode } from '../common/prisma-error.util';
+import { LIBRARY_NOT_FOUND_MESSAGE, PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import type { CreateBoardGameDto } from './dto/create-board-game.dto';
@@ -51,6 +57,22 @@ export function toBoardGameDto(row: BoardGameRow): BoardGameDto {
   };
 }
 
+/** Identité lue pour le propriétaire d'une Ludothèque — pseudo et nom affiché, jamais l'e-mail. */
+interface LibraryOwnerRow {
+  id: string;
+  pseudo: string;
+  displayName: string;
+}
+
+/** Projection explicite de la Ludothèque d'une personne lue par un tiers (Story 48.3) : champ par
+ *  champ, jamais d'étalement de la ligne `User` (qui porte l'e-mail et le hash du mot de passe). */
+export function toUserLibraryDto(owner: LibraryOwnerRow, games: BoardGameRow[]): UserLibraryDto {
+  return {
+    owner: { userId: owner.id, pseudo: owner.pseudo, displayName: owner.displayName },
+    games: games.map(toBoardGameDto),
+  };
+}
+
 /**
  * Ludothèque d'une personne (Story 48.1, épic 48) — module de couche 2, SEUL écrivain de la table
  * `BoardGame`. Il n'importe jamais `events/` : la dépendance ira `events/ → board-games/` (épic 49).
@@ -62,6 +84,7 @@ export class BoardGamesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtimeEvents: RealtimeEventsService,
+    private readonly permissions: PermissionService,
   ) {}
 
   /** Mes jeux, dans l'ordre alphabétique de leur clé normalisée (accents et casse ignorés), puis du nom. */
@@ -71,6 +94,27 @@ export class BoardGamesService {
       orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],
     });
     return rows.map(toBoardGameDto);
+  }
+
+  /**
+   * Ludothèque de `ownerUserId` lue par `readerId` (Story 48.3). Le droit est décidé par
+   * `PermissionService.assertLibraryRead` (`LIBRARY_READ`) AVANT toute lecture : aucune règle de
+   * visibilité n'est recodée ici. Tout refus — dont un compte inconnu — est le même 404.
+   */
+  async listOf(readerId: string, ownerUserId: string): Promise<UserLibraryDto> {
+    await this.permissions.assertLibraryRead(readerId, ownerUserId);
+    const [owner, games] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: ownerUserId },
+        select: { id: true, pseudo: true, displayName: true },
+      }),
+      this.prisma.boardGame.findMany({
+        where: { ownerId: ownerUserId },
+        orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],
+      }),
+    ]);
+    if (!owner) throw new NotFoundException(LIBRARY_NOT_FOUND_MESSAGE);
+    return toUserLibraryDto(owner, games);
   }
 
   /**

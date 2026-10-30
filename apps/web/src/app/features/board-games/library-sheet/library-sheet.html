@@ -1,0 +1,64 @@
+<div class="library-sheet-backdrop" (click)="close()" aria-hidden="true"></div>
+<div
+  #panel
+  class="library-sheet"
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+  cdkTrapFocus
+  [attr.aria-label]="dialogLabel()"
+  [style.transform]="dragOffset() > 0 ? 'translateY(' + dragOffset() + 'px)' : null"
+>
+  <!-- Poignée et titre : la zone qui se glisse vers le bas pour fermer (événements pointeur). -->
+  <div
+    class="library-sheet__head"
+    (pointerdown)="onGripPointerDown($event)"
+    (pointermove)="onGripPointerMove($event)"
+    (pointerup)="onGripPointerUp($event)"
+    (pointercancel)="onGripPointerCancel()"
+  >
+    <span class="library-sheet__grip" aria-hidden="true"></span>
+    <div class="library-sheet__bar">
+      <!-- Ludothèque vide : la ligne du thème seule (ni titre ni prêt). -->
+      @if (title(); as title) {
+        @if (rows().length > 0) {
+          <h2 class="library-sheet__title">{{ title }}</h2>
+        }
+      }
+      <!-- ⚠️ Absent de la planche (décision du 2026-10-30) : un bouton visible et focalisable, pour qui ne
+           peut ni glisser ni viser le voile (lecteur d'écran tactile). Ferme comme le voile et Échap. -->
+      <button
+        class="library-sheet__close"
+        type="button"
+        (pointerdown)="stopPointer($event)"
+        (click)="close()"
+      >
+        {{ theme.tone()['board_games.sheet_close'] }}
+      </button>
+    </div>
+  </div>
+
+  <div class="library-sheet__body">
+    @if (failed()) {
+      <p class="library-sheet__message" role="alert">
+        {{ theme.tone()['board_games.error_fallback'] }}
+      </p>
+    } @else if (library(); as lib) {
+      @if (lib.games.length === 0) {
+        <p class="library-sheet__message">{{ emptyLine() }}</p>
+      } @else {
+        <p class="library-sheet__loan">{{ loanLine() }}</p>
+        <ul class="library-sheet__list">
+          @for (row of rows(); track row.id) {
+            <li class="library-sheet__row">
+              <span class="library-sheet__name">{{ row.name }}</span>
+              @if (row.measures) {
+                <span class="library-sheet__measures">{{ row.measures }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</div>

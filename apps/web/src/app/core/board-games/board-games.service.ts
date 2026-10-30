@@ -1,17 +1,23 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { BoardGameDto, CreateBoardGameInput, UpdateBoardGameInput } from '@master-jdr/shared';
+import type {
+  BoardGameDto,
+  CreateBoardGameInput,
+  UpdateBoardGameInput,
+  UserLibraryDto,
+} from '@master-jdr/shared';
 import { API_BASE } from '../api-base';
 
 /**
  * Ma Ludothèque (Stories 48.1, 48.2) — `GET`/`POST /me/board-games`, `PATCH`/`DELETE
- * /me/board-games/:id`. Le serveur calcule `nameKey` et trie la
+ * /me/board-games/:id` — et, en lecture seule, celle d'une autre personne (Story 48.3). Le serveur calcule `nameKey` et trie la
  * liste ; le front ne recalcule jamais la clé.
  *
  * Temps réel : `changed` est un compteur incrémenté par `notifyChanged()`, câblé dans
  * `RealtimeService` au préfixe `user:` — toute écriture d'un jeu émet `user:{propriétaire}`, ce qui
- * met à jour les autres onglets de la même personne.
+ * met à jour les autres onglets de la même personne. Story 48.3 : aussi au préfixe `partie:` — la feuille
+ * « Ludothèque d'une personne » se relit quand le propriétaire écrit un jeu.
  */
 @Injectable({ providedIn: 'root' })
 export class BoardGamesService {
@@ -28,6 +34,16 @@ export class BoardGamesService {
   list(): Promise<BoardGameDto[]> {
     return firstValueFrom(
       this.http.get<BoardGameDto[]>(`${API_BASE}/me/board-games`, { withCredentials: true }),
+    );
+  }
+
+  /** Ludothèque d'une autre personne (Story 48.3, lecture seule). Rejette avec la réponse HTTP : 404 pour tout
+   *  refus, compte inconnu compris. Chaque appel émet sa propre requête. */
+  listOf(userId: string): Promise<UserLibraryDto> {
+    return firstValueFrom(
+      this.http.get<UserLibraryDto>(`${API_BASE}/users/${encodeURIComponent(userId)}/board-games`, {
+        withCredentials: true,
+      }),
     );
   }
 

@@ -1,5 +1,5 @@
 import request from 'supertest';
-import type { BoardGameDto } from '@master-jdr/shared';
+import type { BoardGameDto, UserLibraryDto } from '@master-jdr/shared';
 import {
   RealtimeEventsService,
   partieTopic,
@@ -397,5 +397,188 @@ describe('Ludothèque — corriger ou retirer un jeu (Story 48.2)', () => {
     await me.agent.delete(`/me/board-games/${back.id}`).expect(204);
     await add(me.agent, { name: 'AZUL' });
     await me.agent.post('/me/board-games').send({ name: 'Azul' }).expect(409);
+  });
+});
+
+/**
+ * Story 48.3 — lire la Ludothèque d'une personne : `GET /users/:userId/board-games`, gardé par la
+ * décision `LIBRARY_READ` de `PermissionService`. Matrice d'entrées/sorties de la spec, de bout en
+ * bout : tout refus — compte inconnu compris — est le même 404, au même corps.
+ */
+describe('Ludothèque — consulter celle d’une personne (Story 48.3)', () => {
+  let h: Harness;
+
+  beforeAll(async () => {
+    h = await Harness.start();
+  });
+
+  afterAll(async () => {
+    await h?.close();
+  });
+
+  const add = async (agent: Agent, payload: Record<string, unknown>): Promise<BoardGameDto> =>
+    body<BoardGameDto>(await agent.post('/me/board-games').send(payload).expect(201));
+
+  const read = (reader: { agent: Agent }, userId: string) =>
+    reader.agent.get(`/users/${userId}/board-games`);
+
+  /** Invitation posée directement en base : seul l'état `status` compte pour la décision. */
+  const invite = (
+    partieId: string,
+    inviter: { id: string },
+    invitee: { id: string },
+    status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REVOKED',
+  ) =>
+    h.prisma.invitation.create({
+      data: { partieId, inviterId: inviter.id, inviteeUserId: invitee.id, status },
+    });
+
+  it('sans session : refusé (403)', async () => {
+    const me = await h.createUser('bg3-anonyme');
+    await request(h.app.getHttpServer()).get(`/users/${me.id}/board-games`).expect(403);
+  });
+
+  it('soi-même : 200, sa propre Ludothèque', async () => {
+    const me = await h.createUser('bg3-soi');
+    await add(me.agent, { name: 'Azul' });
+
+    const res = await read(me, me.id).expect(200);
+
+    expect(body<UserLibraryDto>(res).owner.userId).toBe(me.id);
+    expect(body<UserLibraryDto>(res).games.map((g) => g.name)).toEqual(['Azul']);
+  });
+
+  it('deux membres d’un même groupe : 200 `{ owner, games }`, jeux triés, aucun e-mail', async () => {
+    const admin = await h.createUser('bg3-groupe-admin');
+    const member = await h.createUser('bg3-groupe-membre');
+    const group = await h.createPartie(admin, 'CAMPAGNE_EPISODIQUE', 'bg3-groupe', 'ralliement');
+    await h.addMember(group.id, member);
+    await add(member.agent, { name: 'Skull', minPlayers: 3, maxPlayers: 6, durationMin: 30 });
+    await add(member.agent, { name: 'Azul' });
+
+    const res = await read(admin, member.id).expect(200);
+
+    const dto = body<UserLibraryDto>(res);
+    expect(keysOf(dto)).toEqual(['games', 'owner']);
+    expect(dto.owner).toEqual({
+      userId: member.id,
+      pseudo: member.pseudo,
+      displayName: member.displayName,
+    });
+    expect(dto.games.map((g) => g.name)).toEqual(['Azul', 'Skull']);
+    expect(JSON.stringify(res.body)).not.toContain('email');
+    expect(JSON.stringify(res.body)).not.toContain(member.email);
+    // Dans l'autre sens aussi.
+    await read(member, admin.id).expect(200);
+  });
+
+  it('rencontre isolée acceptée : deux membres → 200', async () => {
+    const host = await h.createUser('bg3-rencontre-hote');
+    const guest = await h.createUser('bg3-rencontre-invite');
+    const encounter = await h.createPartie(host, 'ONE_SHOT', 'bg3-rencontre', 'ralliement');
+    await h.addMember(encounter.id, guest);
+    await invite(encounter.id, host, guest, 'ACCEPTED');
+    await add(guest.agent, { name: 'Azul' });
+
+    await read(host, guest.id).expect(200);
+    await read(guest, host.id).expect(200);
+  });
+
+  it('rencontre isolée, invité `PENDING` : l’hôte lit sa Ludothèque, et l’inverse', async () => {
+    const host = await h.createUser('bg3-pending-hote');
+    const invitee = await h.createUser('bg3-pending-invite');
+    const encounter = await h.createPartie(host, 'ONE_SHOT', 'bg3-pending', 'ralliement');
+    await invite(encounter.id, host, invitee, 'PENDING');
+    await add(invitee.agent, { name: 'Azul' });
+    await add(host.agent, { name: 'Skull' });
+
+    const fromHost = await read(host, invitee.id).expect(200);
+    expect(body<UserLibraryDto>(fromHost).games.map((g) => g.name)).toEqual(['Azul']);
+    const fromInvitee = await read(invitee, host.id).expect(200);
+    expect(body<UserLibraryDto>(fromInvitee).games.map((g) => g.name)).toEqual(['Skull']);
+  });
+
+  it.each(['DECLINED', 'REVOKED'] as const)(
+    'rencontre isolée, invitation %s : 404 dans les deux sens',
+    async (status) => {
+      const host = await h.createUser(`bg3-${status}-hote`);
+      const invitee = await h.createUser(`bg3-${status}-invite`);
+      const encounter = await h.createPartie(host, 'ONE_SHOT', `bg3-${status}`, 'ralliement');
+      await invite(encounter.id, host, invitee, status);
+      await add(invitee.agent, { name: 'Azul' });
+
+      await read(host, invitee.id).expect(404);
+      await read(invitee, host.id).expect(404);
+    },
+  );
+
+  it('deux invités `PENDING` d’une même rencontre isolée : 200', async () => {
+    const host = await h.createUser('bg3-deux-hote');
+    const a = await h.createUser('bg3-deux-a');
+    const b = await h.createUser('bg3-deux-b');
+    const encounter = await h.createPartie(host, 'ONE_SHOT', 'bg3-deux', 'ralliement');
+    await invite(encounter.id, host, a, 'PENDING');
+    await invite(encounter.id, host, b, 'PENDING');
+
+    await read(a, b.id).expect(200);
+  });
+
+  it('une invitation en attente à un GROUPE (pas une rencontre isolée) n’ouvre rien : 404', async () => {
+    const admin = await h.createUser('bg3-grp-pending-admin');
+    const invitee = await h.createUser('bg3-grp-pending-invite');
+    const group = await h.createPartie(admin, 'CAMPAGNE_EPISODIQUE', 'bg3-grp-pend', 'ralliement');
+    await invite(group.id, admin, invitee, 'PENDING');
+
+    await read(admin, invitee.id).expect(404);
+    await read(invitee, admin.id).expect(404);
+  });
+
+  it('partie de JDR seulement : 404 même entre le MJ et son joueur', async () => {
+    const mj = await h.createUser('bg3-jdr-mj');
+    const player = await h.createUser('bg3-jdr-joueur');
+    const jdr = await h.createPartie(mj, 'ONE_SHOT', 'bg3-jdr');
+    await h.addMember(jdr.id, player);
+    await add(player.agent, { name: 'Azul' });
+
+    await read(mj, player.id).expect(404);
+    await read(player, mj.id).expect(404);
+  });
+
+  it('lien d’invitation jamais utilisé : 404', async () => {
+    const admin = await h.createUser('bg3-lien-admin');
+    const stranger = await h.createUser('bg3-lien-etranger');
+    const group = await h.createPartie(admin, 'CAMPAGNE_EPISODIQUE', 'bg3-lien', 'ralliement');
+    await h.prisma.inviteLink.create({
+      data: {
+        token: `bg3-${h.suffix}`,
+        partieId: group.id,
+        createdById: admin.id,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+
+    await read(admin, stranger.id).expect(404);
+    await read(stranger, admin.id).expect(404);
+  });
+
+  it('inconnu : 404, corps identique à un refus de droit', async () => {
+    const me = await h.createUser('bg3-inconnu');
+    const other = await h.createUser('bg3-inconnu-autre');
+
+    const unknown = await read(me, 'identifiant-inexistant').expect(404);
+    const forbidden = await read(me, other.id).expect(404);
+
+    expect(unknown.body).toEqual(forbidden.body);
+  });
+
+  it('Ludothèque vide d’une personne autorisée : 200, `games: []`', async () => {
+    const admin = await h.createUser('bg3-vide-admin');
+    const member = await h.createUser('bg3-vide-membre');
+    const group = await h.createPartie(admin, 'CAMPAGNE_EPISODIQUE', 'bg3-vide', 'ralliement');
+    await h.addMember(group.id, member);
+
+    const res = await read(admin, member.id).expect(200);
+
+    expect(body<UserLibraryDto>(res).games).toEqual([]);
   });
 });

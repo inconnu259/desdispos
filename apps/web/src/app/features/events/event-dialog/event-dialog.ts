@@ -52,6 +52,7 @@ import {
 import { EventForm } from '../event-form/event-form';
 import { ExtendVoteDialog, type ExtendVoteData } from '../extend-vote-dialog/extend-vote-dialog';
 import { EventsApiService } from '../events-api.service';
+import { LibrarySheet } from '../../board-games/library-sheet/library-sheet';
 import { ParticipantChip } from '../participant-chip/participant-chip';
 import { refusalMessage } from '../refusal-message';
 
@@ -112,6 +113,7 @@ let nextUid = 0;
     StatusBadge,
     ParticipantChip,
     EventForm,
+    LibrarySheet,
   ],
   templateUrl: './event-dialog.html',
   styleUrl: './event-dialog.scss',
@@ -155,6 +157,14 @@ export class EventDialog {
 
   protected readonly editing = signal(false);
   protected readonly busy = signal(false);
+
+  /** ⚠️ Story 48.3 : la Ludothèque ouverte par le nom d'un participant (`null` = fermée) — la feuille est
+   *  rendue sous `<body>`, au-dessus de cette fenêtre, et rend le focus à `trigger`. */
+  protected readonly library = signal<{
+    userId: string;
+    name: string;
+    trigger: HTMLElement;
+  } | null>(null);
   protected readonly error = signal<string | null>(null);
   /** Membres du groupe (hôte seulement, lus une fois) : source du sélecteur de places réservées. */
   private readonly members = signal<PartieMemberDto[]>([]);
@@ -479,5 +489,13 @@ export class EventDialog {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  protected openLibrary(participant: EventParticipantDto, trigger: HTMLElement): void {
+    this.library.set({ userId: participant.userId, name: participant.displayName, trigger });
+  }
+
+  protected closeLibrary(): void {
+    this.library.set(null);
   }
 }

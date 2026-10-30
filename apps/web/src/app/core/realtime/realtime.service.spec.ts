@@ -315,16 +315,19 @@ describe('RealtimeService', () => {
     expect(partySignalsSvc.notifyChanged).not.toHaveBeenCalled();
   });
 
-  it("Story 48.1 : ma Ludothèque se relit sur 'user:', jamais sur 'partie:'", () => {
+  it("Story 48.1 : ma Ludothèque se relit sur 'user:' (autres onglets de la même personne)", () => {
+    service.connect(userTopic('u1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(1);
+    FakeEventSource.instances[0].emit('message');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it("Story 48.3 : la feuille d'une Ludothèque se relit AUSSI sur 'partie:' (l'écriture d'un jeu émet pour chaque partie de ralliement)", () => {
     service.connect(partieTopic('p1'));
     FakeEventSource.instances[0].emit('open');
-    expect(boardGamesSvc.notifyChanged).not.toHaveBeenCalled();
-    service.disconnect(partieTopic('p1'));
-
-    service.connect(userTopic('u1'));
-    FakeEventSource.instances[1].emit('open');
     expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(1);
-    FakeEventSource.instances[1].emit('message');
+    FakeEventSource.instances[0].emit('message');
     expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(2);
   });
 

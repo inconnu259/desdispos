@@ -114,9 +114,12 @@ export class RealtimeService {
     // `ScenariosService.changed()` — pas de nouveau service, pas de nouvelle méthode.
     { prefix: 'user:', notifyChanged: () => this.scenarios.notifyRealtimeChanged() },
     // Story 48.1 : ma Ludothèque — toute écriture d'un jeu émet `user:{propriétaire}` ; la page la
-    // relit sur ce signal (autres onglets de la même personne). Préfixe 'user:' seul : le
-    // `partie:{id}` émis en même temps est pour l'onglet des jeux d'une soirée (épic 49).
+    // relit sur ce signal (autres onglets de la même personne).
     { prefix: 'user:', notifyChanged: () => this.boardGames.notifyChanged() },
+    // Story 48.3 : la feuille « Ludothèque d'une personne » se relit sur le `partie:{id}` que toute écriture
+    // d'un jeu émet pour chaque partie de ralliement de son propriétaire — la page de la partie est déjà
+    // connectée à ce canal, aucune connexion de plus.
+    { prefix: 'partie:', notifyChanged: () => this.boardGames.notifyChanged() },
   ];
 
   // Une entrée par connexion active (pas par topic) — deux connect() sur le même topic ouvrent

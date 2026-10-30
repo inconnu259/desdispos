@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Partie } from '@prisma/client';
+import type { Partie, Prisma } from '@prisma/client';
 import type {
   GameSystemCapability,
   GameSystemFamily,
@@ -16,7 +16,7 @@ import type {
 // Import RUNTIME du registre des systèmes (Story 37.5) : la famille du système de la partie choisit
 // la politique de droits, ses capacités gardent les actions de couche 3 (Story 37.7). Jamais
 // `import type` sur une valeur.
-import { familyOf, hasCapability } from '@master-jdr/shared';
+import { GAME_SYSTEMS, familyOf, hasCapability } from '@master-jdr/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Clés d'identifiant qu'une cible de décision de droit peut porter (une seule à la fois). */
@@ -114,6 +114,30 @@ export const NO_ACCESS_MESSAGE = "Vous n'avez pas accès à cette partie";
 /** Refus d'une action de couche 3 sur une partie dont le système ne déclare pas la capacité. */
 export const CAPABILITY_UNAVAILABLE_MESSAGE =
   "Cette fonctionnalité n'est pas disponible pour le système de jeu de cette partie";
+
+/** Refus de lire une Ludothèque (Story 48.3) : UN seul message pour TOUS les refus — personne sans lien,
+ *  JDR seul, invitation refusée ou révoquée, lien jamais utilisé, compte inconnu. Rien ne révèle que le
+ *  compte existe. */
+export const LIBRARY_NOT_FOUND_MESSAGE = 'Ludothèque introuvable';
+
+/** Systèmes de la famille `ralliement` : seules leurs parties ouvrent une Ludothèque à leurs
+ *  participants (une partie de JDR jamais). Lu à l'appel, non à l'import : le registre n'est jamais
+ *  touché au chargement du module. */
+function ralliementSystemIds(): string[] {
+  return GAME_SYSTEMS.filter((g) => g.family === 'ralliement').map((g) => g.id);
+}
+
+/** « `userId` prend part à cette rencontre isolée » : hôte, membre, ou invité resté sans réponse
+ *  (`PENDING`) — un refus (`DECLINED`) ou un retrait (`REVOKED`) n'ouvre plus rien. */
+function takesPartInEncounter(userId: string): Prisma.PartieWhereInput {
+  return {
+    OR: [
+      { ownerId: userId },
+      { memberships: { some: { userId } } },
+      { invitations: { some: { inviteeUserId: userId, status: 'PENDING' } } },
+    ],
+  };
+}
 
 const OWNER_ONLY: readonly PartieRole[] = ['mj'];
 const OWNER_AND_MEMBERS: readonly PartieRole[] = ['mj', 'player'];
@@ -559,6 +583,43 @@ export class PermissionService {
     const refusal = refusalFor({ userId, action, role, partie, resolved, eventOwnerId });
     if (refusal) throw refusal;
     return { partieId: partie.id, userId, role, action, target: resolved, partie } as PartieGrant;
+  }
+
+  /**
+   * Story 48.3 — `LIBRARY_READ`, cible `{ userId }` : `readerId` peut-il lire la Ludothèque de
+   * `ownerUserId` ? Décidé ICI et nulle part ailleurs (`board-games/` ne recode aucune règle de
+   * visibilité). Ouvert :
+   *  - à la personne elle-même ;
+   *  - à deux membres d'une même partie de la famille `ralliement` (groupe ou rencontre isolée) ;
+   *  - dans une rencontre isolée (`ONE_SHOT` de ralliement), à l'hôte, aux membres et aux invités
+   *    `PENDING`, entre eux. L'état de la rencontre (annulée, passée) n'est pas considéré.
+   * Rien d'autre n'ouvre : partie de JDR, invitation `DECLINED` / `REVOKED`, lien d'invitation jamais
+   * utilisé (aucun `Membership` n'existe), compte inconnu. TOUT refus est le même 404 au même
+   * message : la cible n'est jamais résolue en partie, il n'y a donc pas de 403.
+   */
+  async assertLibraryRead(readerId: string, ownerUserId: string): Promise<void> {
+    if (readerId === ownerUserId) return;
+    const shared = await this.prisma.partie.findFirst({
+      where: {
+        gameSystemId: { in: ralliementSystemIds() },
+        OR: [
+          // Groupe ou rencontre : membres de la même partie.
+          {
+            AND: [
+              { memberships: { some: { userId: readerId } } },
+              { memberships: { some: { userId: ownerUserId } } },
+            ],
+          },
+          // Rencontre isolée : hôte / membre / invité en attente, des deux côtés.
+          {
+            kind: 'ONE_SHOT',
+            AND: [takesPartInEncounter(readerId), takesPartInEncounter(ownerUserId)],
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!shared) throw new NotFoundException(LIBRARY_NOT_FOUND_MESSAGE);
   }
 
   /**

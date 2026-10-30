@@ -32,6 +32,7 @@ import { AnnouncementsService } from '../../../core/announcements/announcements.
 import { UnseenAnnouncementsService } from '../../../core/announcements/unseen-announcements.service';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { CharacterRolesService } from '../../../core/character-roles/character-roles.service';
+import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTabGroup } from '@angular/material/tabs';
 import { TONE_MAP, THEMES, type Theme } from '../../../core/theme/tones';
@@ -327,6 +328,17 @@ async function createFixture(
         },
       },
       { provide: MatDialog, useValue: { open: vi.fn() } },
+      // Story 48.3 : la feuille d'une Ludothèque (ouverte par le nom d'un membre) lit celle de la personne.
+      {
+        provide: BoardGamesService,
+        useValue: {
+          listOf: vi.fn().mockResolvedValue({
+            owner: { userId: 'member-2', pseudo: 'membre', displayName: 'Membre Deux' },
+            games: [],
+          }),
+          changed: signal(0),
+        },
+      },
       // Story 40.1 : l'onglet des conjonctions d'un groupe lit sa liste (aucun HttpClient en test).
       {
         provide: EventsApiService,
@@ -3628,7 +3640,8 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
       const panel = el.querySelector('.ralliement-members') as HTMLElement;
       const tone = TONE_MAP['grimoire-emeraude'];
       expect(panel.querySelector('h3')?.textContent).toContain(tone['partie.members_title']);
-      expect(panel.querySelector('button')).toBeNull();
+      // Story 48.3 : seul le nom d'un AUTRE membre est un bouton (sa Ludothèque) — aucune gestion.
+      expect(panel.querySelector('button:not(.library-open)')).toBeNull();
       expect(panel.querySelector('input')).toBeNull();
       expect(panel.querySelector('mat-form-field')).toBeNull();
       expect(panel.querySelector('.link-row')).toBeNull();
@@ -3665,6 +3678,138 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
     expect(rows).toHaveLength(2);
     expect(rows[0]).toContain('(alice)');
     expect(rows[1]).toContain('(bob)');
+  });
+
+  // ─── ⚠️ Story 48.3 : le nom d'un autre membre ouvre sa Ludothèque ────────────────────────────
+
+  describe('Ludothèque d’une personne (Story 48.3)', () => {
+    const openTab = (el: HTMLElement, fixture: ComponentFixture<PartieDetail>, label: string) => {
+      const tab = Array.from(el.querySelectorAll<HTMLElement>('div[role="tab"]')).find(
+        (t) => (t.textContent ?? '').trim() === label,
+      );
+      tab?.click();
+      fixture.detectChanges();
+    };
+    const buttons = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.ralliement-members .library-open'));
+    const flush = async (fixture: ComponentFixture<PartieDetail>) => {
+      for (let i = 0; i < 8; i++) {
+        await Promise.resolve();
+        fixture.detectChanges();
+      }
+    };
+
+    afterEach(() => document.body.querySelectorAll('app-library-sheet').forEach((n) => n.remove()));
+
+    it('groupe, Missives : le nom de l’autre membre est un bouton de thème ; la ligne de la personne connectée reste inerte', async () => {
+      const { fixture, el } = await createFixture(
+        ralliement({ kind: 'CAMPAGNE_EPISODIQUE' }),
+        MJ_ID,
+        { members, noopAnimations: true },
+      );
+      openTab(el, fixture, TONE_MAP['grimoire-emeraude']['partie.invitations_tab_label']);
+
+      const found = buttons(el);
+      expect(found).toHaveLength(1);
+      expect(found[0].getAttribute('type')).toBe('button');
+      expect(found[0].getAttribute('aria-label')).toBe('Voir le cabinet de Membre Deux');
+      expect(found[0].textContent).toContain('Membre Deux');
+      // Sa propre ligne : aucun bouton, le nom reste du texte.
+      const rows = Array.from(el.querySelectorAll('.ralliement-members .result-row'));
+      expect(rows[0].textContent).toContain('Créateur');
+      expect(rows[0].querySelector('.library-open')).toBeNull();
+    });
+
+    it.each([
+      ['grimoire-emeraude', 'Voir le cabinet de Membre Deux'],
+      ['foret-ancienne', 'Voir le coffre de Membre Deux'],
+      ['atelier-cuivre', 'Voir le râtelier de Membre Deux'],
+    ] as const)('%s : nom accessible « %s »', async (theme, expected) => {
+      const { fixture, el } = await createFixture(
+        ralliement({ kind: 'CAMPAGNE_EPISODIQUE' }),
+        MJ_ID,
+        { members, noopAnimations: true, theme },
+      );
+      openTab(el, fixture, TONE_MAP[theme]['partie.invitations_tab_label']);
+
+      expect(buttons(el)[0].getAttribute('aria-label')).toBe(expected);
+    });
+
+    it('le toucher ouvre la feuille de cette personne ; la fermer rend le focus au nom touché', async () => {
+      const { fixture, el } = await createFixture(
+        ralliement({ kind: 'CAMPAGNE_EPISODIQUE' }),
+        MJ_ID,
+        { members, noopAnimations: true },
+      );
+      openTab(el, fixture, TONE_MAP['grimoire-emeraude']['partie.invitations_tab_label']);
+      const trigger = buttons(el)[0];
+
+      trigger.click();
+      await flush(fixture);
+
+      const boardGames = TestBed.inject(BoardGamesService) as unknown as {
+        listOf: ReturnType<typeof vi.fn>;
+      };
+      expect(boardGames.listOf).toHaveBeenCalledWith(OTHER_ID);
+      expect(document.body.querySelector('app-library-sheet .library-sheet')).not.toBeNull();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await flush(fixture);
+
+      expect(document.body.querySelector('app-library-sheet')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it('rencontre isolée, Invités : un invité touche le nom de l’hôte (même bouton)', async () => {
+      const { fixture, el } = await createFixture(ralliement({ role: 'member' }), OTHER_ID, {
+        members,
+        noopAnimations: true,
+      });
+      openMissives(el, fixture);
+
+      const found = buttons(el);
+      expect(found.map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Voir le cabinet de Créateur',
+      ]);
+    });
+
+    it('rencontre isolée, Invitations (côté hôte) : le nom d’un invité est un bouton, pas le sien', async () => {
+      const { fixture, el } = await createFixture(ralliement(), MJ_ID, {
+        members,
+        noopAnimations: true,
+      });
+      openMissives(el, fixture);
+
+      expect(buttons(el).map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Voir le cabinet de Membre Deux',
+      ]);
+    });
+
+    it('deux homonymes : le nom accessible porte le pseudo qui les départage', async () => {
+      const homonymes: PartieMemberDto[] = [
+        { ...members[0], pseudo: 'alice', displayName: 'Même Nom' },
+        { ...members[1], pseudo: 'bob', displayName: 'Même Nom' },
+      ];
+      const { fixture, el } = await createFixture(ralliement(), MJ_ID, {
+        members: homonymes,
+        noopAnimations: true,
+      });
+      openMissives(el, fixture);
+
+      expect(buttons(el)[0].getAttribute('aria-label')).toBe('Voir le cabinet de Même Nom (bob)');
+    });
+
+    it('une partie de JDR : aucun nom ne devient un bouton, aucune feuille', async () => {
+      const { fixture, el } = await createFixture(makePartie({ ownerId: MJ_ID }), MJ_ID, {
+        members,
+        noopAnimations: true,
+      });
+      openMissives(el, fixture);
+
+      expect(el.querySelector('.library-open')).toBeNull();
+      expect(el.querySelector('app-library-sheet')).toBeNull();
+      expect(document.body.querySelector('app-library-sheet')).toBeNull();
+    });
   });
 
   it.each(THEMES)(
@@ -4110,7 +4255,7 @@ describe('PartieDetail — Missives d’un groupe : invitation et retrait (Story
       noopAnimations: true,
     });
     openMissives(el, fixture);
-    expect(panel(el).querySelector('button')).toBeNull();
+    expect(panel(el).querySelector('button:not(.library-open)')).toBeNull();
     expect(panel(el).querySelector('input')).toBeNull();
     expect(panel(el).querySelector('.link-row')).toBeNull();
     expect(services().inviteLinks).not.toHaveBeenCalled();
@@ -4133,7 +4278,7 @@ describe('PartieDetail — Missives d’un groupe : invitation et retrait (Story
     });
     guest.el.querySelectorAll<HTMLElement>('div[role="tab"]')[1].click();
     guest.fixture.detectChanges();
-    expect(panel(guest.el).querySelector('button')).toBeNull();
+    expect(panel(guest.el).querySelector('button:not(.library-open)')).toBeNull();
     expect(panel(guest.el).querySelector('input')).toBeNull();
     expect(services().inviteLinks).not.toHaveBeenCalled();
   });
@@ -4319,7 +4464,7 @@ describe('PartieDetail — admins d’un groupe : nommer et quitter l’office (
     });
     openMissives(el, fixture);
     expect(el.querySelectorAll('.ralliement-members .admin-badge')).toHaveLength(2);
-    expect(el.querySelector('.ralliement-members button')).toBeNull();
+    expect(el.querySelector('.ralliement-members button:not(.library-open)')).toBeNull();
   });
 
   it('une rencontre isolée n’affiche ni badge ni action de rôle', async () => {
@@ -6744,7 +6889,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       await settle(guest.fixture);
       clickSecondTab(guest.el, guest.fixture);
       expect(guest.el.querySelector('.ralliement-members input')).toBeNull();
-      expect(guest.el.querySelector('.ralliement-members button')).toBeNull();
+      expect(guest.el.querySelector('.ralliement-members button:not(.library-open)')).toBeNull();
       expect(guest.el.querySelector('.soiree-guests-empty')).toBeNull();
     });
   });
@@ -6785,7 +6930,9 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       expect(el.querySelector('.ralliement-members .search-row')).toBeNull();
       const rows = Array.from(el.querySelectorAll('.ralliement-members .result-row'));
       expect(rows).toHaveLength(2);
-      expect(el.querySelector('.ralliement-members .result-row button')).toBeNull();
+      expect(
+        el.querySelector('.ralliement-members .result-row button:not(.library-open)'),
+      ).toBeNull();
     });
 
     it('« Rouvrir » remplace « Clore » ; l’action relit la partie et rend ses outils', async () => {

@@ -38,6 +38,24 @@ describe('BoardGamesService (Story 48.1)', () => {
     expect(await p).toEqual([AZUL]);
   });
 
+  it('listOf() → GET /users/:userId/board-games avec withCredentials, identifiant encodé (Story 48.3)', async () => {
+    const library = { owner: { userId: 'u 2', pseudo: 'zoe', displayName: 'Zoé' }, games: [AZUL] };
+    const p = service.listOf('u 2');
+    const req = http.expectOne(`${API_BASE}/users/u%202/board-games`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(library);
+    expect(await p).toEqual(library);
+  });
+
+  it('listOf() : un refus (404) rejette avec la réponse HTTP', async () => {
+    const p = service.listOf('u2').catch((e: unknown) => e);
+    http
+      .expectOne(`${API_BASE}/users/u2/board-games`)
+      .flush({ message: 'Ludothèque introuvable' }, { status: 404, statusText: 'Not Found' });
+    expect(((await p) as { status: number }).status).toBe(404);
+  });
+
   it('list() : chaque appel émet sa propre requête, jamais un instantané partagé', async () => {
     const a = service.list();
     const b = service.list();

@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import type { EventCardDto, PartieMemberDto } from '@master-jdr/shared';
+import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../../core/theme/tones';
@@ -98,13 +99,15 @@ class Host {
 describe('EventDialog — sondage de dates (Story 40.5)', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
-    document.body.querySelectorAll('app-detail-surface').forEach((n) => n.remove());
+    document.body
+      .querySelectorAll('app-detail-surface, app-library-sheet')
+      .forEach((n) => n.remove());
   });
 
   async function mount(
     card: EventCardDto,
     userId: string | null = ME,
-    extra: { api?: object; dialog?: object } = {},
+    extra: { api?: object; dialog?: object; boardGames?: object } = {},
   ) {
     const api = extra.api ?? {};
     const parties = {
@@ -119,6 +122,7 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
         { provide: EventsApiService, useValue: api },
         { provide: PartiesService, useValue: parties },
         ...(extra.dialog ? [{ provide: MatDialog, useValue: extra.dialog }] : []),
+        ...(extra.boardGames ? [{ provide: BoardGamesService, useValue: extra.boardGames }] : []),
         { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
         {
           provide: BreakpointObserver,
@@ -144,6 +148,73 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
     const text = (sel: string) => q(sel)?.textContent?.trim();
     return { fixture, settle, q, text, parties };
   }
+
+  describe('⚠️ Story 48.3 — le nom d’un participant ouvre sa Ludothèque', () => {
+    const withParticipants = (): EventCardDto => ({
+      ...pollCard(),
+      participants: [
+        { userId: HOST, displayName: 'Léa', isHost: true, isAdmin: false, status: 'CONFIRMED' },
+        { userId: ME, displayName: 'Moi', isHost: false, isAdmin: false, status: 'CONFIRMED' },
+        { userId: OTHER, displayName: 'Zoé', isHost: false, isAdmin: true, status: 'CONFIRMED' },
+        { userId: 'tiers', displayName: 'Ana', isHost: false, isAdmin: false, status: 'RESERVED' },
+      ],
+    });
+    const boardGames = () => ({
+      listOf: vi.fn().mockResolvedValue({
+        owner: { userId: HOST, pseudo: 'lea', displayName: 'Léa' },
+        games: [
+          {
+            id: 'g1',
+            name: 'Azul',
+            nameKey: 'azul',
+            minPlayers: 2,
+            maxPlayers: 4,
+            durationMin: 40,
+            createdAt: '2026-10-29T10:00:00.000Z',
+          },
+        ],
+      }),
+      changed: signal(0),
+    });
+
+    it('un autre participant : bouton « Voir le cabinet de {nom} » ; sa pastille et une place réservée ne le sont pas', async () => {
+      const { q } = await mount(withParticipants(), ME, { boardGames: boardGames() });
+
+      const labels = Array.from(
+        document.body.querySelectorAll<HTMLButtonElement>('app-participant-chip button.pc--button'),
+      ).map((b) => b.getAttribute('aria-label'));
+      expect(labels).toEqual(['Voir le cabinet de Léa', 'Voir le cabinet de Zoé']);
+      // Sa propre pastille et la place réservée restent du texte.
+      const chips = Array.from(document.body.querySelectorAll('app-participant-chip'));
+      expect(chips).toHaveLength(4);
+      expect(chips[1].querySelector('button')).toBeNull();
+      expect(chips[3].querySelector('button')).toBeNull();
+      expect(q('app-library-sheet')).toBeNull();
+    });
+
+    it('le toucher ouvre la feuille de cette personne ; Échap la ferme SANS fermer la fenêtre, focus rendu au nom', async () => {
+      const bg = boardGames();
+      const { fixture, settle, q } = await mount(withParticipants(), ME, { boardGames: bg });
+      const trigger = document.body.querySelector<HTMLButtonElement>(
+        'app-participant-chip button.pc--button',
+      ) as HTMLButtonElement;
+
+      trigger.click();
+      await settle();
+
+      expect(bg.listOf).toHaveBeenCalledWith(HOST);
+      expect(q('app-library-sheet .library-sheet')?.textContent).toContain('Azul');
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+
+      expect(q('app-library-sheet')).toBeNull();
+      // La fenêtre d'hôte est toujours là et n'a rien reçu.
+      expect(q('app-detail-surface')).not.toBeNull();
+      expect(fixture.componentInstance.refreshRequests).toBe(0);
+      expect(document.activeElement).toBe(trigger);
+    });
+  });
 
   it('membre éligible qui n’a pas voté : cadre « à faire », « Vote à faire », « Vos réponses : 0 créneau sur 3 », « Voter dans le calendrier » mais ni « Fixer » ni « Prolonger »', async () => {
     const { fixture, q, text } = await mount(pollCard());

@@ -53,6 +53,7 @@ import { EventForm } from '../event-form/event-form';
 import { ExtendVoteDialog, type ExtendVoteData } from '../extend-vote-dialog/extend-vote-dialog';
 import { EventsApiService } from '../events-api.service';
 import { LibrarySheet } from '../../board-games/library-sheet/library-sheet';
+import { EventGamesTab } from '../event-games-tab/event-games-tab';
 import { ParticipantChip } from '../participant-chip/participant-chip';
 import { refusalMessage } from '../refusal-message';
 
@@ -114,6 +115,7 @@ let nextUid = 0;
     ParticipantChip,
     EventForm,
     LibrarySheet,
+    EventGamesTab,
   ],
   templateUrl: './event-dialog.html',
   styleUrl: './event-dialog.scss',
@@ -186,6 +188,49 @@ export class EventDialog {
   );
 
   protected readonly past = computed(() => isPastEvent(this.card(), this.todayKey()));
+
+  /** ⚠️ Story 49.1 : l'onglet des jeux sur place n'existe que pour une conjonction OUVERTE de la fenêtre —
+   *  ni en ligne (la rencontre isolée a le sien), ni passée, ni annulée, ni figée. */
+  protected readonly gamesAvailable = computed(
+    () => !this.inline() && !this.past() && !this.cancelled() && !this.frozen(),
+  );
+  /** Le bandeau d'onglets est posé tant que l'onglet des jeux existe ; en modification, la fenêtre ne montre que le
+   *  formulaire. */
+  protected readonly showTabs = computed(() => this.gamesAvailable() && !this.editing());
+  private readonly selectedTab = signal<'main' | 'games'>('main');
+  protected readonly activeTab = computed(() => (this.showTabs() ? this.selectedTab() : 'main'));
+  /** Nombre de jeux sur place, remonté par l'onglet (`null` tant qu'il n'est pas lu). */
+  protected readonly gamesCount = signal<number | null>(null);
+  protected readonly gamesLabel = computed(() => {
+    const count = this.gamesCount();
+    const tone = this.theme.tone();
+    return count === null
+      ? tone['event_games.tab']
+      : fillTone(tone['event_games.tab_count'], { n: count });
+  });
+
+  protected selectTab(tab: 'main' | 'games'): void {
+    this.selectedTab.set(tab);
+  }
+
+  /** Navigation au clavier du bandeau d'onglets : flèches et début/fin, activation automatique. */
+  protected onTabKeydown(event: KeyboardEvent): void {
+    const order: ('main' | 'games')[] = ['main', 'games'];
+    const current = order.indexOf(this.activeTab());
+    const targets: Record<string, number> = {
+      ArrowRight: (current + 1) % order.length,
+      ArrowLeft: (current + order.length - 1) % order.length,
+      Home: 0,
+      End: order.length - 1,
+    };
+    if (!Object.hasOwn(targets, event.key)) return;
+    const next = targets[event.key];
+    event.preventDefault();
+    this.selectedTab.set(order[next]);
+    const list = (event.currentTarget as HTMLElement).parentElement;
+    list?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
+  }
+
   /** Story 42.1 : annulée — état écrit en tête, plus aucune action. */
   protected readonly cancelled = computed(() => isCancelled(this.card()));
   protected readonly canEdit = computed(

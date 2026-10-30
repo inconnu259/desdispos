@@ -12,6 +12,7 @@ import type { AuthUser } from '@master-jdr/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { CreateEventDto, UpdateEventDto } from './dto/create-event.dto';
+import { EventBoardGamesService } from './event-board-games.service';
 import { GroupEventsService } from './group-events.service';
 
 /**
@@ -23,7 +24,10 @@ import { GroupEventsService } from './group-events.service';
 @UseGuards(AuthenticatedGuard)
 @Controller()
 export class EventsController {
-  constructor(private readonly groupEvents: GroupEventsService) {}
+  constructor(
+    private readonly groupEvents: GroupEventsService,
+    private readonly eventBoardGames: EventBoardGamesService,
+  ) {}
 
   @Post('parties/:id/events')
   create(
@@ -58,5 +62,11 @@ export class EventsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.groupEvents.cancel(partieId, eventId, user.id);
+  }
+
+  /** Story 49.1 : les jeux sur place d'une soirée à venir (jeux de l'hôte + N), lecture seule — `PARTIE_READ`. */
+  @Get('events/:eventId/board-games')
+  boardGames(@Param('eventId', ParseUUIDPipe) eventId: string, @CurrentUser() user: AuthUser) {
+    return this.eventBoardGames.list(eventId, user.id);
   }
 }

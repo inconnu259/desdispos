@@ -326,3 +326,35 @@
   --mat-button-outlined-outline-color: var(--color-unavailable, #e74c3c);
   --mat-button-outlined-label-text-color: var(--color-cancelled-text, #f26a5c);
 }
+
+/* ⚠️ Story 49.1 — bandeau d'onglets « Conjonction » / jeux sur place de la fenêtre. Cibles de 44 px, onglet actif
+   souligné ET en gras (jamais la couleur seule), aucun jeton neuf. */
+.ed__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+}
+
+.ed__tab {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+
+  &[aria-selected='true'] {
+    border-bottom-color: var(--jdr-accent-1, var(--mat-sys-primary));
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}

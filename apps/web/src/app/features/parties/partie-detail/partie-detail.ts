@@ -80,6 +80,7 @@ import { HommeDragonAventurePanel } from '../../homme-dragon/homme-dragon-aventu
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { LibrarySheet } from '../../board-games/library-sheet/library-sheet';
 import { ConjonctionsTab } from '../../events/conjonctions-tab/conjonctions-tab';
+import { EventGamesTab } from '../../events/event-games-tab/event-games-tab';
 import { SoireeTab } from '../../events/soiree-tab/soiree-tab';
 import { EventsApiService } from '../../events/events-api.service';
 
@@ -124,6 +125,7 @@ const SEARCH_DEBOUNCE_MS = 500;
     StatusBadge,
     ConjonctionsTab,
     SoireeTab,
+    EventGamesTab,
     LibrarySheet,
   ],
   templateUrl: './partie-detail.html',
@@ -245,6 +247,17 @@ export class PartieDetail implements OnInit {
     () => this.isSoiree() && this.partie()?.status === 'ANNULEE',
   );
   protected readonly isSoireeOpen = computed(() => this.isSoiree() && !this.isSoireeFinished());
+
+  /** Story 49.1 : nombre de jeux sur place de la soirée, remonté par son onglet (`null` tant qu'il n'est pas lu). */
+  protected readonly soireeGamesCount = signal<number | null>(null);
+  /** Libellé du troisième onglet d'une soirée à venir : « Reliques · 6 » (thème), sans compte avant la première lecture. */
+  protected readonly soireeGamesTabLabel = computed(() => {
+    const count = this.soireeGamesCount();
+    const tone = this.theme.tone();
+    return count === null
+      ? tone['event_games.tab']
+      : fillTone(tone['event_games.tab_count'], { n: count });
+  });
 
   /** Libellé du second onglet d'un ralliement : « Missives » (thème) pour un groupe ; pour une soirée
    *  isolée, « Invitations » côté hôte (administrateur) et « Invités » côté invité (Story 41.1). */

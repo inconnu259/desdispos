@@ -1,11 +1,11 @@
 import request from 'supertest';
-import type { BoardGameDto, UserLibraryDto } from '@master-jdr/shared';
+import type { BoardGameDto, EventBoardGamesDto, UserLibraryDto } from '@master-jdr/shared';
 import {
   RealtimeEventsService,
   partieTopic,
   userTopic,
 } from '../../src/realtime/realtime-events.service';
-import { Harness, body, keysOf, type Agent } from './harness';
+import { Harness, body, isoDay, keysOf, type Agent } from './harness';
 
 /**
  * Story 48.1 — ma Ludothèque : `GET`/`POST /me/board-games`. Matrice d'entrées/sorties de la spec,
@@ -580,5 +580,235 @@ describe('Ludothèque — consulter celle d’une personne (Story 48.3)', () => 
     const res = await read(admin, member.id).expect(200);
 
     expect(body<UserLibraryDto>(res).games).toEqual([]);
+  });
+});
+
+/**
+ * Story 49.1 — voir les jeux de l'hôte avant la soirée : `GET /events/:eventId/board-games`. Matrice
+ * d'entrées/sorties de la spec, de bout en bout (droit `PARTIE_READ`, N de `participantsOf`, statut
+ * partagé, aucune émission sur une lecture).
+ */
+describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 49.1)', () => {
+  let h: Harness;
+
+  beforeAll(async () => {
+    h = await Harness.start();
+  });
+
+  afterAll(async () => {
+    await h?.close();
+  });
+
+  const UNAVAILABLE = "Cette action n'est pas disponible pour ce type de partie";
+  const UNKNOWN_ID = '4f9a7f0e-2c1b-4b8e-9d34-0a5c6e7f8a9b';
+
+  const addGame = (u: Agent, name: string, over: Record<string, unknown> = {}) =>
+    u
+      .post('/me/board-games')
+      .send({ name, ...over })
+      .expect(201);
+  const read = (who: { agent: Agent }, eventId: string) =>
+    who.agent.get(`/events/${eventId}/board-games`);
+  type Card = { id: string; seance: { id: string } };
+  const propose = async (
+    who: { agent: Agent },
+    groupId: string,
+    over: Record<string, unknown> = {},
+  ) =>
+    body<Card>(
+      await who.agent
+        .post(`/parties/${groupId}/events`)
+        .send({ title: 'Soirée plateaux', date: isoDay(6), slot: 'EVENING', ...over })
+        .expect(201),
+    );
+  const signUp = (who: { agent: Agent }, seanceId: string) =>
+    who.agent.post(`/scenarios/seances/${seanceId}/inscription`).expect(201);
+
+  /** Un groupe, son hôte (membre) et trois autres membres. */
+  async function setupGroup(label: string) {
+    const admin = await h.createUser(`bg49-${label}-admin`);
+    const host = await h.createUser(`bg49-${label}-hote`);
+    const guest = await h.createUser(`bg49-${label}-invite`);
+    const other = await h.createUser(`bg49-${label}-autre`);
+    const group = await h.createPartie(admin, 'CAMPAGNE_EPISODIQUE', `bg49-${label}`, 'ralliement');
+    for (const u of [host, guest, other]) await h.addMember(group.id, u);
+    return { admin, host, guest, other, groupId: group.id };
+  }
+
+  it('groupe à venir : les jeux de l’hôte (ordre alphabétique), N = hôte + 2 inscrits confirmés', async () => {
+    const { host, guest, other, groupId } = await setupGroup('avenir');
+    for (const name of ['Zombicide', 'Azul', 'éclipse']) await addGame(host.agent, name);
+    const card = await propose(host, groupId);
+    await signUp(guest, card.seance.id);
+    await signUp(other, card.seance.id);
+
+    const res = await read(guest, card.id).expect(200);
+
+    const dto = body<EventBoardGamesDto>(res);
+    expect(dto.games.map((g) => g.name)).toEqual(['Azul', 'éclipse', 'Zombicide']);
+    expect(dto.participantsCount).toBe(3);
+    expect(keysOf(dto)).toEqual(['games', 'participantsCount']);
+    expect(keysOf(dto.games[0])).toEqual(
+      ['createdAt', 'durationMin', 'id', 'maxPlayers', 'minPlayers', 'name', 'nameKey'].sort(),
+    );
+    // Les jeux d'un invité ne sont jamais ceux de l'hôte.
+    await addGame(guest.agent, 'Skull');
+    expect(body<EventBoardGamesDto>(await read(guest, card.id).expect(200)).games).toHaveLength(3);
+  });
+
+  it('place réservée : jamais comptée ; acceptée, elle l’est', async () => {
+    const { host, guest, other, groupId } = await setupGroup('reserve');
+    const card = await propose(host, groupId, { capacity: 6, reservedUserIds: [other.id] });
+    await signUp(guest, card.seance.id);
+
+    expect(body<EventBoardGamesDto>(await read(host, card.id).expect(200)).participantsCount).toBe(
+      2,
+    );
+
+    await other.agent.patch(`/scenarios/seances/${card.seance.id}/inscription/accept`).expect(200);
+
+    expect(body<EventBoardGamesDto>(await read(host, card.id).expect(200)).participantsCount).toBe(
+      3,
+    );
+  });
+
+  it('membre non inscrit : 200 en lecture, N inchangé', async () => {
+    const { host, other, groupId } = await setupGroup('lecteur');
+    await addGame(host.agent, 'Azul');
+    const card = await propose(host, groupId);
+
+    const dto = body<EventBoardGamesDto>(await read(other, card.id).expect(200));
+
+    expect(dto.participantsCount).toBe(1);
+    expect(dto.games).toHaveLength(1);
+  });
+
+  it('rencontre isolée : N vient des membres de la partie (l’hôte compris)', async () => {
+    const admin = await h.createUser('bg49-iso-admin');
+    const m1 = await h.createUser('bg49-iso-m1');
+    const m2 = await h.createUser('bg49-iso-m2');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg49-iso', 'ralliement');
+    await h.addMember(evening.id, m1);
+    await h.addMember(evening.id, m2);
+    await addGame(admin.agent, 'Codenames');
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+
+    const dto = body<EventBoardGamesDto>(await read(m1, event.id).expect(200));
+
+    expect(dto.participantsCount).toBe(3);
+    expect(dto.games.map((g) => g.name)).toEqual(['Codenames']);
+  });
+
+  it('bibliothèque vide de l’hôte : `games: []`', async () => {
+    const { host, groupId } = await setupGroup('vide');
+    const card = await propose(host, groupId);
+
+    expect(body<EventBoardGamesDto>(await read(host, card.id).expect(200))).toEqual({
+      games: [],
+      participantsCount: 1,
+    });
+  });
+
+  it('soirée passée : `games: []`, N tel que calculé', async () => {
+    const { host, guest, groupId } = await setupGroup('passee');
+    await addGame(host.agent, 'Azul');
+    const card = await propose(host, groupId);
+    await signUp(guest, card.seance.id);
+    const day = new Date(`${isoDay(-2)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: card.seance.id },
+      data: { startDate: day, endDate: day },
+    });
+
+    expect(body<EventBoardGamesDto>(await read(guest, card.id).expect(200))).toEqual({
+      games: [],
+      participantsCount: 2,
+    });
+  });
+
+  it('soirée annulée : `games: []`', async () => {
+    const { host, guest, groupId } = await setupGroup('annulee');
+    await addGame(host.agent, 'Azul');
+    const card = await propose(host, groupId);
+    await host.agent.post(`/parties/${groupId}/events/${card.id}/cancel`).expect(201);
+
+    expect(body<EventBoardGamesDto>(await read(guest, card.id).expect(200)).games).toEqual([]);
+  });
+
+  it('rencontre isolée close ou à la date passée : `games: []`', async () => {
+    const admin = await h.createUser('bg49-fin-admin');
+    await addGame(admin.agent, 'Azul');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg49-fin', 'ralliement');
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+    expect(body<EventBoardGamesDto>(await read(admin, event.id).expect(200)).games).toHaveLength(1);
+
+    await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: new Date() } });
+    expect(body<EventBoardGamesDto>(await read(admin, event.id).expect(200))).toEqual({
+      games: [],
+      participantsCount: 1,
+    });
+
+    await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: null } });
+    const seance = await h.prisma.seance.findFirstOrThrow({ where: { eventId: event.id } });
+    const day = new Date(`${isoDay(-3)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: seance.id },
+      data: { startDate: day, endDate: day },
+    });
+    expect(body<EventBoardGamesDto>(await read(admin, event.id).expect(200)).games).toEqual([]);
+  });
+
+  it('hôte sans compte (Event.ownerId nul) : `games: []`', async () => {
+    const { host, guest, groupId } = await setupGroup('sans-hote');
+    await addGame(host.agent, 'Azul');
+    const card = await propose(host, groupId);
+    await signUp(guest, card.seance.id);
+    await h.prisma.event.update({ where: { id: card.id }, data: { ownerId: null } });
+
+    expect(body<EventBoardGamesDto>(await read(guest, card.id).expect(200))).toEqual({
+      games: [],
+      participantsCount: 1,
+    });
+  });
+
+  it('étranger à la partie : 403, comme PARTIE_READ', async () => {
+    const { host, groupId } = await setupGroup('etranger');
+    const stranger = await h.createUser('bg49-etranger');
+    const card = await propose(host, groupId);
+
+    await read(stranger, card.id).expect(403);
+  });
+
+  it('partie de JDR : 403 « indisponible », même à son MJ', async () => {
+    const gm = await h.createUser('bg49-jdr-mj');
+    const player = await h.createUser('bg49-jdr-joueur');
+    const jdr = await h.createPartie(gm, 'ONE_SHOT', 'bg49-jdr');
+    await h.addMember(jdr.id, player);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: jdr.id } });
+
+    for (const who of [gm, player]) {
+      const res = await read(who, event.id).expect(403);
+      expect(body<{ message: string }>(res).message).toBe(UNAVAILABLE);
+    }
+  });
+
+  it('événement inconnu : 404 ; identifiant mal formé : 400 ; sans session : 403', async () => {
+    const me = await h.createUser('bg49-inconnu');
+
+    await read(me, UNKNOWN_ID).expect(404);
+    await read(me, 'pas-un-uuid').expect(400);
+    await request(h.app.getHttpServer()).get(`/events/${UNKNOWN_ID}/board-games`).expect(403);
+  });
+
+  it('une lecture n’émet rien', async () => {
+    const { host, groupId } = await setupGroup('emission');
+    const card = await propose(host, groupId);
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await read(host, card.id).expect(200);
+      expect(emit).not.toHaveBeenCalled();
+    } finally {
+      emit.mockRestore();
+    }
   });
 });

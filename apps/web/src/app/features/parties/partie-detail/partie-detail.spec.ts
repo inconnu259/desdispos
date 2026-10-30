@@ -11,6 +11,7 @@ import { BehaviorSubject, Subject, of } from 'rxjs';
 import { vi } from 'vitest';
 import type {
   AnnouncementDto,
+  BoardGameDto,
   CharacterDto,
   CharacterGroupRoleDto,
   EventCardDto,
@@ -222,6 +223,8 @@ interface CreateFixtureOptions {
   theme?: Theme;
   /** Story 40.1 : conjonctions servies par `GET /parties/:id/events/list` (vide par défaut). */
   events?: EventCardDto[];
+  /** Story 49.1 : jeux sur place servis par `GET /events/:id/board-games` (aucun, 1 participant par défaut). */
+  eventBoardGames?: { games: BoardGameDto[]; participantsCount: number };
 }
 
 async function createFixture(
@@ -355,6 +358,10 @@ async function createFixture(
           retirerReservation: vi.fn(),
           // Story 42.1 : annuler une conjonction.
           cancel: vi.fn(),
+          // Story 49.1 : les jeux sur place d'une soirée (onglet posé après « Conjonction · Invités »).
+          boardGames: vi
+            .fn()
+            .mockResolvedValue(options.eventBoardGames ?? { games: [], participantsCount: 1 }),
         },
       },
     ],
@@ -4142,9 +4149,11 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
     // Story 41.1 ⚠️ : la rencontre isolée n'ouvre plus sur « Détails » + « Missives ».
     const { el } = await createFixture(groupe({ kind: 'ONE_SHOT' }), MJ_ID, { members });
     const tone = TONE_MAP['grimoire-emeraude'];
+    // Story 49.1 : une soirée à venir gagne un troisième onglet (les jeux sur place), sans compte avant sa lecture.
     expect(tabLabels(el)).toEqual([
       tone['partie.ralliement_soiree_tab'],
       tone['partie.ralliement_soiree_invitations_tab'],
+      tone['event_games.tab'],
     ]);
     expect(tabs(el)[0].getAttribute('aria-selected')).toBe('true');
     expect(el.querySelector('.conjonctions')).toBeNull();
@@ -6672,6 +6681,8 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       expect(tabLabels(el)).toEqual([
         tone['partie.ralliement_soiree_tab'],
         tone['partie.ralliement_soiree_invitations_tab'],
+        // Story 49.1 : le troisième onglet, au mot du thème et suivi du compte de jeux sur place.
+        `${tone['event_games.tab']} · 0`,
       ]);
       expect(tabLabels(el)).not.toContain(tone['parties.detail_tab_details']);
       expect(tabs(el)[0].getAttribute('aria-selected')).toBe('true');
@@ -6687,6 +6698,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
     expect(tabLabels(el)).toEqual([
       tone['partie.ralliement_soiree_tab'],
       tone['partie.ralliement_soiree_guests_tab'],
+      `${tone['event_games.tab']} · 0`,
     ]);
   });
 
@@ -6797,12 +6809,13 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
     const { fixture, el } = await createFixture(soiree(), MJ_ID, { members, events: [event()] });
     await settle(fixture);
     expect(el.querySelector('.ed__title')?.textContent?.trim()).toBe('Marathon Pandémie');
-    expect(api().list).toHaveBeenCalledTimes(1);
+    // Deux lecteurs de la liste : l'onglet de la soirée et — Story 49.1 — l'onglet des jeux sur place.
+    expect(api().list).toHaveBeenCalledTimes(2);
 
     api().list.mockResolvedValue([event({ title: 'Marathon Pandémie II' })]);
     TestBed.inject(PartiesService).notifyChanged();
     await settle(fixture);
-    expect(api().list).toHaveBeenCalledTimes(2);
+    expect(api().list).toHaveBeenCalledTimes(4);
     expect(el.querySelector('.ed__title')?.textContent?.trim()).toBe('Marathon Pandémie II');
   });
 
@@ -6891,6 +6904,158 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       expect(guest.el.querySelector('.ralliement-members input')).toBeNull();
       expect(guest.el.querySelector('.ralliement-members button:not(.library-open)')).toBeNull();
       expect(guest.el.querySelector('.soiree-guests-empty')).toBeNull();
+    });
+  });
+
+  // ⚠️ Story 49.1 : le troisième onglet d'une soirée à venir — les jeux sur place de l'hôte.
+  describe('onglet des jeux sur place (Story 49.1)', () => {
+    const game = (name: string, min: number | null, max: number | null): BoardGameDto => ({
+      id: `id-${name}`,
+      name,
+      nameKey: name.toLowerCase(),
+      minPlayers: min,
+      maxPlayers: max,
+      durationMin: null,
+      createdAt: '2026-10-29T10:00:00.000Z',
+    });
+    const served = {
+      games: [game('Azul', 2, 4), game('Codenames', 4, 8), game('Skull', null, null)],
+      participantsCount: 4,
+    };
+
+    it.each(THEMES)(
+      'thème %s : le troisième onglet porte le mot du thème et le nombre de jeux sur place, pour l’hôte comme pour un invité',
+      async (theme) => {
+        const tone = TONE_MAP[theme];
+        const host = await createFixture(soiree(), MJ_ID, {
+          members,
+          theme,
+          events: [event()],
+          eventBoardGames: served,
+        });
+        await settle(host.fixture);
+        expect(tabLabels(host.el)).toEqual([
+          tone['partie.ralliement_soiree_tab'],
+          tone['partie.ralliement_soiree_invitations_tab'],
+          `${tone['event_games.tab']} · 3`,
+        ]);
+        TestBed.resetTestingModule();
+
+        const guest = await createFixture(soiree({ role: 'member' }), OTHER_ID, {
+          members,
+          theme,
+          events: [event()],
+          eventBoardGames: served,
+        });
+        await settle(guest.fixture);
+        expect(tabLabels(guest.el)).toEqual([
+          tone['partie.ralliement_soiree_tab'],
+          tone['partie.ralliement_soiree_guests_tab'],
+          `${tone['event_games.tab']} · 3`,
+        ]);
+      },
+    );
+
+    it('l’onglet lit l’événement de la soirée, puis ses jeux ; sa section dit « Chez » l’hôte, ses pastilles suivent N', async () => {
+      const { fixture, el } = await createFixture(soiree({ role: 'member' }), OTHER_ID, {
+        members,
+        events: [event()],
+        eventBoardGames: served,
+        noopAnimations: true,
+      });
+      await settle(fixture);
+      tabs(el)[2].click();
+      await settle(fixture);
+
+      const events = TestBed.inject(EventsApiService) as unknown as {
+        boardGames: ReturnType<typeof vi.fn>;
+      };
+      expect(events.boardGames).toHaveBeenCalledWith('e-1');
+      const text = (el.querySelector('app-event-games-tab')?.textContent ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      expect(text).toContain('3 jeux sur place · 2 jouables à 4');
+      expect(text).toContain('Chez Créateur');
+      expect(text).toContain('Azul');
+      expect(el.querySelectorAll('app-game-row .gr__fit')).toHaveLength(2);
+    });
+
+    it('bibliothèque vide de l’hôte : un invité (`contributor` vrai) voit la ligne du thème ET le lien discret vers « mon cabinet »', async () => {
+      const { fixture, el } = await createFixture(soiree({ role: 'member' }), OTHER_ID, {
+        members,
+        events: [event()],
+        eventBoardGames: { games: [], participantsCount: 2 },
+        noopAnimations: true,
+      });
+      await settle(fixture);
+      tabs(el)[2].click();
+      await settle(fixture);
+
+      const tab = el.querySelector('app-event-games-tab')!;
+      expect(tab.textContent).toContain(TONE_MAP['grimoire-emeraude']['event_games.empty']);
+      const link = tab.querySelector<HTMLAnchorElement>('.egt__link')!;
+      expect(link.textContent?.trim()).toBe(TONE_MAP['grimoire-emeraude']['event_games.fill_link']);
+      expect(link.getAttribute('href')).toBe('/profile/board-games');
+    });
+
+    it('l’hôte, qui lit la page, voit « Chez moi » (jamais « Chez {son nom} ») ; un invité voit « Chez Créateur »', async () => {
+      const host = await createFixture(soiree(), MJ_ID, {
+        members,
+        events: [event()],
+        eventBoardGames: served,
+        noopAnimations: true,
+      });
+      await settle(host.fixture);
+      tabs(host.el)[2].click();
+      await settle(host.fixture);
+      const hostText = (host.el.querySelector('app-event-games-tab')?.textContent ?? '').replace(
+        /\s+/g,
+        ' ',
+      );
+      expect(hostText).toContain('Chez moi');
+      expect(hostText).not.toContain('Chez Créateur');
+      TestBed.resetTestingModule();
+
+      const guest = await createFixture(soiree({ role: 'member' }), OTHER_ID, {
+        members,
+        events: [event()],
+        eventBoardGames: served,
+        noopAnimations: true,
+      });
+      await settle(guest.fixture);
+      tabs(guest.el)[2].click();
+      await settle(guest.fixture);
+      const guestText = guest.el.querySelector('app-event-games-tab')?.textContent ?? '';
+      expect(guestText).toContain('Chez Créateur');
+      expect(guestText).not.toContain('Chez moi');
+    });
+
+    it.each([
+      ['terminée', 'TERMINEE'],
+      ['annulée', 'ANNULEE'],
+    ] as const)('soirée %s : aucun onglet des jeux', async (_label, status) => {
+      const { fixture, el } = await createFixture(soiree({ status }), MJ_ID, {
+        members,
+        events: [event({ cancelled: status === 'ANNULEE' })],
+        eventBoardGames: served,
+      });
+      await settle(fixture);
+      const tone = TONE_MAP['grimoire-emeraude'];
+      expect(tabLabels(el)).toEqual([
+        tone['partie.ralliement_soiree_tab'],
+        tone['partie.ralliement_soiree_invitations_tab'],
+      ]);
+      expect(el.querySelector('app-event-games-tab')).toBeNull();
+    });
+
+    it('un groupe n’a pas cet onglet à la page (il est dans la fenêtre d’une conjonction)', async () => {
+      const { fixture, el } = await createFixture(
+        makePartie({ gameSystemId: 'ralliement', kind: 'CAMPAGNE_EPISODIQUE', role: 'admin' }),
+        MJ_ID,
+        { members, events: [event()], eventBoardGames: served },
+      );
+      await settle(fixture);
+      expect(el.querySelector('app-event-games-tab')).toBeNull();
     });
   });
 

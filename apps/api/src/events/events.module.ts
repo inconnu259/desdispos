@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
+import { BoardGamesModule } from '../board-games/board-games.module';
 import { EmailModule } from '../email/email.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { InvitationCleanupService } from '../invitations/invitation-cleanup.service';
 import { PollModule } from '../poll/poll.module';
 import { DatableSeancesService } from './datable-seances.service';
+import { EventBoardGamesService } from './event-board-games.service';
 import { EventCancellationMailer } from './event-cancellation-mailer.service';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
@@ -41,17 +43,22 @@ import { OpenPollContextService } from './open-poll-context.service';
  * Story 42.3 : `EventCancellationMailer` (e-mail n° 7) est exporté — `PartiesService.leave()` l'appelle après le
  * commit du départ d'un hôte, sans passer par `GroupEventsService` (cycle de fournisseurs).
  *
+ * Story 49.1 : `BoardGamesModule` (couche 2, seul lecteur/écrivain de `BoardGame`) — `EventBoardGamesService` lit
+ * les jeux de l'hôte d'une soirée par `BoardGamesService.listOfOwner`. La dépendance va de `events/` vers
+ * `board-games/`, jamais l'inverse (`BoardGamesModule` n'importe que `PermissionsModule`).
+ *
  * Story 40.3 : `GroupEventsService` est exporté — les routes d'inscription partagées avec le JDR
  * (`scenarios/seances/:id/inscription`) y délèguent la branche « groupe ».
  */
 @Module({
-  imports: [PermissionsModule, EmailModule, PollModule],
+  imports: [PermissionsModule, EmailModule, PollModule, BoardGamesModule],
   controllers: [EventsController, MyDatableSeancesController],
   providers: [
     EventsService,
     EventCancellationMailer,
     InvitationCleanupService,
     GroupEventsService,
+    EventBoardGamesService,
     GroupPollChoiceService,
     GroupPollExtensionService,
     OpenPollContextService,

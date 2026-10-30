@@ -1,0 +1,38 @@
+<!-- Story 49.1 : onglet des jeux sur place, en lecture seule. La région d'annonce est TOUJOURS présente (une
+     région ajoutée en même temps que son texte n'est pas lue) ; aucun bandeau visible. -->
+<div class="egt">
+  <div class="egt__live" role="status" aria-live="polite">{{ announcement() }}</div>
+
+  @if (data(); as dto) {
+    <app-games-summary
+      [total]="games().length"
+      [fitting]="fitting()"
+      [headcount]="headcount()"
+      [(fitOnly)]="fitOnly"
+    />
+
+    @if (games().length === 0) {
+      <p class="egt__empty">{{ theme.tone()['event_games.empty'] }}</p>
+      @if (canFill()) {
+        <a class="egt__link" routerLink="/profile/board-games">{{
+          theme.tone()['event_games.fill_link']
+        }}</a>
+      }
+    } @else {
+      <app-games-section
+        [sectionKey]="hostSectionKey"
+        [title]="sectionTitle()"
+        [total]="games().length"
+        [shown]="fitOnly() ? visible().length : null"
+      >
+        <ul class="egt__list">
+          @for (game of visible(); track game.id) {
+            <li><app-game-row [game]="game" [headcount]="dto.participantsCount" /></li>
+          }
+        </ul>
+      </app-games-section>
+    }
+  } @else if (failed()) {
+    <p class="egt__error">{{ theme.tone()['board_games.error_fallback'] }}</p>
+  }
+</div>

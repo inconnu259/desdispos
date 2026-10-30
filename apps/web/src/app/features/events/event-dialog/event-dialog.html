@@ -7,7 +7,9 @@
   }
 </ng-template>
 
-<ng-template #body>
+<!-- Story 49.1 (⚠️ contrat UI) : les blocs existants de la conjonction. Posés tels quels quand l'évènement n'a pas
+     d'onglet des jeux ; sinon ils forment l'onglet « Conjonction ». -->
+<ng-template #blocks>
 
   @if (editing()) {
     <app-event-form [prefill]="card()" [soiree]="inline()" (submitted)="save()" />
@@ -280,6 +282,68 @@
         }
       </section>
     }
+  }
+</ng-template>
+
+<ng-template #body>
+  @if (showTabs()) {
+    <!-- Story 49.1 (⚠️ contrat UI) : deux onglets en tête — « Conjonction » (défaut ; tous les blocs, inscrits
+         compris) et les jeux sur place. Seulement tant que la conjonction est ouverte (ni passée, ni annulée,
+         ni figée) : sinon la fenêtre est celle d'avant, sans bandeau d'onglets. L'onglet des jeux reste monté
+         sous « Conjonction » pour tenir son compte à jour. -->
+    <div class="ed__tabs" role="tablist" [attr.aria-labelledby]="uid + '-title'">
+      <button
+        type="button"
+        role="tab"
+        class="ed__tab"
+        [id]="uid + '-tab-main'"
+        [attr.aria-selected]="activeTab() === 'main'"
+        [attr.aria-controls]="uid + '-panel-main'"
+        [attr.tabindex]="activeTab() === 'main' ? 0 : -1"
+        (click)="selectTab('main')"
+        (keydown)="onTabKeydown($event)"
+      >
+        {{ theme.tone()['partie.ralliement_soiree_tab'] }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="ed__tab"
+        [id]="uid + '-tab-games'"
+        [attr.aria-selected]="activeTab() === 'games'"
+        [attr.aria-controls]="uid + '-panel-games'"
+        [attr.tabindex]="activeTab() === 'games' ? 0 : -1"
+        (click)="selectTab('games')"
+        (keydown)="onTabKeydown($event)"
+      >
+        {{ gamesLabel() }}
+      </button>
+    </div>
+    <div
+      role="tabpanel"
+      class="ed__panel"
+      [id]="uid + '-panel-main'"
+      [attr.aria-labelledby]="uid + '-tab-main'"
+      [hidden]="activeTab() !== 'main'"
+    >
+      <ng-container [ngTemplateOutlet]="blocks" />
+    </div>
+    <div
+      role="tabpanel"
+      class="ed__panel"
+      [id]="uid + '-panel-games'"
+      [attr.aria-labelledby]="uid + '-tab-games'"
+      [hidden]="activeTab() !== 'games'"
+    >
+      <app-event-games-tab
+        [partieId]="partieId()"
+        [card]="card()"
+        [currentUserId]="currentUserId()"
+        (countChange)="gamesCount.set($event)"
+      />
+    </div>
+  } @else {
+    <ng-container [ngTemplateOutlet]="blocks" />
   }
 </ng-template>
 

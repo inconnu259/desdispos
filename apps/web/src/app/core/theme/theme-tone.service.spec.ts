@@ -1166,6 +1166,30 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     // Story 48.3 : « Fermer » de la feuille d’une Ludothèque — libellé fonctionnel d’un bouton de
     // fermeture, volontairement hors thème (comme les autres boutons d’action neutres de cette liste)
     'board_games.sheet_close',
+    // Story 49.1 : jeux sur place d'une soirée — « Chez {nom} » / « Chez moi » (provenance), résumé « {n} jeux sur
+    // place · {k} jouables à {total} » (jeux et jouables accordés chacun avec son nombre), puce « Jouables à {total} », pastille
+    // « jouable à {total} », comptes de section (« · 6 », « · 3 sur 6 »), nom accessible d'un en-tête, annonce
+    // polie quand N change (« 7 participants : 4 jeux jouables à 7. ») : mesure ou provenance, volontairement
+    // hors thème (EXPERIENCE.md §3.3) ; seuls l'onglet, la ligne « aucun jeu » et le lien discret ont une voix
+    'event_games.host_section',
+    'event_games.host_section_self',
+    'event_games.summary',
+    'event_games.summary_games_one',
+    'event_games.summary_games_many',
+    'event_games.summary_playable_one',
+    'event_games.summary_playable_many',
+    'event_games.filter_fit',
+    'event_games.fit_pill',
+    'event_games.section_count',
+    'event_games.section_count_filtered',
+    'event_games.section_aria',
+    'event_games.section_aria_filtered',
+    'event_games.section_aria_filtered_one',
+    'event_games.participants_one',
+    'event_games.participants_many',
+    'event_games.playable_one',
+    'event_games.playable_many',
+    'event_games.announce',
   ]);
 
   const REFERENCE =TONE_MAP['grimoire-emeraude'];
@@ -2362,6 +2386,65 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'board_games.undo_btn': 'Annuler',
       // Story 48.3
       'board_games.sheet_close': 'Fermer',
+    };
+    for (const theme of THEMES) {
+      for (const [key, text] of Object.entries(expected)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(text);
+      }
+    }
+  });
+});
+
+// Story 49.1 — les jeux sur place d'une soirée : l'onglet (Reliques / Trésors / Joyaux), la ligne « aucun jeu » et
+// le lien discret prennent la voix de chaque thème (textes validés le 2026-10-29, EXPERIENCE.md §3.1-3.2) ;
+// mesures, provenance et annonces sont neutres.
+describe('Tones — jeux sur place d’une soirée (Story 49.1)', () => {
+  const VOICED: Record<string, Record<string, string>> = {
+    'event_games.tab': {
+      'grimoire-emeraude': 'Reliques',
+      'foret-ancienne': 'Trésors',
+      'atelier-cuivre': 'Joyaux',
+    },
+    'event_games.tab_count': {
+      'grimoire-emeraude': 'Reliques · {n}',
+      'foret-ancienne': 'Trésors · {n}',
+      'atelier-cuivre': 'Joyaux · {n}',
+    },
+    'event_games.empty': {
+      'grimoire-emeraude': "Aucune relique sur place pour l'instant.",
+      'foret-ancienne': "Aucun trésor sur place pour l'instant.",
+      'atelier-cuivre': "Aucun joyau sur place pour l'instant.",
+    },
+    'event_games.fill_link': {
+      'grimoire-emeraude': 'Remplir mon cabinet',
+      'foret-ancienne': 'Remplir mon coffre',
+      'atelier-cuivre': 'Garnir mon râtelier',
+    },
+  };
+
+  for (const theme of THEMES) {
+    it(`${theme} porte l’onglet, la ligne « aucun jeu » et le lien discret validés`, () => {
+      for (const [key, byTheme] of Object.entries(VOICED)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(byTheme[theme]);
+      }
+    });
+  }
+
+  it('mesures, provenance et annonces : le texte du contrat, identique dans les trois thèmes', () => {
+    const expected: Record<string, string> = {
+      'event_games.host_section': 'Chez {nom}',
+      'event_games.host_section_self': 'Chez moi',
+      'event_games.summary': '{games} · {playable}',
+      'event_games.summary_games_one': '{n} jeu sur place',
+      'event_games.summary_games_many': '{n} jeux sur place',
+      'event_games.summary_playable_one': '{k} jouable à {total}',
+      'event_games.summary_playable_many': '{k} jouables à {total}',
+      'event_games.filter_fit': 'Jouables à {total}',
+      'event_games.fit_pill': 'jouable à {total}',
+      'event_games.section_count': '· {n}',
+      'event_games.section_count_filtered': '· {k} sur {n}',
+      'event_games.section_aria_filtered_one': '{k} sur {n} jeu',
+      'event_games.announce': '{participants} : {playable}.',
     };
     for (const theme of THEMES) {
       for (const [key, text] of Object.entries(expected)) {

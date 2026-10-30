@@ -2125,6 +2125,14 @@ export interface UserLibraryDto {
   games: BoardGameDto[];
 }
 
+/** Les jeux sur place d'une soirée à venir (`GET /events/:eventId/board-games`, Story 49.1) : les jeux de
+ *  l'hôte, triés par clé normalisée puis nom, et le nombre de participants N (hôte compris, jamais une place
+ *  seulement réservée). Soirée passée, terminée ou annulée : `games` vide, N tel que calculé. Jamais d'e-mail. */
+export interface EventBoardGamesDto {
+  games: BoardGameDto[];
+  participantsCount: number;
+}
+
 /** Décision de droit « lire la Ludothèque d'une personne » (Story 48.3). Cible `{ userId }`, décidée
  *  par `PermissionService.assertLibraryRead` et nulle part ailleurs. Hors de l'union fermée
  *  `PermissionAction`, dont les tables de politique sont indexées par rôle SUR UNE PARTIE : ici la

@@ -39,6 +39,7 @@ import type { SeanceDatePort } from '../poll/ports/seance-date.port';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseDayKey, todayKeyUtc } from './day-key';
 import { eligibleVoters } from './eligible-voters';
+import { eventClosure } from './event-is-open';
 import {
   DURATION_POLL_PENDING_MESSAGE,
   assertDuration,
@@ -276,6 +277,17 @@ export interface ReservationNotice {
 }
 
 const FROZEN_ROSTER_MESSAGE = 'Cette séance a déjà une date validée — les inscriptions sont figées';
+
+/** Story 49.1 : les faits lus pour les jeux sur place d'une soirée (voir `EventsService.boardGamesBasis`). */
+export interface EventBoardGamesBasis {
+  /** Hôte de l'événement (`null` : compte supprimé). */
+  hostId: string | null;
+  cancelledAt: Date | null;
+  startDate: Date | null;
+  endDate: Date | null;
+  inscriptions: { userId: string; status: InscriptionStatus }[];
+  memberIds: string[];
+}
 
 /** Story 40.1 : un GROUPE de ralliement (`CAMPAGNE_EPISODIQUE` de la famille `ralliement`) — ses
  *  séances datées engagent l'hôte de l'événement et ses inscrits (AD-15). La rencontre isolée
@@ -1887,16 +1899,70 @@ export class EventsService
     closedAt: Date | null;
   }): Promise<void> {
     if (partie.kind !== 'ONE_SHOT' || familyOf(partie.gameSystemId) !== 'ralliement') return;
-    // Story 42.2 : une soirée annulée est figée, plus encore qu'une soirée terminée.
-    if ((await this.cancelledIsolatedPartieIds([partie.id])).has(partie.id)) {
-      throw new BadRequestException(EVENING_CANCELLED_MESSAGE);
-    }
-    if (
-      partie.closedAt !== null ||
-      (await this.endedIsolatedPartieIds([partie.id])).has(partie.id)
-    ) {
-      throw new BadRequestException(EVENING_FINISHED_MESSAGE);
-    }
+    // Story 42.2 : une soirée annulée est figée, plus encore qu'une soirée terminée. Story 49.1 : la décision
+    // est celle de `eventClosure`, la règle de statut que lit aussi la route des jeux sur place.
+    const cancelled = (await this.cancelledIsolatedPartieIds([partie.id])).has(partie.id);
+    const finished =
+      !cancelled &&
+      (partie.closedAt !== null || (await this.endedIsolatedPartieIds([partie.id])).has(partie.id));
+    const closure = eventClosure({ cancelled, finished });
+    if (closure === 'CANCELLED') throw new BadRequestException(EVENING_CANCELLED_MESSAGE);
+    if (closure === 'ENDED') throw new BadRequestException(EVENING_FINISHED_MESSAGE);
+  }
+
+  /**
+   * Story 49.1 : les faits dont la route des jeux sur place d'une soirée a besoin — l'hôte, l'annulation, la
+   * plage de la séance (la première, l'événement n'en porte qu'une), ses inscriptions (conjonction de groupe)
+   * ou les membres de la partie (rencontre isolée). Lecture seule ; la décision (N, ouverte ou non) est dans
+   * `participantsOf` et `eventIsOpen`. `null` si l'événement n'existe pas.
+   */
+  async boardGamesBasis(
+    eventId: string,
+    partie: { id: string; isolated: boolean },
+  ): Promise<EventBoardGamesBasis | null> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        ownerId: true,
+        cancelledAt: true,
+        seances: {
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
+          select: {
+            startDate: true,
+            endDate: true,
+            // Les inscriptions ne comptent que pour une conjonction de groupe.
+            ...(partie.isolated
+              ? {}
+              : { inscriptions: { select: { userId: true, status: true } } }),
+          },
+        },
+      },
+    });
+    if (!event) return null;
+    const seance = event.seances[0] as
+      | {
+          startDate: Date | null;
+          endDate: Date | null;
+          inscriptions?: { userId: string; status: InscriptionStatus }[];
+        }
+      | undefined;
+    const memberIds = partie.isolated
+      ? (
+          await this.prisma.membership.findMany({
+            where: { partieId: partie.id },
+            select: { userId: true },
+          })
+        ).map((m) => m.userId)
+      : [];
+    return {
+      hostId: event.ownerId,
+      cancelledAt: event.cancelledAt,
+      startDate: seance?.startDate ?? null,
+      endDate: seance?.endDate ?? null,
+      inscriptions: seance?.inscriptions ?? [],
+      memberIds,
+    };
   }
 
   /**

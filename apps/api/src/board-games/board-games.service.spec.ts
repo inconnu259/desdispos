@@ -85,6 +85,21 @@ describe('BoardGamesService (Story 48.1)', () => {
     });
   });
 
+  describe('listOfOwner (Story 49.1)', () => {
+    it('lit les jeux de la personne demandée dans le même ordre que listMine, sans décider de droit', async () => {
+      prisma.boardGame.findMany.mockResolvedValue([row({ ownerId: 'host' })]);
+
+      const result = await service.listOfOwner('host');
+
+      expect(prisma.boardGame.findMany).toHaveBeenCalledWith({
+        where: { ownerId: 'host' },
+        orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],
+      });
+      expect(result).toEqual([toBoardGameDto(row({ ownerId: 'host' }))]);
+      expect(permissions.assertLibraryRead).not.toHaveBeenCalled();
+    });
+  });
+
   describe('listMine', () => {
     it('lit mes seuls jeux, triés par clé normalisée puis par nom', async () => {
       prisma.boardGame.findMany.mockResolvedValue([row()]);

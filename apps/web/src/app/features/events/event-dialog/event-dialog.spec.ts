@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { BreakpointObserver } from '@angular/cdk/layout';
+import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
@@ -18,6 +19,7 @@ const TODAY = '2026-10-17';
 const HOST = 'host';
 const ME = 'me';
 const OTHER = 'other';
+const NO_GAMES = { games: [], participantsCount: 1 };
 
 const member = (userId: string, displayName: string): PartieMemberDto => ({
   userId,
@@ -109,16 +111,20 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
     userId: string | null = ME,
     extra: { api?: object; dialog?: object; boardGames?: object } = {},
   ) {
-    const api = extra.api ?? {};
+    // Story 49.1 : l'onglet des jeux sur place (monté sous « Conjonction ») lit `boardGames` et suit `changed`.
+    const api = { boardGames: vi.fn().mockResolvedValue(NO_GAMES), ...extra.api };
     const parties = {
       members: vi
         .fn()
         .mockResolvedValue([member(HOST, 'Léa'), member(ME, 'Moi'), member(OTHER, 'Zoé')]),
+      changed: signal(0),
     };
     await TestBed.configureTestingModule({
       imports: [Host],
       providers: [
         provideNoopAnimations(),
+        // Story 49.1 : le lien discret de l'onglet des jeux (`routerLink`) demande un routeur.
+        provideRouter([]),
         { provide: EventsApiService, useValue: api },
         { provide: PartiesService, useValue: parties },
         ...(extra.dialog ? [{ provide: MatDialog, useValue: extra.dialog }] : []),
@@ -413,6 +419,206 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
     expect(guest.parties.members).not.toHaveBeenCalled();
   });
 
+  describe('⚠️ Story 49.1 — onglets « Conjonction » et jeux sur place', () => {
+    const games = [
+      {
+        id: 'g1',
+        name: 'Azul',
+        nameKey: 'azul',
+        minPlayers: 2,
+        maxPlayers: 4,
+        durationMin: 40,
+        createdAt: '2026-10-29T10:00:00.000Z',
+      },
+      {
+        id: 'g2',
+        name: 'Skull',
+        nameKey: 'skull',
+        minPlayers: null,
+        maxPlayers: null,
+        durationMin: null,
+        createdAt: '2026-10-29T10:00:00.000Z',
+      },
+    ];
+    const withGames = () => ({
+      boardGames: vi.fn().mockResolvedValue({ games, participantsCount: 3 }),
+    });
+    const tabs = () => Array.from(document.body.querySelectorAll<HTMLElement>('.ed__tab'));
+    const panel = (name: 'main' | 'games') =>
+      document.body.querySelector<HTMLElement>(`[role="tabpanel"][id$="-panel-${name}"]`)!;
+
+    it('conjonction ouverte : un bandeau à deux onglets, « Conjonction » par défaut, puis « Reliques · 2 »', async () => {
+      const api = withGames();
+      const { q } = await mount(pollCard(), ME, { api });
+
+      expect(q('[role="tablist"]')).not.toBeNull();
+      expect(tabs().map((t) => t.textContent!.trim())).toEqual([
+        TONE['partie.ralliement_soiree_tab'],
+        `${TONE['event_games.tab']} · 2`,
+      ]);
+      expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+      expect(tabs()[1].getAttribute('aria-selected')).toBe('false');
+      expect(api.boardGames).toHaveBeenCalledWith('e1');
+      // Tous les blocs existants vivent sous « Conjonction » ; les jeux sont montés mais masqués.
+      expect(panel('main').hidden).toBe(false);
+      expect(panel('main').querySelector('.ed__situation')).not.toBeNull();
+      expect(panel('main').querySelector('.ed__participants')).not.toBeNull();
+      expect(panel('games').hidden).toBe(true);
+      expect(panel('games').querySelector('app-event-games-tab')).not.toBeNull();
+    });
+
+    it('le bandeau relie chaque onglet à son panneau (rôles tablist/tab/tabpanel)', async () => {
+      await mount(pollCard(), ME, { api: withGames() });
+
+      for (const [i, name] of (['main', 'games'] as const).entries()) {
+        expect(tabs()[i].getAttribute('role')).toBe('tab');
+        expect(tabs()[i].getAttribute('aria-controls')).toBe(panel(name).id);
+        expect(panel(name).getAttribute('aria-labelledby')).toBe(tabs()[i].id);
+      }
+    });
+
+    it('toucher l’onglet des jeux l’affiche : les jeux de l’hôte, « Chez Léa », la pastille de N', async () => {
+      const { settle } = await mount(pollCard(), ME, { api: withGames() });
+
+      tabs()[1].click();
+      await settle();
+
+      expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
+      expect(panel('games').hidden).toBe(false);
+      expect(panel('main').hidden).toBe(true);
+      const text = panel('games').textContent!.replace(/\s+/g, ' ');
+      expect(text).toContain('2 jeux sur place · 1 jouable à 3');
+      expect(text).toContain('Chez Léa');
+      expect(text).toContain('jouable à 3');
+    });
+
+    it('au clavier : flèche droite / gauche, Fin / Début changent d’onglet et déplacent le focus', async () => {
+      const { settle } = await mount(pollCard(), ME, { api: withGames() });
+      tabs()[0].focus();
+
+      tabs()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      await settle();
+      expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
+      expect(document.activeElement).toBe(tabs()[1]);
+      expect(tabs()[1].tabIndex).toBe(0);
+      expect(tabs()[0].tabIndex).toBe(-1);
+
+      tabs()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+      await settle();
+      expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+
+      tabs()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      await settle();
+      expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
+
+      tabs()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      await settle();
+      expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('l’hôte sans jeu : la ligne du thème et le lien vers « mon cabinet »', async () => {
+      const { settle } = await mount(pollCard(), HOST, {
+        api: { boardGames: vi.fn().mockResolvedValue({ games: [], participantsCount: 1 }) },
+      });
+      tabs()[1].click();
+      await settle();
+
+      const text = panel('games').textContent!.replace(/\s+/g, ' ');
+      expect(text).toContain(TONE['event_games.empty']);
+      expect(panel('games').querySelector('.egt__link')?.textContent?.trim()).toBe(
+        TONE['event_games.fill_link'],
+      );
+    });
+
+    it('conjonction passée : ni bandeau ni onglet des jeux — la fenêtre est celle d’avant, sans aucune lecture des jeux', async () => {
+      const api = withGames();
+      const past = {
+        ...pollCard(),
+        poll: null,
+        seance: { ...pollCard().seance!, date: '2026-10-10', slot: 'EVENING' as const },
+      };
+      const { q } = await mount(past, ME, { api });
+
+      expect(q('[role="tablist"]')).toBeNull();
+      expect(q('app-event-games-tab')).toBeNull();
+      expect(q('[role="tabpanel"]')).toBeNull();
+      expect(q('.ed__situation')).not.toBeNull();
+      expect(api.boardGames).not.toHaveBeenCalled();
+    });
+
+    it('conjonction annulée : ni bandeau ni onglet des jeux', async () => {
+      const api = withGames();
+      const { q } = await mount({ ...pollCard(), cancelled: true, poll: null }, ME, { api });
+
+      expect(q('[role="tablist"]')).toBeNull();
+      expect(q('app-event-games-tab')).toBeNull();
+      expect(api.boardGames).not.toHaveBeenCalled();
+    });
+
+    it('rendu en ligne (rencontre isolée) : ni bandeau ni onglet des jeux, même ouverte, datée et non figée — l’onglet est celui de la page', async () => {
+      const api = { boardGames: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [InlineHost],
+        providers: [
+          provideNoopAnimations(),
+          provideRouter([]),
+          { provide: EventsApiService, useValue: api },
+          {
+            provide: PartiesService,
+            useValue: { members: vi.fn().mockResolvedValue([]), changed: signal(0) },
+          },
+          { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+        ],
+      }).compileComponents();
+      const inline = TestBed.createComponent(InlineHost);
+      inline.componentInstance.card.set({
+        ...pollCard(),
+        poll: null,
+        seance: { ...pollCard().seance!, date: '2026-10-25', slot: 'EVENING' },
+      });
+      inline.detectChanges();
+      await inline.whenStable();
+      inline.detectChanges();
+
+      const root = inline.nativeElement as HTMLElement;
+      expect(root.querySelector('article.ed--inline')).not.toBeNull();
+      expect(root.querySelector('[role="tablist"]')).toBeNull();
+      expect(root.querySelector('app-event-games-tab')).toBeNull();
+      expect(api.boardGames).not.toHaveBeenCalled();
+    });
+
+    it('fenêtre figée : ni bandeau ni onglet des jeux', async () => {
+      await TestBed.configureTestingModule({
+        imports: [FrozenWindowHost],
+        providers: [
+          provideNoopAnimations(),
+          provideRouter([]),
+          { provide: EventsApiService, useValue: { boardGames: vi.fn() } },
+          { provide: PartiesService, useValue: { members: vi.fn().mockResolvedValue([]) } },
+          { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+        ],
+      }).compileComponents();
+      const frozen = TestBed.createComponent(FrozenWindowHost);
+      frozen.detectChanges();
+      await frozen.whenStable();
+      frozen.detectChanges();
+
+      expect(document.body.querySelector('[role="tablist"]')).toBeNull();
+      expect(document.body.querySelector('app-event-games-tab')).toBeNull();
+    });
+
+    it('une conjonction qui passe en modification n’affiche que son formulaire, sans bandeau d’onglets', async () => {
+      const { q, settle } = await mount(pollCard(), HOST, { api: withGames() });
+      expect(q('[role="tablist"]')).not.toBeNull();
+
+      q<HTMLButtonElement>('.ed__edit')!.click();
+      await settle();
+
+      expect(q('[role="tablist"]')).toBeNull();
+      expect(q('app-event-form')).not.toBeNull();
+    });
+  });
+
   // Story 40.6 — « Fixer la date… » : bouton du panneau de l'hôte, confirmation « Votre accord ».
   describe('fixer la date (Story 40.6)', () => {
     const openDialog = (fixed: boolean) =>
@@ -563,6 +769,20 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
     });
   });
 });
+
+@Component({
+  imports: [EventDialog],
+  template: `<app-event-dialog
+    partieId="g1"
+    [frozen]="true"
+    [card]="card"
+    todayKey="2026-10-17"
+    [currentUserId]="'host'"
+  />`,
+})
+class FrozenWindowHost {
+  card: EventCardDto = pollCard();
+}
 
 @Component({
   imports: [EventDialog],

@@ -326,6 +326,33 @@ export const foretAncienne: Record<ToneKey, string> = {
   /* — bouton « Fermer » de la feuille : neutre (NEUTRAL_KEYS) — */
   'board_games.sheet_close': 'Fermer',
 
+  /* ═══ Jeux sur place d'une soirée (Story 49.1) ═══ */
+  /* — onglet, ligne « aucun jeu » et lien discret : une voix par thème — */
+  'event_games.tab': 'Trésors',
+  'event_games.tab_count': 'Trésors · {n}',
+  'event_games.empty': "Aucun trésor sur place pour l'instant.",
+  'event_games.fill_link': 'Remplir mon coffre',
+  /* — mesures, provenance et annonces : neutres (NEUTRAL_KEYS) — */
+  'event_games.host_section': 'Chez {nom}',
+  'event_games.host_section_self': 'Chez moi',
+  'event_games.summary': '{games} · {playable}',
+  'event_games.summary_games_one': '{n} jeu sur place',
+  'event_games.summary_games_many': '{n} jeux sur place',
+  'event_games.summary_playable_one': '{k} jouable à {total}',
+  'event_games.summary_playable_many': '{k} jouables à {total}',
+  'event_games.filter_fit': 'Jouables à {total}',
+  'event_games.fit_pill': 'jouable à {total}',
+  'event_games.section_count': '· {n}',
+  'event_games.section_count_filtered': '· {k} sur {n}',
+  'event_games.section_aria': '{titre}, {compte}',
+  'event_games.section_aria_filtered': '{k} sur {n} jeux',
+  'event_games.section_aria_filtered_one': '{k} sur {n} jeu',
+  'event_games.participants_one': '{total} participant',
+  'event_games.participants_many': '{total} participants',
+  'event_games.playable_one': '{k} jeu jouable à {total}',
+  'event_games.playable_many': '{k} jeux jouables à {total}',
+  'event_games.announce': '{participants} : {playable}.',
+
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */
   'dashboard.title_invitations': 'Appels de la forêt',

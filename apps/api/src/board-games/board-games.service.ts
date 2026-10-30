@@ -89,6 +89,15 @@ export class BoardGamesService {
 
   /** Mes jeux, dans l'ordre alphabétique de leur clé normalisée (accents et casse ignorés), puis du nom. */
   async listMine(ownerId: string): Promise<BoardGameDto[]> {
+    return this.listOfOwner(ownerId);
+  }
+
+  /**
+   * Les jeux d'une personne, triés comme `listMine` — SANS décision de droit : l'appelant l'a déjà prise.
+   * Lue par `events/` (Story 49.1) pour les jeux sur place d'une soirée : l'hôte de l'événement, après
+   * `PARTIE_READ` sur l'événement. La dépendance va de `events/` vers ce module, jamais l'inverse.
+   */
+  async listOfOwner(ownerId: string): Promise<BoardGameDto[]> {
     const rows = await this.prisma.boardGame.findMany({
       where: { ownerId },
       orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],

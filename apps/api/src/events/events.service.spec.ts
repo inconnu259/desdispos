@@ -3897,6 +3897,83 @@ describe('EventsService (Story 37.3)', () => {
       });
     });
 
+    describe('boardGamesBasis() — Story 49.1', () => {
+      const START = new Date('2026-11-05T00:00:00.000Z');
+
+      it('conjonction de groupe : hôte, annulation, plage et inscriptions de la première séance ; aucune lecture des membres', async () => {
+        prisma.event.findUnique.mockResolvedValue({
+          ownerId: 'host',
+          cancelledAt: null,
+          seances: [
+            {
+              startDate: START,
+              endDate: START,
+              inscriptions: [{ userId: 'a', status: 'RESERVED' }],
+            },
+          ],
+        });
+
+        const basis = await service.boardGamesBasis('e1', { id: 'p1', isolated: false });
+
+        expect(basis).toEqual({
+          hostId: 'host',
+          cancelledAt: null,
+          startDate: START,
+          endDate: START,
+          inscriptions: [{ userId: 'a', status: 'RESERVED' }],
+          memberIds: [],
+        });
+        const args = callArg<{
+          where: unknown;
+          select: { seances: { take: number; select: Record<string, unknown> } };
+        }>(prisma.event.findUnique);
+        expect(args.where).toEqual({ id: 'e1' });
+        expect(args.select.seances.take).toBe(1);
+        expect(Object.keys(args.select.seances.select)).toContain('inscriptions');
+        expect(prisma.membership.findMany).not.toHaveBeenCalled();
+      });
+
+      it('rencontre isolée : les membres de la partie, sans lire les inscriptions', async () => {
+        prisma.event.findUnique.mockResolvedValue({
+          ownerId: 'host',
+          cancelledAt: null,
+          seances: [{ startDate: null, endDate: null }],
+        });
+        prisma.membership.findMany.mockResolvedValue([{ userId: 'host' }, { userId: 'm1' }]);
+
+        const basis = await service.boardGamesBasis('e1', { id: 'p2', isolated: true });
+
+        expect(basis).toMatchObject({
+          hostId: 'host',
+          startDate: null,
+          endDate: null,
+          inscriptions: [],
+          memberIds: ['host', 'm1'],
+        });
+        const args = callArg<{ select: { seances: { select: Record<string, unknown> } } }>(
+          prisma.event.findUnique,
+        );
+        expect(Object.keys(args.select.seances.select)).not.toContain('inscriptions');
+        expect(callArg<{ where: unknown }>(prisma.membership.findMany).where).toEqual({
+          partieId: 'p2',
+        });
+      });
+
+      it('événement inconnu : null ; événement sans séance : plage vide', async () => {
+        prisma.event.findUnique.mockResolvedValue(null);
+        await expect(service.boardGamesBasis('e1', { id: 'p1', isolated: false })).resolves.toBeNull();
+
+        prisma.event.findUnique.mockResolvedValue({
+          ownerId: null,
+          cancelledAt: null,
+          seances: [],
+        });
+        await expect(
+          service.boardGamesBasis('e1', { id: 'p1', isolated: false }),
+        ).resolves.toMatchObject({ hostId: null, startDate: null, endDate: null, inscriptions: [] });
+      });
+    });
+
     describe('invitationNotice() — Story 41.3', () => {
       const event = (seance: Record<string, unknown> | null) => ({
         title: 'Soirée',

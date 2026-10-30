@@ -542,6 +542,22 @@
           </mat-tab>
         }
 
+        @if (isSoireeOpen()) {
+          <!-- Story 49.1 (⚠️ contrat UI) : une rencontre isolée à venir gagne un troisième onglet, après
+               « Conjonction · Invités / Invitations » : les jeux sur place (Reliques / Trésors / Joyaux) et
+               leur compte. Lecture seule ; jamais pour une soirée terminée, close ou annulée. L'onglet lit
+               lui-même l'événement de la soirée et remonte le nombre de jeux. Tout membre ou invité de la
+               soirée y est participant. -->
+          <mat-tab [label]="soireeGamesTabLabel()">
+            <app-event-games-tab
+              [partieId]="p.id"
+              [contributor]="true"
+              [currentUserId]="auth.currentUser()?.id ?? null"
+              (countChange)="soireeGamesCount.set($event)"
+            />
+          </mat-tab>
+        }
+
         @if (isMj() && p.gameSystemId === 'ryuutama') {
           <mat-tab label="Homme Dragon">
             <!-- Story 33.8 (AD-23) : l'onglet est le panneau d'AVENTURE — le lien entre cette partie et

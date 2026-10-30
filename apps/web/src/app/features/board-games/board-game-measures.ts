@@ -37,3 +37,20 @@ export function formatBoardGameMeasures(game: Measures, tone: Tone): string {
 export function formatBoardGameCount(n: number, tone: Tone): string {
   return fillTone(tone[n <= 1 ? 'board_games.count_one' : 'board_games.count_many'], { n });
 }
+
+/**
+ * Story 49.1 : un jeu est « jouable à N » quand `minPlayers ≤ N ≤ maxPlayers`, les deux bornes renseignées.
+ * Un jeu sans nombre de joueurs — ou avec une seule borne — n'est jamais jouable (il reste affiché, sans
+ * pastille, et le filtre « Jouables à N » l'exclut).
+ */
+export function fitsHeadcount(
+  game: Pick<BoardGameDto, 'minPlayers' | 'maxPlayers'>,
+  n: number,
+): boolean {
+  return (
+    game.minPlayers !== null &&
+    game.maxPlayers !== null &&
+    game.minPlayers <= n &&
+    n <= game.maxPlayers
+  );
+}

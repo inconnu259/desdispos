@@ -41,6 +41,16 @@ describe('EventsApiService (Story 40.1)', () => {
     expect(await p).toEqual([card]);
   });
 
+  it('boardGames → GET /events/:eventId/board-games, avec withCredentials (Story 49.1)', async () => {
+    const dto = { games: [], participantsCount: 3 };
+    const p = service.boardGames('e1');
+    const req = http.expectOne(`${API}/events/e1/board-games`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(dto);
+    expect(await p).toEqual(dto);
+  });
+
   it('create → POST /parties/:id/events avec le payload', async () => {
     const dto = { title: 'Catane', date: '2031-10-10', slot: 'EVENING' as const, capacity: null };
     const p = service.create('p1', dto);

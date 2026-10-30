@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import type {
   CreateEventDto,
+  EventBoardGamesDto,
   EventCardDto,
   ExtendPollDto,
   UpdateEventDto,
@@ -27,6 +28,17 @@ export class EventsApiService {
   list(partieId: string): Promise<EventCardDto[]> {
     return firstValueFrom(
       this.http.get<EventCardDto[]>(`${API_BASE}/parties/${partieId}/events/list`, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Story 49.1 : les jeux sur place d'une soirée à venir (`GET /events/:eventId/board-games`) — les jeux de
+   *  l'hôte et le nombre de participants N. Soirée fermée : `games` vide. Chaque appel émet sa propre requête ;
+   *  la péremption des réponses est gérée par l'appelant (compteur de requêtes de `EventGamesTab`). */
+  boardGames(eventId: string): Promise<EventBoardGamesDto> {
+    return firstValueFrom(
+      this.http.get<EventBoardGamesDto>(`${API_BASE}/events/${eventId}/board-games`, {
         withCredentials: true,
       }),
     );

@@ -57,7 +57,7 @@ export class EventBoardGamesService {
     // Sans hôte (compte supprimé) : pas de jeux d'hôte, mais les apports des participants restent sur place.
     const [games, brings] = await Promise.all([
       basis.hostId === null ? Promise.resolve([]) : this.boardGames.listOfOwner(basis.hostId),
-      // Story 49.2 : seuls les apports des participants ACTUELS (la purge d'un départ est la Story 49.3).
+      // Story 49.2 : seuls les apports des participants ACTUELS (un départ purge les siens, Story 49.3).
       this.bringsOfEvent.listFor(eventId, participants),
     ]);
     return { games, brings, participantsCount };

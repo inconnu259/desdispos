@@ -75,8 +75,9 @@ export class EventGameBringService {
 
   /**
    * Les apports des participants ACTUELS d'une soirée (Story 49.2), triés comme les jeux (clé normalisée,
-   * nom). Un apport dont le porteur a quitté la soirée n'est pas lu (son retrait
-   * est l'affaire de la Story 49.3). Lecture seule, sans décision de droit : l'appelant a décidé `PARTIE_READ`.
+   * nom). Un apport dont le porteur n'est plus participant n'est pas lu : la Story 49.3 supprime ces lignes
+   * à chaque sortie (`EventsService.releaseGameBringsInTx`), ce filtre ne couvre plus que les soirées passées
+   * dont un départ a gardé les lignes. Lecture seule, sans décision de droit : l'appelant a décidé `PARTIE_READ`.
    */
   async listFor(eventId: string, participantIds: string[]): Promise<EventBringDto[]> {
     if (participantIds.length === 0) return [];
@@ -108,6 +109,8 @@ export class EventGameBringService {
   /**
    * Combien de soirées encore ouvertes (ni annulées, ni passées, ni closes) attendent l'un de MES jeux
    * (Story 49.2) — lu au clic « Retirer » de la Ludothèque. Un jeu d'autrui ou inconnu : 404, le même.
+   * Depuis la Story 49.3, un porteur qui a quitté une soirée à venir n'y laisse plus de ligne : elle ne
+   * compte plus (les sorties suppriment ses apports dans leur transaction).
    */
   async broughtCount(userId: string, boardGameId: string): Promise<BoardGameBroughtCountDto> {
     const owned = await this.boardGames.ownedGameIds(userId, [boardGameId]);

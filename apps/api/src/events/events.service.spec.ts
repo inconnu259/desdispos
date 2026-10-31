@@ -84,6 +84,11 @@ function makePrisma() {
     },
     // Story 40.4 : appartenance des personnes à qui une place est réservée.
     membership: { findMany: jest.fn().mockResolvedValue([]) },
+    // Story 49.3 : jeux apportés par une personne qui cesse d'être participante.
+    eventGameBring: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
   };
   return {
     tx,
@@ -1816,6 +1821,56 @@ describe('EventsService (Story 37.3)', () => {
       await service.desinscrireConjonction(GRANT_SE1, 'se1', 'hote');
 
       expect(prisma.tx.inscription.deleteMany).not.toHaveBeenCalled();
+      // Story 49.3 : l'hôte n'est pas concerné, aucun apport n'est cherché.
+      expect(prisma.tx.eventGameBring.findMany).not.toHaveBeenCalled();
+      expect(prisma.tx.eventGameBring.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('Story 49.3 — désinscrire : supprime les apports de la personne sur CETTE soirée, après le retrait de la ligne, dans la même transaction', async () => {
+      locked();
+      const ordre: string[] = [];
+      prisma.tx.inscription.deleteMany.mockImplementation(() => {
+        ordre.push('inscription');
+        return Promise.resolve({ count: 1 });
+      });
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ eventId: 'e1' }, { eventId: 'e1' }]);
+      prisma.tx.eventGameBring.deleteMany.mockImplementation(() => {
+        ordre.push('apports');
+        return Promise.resolve({ count: 2 });
+      });
+
+      await service.desinscrireConjonction(GRANT_SE1, 'se1', 'u1');
+
+      expect(ordre).toEqual(['inscription', 'apports']);
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(prisma.tx.eventGameBring.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'u1', eventId: 'e1' },
+      });
+      // Émission inchangée : `partie:` (et `user:` car une ligne d'inscription est partie).
+      expect(realtime.emit).toHaveBeenNthCalledWith(1, partieTopic('p1'));
+      expect(realtime.emit).toHaveBeenNthCalledWith(2, userTopic('u1'));
+    });
+
+    it("Story 49.3 — désinscrire : un échec de la suppression des apports remonte et n'émet rien (la transaction annule tout)", async () => {
+      locked();
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ eventId: 'e1' }]);
+      prisma.tx.eventGameBring.deleteMany.mockRejectedValue(new Error('échec apports'));
+
+      await expect(service.desinscrireConjonction(GRANT_SE1, 'se1', 'u1')).rejects.toThrow(
+        'échec apports',
+      );
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it("Story 49.3 — s'inscrire (promotion d'une place réservée) ne supprime aucun apport", async () => {
+      locked();
+      prisma.tx.inscription.findUnique.mockResolvedValue({ id: 'i1', status: 'RESERVED' });
+
+      await service.inscrireConjonction(GRANT_SE1, 'se1', 'u1');
+
+      expect(prisma.tx.inscription.updateMany).toHaveBeenCalledTimes(1);
+      expect(prisma.tx.eventGameBring.findMany).not.toHaveBeenCalled();
+      expect(prisma.tx.eventGameBring.deleteMany).not.toHaveBeenCalled();
     });
   });
 
@@ -1975,6 +2030,28 @@ describe('EventsService (Story 37.3)', () => {
         expect(realtime.emit).toHaveBeenNthCalledWith(2, userTopic('cible'));
       });
 
+      it('Story 49.3 (défensif) — supprime les apports de la cible sur cette soirée quand la réservation est retirée', async () => {
+        locked();
+        prisma.tx.eventGameBring.findMany.mockResolvedValue([{ eventId: 'e1' }]);
+        prisma.tx.eventGameBring.deleteMany.mockResolvedValue({ count: 1 });
+
+        await service.retirerReservation(GRANT_SE1, 'se1', 'cible');
+
+        expect(prisma.tx.eventGameBring.deleteMany).toHaveBeenCalledWith({
+          where: { userId: 'cible', eventId: 'e1' },
+        });
+      });
+
+      it('Story 49.3 — rien à retirer (inscription confirmée ou absente) : aucun apport touché', async () => {
+        locked();
+        prisma.tx.inscription.deleteMany.mockResolvedValue({ count: 0 });
+
+        await service.retirerReservation(GRANT_SE1, 'se1', 'cible');
+
+        expect(prisma.tx.eventGameBring.findMany).not.toHaveBeenCalled();
+        expect(prisma.tx.eventGameBring.deleteMany).not.toHaveBeenCalled();
+      });
+
       it('rien à retirer (inscription confirmée ou absente) : idempotent, la cible n’est pas notifiée', async () => {
         locked();
         prisma.tx.inscription.deleteMany.mockResolvedValue({ count: 0 });
@@ -2034,6 +2111,15 @@ describe('EventsService (Story 37.3)', () => {
         await expect(refusal).rejects.toThrow(PAST_ROSTER_MESSAGE);
         expect(prisma.tx.inscription.updateMany).not.toHaveBeenCalled();
         expect(realtime.emit).not.toHaveBeenCalled();
+      });
+
+      it('Story 49.3 — la promotion RESERVED → CONFIRMED ne supprime aucun apport', async () => {
+        locked();
+
+        await service.accepterReservation(GRANT_SE1, 'se1', 'cible');
+
+        expect(prisma.tx.eventGameBring.findMany).not.toHaveBeenCalled();
+        expect(prisma.tx.eventGameBring.deleteMany).not.toHaveBeenCalled();
       });
     });
 
@@ -2166,6 +2252,90 @@ describe('EventsService (Story 37.3)', () => {
       expect(JSON.stringify(where)).not.toContain('status');
       // La même condition sert à choisir les verrous et à supprimer.
       expect(callArg<{ where: unknown }>(prisma.tx.inscription.findMany).where).toEqual(where);
+    });
+  });
+
+  describe('releaseGameBringsInTx() — sortie d’une soirée (Story 49.3)', () => {
+    const today = new Date().toISOString().substring(0, 10);
+
+    it("sans apport : rien n'est verrouillé ni supprimé", async () => {
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.releaseGameBringsInTx(prisma.tx as never, { eventId: 'e1' }, 'u1'),
+      ).resolves.toBe(0);
+
+      expect(prisma.tx.$queryRaw).not.toHaveBeenCalled();
+      expect(prisma.tx.eventGameBring.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('verrouille les soirées concernées (triées, sans doublon) PUIS supprime les apports de la personne, sans rien émettre', async () => {
+      const ordre: string[] = [];
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([
+        { eventId: 'evB' },
+        { eventId: 'evA' },
+        { eventId: 'evB' },
+      ]);
+      prisma.tx.$queryRaw.mockImplementation((s: TemplateStringsArray, id: string) => {
+        expect(s.join('?')).toContain('FROM "Event"');
+        expect(s.join('?')).toContain('FOR UPDATE');
+        ordre.push(`verrou:${id}`);
+        return Promise.resolve([{ id }]);
+      });
+      prisma.tx.eventGameBring.deleteMany.mockImplementation(() => {
+        ordre.push('delete');
+        return Promise.resolve({ count: 3 });
+      });
+
+      await expect(
+        service.releaseGameBringsInTx(
+          prisma.tx as never,
+          { partieId: 'p1', upcomingOnly: true },
+          'u1',
+        ),
+      ).resolves.toBe(3);
+
+      expect(ordre).toEqual(['verrou:evA', 'verrou:evB', 'delete']);
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it('portée { eventId } : cette soirée seulement, sans filtre de date', async () => {
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ eventId: 'e1' }]);
+
+      await service.releaseGameBringsInTx(prisma.tx as never, { eventId: 'e1' }, 'u1');
+
+      const where = callArg<{ where: unknown }>(prisma.tx.eventGameBring.deleteMany).where;
+      expect(where).toEqual({ userId: 'u1', eventId: 'e1' });
+      // La même condition sert à choisir les verrous et à supprimer.
+      expect(callArg<{ where: unknown }>(prisma.tx.eventGameBring.findMany).where).toEqual(where);
+    });
+
+    it("portée { partieId, upcomingOnly } : les soirées de la partie dont la séance est sans date, ou d'aujourd'hui ou plus tard (jour UTC)", async () => {
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ eventId: 'e1' }]);
+
+      await service.releaseGameBringsInTx(
+        prisma.tx as never,
+        { partieId: 'p1', upcomingOnly: true },
+        'u1',
+      );
+
+      const where = callArg<{ where: unknown }>(prisma.tx.eventGameBring.deleteMany).where;
+      expect(where).toEqual({
+        userId: 'u1',
+        event: {
+          partieId: 'p1',
+          seances: {
+            some: {
+              OR: [
+                { startDate: null },
+                { endDate: { gte: new Date(`${today}T00:00:00.000Z`) } },
+                { endDate: null, startDate: { gte: new Date(`${today}T00:00:00.000Z`) } },
+              ],
+            },
+          },
+        },
+      });
+      expect(callArg<{ where: unknown }>(prisma.tx.eventGameBring.findMany).where).toEqual(where);
     });
   });
 

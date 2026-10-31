@@ -144,6 +144,10 @@ describe('PartiesService', () => {
       findMany: jest.Mock;
       deleteMany: jest.Mock;
     };
+    eventGameBring: {
+      findMany: jest.Mock;
+      deleteMany: jest.Mock;
+    };
     partieFavorite: {
       findUnique: jest.Mock;
       findMany: jest.Mock;
@@ -252,6 +256,11 @@ describe('PartiesService', () => {
       },
       // Story 40.8 : libération des inscriptions à venir de qui sort d'un groupe (défaut : aucune).
       inscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      // Story 49.3 : jeux apportés par qui sort d'un groupe (défaut : aucun).
+      eventGameBring: {
         findMany: jest.fn().mockResolvedValue([]),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
@@ -1878,6 +1887,86 @@ describe('PartiesService', () => {
       await service.leave('p1', 'membre1', { type: 'REMOVED', byUserId: 'admin1' });
       expect(prisma.inscription.findMany).toHaveBeenCalled();
       expect(polls.removeOpenVotesInTx).toHaveBeenCalledWith(expect.anything(), 'p1', 'membre1');
+    });
+
+    it('Story 49.3 : supprime les apports à venir de la personne après ses places, sous le verrou, avant de supprimer l’adhésion', async () => {
+      const ordre: string[] = [];
+      prisma.$queryRaw.mockImplementation((strings: TemplateStringsArray) => {
+        ordre.push(strings.join('?').includes('"Partie"') ? 'verrou-partie' : 'verrou-event');
+        return Promise.resolve([{ id: 'x' }]);
+      });
+      prisma.eventGameBring.findMany.mockResolvedValue([{ eventId: 'evB' }, { eventId: 'evA' }]);
+      prisma.eventGameBring.deleteMany.mockImplementation(() => {
+        ordre.push('apports');
+        return Promise.resolve({ count: 2 });
+      });
+      polls.removeOpenVotesInTx.mockImplementation(() => {
+        ordre.push('votes');
+        return Promise.resolve(0);
+      });
+      prisma.membership.deleteMany.mockImplementation(() => {
+        ordre.push('adhesion');
+        return Promise.resolve({ count: 1 });
+      });
+
+      await service.leave('p1', 'membre1', { type: 'LEFT' });
+
+      // Les verrous `Event` des apports sont pris (triés) avant leur suppression, puis viennent votes et adhésion.
+      expect(ordre).toEqual([
+        'verrou-partie',
+        'verrou-event',
+        'verrou-event',
+        'apports',
+        'votes',
+        'adhesion',
+      ]);
+      // Seuls les apports de la personne, sur les soirées À VENIR de CE groupe (isolées comprises : lues par
+      // `Event.partieId`, pas par les inscriptions).
+      const today = new Date().toISOString().substring(0, 10);
+      expect(callArg<{ where: unknown }>(prisma.eventGameBring.deleteMany).where).toEqual({
+        userId: 'membre1',
+        event: {
+          partieId: 'p1',
+          seances: {
+            some: {
+              OR: [
+                { startDate: null },
+                { endDate: { gte: new Date(`${today}T00:00:00.000Z`) } },
+                { endDate: null, startDate: { gte: new Date(`${today}T00:00:00.000Z`) } },
+              ],
+            },
+          },
+        },
+      });
+      // `partie:` émis après le commit, comme avant : aucune émission supplémentaire de l'étape.
+      expect(realtimeEvents.emit).toHaveBeenCalledWith(partieTopic('p1'));
+    });
+
+    it('Story 49.3 : un retrait par un administrateur supprime aussi les apports de la cible', async () => {
+      prisma.eventGameBring.findMany.mockResolvedValue([{ eventId: 'evA' }]);
+
+      await service.leave('p1', 'membre1', { type: 'REMOVED', byUserId: 'admin1' });
+
+      expect(
+        callArg<{ where: { userId: string } }>(prisma.eventGameBring.deleteMany).where,
+      ).toEqual(objectLike({ userId: 'membre1' }));
+    });
+
+    it('Story 49.3 : un échec de la suppression des apports laisse l’adhésion en place (transaction annulée)', async () => {
+      prisma.eventGameBring.findMany.mockResolvedValue([{ eventId: 'evA' }]);
+      prisma.eventGameBring.deleteMany.mockRejectedValue(new Error('boom'));
+
+      await expect(service.leave('p1', 'membre1', { type: 'LEFT' })).rejects.toThrow('boom');
+
+      expect(prisma.membership.deleteMany).not.toHaveBeenCalled();
+      expect(realtimeEvents.emit).not.toHaveBeenCalled();
+    });
+
+    it('Story 49.3 : le dernier administrateur supprime le groupe sans purge des apports (cascade)', async () => {
+      await service.leave('p1', 'admin1', { type: 'LEFT', deleteIfLastAdmin: true });
+
+      expect(prisma.eventGameBring.findMany).not.toHaveBeenCalled();
+      expect(prisma.eventGameBring.deleteMany).not.toHaveBeenCalled();
     });
 
     it('Story 40.8 : un échec du nettoyage laisse l’adhésion en place (transaction annulée)', async () => {
@@ -4216,6 +4305,20 @@ describe('PartiesService', () => {
         deleted: false,
         ownerCleared: true,
       });
+    });
+
+    it('Story 49.3 : effacement du compte — les apports à venir du compte sont supprimés dans la même procédure de départ', async () => {
+      prisma.membership.findMany.mockResolvedValue([
+        { partieId: 'g1', partie: { gameSystemId: 'ralliement', ownerId: 'mj1' } },
+      ]);
+      prisma.membership.findUnique.mockResolvedValue({ role: 'MEMBER' });
+      prisma.eventGameBring.findMany.mockResolvedValue([{ eventId: 'evA' }]);
+
+      await service.eraseMembershipsInTx(tx(), 'u1');
+
+      expect(callArg<{ where: unknown }>(prisma.eventGameBring.deleteMany).where).toEqual(
+        objectLike({ userId: 'u1', event: objectLike({ partieId: 'g1' }) }),
+      );
     });
 
     it('lit les adhésions dans l’ordre des identifiants (ordre de verrouillage stable)', async () => {

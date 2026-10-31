@@ -1634,10 +1634,12 @@ export class EventsService
   ): Promise<void> {
     await this.assertSeanceInGrant(grant, seanceId);
     const removed = await this.prisma.$transaction(async (tx) => {
-      const { seance, ownerId } = await this.lockedSeanceOfEvent(tx, seanceId);
+      const { seance, ownerId, eventId } = await this.lockedSeanceOfEvent(tx, seanceId);
       this.assertNotPast(seance.startDate, seance.endDate);
       if (userId === ownerId) return 0;
       const { count } = await tx.inscription.deleteMany({ where: { seanceId, userId } });
+      // Story 49.3 : qui n'est plus participant n'apporte plus rien à cette soirée (même transaction).
+      await this.releaseGameBringsInTx(tx, { eventId }, userId);
       return count;
     });
     this.realtimeEvents.emit(partieTopic(grant.partieId));
@@ -1703,11 +1705,13 @@ export class EventsService
   ): Promise<void> {
     await this.assertSeanceInGrant(grant, seanceId);
     const removed = await this.prisma.$transaction(async (tx) => {
-      const { seance } = await this.lockedSeanceOfEvent(tx, seanceId);
+      const { seance, eventId } = await this.lockedSeanceOfEvent(tx, seanceId);
       this.assertNotPast(seance.startDate, seance.endDate);
       const { count } = await tx.inscription.deleteMany({
         where: { seanceId, userId: targetUserId, status: 'RESERVED' },
       });
+      // Story 49.3 (défensif : une place réservée ne porte aucun jeu) : seulement si une ligne est partie.
+      if (count > 0) await this.releaseGameBringsInTx(tx, { eventId }, targetUserId);
       return count;
     });
     this.realtimeEvents.emit(partieTopic(grant.partieId));
@@ -1769,6 +1773,45 @@ export class EventsService
     }
     // Suppression sous les verrous, par la même condition : seules les lignes à venir de la personne.
     const { count } = await tx.inscription.deleteMany({ where });
+    return count;
+  }
+
+  /**
+   * Story 49.3 — supprime, DANS la transaction de l'appelant, les jeux qu'une personne apportait à une
+   * soirée quand elle cesse d'en être participante (désinscription, refus d'une place réservée, départ
+   * du groupe, retrait, effacement du compte, sortie d'une rencontre isolée) : plus personne ne compte
+   * sur un jeu qui ne viendra pas. `scope` : `{ eventId }` (cette soirée, sans filtre de date) ou
+   * `{ partieId, upcomingOnly: true }` (les soirées À VENIR de la partie — séance sans date ou dont le
+   * jour est aujourd'hui ou plus tard, jour UTC ; les soirées passées gardent leurs lignes). Cherche
+   * par `Event.partieId`, pas par les inscriptions : les rencontres isolées sont couvertes.
+   * Même ordre des verrous que `releaseUpcomingInscriptionsInTx` : les lignes `Event` concernées, triées
+   * par identifiant, `FOR UPDATE` (le verrou de `EventGameBringService.write`) AVANT la suppression, pour
+   * qu'aucun apport ne se glisse après. N'émet rien : l'appelant émet `partie:{id}` après SON commit.
+   * Renvoie le nombre de lignes supprimées.
+   */
+  async releaseGameBringsInTx(
+    tx: Prisma.TransactionClient,
+    scope: { eventId: string } | { partieId: string; upcomingOnly: true },
+    userId: string,
+  ): Promise<number> {
+    const where: Prisma.EventGameBringWhereInput =
+      'eventId' in scope
+        ? { userId, eventId: scope.eventId }
+        : {
+            userId,
+            event: {
+              partieId: scope.partieId,
+              seances: { some: { OR: upcomingSeanceOr(parseDayKey(todayKeyUtc())) } },
+            },
+          };
+    const rows = await tx.eventGameBring.findMany({ where, select: { eventId: true } });
+    if (rows.length === 0) return 0;
+    const eventIds = [...new Set(rows.map((r) => r.eventId))].sort();
+    for (const eventId of eventIds) {
+      await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = ${eventId} FOR UPDATE`;
+    }
+    // Suppression sous les verrous, par la même condition : seuls les apports de la personne.
+    const { count } = await tx.eventGameBring.deleteMany({ where });
     return count;
   }
 
@@ -2014,6 +2057,7 @@ export class EventsService
   ): Promise<{
     seance: { startDate: Date | null; endDate?: Date | null; inscriptionMax: number | null };
     ownerId: string | null;
+    eventId: string;
   }> {
     const ref = await tx.seance.findUnique({ where: { id: seanceId }, select: { eventId: true } });
     if (!ref) throw new NotFoundException('Séance introuvable');
@@ -2038,6 +2082,7 @@ export class EventsService
         inscriptionMax: seance.inscriptionMax,
       },
       ownerId: seance.event.ownerId,
+      eventId: ref.eventId,
     };
   }
 

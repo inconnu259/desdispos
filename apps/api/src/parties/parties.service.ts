@@ -667,6 +667,9 @@ export class PartiesService implements PartieSignalsPort {
     // fermés et les conjonctions à venir qu'elle organise restent. Ordre des verrous : partie, puis
     // lignes `Event` (triées) prises par `EventsService`.
     await this.events.releaseUpcomingInscriptionsInTx(tx, partieId, userId);
+    // Story 49.3 : les jeux qu'elle apportait aux soirées À VENIR du groupe (et des rencontres isolées,
+    // trouvées par `Event.partieId`) partent avec elle ; les soirées passées gardent leurs lignes.
+    await this.events.releaseGameBringsInTx(tx, { partieId, upcomingOnly: true }, userId);
     await this.polls.removeOpenVotesInTx(tx, partieId, userId);
     // Story 42.3 : les conjonctions À VENIR qu'elle organise sont annulées par la procédure de la Story 42.1,
     // dans cette même transaction (un échec annule tout le départ) ; le passé reste, hôte affiché compris.

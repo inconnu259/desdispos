@@ -1103,7 +1103,7 @@ describe('Jeux sur place — dire ce que j’apporte, et voir les doublons (Stor
     expect(await bringCount(event.id)).toBe(0);
   });
 
-  it('un participant parti : son apport n’est plus lu (sa purge est la Story 49.3)', async () => {
+  it('un participant parti : son apport n’est plus lu (et, depuis la Story 49.3, plus écrit)', async () => {
     const { zoe, yan, card } = await setup('parti');
     const azul = await addGame(zoe, 'Azul');
     await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
@@ -1111,6 +1111,7 @@ describe('Jeux sur place — dire ce que j’apporte, et voir les doublons (Stor
     await zoe.agent.delete(`/scenarios/seances/${card.seance.id}/inscription`).expect(200);
 
     expect((await read(yan, card.id)).brings).toEqual([]);
+    expect(await bringCount(card.id)).toBe(0);
   });
 
   it('brought-count : seules les soirées encore ouvertes comptent ; jeu d’autrui ou inconnu → 404', async () => {
@@ -1158,5 +1159,195 @@ describe('Jeux sur place — dire ce que j’apporte, et voir les doublons (Stor
     }
     expect(await bringCount(card.id)).toBe(0);
     expect((await read(zoe, card.id)).brings).toEqual([]);
+  });
+
+  // ─── Story 49.3 — ne plus rien apporter quand on ne vient plus ──────────────────────────────
+
+  const seedBring = (eventId: string, userId: string, boardGameId: string) =>
+    h.prisma.eventGameBring.create({ data: { eventId, userId, boardGameId } });
+  const broughtCountOf = async (who: { agent: Agent }, boardGameId: string) =>
+    body<BoardGameBroughtCountDto>(
+      await who.agent.get(`/me/board-games/${boardGameId}/brought-count`).expect(200),
+    );
+
+  it('49.3 — se désinscrire : ses apports partent, ceux des autres restent, `partie:` est émis ; se réinscrire ne les ressuscite pas', async () => {
+    const { zoe, yan, groupId, card } = await setup('493-desinscrit');
+    const azul = await addGame(zoe, 'Azul');
+    const skull = await addGame(zoe, 'Skull');
+    const uno = await addGame(yan, 'Uno');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    await zoe.agent.put(bringUrl(card.id, skull.id)).expect(204);
+    await yan.agent.put(bringUrl(card.id, uno.id)).expect(204);
+    expect(await broughtCountOf(zoe, azul.id)).toEqual({ count: 1 });
+
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await zoe.agent.delete(`/scenarios/seances/${card.seance.id}/inscription`).expect(200);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+    } finally {
+      emit.mockRestore();
+    }
+
+    expect(await bringCount(card.id)).toBe(1);
+    expect((await read(yan, card.id)).brings.map((b) => b.game.name)).toEqual(['Uno']);
+    // La boîte de retrait de la Ludothèque ne compte plus cette soirée.
+    expect(await broughtCountOf(zoe, azul.id)).toEqual({ count: 0 });
+
+    await signUp(zoe, card.seance.id);
+    expect((await read(yan, card.id)).brings.map((b) => b.game.name)).toEqual(['Uno']);
+    expect(await bringCount(card.id)).toBe(1);
+  });
+
+  it('49.3 — refuser une place réservée : ses apports (posés en base) partent ; la promotion en confirmé ne touche à rien', async () => {
+    const { host, outsider, zoe, groupId } = await setup('493-reserve');
+    const mine = await addGame(outsider, 'Azul');
+    const accepted = await propose(host, groupId, { capacity: 6, reservedUserIds: [outsider.id] });
+    const declined = await propose(host, groupId, {
+      capacity: 6,
+      reservedUserIds: [outsider.id],
+      date: isoDay(8),
+    });
+    await signUp(zoe, accepted.seance.id);
+    await seedBring(accepted.id, outsider.id, mine.id);
+    await seedBring(declined.id, outsider.id, mine.id);
+
+    // Promotion RESERVED → CONFIRMED : rien n'est supprimé.
+    await outsider.agent
+      .patch(`/scenarios/seances/${accepted.seance.id}/inscription/accept`)
+      .expect(200);
+    expect(await bringCount(accepted.id)).toBe(1);
+
+    // Refus de la place réservée de l'autre soirée : la ligne de réservation et les apports partent.
+    await outsider.agent.delete(`/scenarios/seances/${declined.seance.id}/inscription`).expect(200);
+    expect(await bringCount(declined.id)).toBe(0);
+    expect(await bringCount(accepted.id)).toBe(1);
+  });
+
+  it('49.3 — l’hôte retire une réservation : les apports (posés en base) de la personne partent, ceux des autres restent', async () => {
+    const { host, outsider, zoe, groupId } = await setup('493-retrait');
+    const mine = await addGame(outsider, 'Azul');
+    const hers = await addGame(zoe, 'Skull');
+    const card = await propose(host, groupId, { capacity: 6, reservedUserIds: [outsider.id] });
+    await signUp(zoe, card.seance.id);
+    await zoe.agent.put(bringUrl(card.id, hers.id)).expect(204);
+    await seedBring(card.id, outsider.id, mine.id);
+
+    await host.agent
+      .delete(`/scenarios/seances/${card.seance.id}/reservations/${outsider.id}`)
+      .expect(200);
+
+    expect(await bringCount(card.id)).toBe(1);
+    expect((await read(zoe, card.id)).brings.map((b) => b.game.name)).toEqual(['Skull']);
+  });
+
+  it('49.3 — retirer une réservation ne touche pas aux apports d’une inscription CONFIRMÉE', async () => {
+    const { host, zoe, card } = await setup('493-confirme');
+    const hers = await addGame(zoe, 'Skull');
+    await zoe.agent.put(bringUrl(card.id, hers.id)).expect(204);
+
+    await host.agent
+      .delete(`/scenarios/seances/${card.seance.id}/reservations/${zoe.id}`)
+      .expect(200);
+
+    expect(await bringCount(card.id)).toBe(1);
+  });
+
+  it('49.3 — quitter le groupe : les apports des soirées à venir partent, ceux d’une soirée passée restent', async () => {
+    const { host, zoe, yan, groupId, card } = await setup('493-depart');
+    const second = await propose(host, groupId, { date: isoDay(9) });
+    await signUp(zoe, second.seance.id);
+    const azul = await addGame(zoe, 'Azul');
+    const skull = await addGame(zoe, 'Skull');
+    const uno = await addGame(yan, 'Uno');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    await zoe.agent.put(bringUrl(card.id, skull.id)).expect(204);
+    await zoe.agent.put(bringUrl(second.id, azul.id)).expect(204);
+    await yan.agent.put(bringUrl(card.id, uno.id)).expect(204);
+    // La seconde soirée devient passée (les écritures sont alors refusées, la ligne reste en base).
+    const day = new Date(`${isoDay(-2)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: second.seance.id },
+      data: { startDate: day, endDate: day },
+    });
+
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await zoe.agent.delete(`/parties/${groupId}/members/me`).expect(200);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+    } finally {
+      emit.mockRestore();
+    }
+
+    expect((await read(yan, card.id)).brings.map((b) => b.game.name)).toEqual(['Uno']);
+    expect(await bringCount(card.id)).toBe(1);
+    expect(await bringCount(second.id)).toBe(1);
+  });
+
+  it('49.3 — retrait par un administrateur : les apports à venir de la cible partent, ceux des autres restent', async () => {
+    const { admin, zoe, yan, groupId, card } = await setup('493-retire');
+    const azul = await addGame(zoe, 'Azul');
+    const uno = await addGame(yan, 'Uno');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    await yan.agent.put(bringUrl(card.id, uno.id)).expect(204);
+
+    await admin.agent.delete(`/parties/${groupId}/members/${zoe.id}`).expect(200);
+
+    expect(await bringCount(card.id)).toBe(1);
+    expect((await read(yan, card.id)).brings.map((b) => b.game.name)).toEqual(['Uno']);
+  });
+
+  it('49.3 — effacement du compte : les apports du compte partent, ceux des autres restent', async () => {
+    const { zoe, yan, card } = await setup('493-compte');
+    const azul = await addGame(zoe, 'Azul');
+    const uno = await addGame(yan, 'Uno');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    await yan.agent.put(bringUrl(card.id, uno.id)).expect(204);
+
+    await zoe.agent.delete('/me').send({ password: h.userPassword }).expect(200);
+
+    expect(await h.prisma.eventGameBring.count({ where: { userId: zoe.id } })).toBe(0);
+    expect((await read(yan, card.id)).brings.map((b) => b.game.name)).toEqual(['Uno']);
+  });
+
+  it('49.3 — rencontre isolée : l’administrateur retire un membre, ses apports partent (trouvés par `Event.partieId`)', async () => {
+    const admin = await h.createUser('bg493-iso-admin');
+    const m1 = await h.createUser('bg493-iso-m1');
+    const m2 = await h.createUser('bg493-iso-m2');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg493-iso', 'ralliement');
+    await h.addMember(evening.id, m1);
+    await h.addMember(evening.id, m2);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+    const codenames = await addGame(m1, 'Codenames');
+    const skull = await addGame(m2, 'Skull');
+    await m1.agent.put(bringUrl(event.id, codenames.id)).expect(204);
+    await m2.agent.put(bringUrl(event.id, skull.id)).expect(204);
+
+    await admin.agent.delete(`/parties/${evening.id}/members/${m1.id}`).expect(200);
+
+    expect(await bringCount(event.id)).toBe(1);
+    expect((await read(admin, event.id)).brings.map((b) => b.game.name)).toEqual(['Skull']);
+  });
+
+  it('49.3 — refuser une invitation à une rencontre isolée ne change aucun apport', async () => {
+    const admin = await h.createUser('bg493-inv-admin');
+    const m1 = await h.createUser('bg493-inv-m1');
+    const invitee = await h.createUser('bg493-inv-invite');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg493-inv', 'ralliement');
+    await h.addMember(evening.id, m1);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+    const codenames = await addGame(m1, 'Codenames');
+    await m1.agent.put(bringUrl(event.id, codenames.id)).expect(204);
+    await admin.agent
+      .post(`/parties/${evening.id}/invitations`)
+      .send({ inviteeUserId: invitee.id })
+      .expect(201);
+    const [invitation] = body<{ id: string }[]>(
+      await invitee.agent.get('/invitations').expect(200),
+    );
+
+    await invitee.agent.post(`/invitations/${invitation.id}/decline`).expect(201);
+
+    expect(await bringCount(event.id)).toBe(1);
+    expect((await read(admin, event.id)).brings.map((b) => b.game.name)).toEqual(['Codenames']);
   });
 });

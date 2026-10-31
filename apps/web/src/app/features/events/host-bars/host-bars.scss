@@ -1,0 +1,108 @@
+/* Story 50.2 — « Qui reçoit » (DESIGN.md §7.8). Aucun jeton neuf, aucun rouge, aucune image ; barre de 6 px en
+   accent-2, 120 px au plus. Le texte porte chaque chiffre : la barre est décorative. */
+:host {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.hb__message {
+  margin: 0;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.hb {
+  border: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container-high, transparent);
+  padding: 0 12px 8px;
+}
+
+.hb__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+.hb__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+
+.hb[open] .hb__chevron {
+  transform: rotate(45deg);
+}
+
+.hb__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hb__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hb__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 120px) auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 28px;
+}
+
+.hb__name {
+  overflow-wrap: anywhere;
+}
+
+.hb__track {
+  display: block;
+  height: 6px;
+}
+
+.hb__bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--jdr-accent-2, var(--mat-sys-secondary));
+}
+
+.hb__count {
+  min-width: 4.5ch;
+  font-size: 0.8125rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.hb__never {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+/* Téléphone : la piste se réduit pour laisser aux noms leur place ; la barre garde sa proportion (en %). */
+@media (max-width: 480px) {
+  .hb__row {
+    grid-template-columns: minmax(0, 1fr) 64px auto;
+  }
+}

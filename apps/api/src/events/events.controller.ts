@@ -17,6 +17,7 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { CreateEventDto, UpdateEventDto } from './dto/create-event.dto';
 import { EventEnvyBodyDto } from './dto/event-envy.dto';
 import { EventBoardGamesService } from './event-board-games.service';
+import { EventHostCountsService } from './event-host-counts.service';
 import { EventGameBringService } from './event-game-bring.service';
 import { EventGameEnvyService } from './event-game-envy.service';
 import { EventGameExclusionService } from './event-game-exclusion.service';
@@ -34,6 +35,7 @@ export class EventsController {
   constructor(
     private readonly groupEvents: GroupEventsService,
     private readonly eventBoardGames: EventBoardGamesService,
+    private readonly hostCounts: EventHostCountsService,
     private readonly gameBrings: EventGameBringService,
     private readonly gameExclusions: EventGameExclusionService,
     private readonly gameEnvies: EventGameEnvyService,
@@ -72,6 +74,12 @@ export class EventsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.groupEvents.cancel(partieId, eventId, user.id);
+  }
+
+  /** Story 50.2 : le Compteur d'hôte d'un groupe (qui a reçu, combien de fois), lecture seule — `PARTIE_READ`. */
+  @Get('parties/:id/host-counts')
+  hostCountsOf(@Param('id', ParseUUIDPipe) partieId: string, @CurrentUser() user: AuthUser) {
+    return this.hostCounts.list(partieId, user.id);
   }
 
   /** Story 49.1 : les jeux sur place d'une soirée à venir (jeux de l'hôte + N), lecture seule — `PARTIE_READ`. */

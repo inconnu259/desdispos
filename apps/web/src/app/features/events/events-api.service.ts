@@ -7,6 +7,7 @@ import type {
   EventBoardGamesDto,
   EventCardDto,
   ExtendPollDto,
+  HostCountsDto,
   UpdateEventDto,
 } from '@master-jdr/shared';
 import { API_BASE } from '../../core/api-base';
@@ -29,6 +30,18 @@ export class EventsApiService {
   list(partieId: string): Promise<EventCardDto[]> {
     return firstValueFrom(
       this.http.get<EventCardDto[]>(`${API_BASE}/parties/${partieId}/events/list`, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Story 50.2 : le Compteur d'hôte d'un groupe (`GET /parties/:id/host-counts`) — chaque membre actuel et le
+   *  nombre de conjonctions passées et non annulées qu'il a reçues. Rejette avec la réponse HTTP (403 pour une
+   *  rencontre isolée, une partie de JDR ou un non-membre). Chaque appel émet sa propre requête ; la péremption
+   *  des réponses est gérée par l'appelant (compteur de lectures de `HostBars`). */
+  hostCounts(partieId: string): Promise<HostCountsDto> {
+    return firstValueFrom(
+      this.http.get<HostCountsDto>(`${API_BASE}/parties/${partieId}/host-counts`, {
         withCredentials: true,
       }),
     );

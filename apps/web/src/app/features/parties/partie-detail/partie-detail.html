@@ -238,6 +238,12 @@
 
             }
 
+            @if (isGroup()) {
+              <!-- ⚠️ Story 50.2 : « Qui reçoit » (Compteur d'hôte), section repliable au-dessus de la description,
+                   pour tout membre d'un groupe. Jamais sur une rencontre isolée ni une partie de JDR. -->
+              <app-host-bars [partieId]="p.id" />
+            }
+
             <section class="details-zone details-zone--reference">
               @if (!isRalliement()) {
                 <h3 class="details-zone__title">{{ theme.tone()['partie.details_zone_reference'] }}</h3>

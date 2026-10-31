@@ -2085,6 +2085,34 @@ export class EventsService
   }
 
   /**
+   * Story 50.2 : combien de conjonctions PASSÉES et NON ANNULÉES chaque hôte a reçues dans cette partie — dérivé
+   * à la lecture, jamais stocké. Seule la règle partagée `isSeancePast` dit « passée », sur la première séance de
+   * l'événement (le même choix que `listCards`) ; un événement sans date n'est jamais passé, et un événement sans
+   * hôte (compte supprimé) n'est attribué à personne. Lecture seule : le droit et le filtre « membres actuels »
+   * sont ceux de l'appelant.
+   */
+  async pastHostedCounts(partieId: string): Promise<{ hostId: string; count: number }[]> {
+    const events = await this.prisma.event.findMany({
+      where: { partieId, cancelledAt: null, ownerId: { not: null } },
+      select: {
+        ownerId: true,
+        seances: {
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
+          select: { startDate: true, endDate: true },
+        },
+      },
+    });
+    const counts = new Map<string, number>();
+    for (const event of events) {
+      const seance = event.seances[0];
+      if (!event.ownerId || !seance || !isSeancePast(seance.startDate, seance.endDate)) continue;
+      counts.set(event.ownerId, (counts.get(event.ownerId) ?? 0) + 1);
+    }
+    return [...counts].map(([hostId, count]) => ({ hostId, count }));
+  }
+
+  /**
    * Story 41.3 : de quoi écrire l'e-mail d'invitation à une soirée isolée — son événement unique (le
    * premier de la partie), sa date ou l'échéance de son vote, son lieu. Lecture seule : l'invitation ne
    * lit jamais les tables d'événements elle-même. `null` si la partie n'a aucun événement.

@@ -352,6 +352,8 @@ async function createFixture(
         provide: EventsApiService,
         useValue: {
           list: vi.fn().mockResolvedValue(options.events ?? []),
+          // Story 50.2 : le Compteur d'hôte, lu par la section « Qui reçoit » de « Détails » d'un groupe.
+          hostCounts: vi.fn().mockResolvedValue({ members: [] }),
           create: vi.fn(),
           update: vi.fn(),
           // Story 40.3 : s'inscrire à une conjonction et s'en désinscrire.
@@ -4023,6 +4025,49 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
 
     expect(el.querySelector('app-group-games-tab')).not.toBeNull();
     expect(boardGames.listOfGroup).toHaveBeenCalledWith('party-1');
+  });
+
+  it('Qui reçoit (Story 50.2) : « Détails » d’un groupe ouvre sa section au-dessus de la description, pour tout membre', async () => {
+    const { fixture, el } = await createFixture(groupe({ role: 'member' }), OTHER_ID, {
+      members,
+      noopAnimations: true,
+    });
+    const events = TestBed.inject(EventsApiService) as unknown as {
+      hostCounts: ReturnType<typeof vi.fn>;
+    };
+    events.hostCounts.mockResolvedValue({
+      members: [{ userId: MJ_ID, pseudo: 'createur', displayName: 'Créateur', count: 2 }],
+    });
+
+    openTab(el, fixture, 2);
+    await settleTabs(fixture);
+
+    expect(events.hostCounts).toHaveBeenCalledWith('party-1');
+    const section = el.querySelector('app-host-bars');
+    expect(section?.textContent).toContain(TONE_MAP['grimoire-emeraude']['host_counts.title']);
+    const reference = el.querySelector('.details-zone--reference') as HTMLElement;
+    expect(
+      (section as HTMLElement).compareDocumentPosition(reference) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('Qui reçoit (Story 50.2) : une rencontre isolée n’a pas la section', async () => {
+    const { fixture, el } = await createFixture(
+      groupe({ kind: 'ONE_SHOT', role: 'member' }),
+      OTHER_ID,
+      { members, noopAnimations: true },
+    );
+    const events = TestBed.inject(EventsApiService) as unknown as {
+      hostCounts: ReturnType<typeof vi.fn>;
+    };
+
+    for (let i = 0; i < tabs(el).length; i++) {
+      openTab(el, fixture, i);
+      await settleTabs(fixture);
+    }
+
+    expect(el.querySelector('app-host-bars')).toBeNull();
+    expect(events.hostCounts).not.toHaveBeenCalled();
   });
 
   it('Reliques (Story 50.1) : une rencontre isolée n’a pas l’onglet des jeux du groupe', async () => {

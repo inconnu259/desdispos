@@ -6,6 +6,7 @@ import { InvitationCleanupService } from '../invitations/invitation-cleanup.serv
 import { PollModule } from '../poll/poll.module';
 import { DatableSeancesService } from './datable-seances.service';
 import { EventBoardGamesService } from './event-board-games.service';
+import { EventHostCountsService } from './event-host-counts.service';
 import { EventGameBringService } from './event-game-bring.service';
 import { EventGameEnvyService } from './event-game-envy.service';
 import { EventGameExclusionService } from './event-game-exclusion.service';
@@ -71,6 +72,7 @@ import { OpenPollContextService } from './open-poll-context.service';
     InvitationCleanupService,
     GroupEventsService,
     EventBoardGamesService,
+    EventHostCountsService,
     EventGameBringService,
     EventGameExclusionService,
     EventGameEnvyService,

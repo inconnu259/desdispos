@@ -378,6 +378,67 @@ describe('EventsService (Story 37.3)', () => {
     });
   });
 
+  describe('pastHostedCounts() — Compteur d’hôte (Story 50.2)', () => {
+    const dayDate = (offset: number) => {
+      const d = new Date();
+      d.setUTCHours(0, 0, 0, 0);
+      d.setUTCDate(d.getUTCDate() + offset);
+      return d;
+    };
+    const hosted = (hostId: string | null, start: Date | null, end: Date | null = start) => ({
+      ownerId: hostId,
+      seances: start === null && end === null ? [] : [{ startDate: start, endDate: end }],
+    });
+
+    it('lit les événements de la partie non annulés et avec un hôte, la première séance seulement', async () => {
+      prisma.event.findMany.mockResolvedValue([]);
+
+      await service.pastHostedCounts('p1');
+
+      expect(prisma.event.findMany).toHaveBeenCalledWith({
+        where: { partieId: 'p1', cancelledAt: null, ownerId: { not: null } },
+        select: {
+          ownerId: true,
+          seances: {
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            take: 1,
+            select: { startDate: true, endDate: true },
+          },
+        },
+      });
+    });
+
+    it('ne compte que les plages passées (la règle isSeancePast), par hôte', async () => {
+      prisma.event.findMany.mockResolvedValue([
+        hosted('lea', dayDate(-3)),
+        hosted('lea', dayDate(-9)),
+        hosted('tom', dayDate(-1)),
+        // Aujourd'hui et à venir : pas encore passées.
+        hosted('tom', dayDate(0)),
+        hosted('tom', dayDate(5)),
+        // Plage commencée hier, finie demain : toujours en cours.
+        hosted('tom', dayDate(-1), dayDate(1)),
+      ]);
+
+      const counts = await service.pastHostedCounts('p1');
+
+      expect(Object.fromEntries(counts.map((c) => [c.hostId, c.count]))).toEqual({
+        lea: 2,
+        tom: 1,
+      });
+    });
+
+    it('un événement sans date, sans séance ou sans hôte n’est attribué à personne', async () => {
+      prisma.event.findMany.mockResolvedValue([
+        hosted('lea', null, null),
+        { ownerId: 'lea', seances: [] },
+        hosted(null, dayDate(-4)),
+      ]);
+
+      await expect(service.pastHostedCounts('p1')).resolves.toEqual([]);
+    });
+  });
+
   describe('listCards() — cartes de conjonctions (Story 40.1)', () => {
     const row = (over: Record<string, unknown> = {}) => ({
       id: 'e1',

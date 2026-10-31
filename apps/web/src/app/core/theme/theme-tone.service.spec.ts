@@ -1179,6 +1179,10 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'board_games.group_footer_members_one',
     'board_games.group_footer_members_many',
     'board_games.group_no_match',
+    // Story 50.2 : « Qui reçoit » — « {n} fois » et « Jamais : {noms} » sont des mesures et un libellé de liste,
+    // volontairement hors thème (EXPERIENCE.md §3.3) ; seul le titre de la section (`host_counts.title`) a une voix
+    'host_counts.times',
+    'host_counts.never',
     // Story 49.1 : jeux sur place d'une soirée — « Chez {nom} » / « Chez moi » (provenance), résumé « {n} jeux sur
     // place · {k} jouables à {total} » (jeux et jouables accordés chacun avec son nombre), puce « Jouables à {total} », pastille
     // « jouable à {total} », comptes de section (« · 6 », « · 3 sur 6 »), nom accessible d'un en-tête, annonce
@@ -2406,6 +2410,12 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'foret-ancienne': "Personne n'a encore rempli son coffre.",
       'atelier-cuivre': "Personne n'a encore garni son râtelier.",
     },
+    // Story 50.2 : titre de « Qui reçoit » (EXPERIENCE.md §3.1)
+    'host_counts.title': {
+      'grimoire-emeraude': 'Qui ouvre sa porte',
+      'foret-ancienne': 'Qui accueille le cercle',
+      'atelier-cuivre': "Qui accueille l'équipage",
+    },
   };
 
   for (const theme of THEMES) {
@@ -2447,6 +2457,9 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'board_games.group_footer_members_one': '{m} membre',
       'board_games.group_footer_members_many': '{m} membres',
       'board_games.group_no_match': 'Aucun jeu ne correspond.',
+      // Story 50.2
+      'host_counts.times': '{n} fois',
+      'host_counts.never': 'Jamais : {noms}',
     };
     for (const theme of THEMES) {
       for (const [key, text] of Object.entries(expected)) {

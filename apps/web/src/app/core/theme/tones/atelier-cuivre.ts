@@ -341,6 +341,10 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'board_games.group_footer_members_one': '{m} membre',
   'board_games.group_footer_members_many': '{m} membres',
   'board_games.group_no_match': 'Aucun jeu ne correspond.',
+  /* — « Qui reçoit » de l'onglet Détails d'un groupe (Story 50.2) : le titre a une voix ; « {n} fois » et « Jamais : {noms} » sont neutres (NEUTRAL_KEYS) — */
+  'host_counts.title': "Qui accueille l'équipage",
+  'host_counts.times': '{n} fois',
+  'host_counts.never': 'Jamais : {noms}',
 
   /* ═══ Jeux sur place d'une soirée (Story 49.1) ═══ */
   /* — onglet, ligne « aucun jeu » et lien discret : une voix par thème — */

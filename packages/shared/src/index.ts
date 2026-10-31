@@ -2154,6 +2154,21 @@ export interface GroupBoardGamesDto {
   games: GroupBoardGameDto[];
 }
 
+/** Combien de fois un membre a reçu le groupe (Story 50.2) — pseudo et nom affiché seulement, jamais d'e-mail. */
+export interface HostCountDto {
+  userId: string;
+  pseudo: string;
+  displayName: string;
+  count: number;
+}
+
+/** Le Compteur d'hôte d'un groupe (`GET /parties/:id/host-counts`, Story 50.2) : chaque membre ACTUEL (0 compris),
+ *  du plus grand compte au plus petit, puis par nom. Comptent les conjonctions passées et non annulées du groupe
+ *  que le membre a hébergées ; rien n'est stocké. */
+export interface HostCountsDto {
+  members: HostCountDto[];
+}
+
 /** Un jeu apporté à une soirée par un participant (Story 49.2) : le jeu et qui l'apporte — pseudo et nom
  *  affiché seulement, jamais d'e-mail. */
 export interface EventBringDto {

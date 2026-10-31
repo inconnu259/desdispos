@@ -1190,6 +1190,20 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'event_games.playable_one',
     'event_games.playable_many',
     'event_games.announce',
+    // Story 49.2 : doublons et provenance — « ×{n} », « aussi chez {noms} », « aussi apporté par {noms} »,
+    // « ⚠ déjà chez {nom} », « par {nom} », « par moi », « moi » (nom du détenteur qui est la personne connectée) :
+    // provenance et mesure, volontairement hors thème ; le message de retrait d'un jeu apporté à des soirées à
+    // venir (« Ce jeu est apporté à {n} soirées à venir : il en sera retiré. ») est un texte fonctionnel, neutre.
+    // Seuls les deux titres de section, « J'apporte », « Je ne l'apporte plus » et « Votre cabinet est vide » ont une voix
+    'event_games.dup_pill',
+    'event_games.also_at',
+    'event_games.also_brought_by',
+    'event_games.already_at',
+    'event_games.by_other',
+    'event_games.by_me',
+    'event_games.holder_me',
+    'board_games.remove_brought_one',
+    'board_games.remove_brought_many',
   ]);
 
   const REFERENCE =TONE_MAP['grimoire-emeraude'];
@@ -2451,5 +2465,73 @@ describe('Tones — jeux sur place d’une soirée (Story 49.1)', () => {
         expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(text);
       }
     }
+  });
+});
+
+// Story 49.2 — ce que j'apporte : les deux titres de section (« Apportées » / « Dans mon cabinet »), « J'apporte »,
+// « Je ne l'apporte plus » et « Votre cabinet est vide » prennent la voix de chaque thème (textes validés le
+// 2026-10-29, EXPERIENCE.md §3.1-3.2) ; doublons, provenance et message de retrait sont neutres.
+describe('Tones — ce que j’apporte à une soirée (Story 49.2)', () => {
+  const VOICED: Record<string, Record<string, string>> = {
+    'event_games.brought_section': {
+      'grimoire-emeraude': 'Apportées',
+      'foret-ancienne': 'Apportés à la veillée',
+      'atelier-cuivre': 'Acheminés',
+    },
+    'event_games.mine_section': {
+      'grimoire-emeraude': 'Dans mon cabinet',
+      'foret-ancienne': 'Dans mon coffre',
+      'atelier-cuivre': 'Sur mon râtelier',
+    },
+    'event_games.bring_btn': {
+      'grimoire-emeraude': "J'apporte",
+      'foret-ancienne': "Je l'apporte",
+      'atelier-cuivre': "Je l'achemine",
+    },
+    'event_games.unbring_btn': {
+      'grimoire-emeraude': "Je ne l'apporte plus",
+      'foret-ancienne': "Je ne l'apporte plus",
+      'atelier-cuivre': "Annuler l'acheminement",
+    },
+    'event_games.mine_empty': {
+      'grimoire-emeraude': 'Votre cabinet est vide.',
+      'foret-ancienne': 'Ton coffre est vide.',
+      'atelier-cuivre': 'Votre râtelier est vide.',
+    },
+  };
+
+  for (const theme of THEMES) {
+    it(`${theme} porte les titres de section, les deux actions et la section vide validés`, () => {
+      for (const [key, byTheme] of Object.entries(VOICED)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(byTheme[theme]);
+      }
+    });
+  }
+
+  it('doublons, provenance et message de retrait : le texte du contrat, identique dans les trois thèmes', () => {
+    const expected: Record<string, string> = {
+      'event_games.dup_pill': '×{n}',
+      'event_games.also_at': 'aussi chez {noms}',
+      'event_games.also_brought_by': 'aussi apporté par {noms}',
+      'event_games.already_at': '⚠ déjà chez {nom}',
+      'event_games.by_other': 'par {nom}',
+      'event_games.by_me': 'par moi',
+      'event_games.holder_me': 'moi',
+      'board_games.remove_brought_one':
+        'Ce jeu est apporté à 1 soirée à venir : il en sera retiré.',
+      'board_games.remove_brought_many':
+        'Ce jeu est apporté à {n} soirées à venir : il en sera retiré.',
+    };
+    for (const theme of THEMES) {
+      for (const [key, text] of Object.entries(expected)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(text);
+      }
+    }
+  });
+
+  it('le tutoiement de la Forêt et le vouvoiement des deux autres thèmes dans la section vide', () => {
+    expect(TONE_MAP['foret-ancienne']['event_games.mine_empty']).toMatch(/^Ton /);
+    expect(TONE_MAP['grimoire-emeraude']['event_games.mine_empty']).toMatch(/^Votre /);
+    expect(TONE_MAP['atelier-cuivre']['event_games.mine_empty']).toMatch(/^Votre /);
   });
 });

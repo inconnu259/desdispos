@@ -234,6 +234,8 @@ export const JDR_POLICY: Readonly<Record<PermissionAction, readonly PartieRole[]
   EVENT_LIST: NOBODY,
   EVENT_UPDATE: NOBODY,
   EVENT_CANCEL: NOBODY,
+  // Story 49.2 : apporter un jeu à une soirée — n'existe pas en JDR.
+  EVENT_GAME_BRING: NOBODY,
   // Invitations : le MJ invite, liste et révoque (l'invitant est toujours le propriétaire, la
   // propriété d'une partie étant immuable).
   INVITATION_CREATE: OWNER_ONLY,
@@ -355,6 +357,10 @@ export const RALLIEMENT_POLICY: Readonly<Record<PermissionAction, readonly Parti
   // administrateur du groupe » est décidé plus bas, dans `assert()` (HOST_OR_ADMIN_ACTIONS). La cellule
   // vaut pour la famille entière ; le refus de la rencontre isolée est posé dans le service (42.2 le lève).
   EVENT_CANCEL: ADMIN_AND_MEMBERS,
+  // Story 49.2 : apporter un de ses jeux à une soirée. Tout membre passe la cellule ; « participant de la
+  // soirée, autre que l'hôte » est décidé sous le verrou de l'événement par `EventGameBringService` (le rôle
+  // seul ne dit rien de l'inscription CONFIRMÉE) — ce n'est donc PAS une action réservée à l'hôte.
+  EVENT_GAME_BRING: ADMIN_AND_MEMBERS,
   // Invitations (Story 39.3) : l'administrateur invite, liste et révoque ; un simple membre n'a que
   // la lecture de la liste des membres. La cellule vaut pour la famille entière (l'invitation à
   // usage unique, épopée 41, n'a pas encore d'interface : l'UI reste réservée aux groupes).

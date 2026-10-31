@@ -3972,6 +3972,31 @@ describe('EventsService (Story 37.3)', () => {
           service.boardGamesBasis('e1', { id: 'p1', isolated: false }),
         ).resolves.toMatchObject({ hostId: null, startDate: null, endDate: null, inscriptions: [] });
       });
+
+      it('Story 49.2 : relit sur le client fourni (transaction) sans toucher au client global', async () => {
+        const tx = {
+          event: {
+            findUnique: jest.fn().mockResolvedValue({
+              ownerId: 'host',
+              cancelledAt: null,
+              seances: [{ startDate: null, endDate: null }],
+            }),
+          },
+          membership: { findMany: jest.fn().mockResolvedValue([{ userId: 'host' }]) },
+        };
+
+        const basis = await service.boardGamesBasis(
+          'e1',
+          { id: 'p2', isolated: true },
+          tx as never,
+        );
+
+        expect(basis).toMatchObject({ hostId: 'host', memberIds: ['host'] });
+        expect(tx.event.findUnique).toHaveBeenCalledTimes(1);
+        expect(tx.membership.findMany).toHaveBeenCalledTimes(1);
+        expect(prisma.event.findUnique).not.toHaveBeenCalled();
+        expect(prisma.membership.findMany).not.toHaveBeenCalled();
+      });
     });
 
     describe('invitationNotice() — Story 41.3', () => {

@@ -42,13 +42,49 @@ describe('EventsApiService (Story 40.1)', () => {
   });
 
   it('boardGames → GET /events/:eventId/board-games, avec withCredentials (Story 49.1)', async () => {
-    const dto = { games: [], participantsCount: 3 };
+    const dto = { games: [], brings: [], participantsCount: 3 };
     const p = service.boardGames('e1');
     const req = http.expectOne(`${API}/events/e1/board-games`);
     expect(req.request.method).toBe('GET');
     expect(req.request.withCredentials).toBe(true);
     req.flush(dto);
     expect(await p).toEqual(dto);
+  });
+
+  it('bring → PUT /events/:eventId/board-games/:id/bring, sans corps, avec withCredentials (Story 49.2)', async () => {
+    const p = service.bring('e1', 'g1');
+    const req = http.expectOne(`${API}/events/e1/board-games/g1/bring`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.body).toBeNull();
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(p).resolves.toBeUndefined();
+  });
+
+  it('unbring → DELETE /events/:eventId/board-games/:id/bring, avec withCredentials (Story 49.2)', async () => {
+    const p = service.unbring('e1', 'g1');
+    const req = http.expectOne(`${API}/events/e1/board-games/g1/bring`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(p).resolves.toBeUndefined();
+  });
+
+  it('un refus de bring rejette avec la réponse HTTP (la page décide quoi en faire)', async () => {
+    const p = service.bring('e1', 'g1');
+    http
+      .expectOne(`${API}/events/e1/board-games/g1/bring`)
+      .flush({ message: 'Jeu introuvable' }, { status: 404, statusText: 'Not Found' });
+    await expect(p).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('broughtCount → GET /me/board-games/:id/brought-count, avec withCredentials (Story 49.2)', async () => {
+    const p = service.broughtCount('g1');
+    const req = http.expectOne(`${API}/me/board-games/g1/brought-count`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush({ count: 2 });
+    expect(await p).toEqual({ count: 2 });
   });
 
   it('create → POST /parties/:id/events avec le payload', async () => {

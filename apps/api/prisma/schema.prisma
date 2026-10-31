@@ -52,6 +52,7 @@ model User {
   announcementReads         AnnouncementRead[]
   calendarLayers            UserCalendarLayer[]
   boardGames                BoardGame[]
+  eventGameBrings           EventGameBring[]
 }
 
 enum PartieKind {
@@ -154,7 +155,8 @@ model PartieHidden {
 /// Un jeu de la Ludothèque d'une personne (Story 48.1, épic 48). Saisie manuelle seulement : nom
 /// obligatoire, joueurs et durée facultatifs. `nameKey` = `boardGameNameKey(name)` (@master-jdr/shared),
 /// calculée par l'API à l'écriture : deux jeux de même clé sont refusés dans une même Ludothèque.
-/// Seul `board-games/` écrit cette table ; elle disparaît en cascade avec son propriétaire.
+/// Seul `board-games/` écrit cette table ; elle disparaît en cascade avec son propriétaire. Story 49.2 : un jeu
+/// apporté à une soirée vit dans `EventGameBring` (écrit par `events/`) ; retirer le jeu retire ses apports.
 model BoardGame {
   id          String   @id @default(uuid())
   ownerId     String
@@ -165,6 +167,8 @@ model BoardGame {
   maxPlayers  Int?
   durationMin Int?
   createdAt   DateTime @default(now())
+
+  gameBrings  EventGameBring[]
 
   @@unique([ownerId, nameKey])
 }
@@ -614,6 +618,7 @@ model Event {
 
   scenario Scenario?
   seances  Seance[]
+  gameBrings EventGameBring[]
 
   @@index([partieId])
 }
@@ -776,4 +781,23 @@ model CharacterGroupRole {
 
   @@unique([partieId, roleKey])
   @@unique([partieId, characterId])
+}
+
+/// Un jeu qu'un participant apporte à une soirée (Story 49.2, épic 49) : au plus un apport par jeu et par
+/// soirée. Seul `events/` écrit cette table, sous le verrou de l'événement ; elle disparaît en cascade avec
+/// l'événement, le jeu (retiré de la Ludothèque) ou la personne (compte supprimé). Le départ d'un participant
+/// ne retire pas encore ses apports : lus seulement pour les participants actuels, purgés par la Story 49.3.
+model EventGameBring {
+  id          String    @id @default(uuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  boardGameId String
+  boardGame   BoardGame @relation(fields: [boardGameId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([eventId, boardGameId])
+  @@index([boardGameId])
+  @@index([userId])
 }

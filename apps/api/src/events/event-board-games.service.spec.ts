@@ -6,6 +6,7 @@ import {
   type PermissionService,
 } from '../permissions/permission.service';
 import { EventBoardGamesService } from './event-board-games.service';
+import type { EventGameBringService } from './event-game-bring.service';
 import type { EventBoardGamesBasis, EventsService } from './events.service';
 
 const GAME = {
@@ -29,6 +30,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
   let permissions: { assert: jest.Mock };
   let events: { boardGamesBasis: jest.Mock };
   let boardGames: { listOfOwner: jest.Mock };
+  let brings: { listFor: jest.Mock };
   let service: EventBoardGamesService;
 
   const group = {
@@ -53,10 +55,12 @@ describe('EventBoardGamesService (Story 49.1)', () => {
     permissions = { assert: jest.fn().mockResolvedValue(testGrant(group, 'member')) };
     events = { boardGamesBasis: jest.fn().mockResolvedValue(basis()) };
     boardGames = { listOfOwner: jest.fn().mockResolvedValue([GAME]) };
+    brings = { listFor: jest.fn().mockResolvedValue([]) };
     service = new EventBoardGamesService(
       permissions as unknown as PermissionService,
       events as unknown as EventsService,
       boardGames as unknown as BoardGamesService,
+      brings as unknown as EventGameBringService,
     );
   });
 
@@ -75,7 +79,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
     expect(permissions.assert).toHaveBeenCalledWith('u1', 'PARTIE_READ', { eventId: 'e1' });
     expect(events.boardGamesBasis).toHaveBeenCalledWith('e1', { id: 'p1', isolated: false });
     expect(boardGames.listOfOwner).toHaveBeenCalledWith('host');
-    expect(result).toEqual({ games: [GAME], participantsCount: 3 });
+    expect(result).toEqual({ games: [GAME], brings: [], participantsCount: 3 });
   });
 
   it('une place réservée n’est pas comptée', async () => {
@@ -112,7 +116,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
 
     const result = await service.list('e1', 'u1');
 
-    expect(result).toEqual({ games: [], participantsCount: 2 });
+    expect(result).toEqual({ games: [], brings: [], participantsCount: 2 });
     expect(boardGames.listOfOwner).not.toHaveBeenCalled();
   });
 
@@ -120,17 +124,66 @@ describe('EventBoardGamesService (Story 49.1)', () => {
     permissions.assert.mockResolvedValue(testGrant({ ...evening, closedAt: new Date() }, 'member'));
     events.boardGamesBasis.mockResolvedValue(basis({ memberIds: ['host'] }));
 
-    expect(await service.list('e1', 'u1')).toEqual({ games: [], participantsCount: 1 });
+    expect(await service.list('e1', 'u1')).toEqual({ games: [], brings: [], participantsCount: 1 });
     expect(boardGames.listOfOwner).not.toHaveBeenCalled();
   });
 
-  it('sans hôte (compte supprimé) : aucun jeu', async () => {
+  it('sans hôte (compte supprimé) : aucun jeu d’hôte', async () => {
     events.boardGamesBasis.mockResolvedValue(
       basis({ hostId: null, inscriptions: [{ userId: 'a', status: 'CONFIRMED' }] }),
     );
 
-    expect(await service.list('e1', 'u1')).toEqual({ games: [], participantsCount: 1 });
+    expect(await service.list('e1', 'u1')).toEqual({ games: [], brings: [], participantsCount: 1 });
     expect(boardGames.listOfOwner).not.toHaveBeenCalled();
+  });
+
+  describe('apports (Story 49.2)', () => {
+    const BRING = {
+      game: { ...GAME, id: 'g2', name: 'Azul', nameKey: 'azul' },
+      bringer: { userId: 'a', pseudo: 'zoe', displayName: 'Zoé' },
+    };
+
+    it('lit les apports des participants actuels, dans l’ordre fourni par EventGameBringService', async () => {
+      events.boardGamesBasis.mockResolvedValue(
+        basis({ inscriptions: [{ userId: 'a', status: 'CONFIRMED' }] }),
+      );
+      brings.listFor.mockResolvedValue([BRING]);
+
+      const result = await service.list('e1', 'u1');
+
+      expect(brings.listFor).toHaveBeenCalledWith('e1', ['host', 'a']);
+      expect(result.brings).toEqual([BRING]);
+    });
+
+    it('une place réservée n’est pas un participant : ses apports ne sont pas demandés', async () => {
+      events.boardGamesBasis.mockResolvedValue(
+        basis({ inscriptions: [{ userId: 'b', status: 'RESERVED' }] }),
+      );
+
+      await service.list('e1', 'u1');
+
+      expect(brings.listFor).toHaveBeenCalledWith('e1', ['host']);
+    });
+
+    it('soirée fermée : aucun apport, rien n’est lu', async () => {
+      events.boardGamesBasis.mockResolvedValue(basis({ cancelledAt: new Date() }));
+
+      expect((await service.list('e1', 'u1')).brings).toEqual([]);
+      expect(brings.listFor).not.toHaveBeenCalled();
+    });
+
+    it('sans hôte : pas de jeux d’hôte, mais les apports des participants restent sur place', async () => {
+      events.boardGamesBasis.mockResolvedValue(
+        basis({ hostId: null, inscriptions: [{ userId: 'a', status: 'CONFIRMED' }] }),
+      );
+      brings.listFor.mockResolvedValue([BRING]);
+
+      expect(await service.list('e1', 'u1')).toEqual({
+        games: [],
+        brings: [BRING],
+        participantsCount: 1,
+      });
+    });
   });
 
   it('partie de JDR : refusée (403), rien n’est lu', async () => {

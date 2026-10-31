@@ -6,6 +6,7 @@ import { InvitationCleanupService } from '../invitations/invitation-cleanup.serv
 import { PollModule } from '../poll/poll.module';
 import { DatableSeancesService } from './datable-seances.service';
 import { EventBoardGamesService } from './event-board-games.service';
+import { EventGameBringService } from './event-game-bring.service';
 import { EventCancellationMailer } from './event-cancellation-mailer.service';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
@@ -47,6 +48,9 @@ import { OpenPollContextService } from './open-poll-context.service';
  * les jeux de l'hôte d'une soirée par `BoardGamesService.listOfOwner`. La dépendance va de `events/` vers
  * `board-games/`, jamais l'inverse (`BoardGamesModule` n'importe que `PermissionsModule`).
  *
+ * Story 49.2 : `EventGameBringService` écrit `EventGameBring` (les jeux qu'un participant apporte) ; il lit la
+ * propriété d'un jeu par `BoardGamesService`, jamais `prisma.boardGame`.
+ *
  * Story 40.3 : `GroupEventsService` est exporté — les routes d'inscription partagées avec le JDR
  * (`scenarios/seances/:id/inscription`) y délèguent la branche « groupe ».
  */
@@ -59,6 +63,7 @@ import { OpenPollContextService } from './open-poll-context.service';
     InvitationCleanupService,
     GroupEventsService,
     EventBoardGamesService,
+    EventGameBringService,
     GroupPollChoiceService,
     GroupPollExtensionService,
     OpenPollContextService,

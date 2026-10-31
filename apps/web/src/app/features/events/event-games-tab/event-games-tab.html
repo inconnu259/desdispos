@@ -1,38 +1,103 @@
-<!-- Story 49.1 : onglet des jeux sur place, en lecture seule. La région d'annonce est TOUJOURS présente (une
-     région ajoutée en même temps que son texte n'est pas lue) ; aucun bandeau visible. -->
+<!-- Stories 49.1 et 49.2 : onglet des jeux sur place. La région d'annonce est TOUJOURS présente (une région ajoutée
+     en même temps que son texte n'est pas lue) ; aucun bandeau visible. -->
 <div class="egt">
   <div class="egt__live" role="status" aria-live="polite">{{ announcement() }}</div>
 
   @if (data(); as dto) {
     <app-games-summary
-      [total]="games().length"
+      [total]="siteTotal()"
       [fitting]="fitting()"
       [headcount]="headcount()"
       [(fitOnly)]="fitOnly"
     />
 
-    @if (games().length === 0) {
+    @if (siteTotal() === 0) {
       <p class="egt__empty">{{ theme.tone()['event_games.empty'] }}</p>
-      @if (canFill()) {
+      <!-- Un participant autre que l'hôte a son lien dans « Dans mon … » (une seule fois). -->
+      @if (canFill() && !showMine()) {
         <a class="egt__link" routerLink="/profile/board-games">{{
           theme.tone()['event_games.fill_link']
         }}</a>
       }
     } @else {
+      @if (hostTotal() > 0) {
+        <app-games-section
+          [sectionKey]="hostSectionKey"
+          [title]="sectionTitle()"
+          [total]="hostTotal()"
+          [shown]="fitOnly() ? hostView().length : null"
+        >
+          <ng-container
+            [ngTemplateOutlet]="rows"
+            [ngTemplateOutletContext]="{ $implicit: hostView(), headcount: dto.participantsCount }"
+          />
+        </app-games-section>
+      }
+      @if (broughtTotal() > 0) {
+        <app-games-section
+          [sectionKey]="broughtSectionKey"
+          [title]="theme.tone()['event_games.brought_section']"
+          [total]="broughtTotal()"
+          [shown]="fitOnly() ? broughtView().length : null"
+        >
+          <ng-container
+            [ngTemplateOutlet]="rows"
+            [ngTemplateOutletContext]="{
+              $implicit: broughtView(),
+              headcount: dto.participantsCount,
+            }"
+          />
+        </app-games-section>
+      }
+    }
+
+    @if (showMine() && mineLoaded() && (libraryEmpty() || mineTotal() > 0)) {
       <app-games-section
-        [sectionKey]="hostSectionKey"
-        [title]="sectionTitle()"
-        [total]="games().length"
-        [shown]="fitOnly() ? visible().length : null"
+        [sectionKey]="mineSectionKey"
+        [title]="theme.tone()['event_games.mine_section']"
+        [total]="mineTotal()"
+        [shown]="fitOnly() ? mineView().length : null"
       >
-        <ul class="egt__list">
-          @for (game of visible(); track game.id) {
-            <li><app-game-row [game]="game" [headcount]="dto.participantsCount" /></li>
-          }
-        </ul>
+        @if (libraryEmpty()) {
+          <p class="egt__empty">{{ theme.tone()['event_games.mine_empty'] }}</p>
+          <a class="egt__link" routerLink="/profile/board-games">{{
+            theme.tone()['event_games.fill_link']
+          }}</a>
+        } @else {
+          <ng-container
+            [ngTemplateOutlet]="rows"
+            [ngTemplateOutletContext]="{ $implicit: mineView(), headcount: dto.participantsCount }"
+          />
+        }
       </app-games-section>
     }
   } @else if (failed()) {
     <p class="egt__error">{{ theme.tone()['board_games.error_fallback'] }}</p>
   }
 </div>
+
+<ng-template #rows let-items let-headcount="headcount">
+  <ul class="egt__list">
+    @for (item of items; track item.game.id) {
+      <li>
+        <app-game-row
+          [game]="item.game"
+          [headcount]="headcount"
+          [duplicateCount]="item.duplicateCount"
+          [byText]="item.byText"
+          [alsoText]="item.alsoText"
+          [warnText]="item.warnText"
+          [actionLabel]="
+            item.action === 'bring'
+              ? theme.tone()['event_games.bring_btn']
+              : item.action === 'unbring'
+                ? theme.tone()['event_games.unbring_btn']
+                : null
+          "
+          [actionBusy]="isBusy(item.game.id)"
+          (act)="onAct(item)"
+        />
+      </li>
+    }
+  </ul>
+</ng-template>

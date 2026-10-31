@@ -1,5 +1,10 @@
 import request from 'supertest';
-import type { BoardGameDto, EventBoardGamesDto, UserLibraryDto } from '@master-jdr/shared';
+import type {
+  BoardGameBroughtCountDto,
+  BoardGameDto,
+  EventBoardGamesDto,
+  UserLibraryDto,
+} from '@master-jdr/shared';
 import {
   RealtimeEventsService,
   partieTopic,
@@ -647,7 +652,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
     const dto = body<EventBoardGamesDto>(res);
     expect(dto.games.map((g) => g.name)).toEqual(['Azul', 'éclipse', 'Zombicide']);
     expect(dto.participantsCount).toBe(3);
-    expect(keysOf(dto)).toEqual(['games', 'participantsCount']);
+    expect(keysOf(dto)).toEqual(['brings', 'games', 'participantsCount']);
     expect(keysOf(dto.games[0])).toEqual(
       ['createdAt', 'durationMin', 'id', 'maxPlayers', 'minPlayers', 'name', 'nameKey'].sort(),
     );
@@ -705,6 +710,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
 
     expect(body<EventBoardGamesDto>(await read(host, card.id).expect(200))).toEqual({
       games: [],
+      brings: [],
       participantsCount: 1,
     });
   });
@@ -722,6 +728,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
 
     expect(body<EventBoardGamesDto>(await read(guest, card.id).expect(200))).toEqual({
       games: [],
+      brings: [],
       participantsCount: 2,
     });
   });
@@ -745,6 +752,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
     await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: new Date() } });
     expect(body<EventBoardGamesDto>(await read(admin, event.id).expect(200))).toEqual({
       games: [],
+      brings: [],
       participantsCount: 1,
     });
 
@@ -767,6 +775,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
 
     expect(body<EventBoardGamesDto>(await read(guest, card.id).expect(200))).toEqual({
       games: [],
+      brings: [],
       participantsCount: 1,
     });
   });
@@ -810,5 +819,344 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
     } finally {
       emit.mockRestore();
     }
+  });
+});
+
+/**
+ * Story 49.2 — dire ce que j'apporte, et voir les doublons : `PUT/DELETE /events/:eventId/board-games/:id/bring`,
+ * les apports dans la lecture, `GET /me/board-games/:id/brought-count`. Matrice d'entrées/sorties de la spec, de
+ * bout en bout (droit `EVENT_GAME_BRING`, verrou de la soirée, refus dans l'ordre, cascade, émission).
+ */
+describe('Jeux sur place — dire ce que j’apporte, et voir les doublons (Story 49.2)', () => {
+  let h: Harness;
+
+  beforeAll(async () => {
+    h = await Harness.start();
+  });
+
+  afterAll(async () => {
+    await h?.close();
+  });
+
+  const UNKNOWN_ID = '4f9a7f0e-2c1b-4b8e-9d34-0a5c6e7f8a9b';
+
+  const addGame = async (u: { agent: Agent }, name: string): Promise<BoardGameDto> =>
+    body<BoardGameDto>(await u.agent.post('/me/board-games').send({ name }).expect(201));
+  const bringUrl = (eventId: string, gameId: string) =>
+    `/events/${eventId}/board-games/${gameId}/bring`;
+  const read = async (who: { agent: Agent }, eventId: string) =>
+    body<EventBoardGamesDto>(await who.agent.get(`/events/${eventId}/board-games`).expect(200));
+  type Card = { id: string; seance: { id: string } };
+  const propose = async (
+    who: { agent: Agent },
+    groupId: string,
+    over: Record<string, unknown> = {},
+  ) =>
+    body<Card>(
+      await who.agent
+        .post(`/parties/${groupId}/events`)
+        .send({ title: 'Soirée plateaux', date: isoDay(6), slot: 'EVENING', ...over })
+        .expect(201),
+    );
+  const signUp = (who: { agent: Agent }, seanceId: string) =>
+    who.agent.post(`/scenarios/seances/${seanceId}/inscription`).expect(201);
+  const messageOf = (res: request.Response) => body<{ message?: string }>(res).message;
+  const bringCount = (eventId: string) => h.prisma.eventGameBring.count({ where: { eventId } });
+
+  /** Un groupe, son hôte (membre), deux invités inscrits et un membre non inscrit ; une conjonction à venir. */
+  async function setup(label: string) {
+    const admin = await h.createUser(`bg492-${label}-admin`);
+    const host = await h.createUser(`bg492-${label}-hote`);
+    const zoe = await h.createUser(`bg492-${label}-zoe`);
+    const yan = await h.createUser(`bg492-${label}-yan`);
+    const outsider = await h.createUser(`bg492-${label}-hors`);
+    const group = await h.createPartie(
+      admin,
+      'CAMPAGNE_EPISODIQUE',
+      `bg492-${label}`,
+      'ralliement',
+    );
+    for (const u of [host, zoe, yan, outsider]) await h.addMember(group.id, u);
+    const card = await propose(host, group.id);
+    await signUp(zoe, card.seance.id);
+    await signUp(yan, card.seance.id);
+    return { admin, host, zoe, yan, outsider, groupId: group.id, card };
+  }
+
+  it('apporter : 204, l’apport est lu par tous avec son porteur (pseudo, nom affiché — jamais d’e-mail)', async () => {
+    const { host, zoe, outsider, card } = await setup('bring');
+    const azul = await addGame(zoe, 'Azul');
+
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+
+    for (const viewer of [host, zoe, outsider]) {
+      const dto = await read(viewer, card.id);
+      expect(dto.brings).toHaveLength(1);
+      expect(dto.brings[0].game).toEqual(azul);
+      expect(dto.brings[0].bringer).toEqual({
+        userId: zoe.id,
+        pseudo: zoe.pseudo,
+        displayName: zoe.displayName,
+      });
+      expect(keysOf(dto.brings[0])).toEqual(['bringer', 'game']);
+      expect(keysOf(dto.brings[0].bringer)).toEqual(['displayName', 'pseudo', 'userId']);
+      expect(JSON.stringify(dto)).not.toContain(zoe.email);
+    }
+  });
+
+  it('apporter deux fois : 204 et une seule ligne ; retirer deux fois : 204', async () => {
+    const { zoe, card } = await setup('idempotent');
+    const azul = await addGame(zoe, 'Azul');
+
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    expect(await bringCount(card.id)).toBe(1);
+
+    await zoe.agent.delete(bringUrl(card.id, azul.id)).expect(204);
+    await zoe.agent.delete(bringUrl(card.id, azul.id)).expect(204);
+    expect(await bringCount(card.id)).toBe(0);
+    expect((await read(zoe, card.id)).brings).toEqual([]);
+  });
+
+  it('retirer ne touche que MON apport ; le jeu d’autrui est un 404', async () => {
+    const { zoe, yan, card } = await setup('mien');
+    const azul = await addGame(zoe, 'Azul');
+    const skull = await addGame(yan, 'Skull');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    await yan.agent.put(bringUrl(card.id, skull.id)).expect(204);
+
+    await yan.agent.delete(bringUrl(card.id, azul.id)).expect(404);
+    await yan.agent.put(bringUrl(card.id, azul.id)).expect(404);
+    expect(await bringCount(card.id)).toBe(2);
+
+    await zoe.agent.delete(bringUrl(card.id, azul.id)).expect(204);
+    expect((await read(zoe, card.id)).brings.map((b) => b.game.name)).toEqual(['Skull']);
+  });
+
+  it('doublons : l’hôte a « Azul », Zoé apporte « azul » — les deux lignes portent la même clé', async () => {
+    const { host, zoe, card } = await setup('doublon');
+    await addGame(host, 'Azul');
+    const mine = await addGame(zoe, 'azul');
+    await zoe.agent.put(bringUrl(card.id, mine.id)).expect(204);
+
+    const dto = await read(zoe, card.id);
+
+    expect(dto.games.map((g) => g.nameKey)).toEqual(['azul']);
+    expect(dto.brings.map((b) => b.game.nameKey)).toEqual(['azul']);
+  });
+
+  it('ordre de la lecture : celui des jeux (clé normalisée, puis nom)', async () => {
+    const { zoe, yan, card } = await setup('ordre');
+    for (const [who, name] of [
+      [zoe, 'Skull'],
+      [zoe, 'Azul'],
+      [yan, 'azul'],
+    ] as const) {
+      const game = await addGame(who, name);
+      await who.agent.put(bringUrl(card.id, game.id)).expect(204);
+    }
+
+    const dto = await read(zoe, card.id);
+
+    expect(dto.brings.map((b) => b.game.nameKey)).toEqual(['azul', 'azul', 'skull']);
+  });
+
+  it('émission : `partie:{groupe}` après chaque écriture, jamais sur une lecture ni sur un refus', async () => {
+    const { zoe, outsider, groupId, card } = await setup('emission');
+    const azul = await addGame(zoe, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+
+      emit.mockClear();
+      await zoe.agent.delete(bringUrl(card.id, azul.id)).expect(204);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+
+      emit.mockClear();
+      await read(zoe, card.id);
+      await outsider.agent.put(bringUrl(card.id, azul.id)).expect(403);
+      expect(emit).not.toHaveBeenCalled();
+    } finally {
+      emit.mockRestore();
+    }
+  });
+
+  it('une émission en échec ne fait pas échouer l’apport (204 conservé, ligne écrite)', async () => {
+    const { zoe, card } = await setup('emission-ko');
+    const azul = await addGame(zoe, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit').mockImplementation(() => {
+      throw new Error('flux coupé');
+    });
+    try {
+      await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    } finally {
+      emit.mockRestore();
+    }
+    expect(await bringCount(card.id)).toBe(1);
+  });
+
+  it('soirée annulée : 400 en français, rien n’est écrit ; la lecture ne montre plus d’apport', async () => {
+    const { host, zoe, groupId, card } = await setup('annulee');
+    const azul = await addGame(zoe, 'Azul');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    await host.agent.post(`/parties/${groupId}/events/${card.id}/cancel`).expect(201);
+
+    const put = await zoe.agent.put(bringUrl(card.id, azul.id)).expect(400);
+    const del = await zoe.agent.delete(bringUrl(card.id, azul.id)).expect(400);
+
+    expect(messageOf(put)).toBe('Cette conjonction est annulée : plus rien ne peut y changer');
+    expect(messageOf(del)).toBe(messageOf(put));
+    expect(await bringCount(card.id)).toBe(1);
+    expect((await read(zoe, card.id)).brings).toEqual([]);
+  });
+
+  it('soirée passée : 400 en français, rien n’est écrit', async () => {
+    const { zoe, card } = await setup('passee');
+    const azul = await addGame(zoe, 'Azul');
+    const day = new Date(`${isoDay(-2)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: card.seance.id },
+      data: { startDate: day, endDate: day },
+    });
+
+    const res = await zoe.agent.put(bringUrl(card.id, azul.id)).expect(400);
+
+    expect(messageOf(res)).toBe(
+      'Cette conjonction est passée : les inscriptions ne peuvent plus changer',
+    );
+    expect(await bringCount(card.id)).toBe(0);
+  });
+
+  it('rencontre isolée : un membre apporte ; close ou annulée → 400 « soirée »', async () => {
+    const admin = await h.createUser('bg492-iso-admin');
+    const m1 = await h.createUser('bg492-iso-m1');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg492-iso', 'ralliement');
+    await h.addMember(evening.id, m1);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+    const game = await addGame(m1, 'Codenames');
+
+    await m1.agent.put(bringUrl(event.id, game.id)).expect(204);
+    expect((await read(admin, event.id)).brings).toHaveLength(1);
+
+    await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: new Date() } });
+    const closed = await m1.agent.put(bringUrl(event.id, game.id)).expect(400);
+    expect(messageOf(closed)).toBe('Cette soirée est terminée : plus rien ne peut y changer');
+    expect((await read(admin, event.id)).brings).toEqual([]);
+
+    await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: null } });
+    await h.prisma.event.update({ where: { id: event.id }, data: { cancelledAt: new Date() } });
+    const cancelled = await m1.agent.put(bringUrl(event.id, game.id)).expect(400);
+    expect(messageOf(cancelled)).toBe('Cette soirée est annulée : plus rien ne peut y changer');
+  });
+
+  it('un membre non inscrit, un étranger, une place RÉSERVÉE : 403, rien n’est écrit', async () => {
+    const { host, outsider, zoe, groupId } = await setup('refus');
+    const stranger = await h.createUser('bg492-refus-etranger');
+    const card = await propose(host, groupId, { capacity: 6, reservedUserIds: [outsider.id] });
+    await signUp(zoe, card.seance.id);
+
+    for (const who of [outsider, stranger]) {
+      const game = await addGame(who, 'Azul');
+      await who.agent.put(bringUrl(card.id, game.id)).expect(403);
+      await who.agent.delete(bringUrl(card.id, game.id)).expect(403);
+    }
+    expect(await bringCount(card.id)).toBe(0);
+  });
+
+  it('l’hôte ne peut rien apporter à sa propre soirée : 403, rien n’est écrit', async () => {
+    const { host, card } = await setup('hote');
+    const game = await addGame(host, 'Azul');
+
+    await host.agent.put(bringUrl(card.id, game.id)).expect(403);
+
+    expect(await bringCount(card.id)).toBe(0);
+  });
+
+  it('jeu d’autrui ou inconnu : 404, même corps, rien n’est écrit', async () => {
+    const { host, zoe, card } = await setup('autrui');
+    const theirs = await addGame(host, 'Azul');
+
+    const other = await zoe.agent.put(bringUrl(card.id, theirs.id)).expect(404);
+    const unknown = await zoe.agent.put(bringUrl(card.id, UNKNOWN_ID)).expect(404);
+
+    expect(body<unknown>(other)).toEqual(body<unknown>(unknown));
+    expect(await bringCount(card.id)).toBe(0);
+  });
+
+  it('partie de JDR : 403 pour son MJ comme pour son joueur ; identifiants mal formés : 400 ; sans session : 403', async () => {
+    const gm = await h.createUser('bg492-jdr-mj');
+    const player = await h.createUser('bg492-jdr-joueur');
+    const jdr = await h.createPartie(gm, 'ONE_SHOT', 'bg492-jdr');
+    await h.addMember(jdr.id, player);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: jdr.id } });
+    const game = await addGame(player, 'Azul');
+
+    for (const who of [gm, player]) {
+      await who.agent.put(bringUrl(event.id, game.id)).expect(403);
+    }
+    await player.agent.put(bringUrl('pas-un-uuid', game.id)).expect(400);
+    await player.agent.put(bringUrl(event.id, 'pas-un-uuid')).expect(400);
+    await player.agent.put(bringUrl(UNKNOWN_ID, game.id)).expect(404);
+    await request(h.app.getHttpServer()).put(bringUrl(event.id, game.id)).expect(403);
+    expect(await bringCount(event.id)).toBe(0);
+  });
+
+  it('un participant parti : son apport n’est plus lu (sa purge est la Story 49.3)', async () => {
+    const { zoe, yan, card } = await setup('parti');
+    const azul = await addGame(zoe, 'Azul');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+
+    await zoe.agent.delete(`/scenarios/seances/${card.seance.id}/inscription`).expect(200);
+
+    expect((await read(yan, card.id)).brings).toEqual([]);
+  });
+
+  it('brought-count : seules les soirées encore ouvertes comptent ; jeu d’autrui ou inconnu → 404', async () => {
+    const { zoe, host, groupId, card } = await setup('compte');
+    const azul = await addGame(zoe, 'Azul');
+    const count = async (who: { agent: Agent }, id: string) =>
+      body<BoardGameBroughtCountDto>(
+        await who.agent.get(`/me/board-games/${id}/brought-count`).expect(200),
+      );
+    expect(await count(zoe, azul.id)).toEqual({ count: 0 });
+
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    const second = await propose(host, groupId, { date: isoDay(9) });
+    await signUp(zoe, second.seance.id);
+    await zoe.agent.put(bringUrl(second.id, azul.id)).expect(204);
+    expect(await count(zoe, azul.id)).toEqual({ count: 2 });
+
+    // Une soirée passée ne compte plus (son apport reste en base, mais plus rien n'y change).
+    const day = new Date(`${isoDay(-2)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: second.seance.id },
+      data: { startDate: day, endDate: day },
+    });
+    expect(await count(zoe, azul.id)).toEqual({ count: 1 });
+
+    await host.agent.get(`/me/board-games/${azul.id}/brought-count`).expect(404);
+    await zoe.agent.get(`/me/board-games/${UNKNOWN_ID}/brought-count`).expect(404);
+    await zoe.agent.get('/me/board-games/pas-un-uuid/brought-count').expect(400);
+    await request(h.app.getHttpServer())
+      .get(`/me/board-games/${azul.id}/brought-count`)
+      .expect(403);
+  });
+
+  it('retirer le jeu de ma Ludothèque retire ses apports, et prévient les onglets de la soirée', async () => {
+    const { zoe, groupId, card } = await setup('cascade');
+    const azul = await addGame(zoe, 'Azul');
+    await zoe.agent.put(bringUrl(card.id, azul.id)).expect(204);
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await zoe.agent.delete(`/me/board-games/${azul.id}`).expect(204);
+
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+    } finally {
+      emit.mockRestore();
+    }
+    expect(await bringCount(card.id)).toBe(0);
+    expect((await read(zoe, card.id)).brings).toEqual([]);
   });
 });

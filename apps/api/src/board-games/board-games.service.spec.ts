@@ -100,6 +100,55 @@ describe('BoardGamesService (Story 48.1)', () => {
     });
   });
 
+  describe('listByIds (Story 49.2)', () => {
+    it('lit les jeux désignés, triés comme listMine, sans décider de droit', async () => {
+      prisma.boardGame.findMany.mockResolvedValue([row({ id: 'g2' })]);
+
+      const result = await service.listByIds(['g2', 'g3']);
+
+      expect(prisma.boardGame.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['g2', 'g3'] } },
+        orderBy: [{ nameKey: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      });
+      expect(result).toEqual([toBoardGameDto(row({ id: 'g2' }))]);
+      expect(permissions.assertLibraryRead).not.toHaveBeenCalled();
+    });
+
+    it('aucun identifiant : liste vide, aucune lecture', async () => {
+      await expect(service.listByIds([])).resolves.toEqual([]);
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ownedGameIds (Story 49.2)', () => {
+    it('ne retient que les jeux du propriétaire demandé', async () => {
+      prisma.boardGame.findMany.mockResolvedValue([{ id: 'g1' }]);
+
+      const owned = await service.ownedGameIds('u1', ['g1', 'g9']);
+
+      expect(prisma.boardGame.findMany).toHaveBeenCalledWith({
+        where: { ownerId: 'u1', id: { in: ['g1', 'g9'] } },
+        select: { id: true },
+      });
+      expect([...owned]).toEqual(['g1']);
+    });
+
+    it('lit sur le client fourni (transaction) quand il y en a un', async () => {
+      const tx = { boardGame: { findMany: jest.fn().mockResolvedValue([{ id: 'g1' }]) } };
+
+      const owned = await service.ownedGameIds('u1', ['g1'], tx as never);
+
+      expect(tx.boardGame.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+      expect(owned.has('g1')).toBe(true);
+    });
+
+    it('aucun identifiant : ensemble vide, aucune lecture', async () => {
+      expect((await service.ownedGameIds('u1', [])).size).toBe(0);
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('listMine', () => {
     it('lit mes seuls jeux, triés par clé normalisée puis par nom', async () => {
       prisma.boardGame.findMany.mockResolvedValue([row()]);

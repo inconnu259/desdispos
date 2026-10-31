@@ -1,7 +1,9 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import type { AuthUser, BoardGameDto } from '@master-jdr/shared';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -10,6 +12,7 @@ import { ContextualNavService } from '../../../core/navigation/contextual-nav.se
 import { RealtimeService } from '../../../core/realtime/realtime.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP, type Theme } from '../../../core/theme/tones';
+import { EventsApiService } from '../../events/events-api.service';
 import { formatBoardGameCount, formatBoardGameMeasures } from '../board-game-measures';
 import { BOARD_GAME_UNDO_DELAY_MS, BoardGamesPage } from './board-games-page';
 
@@ -70,6 +73,8 @@ describe('BoardGamesPage (Story 48.1)', () => {
     notifyChanged: () => void;
   };
   let realtime: { connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> };
+  let eventsApi: { broughtCount: ReturnType<typeof vi.fn> };
+  let dialog: { open: ReturnType<typeof vi.fn> };
   let nav: ContextualNavService;
   let activeTheme: ReturnType<typeof signal<Theme>>;
 
@@ -97,6 +102,9 @@ describe('BoardGamesPage (Story 48.1)', () => {
       notifyChanged: () => changed.update((v) => v + 1),
     };
     realtime = { connect: vi.fn(), disconnect: vi.fn() };
+    // Story 49.2 : aucun apport par défaut — le retrait reste immédiat, sans fenêtre.
+    eventsApi = { broughtCount: vi.fn().mockResolvedValue({ count: 0 }) };
+    dialog = { open: vi.fn().mockReturnValue({ afterClosed: () => of(true) }) };
     activeTheme = signal<Theme>('grimoire-emeraude');
     const tone = () => TONE_MAP[activeTheme()];
     await TestBed.configureTestingModule({
@@ -105,6 +113,8 @@ describe('BoardGamesPage (Story 48.1)', () => {
         provideRouter([]),
         { provide: BoardGamesService, useValue: svc },
         { provide: RealtimeService, useValue: realtime },
+        { provide: EventsApiService, useValue: eventsApi },
+        { provide: MatDialog, useValue: dialog },
         {
           provide: AuthService,
           useValue: { currentUser: signal<Partial<AuthUser> | null>({ id: 'u1' }) },
@@ -767,6 +777,107 @@ describe('BoardGamesPage (Story 48.1)', () => {
       expect(editRow()).toBeNull();
       expect(names()).toEqual(['Skull']);
       expect(status().textContent?.trim()).toBe('');
+    });
+
+    describe('jeu apporté à des soirées à venir (Story 49.2)', () => {
+      it('aucun apport : le compte est lu au clic, aucune fenêtre, le retrait part aussitôt', async () => {
+        await setup([AZUL, SKULL]);
+        svc.remove.mockResolvedValue(undefined);
+        await openEdit('Azul');
+
+        await clickRemove();
+
+        expect(eventsApi.broughtCount).toHaveBeenCalledWith(AZUL.id);
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(svc.remove).toHaveBeenCalledWith(AZUL.id);
+        expect(names()).toEqual(['Skull']);
+      });
+
+      it('le compte n’est pas lu au chargement de la liste, seulement au clic « Retirer »', async () => {
+        await setup([AZUL, SKULL]);
+        await openEdit('Azul');
+
+        expect(eventsApi.broughtCount).not.toHaveBeenCalled();
+      });
+
+      it('2 soirées : la confirmation le dit AVANT le retrait ; confirmée, le jeu est retiré', async () => {
+        await setup([AZUL, SKULL]);
+        eventsApi.broughtCount.mockResolvedValue({ count: 2 });
+        svc.remove.mockResolvedValue(undefined);
+        await openEdit('Azul');
+
+        await clickRemove();
+
+        expect(dialog.open).toHaveBeenCalledTimes(1);
+        const data = dialog.open.mock.calls[0][1].data as { message: string; confirmLabel: string };
+        expect(data.message).toBe('Ce jeu est apporté à 2 soirées à venir : il en sera retiré.');
+        expect(data.confirmLabel).toBe('Retirer de mon cabinet');
+        expect(
+          (dialog.open.mock.calls[0][1].data as { destructive?: true }).destructive,
+        ).toBeUndefined();
+        expect(svc.remove).toHaveBeenCalledWith(AZUL.id);
+        expect(names()).toEqual(['Skull']);
+        expect(status().textContent).toContain('Jeu retiré');
+      });
+
+      it('1 soirée : « à 1 soirée à venir » (singulier)', async () => {
+        await setup([AZUL]);
+        eventsApi.broughtCount.mockResolvedValue({ count: 1 });
+        svc.remove.mockResolvedValue(undefined);
+        await openEdit('Azul');
+
+        await clickRemove();
+
+        expect((dialog.open.mock.calls[0][1].data as { message: string }).message).toBe(
+          'Ce jeu est apporté à 1 soirée à venir : il en sera retiré.',
+        );
+      });
+
+      it('« Renoncer » dans la fenêtre : rien n’est retiré, la saisie reste ouverte, le bouton est de nouveau disponible', async () => {
+        await setup([AZUL, SKULL]);
+        eventsApi.broughtCount.mockResolvedValue({ count: 3 });
+        dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+        await openEdit('Azul');
+
+        await clickRemove();
+
+        expect(svc.remove).not.toHaveBeenCalled();
+        expect(names()).toEqual(['Skull']);
+        expect(editRow()).not.toBeNull();
+        expect(status().textContent?.trim()).toBe('');
+        expect(buttonByText(editRow()!, 'Retirer de mon cabinet')!.disabled).toBe(false);
+      });
+
+      it('un compte en échec : l’erreur du thème sous la saisie, rien n’est retiré, aucune fenêtre', async () => {
+        await setup([AZUL, SKULL]);
+        eventsApi.broughtCount.mockRejectedValue(new HttpErrorResponse({ status: 500 }));
+        await openEdit('Azul');
+
+        await clickRemove();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(svc.remove).not.toHaveBeenCalled();
+        expect(editRow()).not.toBeNull();
+        expect(editRow()!.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
+          TONE['board_games.error_fallback'],
+        );
+        expect(buttonByText(editRow()!, 'Retirer de mon cabinet')!.disabled).toBe(false);
+      });
+
+      it('jeu déjà retiré ailleurs (compte en 404) : la liste est relue, la saisie se ferme, aucune fenêtre', async () => {
+        await setup([AZUL, SKULL]);
+        eventsApi.broughtCount.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+        svc.list.mockResolvedValue([SKULL]);
+        await openEdit('Azul');
+
+        await clickRemove();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(svc.remove).not.toHaveBeenCalled();
+        expect(svc.list).toHaveBeenCalledTimes(2);
+        expect(editRow()).toBeNull();
+        expect(names()).toEqual(['Skull']);
+      });
     });
 
     it('un nouveau retrait remplace le message en attente', async () => {

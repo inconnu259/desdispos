@@ -12,6 +12,7 @@ import { vi } from 'vitest';
 import type {
   AnnouncementDto,
   BoardGameDto,
+  EventBoardGamesDto,
   CharacterDto,
   CharacterGroupRoleDto,
   EventCardDto,
@@ -224,7 +225,7 @@ interface CreateFixtureOptions {
   /** Story 40.1 : conjonctions servies par `GET /parties/:id/events/list` (vide par défaut). */
   events?: EventCardDto[];
   /** Story 49.1 : jeux sur place servis par `GET /events/:id/board-games` (aucun, 1 participant par défaut). */
-  eventBoardGames?: { games: BoardGameDto[]; participantsCount: number };
+  eventBoardGames?: EventBoardGamesDto;
 }
 
 async function createFixture(
@@ -335,6 +336,8 @@ async function createFixture(
       {
         provide: BoardGamesService,
         useValue: {
+          // Story 49.2 : ma Ludothèque, lue par l'onglet des jeux sur place d'un participant autre que l'hôte.
+          list: vi.fn().mockResolvedValue([]),
           listOf: vi.fn().mockResolvedValue({
             owner: { userId: 'member-2', pseudo: 'membre', displayName: 'Membre Deux' },
             games: [],
@@ -361,7 +364,7 @@ async function createFixture(
           // Story 49.1 : les jeux sur place d'une soirée (onglet posé après « Conjonction · Invités »).
           boardGames: vi
             .fn()
-            .mockResolvedValue(options.eventBoardGames ?? { games: [], participantsCount: 1 }),
+            .mockResolvedValue(options.eventBoardGames ?? { games: [], brings: [], participantsCount: 1 }),
         },
       },
     ],
@@ -6920,6 +6923,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
     });
     const served = {
       games: [game('Azul', 2, 4), game('Codenames', 4, 8), game('Skull', null, null)],
+      brings: [],
       participantsCount: 4,
     };
 
@@ -6984,7 +6988,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       const { fixture, el } = await createFixture(soiree({ role: 'member' }), OTHER_ID, {
         members,
         events: [event()],
-        eventBoardGames: { games: [], participantsCount: 2 },
+        eventBoardGames: { games: [], brings: [], participantsCount: 2 },
         noopAnimations: true,
       });
       await settle(fixture);

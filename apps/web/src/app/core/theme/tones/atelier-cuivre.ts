@@ -356,6 +356,24 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'event_games.playable_one': '{k} jeu jouable à {total}',
   'event_games.playable_many': '{k} jeux jouables à {total}',
   'event_games.announce': '{participants} : {playable}.',
+  /* — Story 49.2 : ce que j'apporte — titres de section, « J'apporte », « Je ne l'apporte plus », râtelier vide : une voix par thème — */
+  'event_games.brought_section': 'Acheminés',
+  'event_games.mine_section': 'Sur mon râtelier',
+  'event_games.bring_btn': "Je l'achemine",
+  'event_games.unbring_btn': "Annuler l'acheminement",
+  'event_games.mine_empty': 'Votre râtelier est vide.',
+  /* — doublons et provenance : neutres (NEUTRAL_KEYS) — */
+  'event_games.dup_pill': '×{n}',
+  'event_games.also_at': 'aussi chez {noms}',
+  'event_games.also_brought_by': 'aussi apporté par {noms}',
+  'event_games.already_at': '⚠ déjà chez {nom}',
+  'event_games.by_other': 'par {nom}',
+  'event_games.by_me': 'par moi',
+  'event_games.holder_me': 'moi',
+  /* — retrait d'un jeu apporté à des soirées à venir (page Ludothèque) : neutre (NEUTRAL_KEYS) — */
+  'board_games.remove_brought_one': 'Ce jeu est apporté à 1 soirée à venir : il en sera retiré.',
+  'board_games.remove_brought_many':
+    'Ce jeu est apporté à {n} soirées à venir : il en sera retiré.',
 
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */

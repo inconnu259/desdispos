@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import type {
+  BoardGameBroughtCountDto,
   CreateEventDto,
   EventBoardGamesDto,
   EventCardDto,
@@ -41,6 +42,36 @@ export class EventsApiService {
       this.http.get<EventBoardGamesDto>(`${API_BASE}/events/${eventId}/board-games`, {
         withCredentials: true,
       }),
+    );
+  }
+
+  /** Story 49.2 : j'apporte l'un de mes jeux à cette soirée (`PUT …/bring`, 204, idempotent). Rejette avec la
+   *  réponse HTTP : 400 soirée close, 403 pas participant ou hôte, 404 jeu retiré entre-temps. */
+  async bring(eventId: string, boardGameId: string): Promise<void> {
+    await firstValueFrom(
+      this.http.put<void>(`${API_BASE}/events/${eventId}/board-games/${boardGameId}/bring`, null, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Story 49.2 : je n'apporte plus ce jeu (`DELETE …/bring`, 204, idempotent). Mêmes refus que `bring`. */
+  async unbring(eventId: string, boardGameId: string): Promise<void> {
+    await firstValueFrom(
+      this.http.delete<void>(`${API_BASE}/events/${eventId}/board-games/${boardGameId}/bring`, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Story 49.2 : à combien de soirées encore ouvertes l'un de MES jeux est apporté — lu avant de le retirer de
+   *  ma Ludothèque. Rejette avec la réponse HTTP (404 : jeu d'autrui ou retiré). */
+  broughtCount(boardGameId: string): Promise<BoardGameBroughtCountDto> {
+    return firstValueFrom(
+      this.http.get<BoardGameBroughtCountDto>(
+        `${API_BASE}/me/board-games/${encodeURIComponent(boardGameId)}/brought-count`,
+        { withCredentials: true },
+      ),
     );
   }
 

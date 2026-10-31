@@ -1914,13 +1914,15 @@ export class EventsService
    * Story 49.1 : les faits dont la route des jeux sur place d'une soirée a besoin — l'hôte, l'annulation, la
    * plage de la séance (la première, l'événement n'en porte qu'une), ses inscriptions (conjonction de groupe)
    * ou les membres de la partie (rencontre isolée). Lecture seule ; la décision (N, ouverte ou non) est dans
-   * `participantsOf` et `eventIsOpen`. `null` si l'événement n'existe pas.
+   * `participantsOf` et `eventIsOpen`. `null` si l'événement n'existe pas. Story 49.2 : `db` permet de la
+   * relire sur le client d'une transaction, sous le verrou de l'événement (écritures d'`EventGameBringService`).
    */
   async boardGamesBasis(
     eventId: string,
     partie: { id: string; isolated: boolean },
+    db: Pick<Prisma.TransactionClient, 'event' | 'membership'> = this.prisma,
   ): Promise<EventBoardGamesBasis | null> {
-    const event = await this.prisma.event.findUnique({
+    const event = await db.event.findUnique({
       where: { id: eventId },
       select: {
         ownerId: true,
@@ -1949,7 +1951,7 @@ export class EventsService
       | undefined;
     const memberIds = partie.isolated
       ? (
-          await this.prisma.membership.findMany({
+          await db.membership.findMany({
             where: { partieId: partie.id },
             select: { userId: true },
           })

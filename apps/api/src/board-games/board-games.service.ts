@@ -106,6 +106,38 @@ export class BoardGamesService {
   }
 
   /**
+   * Les jeux désignés par leurs identifiants, triés comme `listOfOwner` — SANS décision de droit : l'appelant
+   * (`events/`, Story 49.2) a déjà décidé et ne passe que des identifiants lus d'un apport à une soirée.
+   * Un identifiant inconnu est simplement absent du résultat.
+   */
+  async listByIds(ids: string[]): Promise<BoardGameDto[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.prisma.boardGame.findMany({
+      where: { id: { in: ids } },
+      orderBy: [{ nameKey: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+    });
+    return rows.map(toBoardGameDto);
+  }
+
+  /**
+   * Parmi `ids`, ceux qui sont des jeux de `ownerId` (Story 49.2) — l'appartenance d'un jeu, lue ici par
+   * le seul lecteur de `BoardGame`. Un jeu inconnu ou d'une autre personne est simplement absent : l'appelant
+   * répond le même 404 dans les deux cas. `db` permet de lire sur le client d'une transaction.
+   */
+  async ownedGameIds(
+    ownerId: string,
+    ids: string[],
+    db: Pick<PrismaService, 'boardGame'> = this.prisma,
+  ): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const rows = await db.boardGame.findMany({
+      where: { ownerId, id: { in: ids } },
+      select: { id: true },
+    });
+    return new Set(rows.map((r) => r.id));
+  }
+
+  /**
    * Ludothèque de `ownerUserId` lue par `readerId` (Story 48.3). Le droit est décidé par
    * `PermissionService.assertLibraryRead` (`LIBRARY_READ`) AVANT toute lecture : aucune règle de
    * visibilité n'est recodée ici. Tout refus — dont un compte inconnu — est le même 404.
@@ -237,7 +269,9 @@ export class BoardGamesService {
   }
 
   /**
-   * Retire un de mes jeux (Story 48.2) — immédiat, sans confirmation préalable (l'épic 49 l'ajoutera).
+   * Retire un de mes jeux (Story 48.2) — immédiat côté API : la confirmation « apporté à N soirées à venir »
+   * (Story 49.2) est demandée par l'écran, qui lit `GET /me/board-games/:id/brought-count` avant d'appeler ici.
+   * Les apports du jeu à des soirées disparaissent en cascade (`EventGameBring`).
    * Suppression filtrée sur le propriétaire : un jeu qui n'est pas à moi n'est jamais touché et répond
    * 404, avec le même message que la correction.
    */

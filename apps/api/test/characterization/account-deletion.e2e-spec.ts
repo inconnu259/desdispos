@@ -144,6 +144,12 @@ describe('Compte — effacer mon compte (Story 43.2)', () => {
       await me.agent.post('/me/board-games').send({ name: 'Azul' }).expect(201);
       await me.agent.post('/me/board-games').send({ name: 'Skull' }).expect(201);
       expect(await h.prisma.boardGame.count({ where: { ownerId: me.id } })).toBe(2);
+      // Story 49.2 : j'apporte mon Azul à la conjonction d'un autre où je suis inscrit (cascade `EventGameBring`).
+      const azul = await h.prisma.boardGame.findFirstOrThrow({
+        where: { ownerId: me.id, nameKey: 'azul' },
+      });
+      await me.agent.put(`/events/${theirs.id}/board-games/${azul.id}/bring`).expect(204);
+      expect(await h.prisma.eventGameBring.count({ where: { userId: me.id } })).toBe(1);
       // Une seconde session.
       const second = request.agent(h.app.getHttpServer());
       await second
@@ -217,6 +223,8 @@ describe('Compte — effacer mon compte (Story 43.2)', () => {
       expect(await h.prisma.invitation.count({ where: { inviterId: me.id } })).toBe(0);
       // Story 48.1 : ma Ludothèque disparaît avec moi (cascade `BoardGame.owner`).
       expect(await h.prisma.boardGame.count({ where: { ownerId: me.id } })).toBe(0);
+      // Story 49.2 : mon apport disparaît avec moi ; la conjonction de l'autre, elle, reste.
+      expect(await h.prisma.eventGameBring.count({ where: { eventId: theirs.id } })).toBe(0);
       // Les autres comptes restent connectés et intacts.
       for (const other of [admin2, guest, player, gm, bystander]) {
         expect(await userExists(other.id)).toBe(true);

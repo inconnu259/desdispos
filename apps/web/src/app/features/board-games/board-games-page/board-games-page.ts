@@ -14,6 +14,8 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
 import type { BoardGameDto, CreateBoardGameInput } from '@master-jdr/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
@@ -21,6 +23,8 @@ import { ContextualNavService } from '../../../core/navigation/contextual-nav.se
 import { RealtimeService, userTopic } from '../../../core/realtime/realtime.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { EventsApiService } from '../../events/events-api.service';
+import { ConfirmDialog } from '../../parties/confirm-dialog/confirm-dialog';
 import { formatBoardGameMeasures } from '../board-game-measures';
 
 /** Durée d'affichage de « Jeu retiré · Annuler » (Story 48.2). */
@@ -124,7 +128,8 @@ class EntryFields {
  *
  * Story 48.2 : ✎ ouvre la même saisie en ligne, préremplie (une seule ligne à la fois), avec
  * « Enregistrer », le `common.annuler` du thème (⚠️ absent de la planche — décision du 2026-10-30) et
- * « Retirer de mon cabinet / coffre / râtelier ». Le retrait est immédiat ; une ligne d'état polie
+ * « Retirer de mon cabinet / coffre / râtelier ». Le retrait est immédiat — sauf, Story 49.2, pour un jeu apporté à
+ * des soirées à venir, où une confirmation le précède ; une ligne d'état polie
  * entre la saisie et la liste propose « Jeu retiré · Annuler » pendant 8 s — « Annuler » recrée le jeu.
  *
  * Temps réel : la page ouvre `user:{id}` elle-même et relit la liste sur `BoardGamesService.changed`
@@ -141,6 +146,8 @@ class EntryFields {
 export class BoardGamesPage implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly boardGames = inject(BoardGamesService);
+  private readonly eventsApi = inject(EventsApiService);
+  private readonly dialog = inject(MatDialog);
   private readonly realtime = inject(RealtimeService);
   private readonly contextualNav = inject(ContextualNavService);
   private readonly destroyRef = inject(DestroyRef);
@@ -330,8 +337,10 @@ export class BoardGamesPage implements OnInit {
 
   // ─── Retrait et « Annuler » (Story 48.2) ────────────────────────────────────
 
-  /** Retrait immédiat du jeu en cours de correction — aucune confirmation préalable (l'épic 49
-   *  l'ajoutera). */
+  /** Retrait du jeu en cours de correction. Story 49.2 : s'il est apporté à des soirées à venir, une confirmation
+   *  dit combien (« Ce jeu est apporté à {n} soirée(s) à venir : il en sera retiré. ») AVANT le retrait, qui reste
+   *  immédiat ensuite ; sans apport, aucune fenêtre, comme avant. Le compte est lu au clic : s'il échoue, l'erreur
+   *  s'affiche sous la saisie et rien n'est retiré. « Renoncer » ne retire rien. */
   async removeEditing(): Promise<void> {
     const id = this.editingId();
     const game = this.games()?.find((g) => g.id === id);
@@ -339,6 +348,9 @@ export class BoardGamesPage implements OnInit {
     this.edit.submitting.set(true);
     this.edit.error.set(null);
     try {
+      const count = await this.broughtCount(game);
+      if (count === null) return;
+      if (count > 0 && !(await this.confirmBrought(count))) return;
       await this.boardGames.remove(game.id);
     } catch (err) {
       if (err instanceof HttpErrorResponse && err.status === 404) {
@@ -358,6 +370,33 @@ export class BoardGamesPage implements OnInit {
     }
     if (this.editingId() === game.id) this.editingId.set(null);
     this.showRemoved(game);
+  }
+
+  /** Combien de soirées à venir attendent ce jeu (Story 49.2). Un jeu déjà retiré ailleurs (404) suit le chemin
+   *  du retrait en 404 ; tout autre échec : l'erreur sous la saisie, `null`, rien n'est retiré. */
+  private async broughtCount(game: BoardGameDto): Promise<number | null> {
+    try {
+      return (await this.eventsApi.broughtCount(game.id)).count;
+    } catch (err) {
+      if (err instanceof HttpErrorResponse && err.status === 404) throw err;
+      this.edit.error.set(this.writeErrorMessage(err));
+      return null;
+    }
+  }
+
+  /** La confirmation (`ConfirmDialog`, sans variante rouge : le jeu se recrée par « Annuler »). */
+  private async confirmBrought(count: number): Promise<boolean> {
+    const tone = this.theme.tone();
+    const ref = this.dialog.open(ConfirmDialog, {
+      data: {
+        message:
+          count === 1
+            ? tone['board_games.remove_brought_one']
+            : fillTone(tone['board_games.remove_brought_many'], { n: count }),
+        confirmLabel: tone['board_games.remove_btn'],
+      },
+    });
+    return (await firstValueFrom(ref.afterClosed())) === true;
   }
 
   /** « Jeu retiré · Annuler » pendant 8 s ; un nouveau retrait remplace le message en attente. */

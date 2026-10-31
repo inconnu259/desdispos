@@ -1,11 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import type { AuthUser } from '@master-jdr/shared';
@@ -13,6 +16,7 @@ import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { CreateEventDto, UpdateEventDto } from './dto/create-event.dto';
 import { EventBoardGamesService } from './event-board-games.service';
+import { EventGameBringService } from './event-game-bring.service';
 import { GroupEventsService } from './group-events.service';
 
 /**
@@ -27,6 +31,7 @@ export class EventsController {
   constructor(
     private readonly groupEvents: GroupEventsService,
     private readonly eventBoardGames: EventBoardGamesService,
+    private readonly gameBrings: EventGameBringService,
   ) {}
 
   @Post('parties/:id/events')
@@ -68,5 +73,36 @@ export class EventsController {
   @Get('events/:eventId/board-games')
   boardGames(@Param('eventId', ParseUUIDPipe) eventId: string, @CurrentUser() user: AuthUser) {
     return this.eventBoardGames.list(eventId, user.id);
+  }
+
+  /** Story 49.2 : j'apporte l'un de mes jeux à cette soirée — `EVENT_GAME_BRING`, idempotent (204). */
+  @Put('events/:eventId/board-games/:boardGameId/bring')
+  @HttpCode(204)
+  async bring(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('boardGameId', ParseUUIDPipe) boardGameId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    await this.gameBrings.bring(eventId, boardGameId, user.id);
+  }
+
+  /** Story 49.2 : je n'apporte plus ce jeu — idempotent (204). */
+  @Delete('events/:eventId/board-games/:boardGameId/bring')
+  @HttpCode(204)
+  async unbring(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('boardGameId', ParseUUIDPipe) boardGameId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    await this.gameBrings.unbring(eventId, boardGameId, user.id);
+  }
+
+  /** Story 49.2 : combien de soirées à venir attendent l'un de mes jeux — lu avant de le retirer de ma Ludothèque. */
+  @Get('me/board-games/:boardGameId/brought-count')
+  broughtCount(
+    @Param('boardGameId', ParseUUIDPipe) boardGameId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.gameBrings.broughtCount(user.id, boardGameId);
   }
 }

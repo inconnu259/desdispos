@@ -368,6 +368,9 @@ export type PermissionAction =
   // Story 42.1 : annuler une conjonction — son hôte OU un administrateur du groupe (règle décidée dans
   // `PermissionService`). Fermée à tous en JDR.
   | 'EVENT_CANCEL'
+  // Story 49.2 : apporter un de ses jeux à une soirée — tout membre d'un groupe de ralliement ; la condition
+  // « participant, autre que l'hôte » est décidée par `events/`. Fermée à tous en JDR.
+  | 'EVENT_GAME_BRING'
   // Invitations et liens d'invitation (couche 2, aucune capacité requise)
   | 'INVITATION_CREATE'
   | 'INVITATION_READ'
@@ -2125,12 +2128,28 @@ export interface UserLibraryDto {
   games: BoardGameDto[];
 }
 
+/** Un jeu apporté à une soirée par un participant (Story 49.2) : le jeu et qui l'apporte — pseudo et nom
+ *  affiché seulement, jamais d'e-mail. */
+export interface EventBringDto {
+  game: BoardGameDto;
+  bringer: { userId: string; pseudo: string; displayName: string };
+}
+
 /** Les jeux sur place d'une soirée à venir (`GET /events/:eventId/board-games`, Story 49.1) : les jeux de
  *  l'hôte, triés par clé normalisée puis nom, et le nombre de participants N (hôte compris, jamais une place
- *  seulement réservée). Soirée passée, terminée ou annulée : `games` vide, N tel que calculé. Jamais d'e-mail. */
+ *  seulement réservée). Story 49.2 : `brings` — les jeux apportés par les participants actuels (triés comme
+ *  `games`). Soirée passée, terminée ou annulée : `games` et `brings` vides, N tel que
+ *  calculé. Jamais d'e-mail. */
 export interface EventBoardGamesDto {
   games: BoardGameDto[];
+  brings: EventBringDto[];
   participantsCount: number;
+}
+
+/** Combien d'apports de soirées encore ouvertes pèsent sur l'un de mes jeux (`GET
+ *  /me/board-games/:boardGameId/brought-count`, Story 49.2) — lu avant de le retirer de ma Ludothèque. */
+export interface BoardGameBroughtCountDto {
+  count: number;
 }
 
 /** Décision de droit « lire la Ludothèque d'une personne » (Story 48.3). Cible `{ userId }`, décidée

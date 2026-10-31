@@ -70,6 +70,25 @@ describe('EventsApiService (Story 40.1)', () => {
     await expect(p).resolves.toBeUndefined();
   });
 
+  it('exclude → PUT /events/:eventId/board-games/:id/exclusion, sans corps, avec withCredentials (Story 49.4)', async () => {
+    const p = service.exclude('e1', 'g1');
+    const req = http.expectOne(`${API}/events/e1/board-games/g1/exclusion`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.body).toBeNull();
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(p).resolves.toBeUndefined();
+  });
+
+  it('restore → DELETE /events/:eventId/board-games/:id/exclusion, avec withCredentials (Story 49.4)', async () => {
+    const p = service.restore('e1', 'g1');
+    const req = http.expectOne(`${API}/events/e1/board-games/g1/exclusion`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(p).resolves.toBeUndefined();
+  });
+
   it('un refus de bring rejette avec la réponse HTTP (la page décide quoi en faire)', async () => {
     const p = service.bring('e1', 'g1');
     http

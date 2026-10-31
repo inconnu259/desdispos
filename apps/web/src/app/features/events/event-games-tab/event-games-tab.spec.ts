@@ -89,6 +89,8 @@ describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
     list: ReturnType<typeof vi.fn>;
     bring: ReturnType<typeof vi.fn>;
     unbring: ReturnType<typeof vi.fn>;
+    exclude: ReturnType<typeof vi.fn>;
+    restore: ReturnType<typeof vi.fn>;
   };
   let library: ReturnType<typeof vi.fn>;
   let activeTheme: ReturnType<typeof signal<Theme>>;
@@ -132,6 +134,8 @@ describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
       list: vi.fn().mockResolvedValue([card()]),
       bring: vi.fn().mockResolvedValue(undefined),
       unbring: vi.fn().mockResolvedValue(undefined),
+      exclude: vi.fn().mockResolvedValue(undefined),
+      restore: vi.fn().mockResolvedValue(undefined),
     };
     await TestBed.configureTestingModule({
       imports: [Host],
@@ -151,6 +155,8 @@ describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
   afterEach(() => {
     localStorage.removeItem(LS_KEY);
     TestBed.resetTestingModule();
+    // Story 49.4 : le menu ⋮ vit dans le conteneur d'overlays du CDK, hors de l'arbre de la fixture.
+    document.querySelectorAll('.cdk-overlay-container').forEach((n) => n.remove());
   });
 
   describe('contenu', () => {
@@ -920,6 +926,444 @@ describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
       const byServer = sectionRows('Apportées').map((r) => rowText(r));
       expect(byServer[0]).toContain('par YAN');
       expect(byServer[1]).toContain('par moi');
+    });
+  });
+
+  // ─── Story 49.4 : écarter un jeu pour ce soir (hôte) ────────────────────────────────────────────────────────────
+
+  describe('écarter un jeu pour ce soir (Story 49.4)', () => {
+    const served494 = (
+      games: BoardGameDto[],
+      excludedGames?: BoardGameDto[],
+      brings: EventBringDto[] = [],
+    ): EventBoardGamesDto => ({
+      ...served(games, 3, brings),
+      ...(excludedGames === undefined ? {} : { excludedGames }),
+    });
+    const asHost = () => host.userId.set(HOST);
+    const asGuest = () => host.card.set(card({ myInscription: 'CONFIRMED' }));
+    const rowOf = (name: string): HTMLElement | undefined =>
+      Array.from(el().querySelectorAll<HTMLElement>('app-game-row')).find(
+        (r) => r.querySelector('.gr__name')!.textContent!.trim() === name,
+      );
+    const kebab = (name: string): HTMLButtonElement | null =>
+      rowOf(name)?.querySelector<HTMLButtonElement>('.gr__menu') ?? null;
+    const kebabs = (): HTMLButtonElement[] =>
+      Array.from(el().querySelectorAll<HTMLButtonElement>('.gr__menu'));
+    const menu = (): HTMLElement | null => document.querySelector<HTMLElement>('.egt-menu');
+    const menuItem = (): HTMLButtonElement | null =>
+      document.querySelector<HTMLButtonElement>('.egt-menu [role="menuitem"]');
+    const sectionTitles = (): string[] =>
+      Array.from(el().querySelectorAll('.gs__title')).map((n) => n.textContent!.trim());
+    const unavailableRows = (): HTMLElement[] =>
+      Array.from(el().querySelectorAll<HTMLElement>('app-unavailable-row'));
+    const unavailableNames = (): string[] =>
+      unavailableRows().map((r) => r.querySelector('.ur__name')!.textContent!.trim());
+    const restoreButton = (name: string): HTMLButtonElement =>
+      unavailableRows()
+        .find((r) => r.querySelector('.ur__name')!.textContent!.trim() === name)!
+        .querySelector<HTMLButtonElement>('.ur__action')!;
+    const press = (key: string): void => {
+      (document.activeElement ?? document.body).dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      );
+    };
+    async function openMenuOf(name: string): Promise<void> {
+      kebab(name)!.click();
+      await settle();
+    }
+    const azul = game('Azul', 2, 4, 40);
+    const brass = game('Brass', 2, 4);
+    const codenames = game('Codenames', 5, 8);
+
+    describe('le ⋮', () => {
+      it('l’hôte : un ⋮ sur chaque jeu de « Chez moi », nommé « Actions pour {jeu} » ; rien sur les apports', async () => {
+        const zoe: EventBringDto = {
+          game: { ...game('Skull', null, null), id: 'b-skull' },
+          bringer: { userId: 'u-zoe', pseudo: 'zoe', displayName: 'ZOE' },
+        };
+        await setup(served494([azul, brass], [], [zoe]));
+        asHost();
+        await settle();
+
+        expect(kebabs()).toHaveLength(2);
+        expect(kebab('Azul')!.getAttribute('aria-label')).toBe('Actions pour Azul');
+        expect(kebab('Azul')!.getAttribute('aria-haspopup')).toBe('menu');
+        expect(kebab('Azul')!.getAttribute('type')).toBe('button');
+        expect(kebab('Skull')).toBeNull();
+      });
+
+      it('un participant, un membre en lecture seule : aucun ⋮, aucune section du bas', async () => {
+        await setup(served494([azul, brass]));
+        asGuest();
+        await settle();
+        expect(kebabs()).toHaveLength(0);
+
+        host.card.set(card());
+        await settle();
+        expect(kebabs()).toHaveLength(0);
+        expect(menu()).toBeNull();
+      });
+
+      it('le ⋮ ouvre un menu d’une entrée (role=menu / menuitem, nommé avec le jeu), le focus sur l’entrée', async () => {
+        await setup(served494([azul, brass]));
+        asHost();
+        await settle();
+
+        await openMenuOf('Azul');
+
+        expect(menu()!.getAttribute('role')).toBe('menu');
+        expect(menu()!.getAttribute('aria-label')).toBe('Menu des actions pour Azul');
+        expect(document.querySelectorAll('.egt-menu [role="menuitem"]')).toHaveLength(1);
+        expect(menuItem()!.textContent!.trim()).toBe('Sceller pour ce soir');
+        expect(document.activeElement).toBe(menuItem());
+        expect(kebab('Azul')!.getAttribute('aria-expanded')).toBe('true');
+        expect(kebab('Brass')!.getAttribute('aria-expanded')).toBe('false');
+      });
+
+      it.each([
+        ['grimoire-emeraude', 'Sceller pour ce soir'],
+        ['foret-ancienne', 'Laisser au logis ce soir'],
+        ['atelier-cuivre', 'Hors service ce soir'],
+      ] as [Theme, string][])('thème %s : l’entrée du menu dit « %s »', async (theme, label) => {
+        await setup(served494([azul]), theme);
+        asHost();
+        await settle();
+
+        await openMenuOf('Azul');
+
+        expect(menuItem()!.textContent!.trim()).toBe(label);
+      });
+
+      it('Échap referme le menu et rend le focus au ⋮ ; rien n’est écrit', async () => {
+        await setup(served494([azul, brass]));
+        asHost();
+        await settle();
+        await openMenuOf('Brass');
+
+        press('Escape');
+        await settle();
+
+        expect(menu()).toBeNull();
+        expect(document.activeElement).toBe(kebab('Brass'));
+        expect(api.exclude).not.toHaveBeenCalled();
+      });
+
+      it('le fond referme le menu et rend le focus au ⋮', async () => {
+        await setup(served494([azul]));
+        asHost();
+        await settle();
+        await openMenuOf('Azul');
+
+        document.querySelector<HTMLElement>('.cdk-overlay-backdrop')!.click();
+        await settle();
+
+        expect(menu()).toBeNull();
+        expect(document.activeElement).toBe(kebab('Azul'));
+        expect(api.exclude).not.toHaveBeenCalled();
+      });
+
+      it('flèches, Début et Fin gardent le focus sur l’entrée (boucle d’une seule entrée) ; Tab referme', async () => {
+        await setup(served494([azul]));
+        asHost();
+        await settle();
+        await openMenuOf('Azul');
+
+        for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End']) {
+          press(key);
+          expect(document.activeElement, key).toBe(menuItem());
+        }
+        press('Tab');
+        await settle();
+
+        expect(menu()).toBeNull();
+        expect(document.activeElement).toBe(kebab('Azul'));
+      });
+    });
+
+    describe('écarter', () => {
+      it('l’entrée retire le jeu de « Chez moi » AUSSITÔT (l’écriture n’a pas répondu) et le range dans la section du bas', async () => {
+        await setup(served494([azul, brass]));
+        asHost();
+        await settle();
+        let finish!: () => void;
+        api.exclude.mockImplementation(() => new Promise<void>((r) => (finish = r)));
+        api.boardGames.mockResolvedValue(served494([brass], [azul]));
+        await openMenuOf('Azul');
+
+        menuItem()!.click();
+        await settle();
+
+        expect(api.exclude).toHaveBeenCalledWith('e1', azul.id);
+        expect(menu()).toBeNull();
+        expect(rowNames()).toEqual(['Brass']);
+        expect(sectionTitles()).toEqual(['Chez moi', 'Scellées ce soir']);
+        expect(unavailableNames()).toEqual(['Azul']);
+        expect(api.boardGames).toHaveBeenCalledTimes(1);
+
+        finish();
+        await settle();
+
+        expect(api.boardGames).toHaveBeenCalledTimes(2);
+        expect(rowNames()).toEqual(['Brass']);
+        expect(unavailableNames()).toEqual(['Azul']);
+      });
+
+      it('un second toucher pendant l’écriture est ignoré (garde par jeu)', async () => {
+        await setup(served494([azul, brass]));
+        asHost();
+        await settle();
+        const finishers: (() => void)[] = [];
+        api.exclude.mockImplementation(() => new Promise<void>((r) => finishers.push(r)));
+        await openMenuOf('Azul');
+        menuItem()!.click();
+        await settle();
+        expect(restoreButton('Azul').disabled).toBe(true);
+
+        restoreButton('Azul').click();
+        await settle();
+
+        expect(api.exclude).toHaveBeenCalledTimes(1);
+        expect(api.restore).not.toHaveBeenCalled();
+        finishers.forEach((f) => f());
+        await settle();
+      });
+
+      it('refus ou jeu disparu : aucune erreur bloquante, la relecture dit l’état réel', async () => {
+        await setup(served494([azul, brass]));
+        asHost();
+        await settle();
+        api.exclude.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+        await openMenuOf('Azul');
+
+        menuItem()!.click();
+        await settle();
+
+        expect(api.boardGames).toHaveBeenCalledTimes(2);
+        expect(rowNames()).toEqual(['Azul', 'Brass']);
+        expect(sectionTitles()).toEqual(['Chez moi']);
+        expect(el().querySelector('.egt__error')).toBeNull();
+      });
+
+      it('le focus va à la ligne suivante, à défaut à la précédente', async () => {
+        await setup(served494([azul, brass, codenames]));
+        asHost();
+        await settle();
+        api.boardGames.mockResolvedValue(served494([brass, codenames], [azul]));
+        await openMenuOf('Azul');
+        menuItem()!.click();
+        await settle();
+        expect(document.activeElement).toBe(kebab('Brass'));
+
+        api.boardGames.mockResolvedValue(served494([brass], [azul, codenames]));
+        await openMenuOf('Codenames');
+        menuItem()!.click();
+        await settle();
+        expect(document.activeElement).toBe(kebab('Brass'));
+      });
+
+      it('tout est écarté : « Chez moi » laisse la ligne « aucun jeu », la section du bas reste, le focus va à son en-tête', async () => {
+        await setup(served494([azul]));
+        asHost();
+        await settle();
+        api.boardGames.mockResolvedValue(served494([], [azul]));
+        await openMenuOf('Azul');
+
+        menuItem()!.click();
+        await settle();
+
+        expect(text()).toContain(tone()['event_games.empty']);
+        expect(sectionTitles()).toEqual(['Scellées ce soir']);
+        expect(unavailableNames()).toEqual(['Azul']);
+        expect(document.activeElement).toBe(
+          el().querySelector('app-games-section[data-section="excluded"] .gs__header'),
+        );
+      });
+    });
+
+    describe('la section du bas', () => {
+      it('hôte : titre themé, mention « visible par vous seul·e », une ligne par jeu, nom et mesures estompés', async () => {
+        await setup(served494([brass], [azul, codenames]));
+        asHost();
+        await settle();
+
+        expect(sectionTitles()).toEqual(['Chez moi', 'Scellées ce soir']);
+        expect(el().querySelector('.gs__note')!.textContent!.trim()).toBe(
+          'visible par vous seul·e',
+        );
+        expect(unavailableNames()).toEqual(['Azul', 'Codenames']);
+        const first = unavailableRows()[0];
+        expect(first.querySelector('.ur__info')!.textContent).toContain('2–4 joueurs · 40 min');
+        // Le bouton « Remettre » n'est PAS dans la zone estompée à 45 %.
+        expect(first.querySelector('.ur__info .ur__action')).toBeNull();
+        expect(first.querySelector('.ur__action')).not.toBeNull();
+        // Pas de ⋮ dans la section du bas.
+        expect(el().querySelectorAll('app-unavailable-row .gr__menu')).toHaveLength(0);
+      });
+
+      it('absente quand rien n’est écarté (`excludedGames` vide ou clé absente)', async () => {
+        await setup(served494([azul], []));
+        asHost();
+        await settle();
+        expect(sectionTitles()).toEqual(['Chez moi']);
+
+        api.boardGames.mockResolvedValue(served494([azul]));
+        changed.set(1);
+        await settle();
+        expect(sectionTitles()).toEqual(['Chez moi']);
+        expect(unavailableRows()).toHaveLength(0);
+      });
+
+      it('jamais montrée à un autre que l’hôte, même si la réponse portait la liste', async () => {
+        await setup(served494([brass], [azul]));
+        asGuest();
+        await settle();
+
+        // Un participant a, en plus, sa propre section « Dans mon … » (Ludothèque vide ici) : jamais celle du bas.
+        expect(sectionTitles()).toEqual(['Chez Léa', 'Dans mon cabinet']);
+        expect(unavailableRows()).toHaveLength(0);
+        expect(text()).not.toContain('Scellées ce soir');
+        expect(rowNames()).toEqual(['Brass']);
+      });
+
+      it('même quand « Chez moi » est vide : la ligne « aucun jeu » puis la section du bas', async () => {
+        await setup(served494([], [azul]));
+        asHost();
+        await settle();
+
+        expect(text()).toContain(tone()['event_games.empty']);
+        expect(sectionTitles()).toEqual(['Scellées ce soir']);
+        expect(unavailableNames()).toEqual(['Azul']);
+        const empty = el().querySelector('.egt__empty')!;
+        const section = el().querySelector('app-games-section')!;
+        expect(
+          empty.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      });
+
+      it('le filtre « Jouables à N » ne touche pas la section du bas', async () => {
+        await setup(served494([azul, codenames], [brass]));
+        asHost();
+        await settle();
+
+        chip().click();
+        await settle();
+
+        expect(rowNames()).toEqual(['Azul']);
+        expect(unavailableNames()).toEqual(['Brass']);
+      });
+
+      it('les jeux écartés ne comptent ni dans le résumé ni dans le compte de l’onglet', async () => {
+        await setup(served494([azul], [brass, codenames]));
+        asHost();
+        await settle();
+
+        expect(text()).toContain('1 jeu sur place · 1 jouable à 3');
+        expect(host.counts).toEqual([1]);
+      });
+
+      it.each([
+        ['grimoire-emeraude', 'Scellées ce soir', 'visible par vous seul·e', 'Lever le sceau'],
+        ['foret-ancienne', 'Restés au logis', 'visible par toi seul·e', 'Ressortir'],
+        ['atelier-cuivre', 'Hors service', 'visible par vous seul·e', 'Remettre en service'],
+      ] as [Theme, string, string, string][])(
+        'thème %s : titre « %s », mention « %s », bouton « %s » nommé avec le jeu',
+        async (theme, title, note, label) => {
+          await setup(served494([brass], [azul]), theme);
+          asHost();
+          await settle();
+
+          expect(sectionTitles()).toEqual(['Chez moi', title]);
+          expect(el().querySelector('.gs__note')!.textContent!.trim()).toBe(note);
+          expect(restoreButton('Azul').textContent!.trim()).toBe(label);
+          expect(restoreButton('Azul').getAttribute('aria-label')).toBe(`${label} — Azul`);
+          expect(restoreButton('Azul').getAttribute('type')).toBe('button');
+        },
+      );
+
+      it('la section a sa propre clé retenue : la replier ne replie pas « Chez moi »', async () => {
+        await setup(served494([brass], [azul]));
+        asHost();
+        await settle();
+
+        Array.from(el().querySelectorAll<HTMLButtonElement>('.gs__header'))[1].click();
+        await settle();
+
+        expect(JSON.parse(localStorage.getItem(LS_KEY) ?? 'null')).toEqual(['excluded']);
+        // La mention reste visible, même repliée.
+        expect(el().querySelector('.gs__note')).not.toBeNull();
+      });
+    });
+
+    describe('remettre', () => {
+      it('le bouton remet le jeu dans « Chez moi » AUSSITÔT (l’écriture n’a pas répondu), pour tous après la relecture', async () => {
+        await setup(served494([brass], [azul]));
+        asHost();
+        await settle();
+        let finish!: () => void;
+        api.restore.mockImplementation(() => new Promise<void>((r) => (finish = r)));
+        api.boardGames.mockResolvedValue(served494([azul, brass], []));
+
+        restoreButton('Azul').click();
+        await settle();
+
+        expect(api.restore).toHaveBeenCalledWith('e1', azul.id);
+        expect(rowNames()).toEqual(['Azul', 'Brass']);
+        expect(unavailableRows()).toHaveLength(0);
+        expect(sectionTitles()).toEqual(['Chez moi']);
+        expect(api.boardGames).toHaveBeenCalledTimes(1);
+
+        finish();
+        await settle();
+
+        expect(api.boardGames).toHaveBeenCalledTimes(2);
+        expect(rowNames()).toEqual(['Azul', 'Brass']);
+      });
+
+      it('le focus va au bouton suivant de la section du bas, à défaut à l’en-tête de « Chez moi »', async () => {
+        await setup(served494([], [azul, brass]));
+        asHost();
+        await settle();
+        api.boardGames.mockResolvedValue(served494([azul], [brass]));
+        restoreButton('Azul').click();
+        await settle();
+        expect(document.activeElement).toBe(restoreButton('Brass'));
+
+        api.boardGames.mockResolvedValue(served494([azul, brass], []));
+        restoreButton('Brass').click();
+        await settle();
+        expect(document.activeElement).toBe(
+          el().querySelector('app-games-section[data-section="host"] .gs__header'),
+        );
+      });
+
+      it('un refus échoue en silence et la liste est relue', async () => {
+        await setup(served494([brass], [azul]));
+        asHost();
+        await settle();
+        api.restore.mockRejectedValue(new HttpErrorResponse({ status: 400 }));
+
+        restoreButton('Azul').click();
+        await settle();
+
+        expect(api.boardGames).toHaveBeenCalledTimes(2);
+        expect(unavailableNames()).toEqual(['Azul']);
+        expect(el().querySelector('.egt__error')).toBeNull();
+      });
+    });
+
+    it('temps réel : un signal de la partie relit les jeux écartés', async () => {
+      await setup(served494([azul, brass], []));
+      asHost();
+      await settle();
+      expect(unavailableRows()).toHaveLength(0);
+
+      api.boardGames.mockResolvedValue(served494([brass], [azul]));
+      changed.set(1);
+      await settle();
+
+      expect(rowNames()).toEqual(['Brass']);
+      expect(unavailableNames()).toEqual(['Azul']);
     });
   });
 });

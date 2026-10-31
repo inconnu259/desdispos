@@ -31,6 +31,9 @@ let nextUid = 0;
           <span class="gs__chevron" aria-hidden="true">{{ collapsed() ? '▸' : '▾' }}</span>
         </button>
       </h3>
+      @if (note(); as text) {
+        <p class="gs__note">{{ text }}</p>
+      }
       <div class="gs__body" [id]="bodyId" [hidden]="collapsed()">
         <ng-content />
       </div>
@@ -82,10 +85,18 @@ let nextUid = 0;
       color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
     }
 
+    .gs__note {
+      margin: 4px 2px 0;
+      font-size: 11px;
+      color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+    }
+
     .gs__body {
       padding-top: 6px;
     }
   `,
+  // Story 49.4 : repère stable de la section (le focus y revient quand la ligne touchée a disparu).
+  host: { '[attr.data-section]': 'sectionKey()' },
 })
 export class GamesSection {
   private readonly theme = inject(ThemeToneService);
@@ -98,6 +109,8 @@ export class GamesSection {
   readonly total = input.required<number>();
   /** Nombre de jeux visibles sous le filtre actif ; `null` : aucun filtre. */
   readonly shown = input<number | null>(null);
+  /** Story 49.4 : mention discrète sous l'en-tête (« visible par vous seul·e »), toujours visible, même replié. */
+  readonly note = input<string | null>(null);
 
   protected readonly bodyId = `games-section-${++nextUid}`;
   protected readonly collapsed = computed(() => this.state.collapsed().has(this.sectionKey()));

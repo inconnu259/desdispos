@@ -188,6 +188,8 @@ const JDR_NOBODY: PermissionAction[] = [
   'EVENT_CANCEL',
   // Story 49.2 : apporter un jeu à une soirée — n'existe pas en JDR.
   'EVENT_GAME_BRING',
+  // Story 49.4 : écarter un jeu de l'hôte pour une soirée — n'existe pas en JDR.
+  'EVENT_GAME_EXCLUDE',
   // Story 40.4 : réserver une place à un membre — n'existe pas en JDR.
   'SEANCE_RESERVE',
   // Story 40.7 : prolonger le vote d'une conjonction — n'existe pas en JDR.
@@ -524,6 +526,8 @@ describe('PermissionService', () => {
       'POLL_CHOOSE',
       // Story 40.7 : prolonger le vote d'une conjonction (testé à part, sur la cible `{ eventId }`).
       'POLL_EXTEND',
+      // Story 49.4 : écarter un jeu de l'hôte pour une soirée — hôte seul (testé à part, cible `{ eventId }`).
+      'EVENT_GAME_EXCLUDE',
     ];
     /** Modifier la partie, la clore, la rouvrir, la brûler (Story 39.1), inviter et retirer un
      *  membre (Story 39.3) : admin seul. */
@@ -770,6 +774,57 @@ describe('PermissionService', () => {
         prisma.event.findUnique.mockResolvedValue(null);
         await expect(
           service.assert(MEMBRE, 'EVENT_GAME_BRING', { eventId: 'zzz' }),
+        ).rejects.toBeInstanceOf(NotFoundException);
+      });
+    });
+
+    // Story 49.4 — EVENT_GAME_EXCLUDE : cellule de rôle ouverte, règle « hôte » décidée dans assert().
+    describe('EVENT_GAME_EXCLUDE — hôte de la soirée seul', () => {
+      const event = (ownerId: string | null) => ({ id: 'ev-1', ownerId, partie: RALLIEMENT });
+
+      it('accordé à l’hôte, qu’il soit membre ou administrateur', async () => {
+        prisma.event.findUnique.mockResolvedValue(event(MEMBRE));
+        await expect(
+          service.assert(MEMBRE, 'EVENT_GAME_EXCLUDE', { eventId: 'ev-1' }),
+        ).resolves.toEqual(objectLike({ partieId: 'R', role: 'member' }));
+        prisma.event.findUnique.mockResolvedValue(event(ADMIN));
+        await expect(
+          service.assert(ADMIN, 'EVENT_GAME_EXCLUDE', { eventId: 'ev-1' }),
+        ).resolves.toEqual(objectLike({ partieId: 'R', role: 'admin' }));
+      });
+
+      it('refusé à un autre membre — 403 « réservée à l’hôte »', async () => {
+        prisma.event.findUnique.mockResolvedValue(event(ADMIN));
+        const refusal = service.assert(MEMBRE, 'EVENT_GAME_EXCLUDE', { eventId: 'ev-1' });
+        await expect(refusal).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(refusal).rejects.toThrow(HOST_ONLY_MESSAGE);
+      });
+
+      it('refusé à un administrateur qui n’est pas l’hôte — 403 « réservée à l’hôte »', async () => {
+        prisma.event.findUnique.mockResolvedValue(event(MEMBRE));
+        await expect(
+          service.assert(ADMIN, 'EVENT_GAME_EXCLUDE', { eventId: 'ev-1' }),
+        ).rejects.toThrow(HOST_ONLY_MESSAGE);
+      });
+
+      it('refusé à tous quand l’hôte a disparu (ownerId null)', async () => {
+        prisma.event.findUnique.mockResolvedValue(event(null));
+        await expect(
+          service.assert(ADMIN, 'EVENT_GAME_EXCLUDE', { eventId: 'ev-1' }),
+        ).rejects.toThrow(HOST_ONLY_MESSAGE);
+      });
+
+      it('refusé à un étranger — 403 « pas accès » (avant la règle hôte)', async () => {
+        prisma.event.findUnique.mockResolvedValue(event(MEMBRE));
+        await expect(
+          service.assert(STRANGER, 'EVENT_GAME_EXCLUDE', { eventId: 'ev-1' }),
+        ).rejects.toThrow(NO_ACCESS_MESSAGE);
+      });
+
+      it('événement inconnu → 404', async () => {
+        prisma.event.findUnique.mockResolvedValue(null);
+        await expect(
+          service.assert(ADMIN, 'EVENT_GAME_EXCLUDE', { eventId: 'zzz' }),
         ).rejects.toBeInstanceOf(NotFoundException);
       });
     });

@@ -59,3 +59,42 @@
     outline-offset: 2px;
   }
 }
+
+/* Story 49.4 — menu ⋮ d'une ligne : surface du menu de la fiche de personnage (jetons existants, aucun neuf), une
+   entrée de 44 px au moins. Rendu dans le conteneur d'overlays du CDK, avec l'attribut d'encapsulation de l'onglet. */
+.egt-menu {
+  box-sizing: border-box;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  background: var(--mat-sys-surface-container, #1a1428);
+  color: var(--mat-sys-on-surface, inherit);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.65);
+}
+
+.egt-menu__item {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}

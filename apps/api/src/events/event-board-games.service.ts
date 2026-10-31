@@ -6,6 +6,7 @@ import {
   RALLIEMENT_UNAVAILABLE_MESSAGE,
 } from '../permissions/permission.service';
 import { EventGameBringService } from './event-game-bring.service';
+import { EventGameExclusionService } from './event-game-exclusion.service';
 import { eventIsOpen } from './event-is-open';
 import { EventsService, isRalliementGroup } from './events.service';
 import { participantsOf } from './participants-of';
@@ -15,7 +16,8 @@ import { participantsOf } from './participants-of';
  * jamais copiés, et le nombre de participants N. Le droit est décidé par `PermissionService`
  * (`PARTIE_READ` sur la cible `{ eventId }`) ; la lecture de l'hôte et de la séance est celle d'`EventsService`
  * (écrivain d'`Event`) ; les jeux viennent de `BoardGamesService` (seul lecteur de `BoardGame`) ; les apports des
- * participants, d'`EventGameBringService` (Story 49.2). Aucune émission : une lecture ne change rien.
+ * participants, d'`EventGameBringService` (Story 49.2) ; les jeux écartés par l'hôte, d'`EventGameExclusionService`
+ * (Story 49.4 : retirés de `games` pour tous, rendus à l'hôte seul dans `excludedGames`). Aucune émission : une lecture ne change rien.
  */
 @Injectable()
 export class EventBoardGamesService {
@@ -24,6 +26,7 @@ export class EventBoardGamesService {
     private readonly events: EventsService,
     private readonly boardGames: BoardGamesService,
     private readonly bringsOfEvent: EventGameBringService,
+    private readonly exclusions: EventGameExclusionService,
   ) {}
 
   async list(eventId: string, userId: string): Promise<EventBoardGamesDto> {
@@ -52,14 +55,30 @@ export class EventBoardGamesService {
       isolated,
       partieClosedAt: partie.closedAt,
     });
+    // Story 49.4 : seul l'hôte lit les jeux qu'il a écartés (clé absente pour tout autre lecteur).
+    const readerIsHost = basis.hostId !== null && basis.hostId === userId;
     // Soirée fermée : aucun jeu sur place, ni de l'hôte ni apporté.
-    if (!open) return { games: [], brings: [], participantsCount };
+    if (!open) {
+      return readerIsHost
+        ? { games: [], brings: [], participantsCount, excludedGames: [] }
+        : { games: [], brings: [], participantsCount };
+    }
     // Sans hôte (compte supprimé) : pas de jeux d'hôte, mais les apports des participants restent sur place.
-    const [games, brings] = await Promise.all([
+    const [hostGames, brings, excludedIds] = await Promise.all([
       basis.hostId === null ? Promise.resolve([]) : this.boardGames.listOfOwner(basis.hostId),
       // Story 49.2 : seuls les apports des participants ACTUELS (un départ purge les siens, Story 49.3).
       this.bringsOfEvent.listFor(eventId, participants),
+      // Story 49.4 : les jeux de l'hôte écartés pour cette soirée.
+      this.exclusions.excludedIds(eventId),
     ]);
-    return { games, brings, participantsCount };
+    // Un jeu écarté sort des jeux sur place pour tout le monde (résumé, compte, doublons, « jouables »).
+    const games = hostGames.filter((g) => !excludedIds.has(g.id));
+    if (!readerIsHost) return { games, brings, participantsCount };
+    return {
+      games,
+      brings,
+      participantsCount,
+      excludedGames: hostGames.filter((g) => excludedIds.has(g.id)),
+    };
   }
 }

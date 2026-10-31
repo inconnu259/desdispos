@@ -708,10 +708,12 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
     const { host, groupId } = await setupGroup('vide');
     const card = await propose(host, groupId);
 
+    // Story 49.4 : l'hôte lit aussi `excludedGames` (vide ici).
     expect(body<EventBoardGamesDto>(await read(host, card.id).expect(200))).toEqual({
       games: [],
       brings: [],
       participantsCount: 1,
+      excludedGames: [],
     });
   });
 
@@ -754,6 +756,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
       games: [],
       brings: [],
       participantsCount: 1,
+      excludedGames: [],
     });
 
     await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: null } });
@@ -1349,5 +1352,337 @@ describe('Jeux sur place — dire ce que j’apporte, et voir les doublons (Stor
 
     expect(await bringCount(event.id)).toBe(1);
     expect((await read(admin, event.id)).brings.map((b) => b.game.name)).toEqual(['Codenames']);
+  });
+});
+
+/**
+ * Story 49.4 — écarter un jeu pour ce soir (hôte) : `PUT/DELETE /events/:eventId/board-games/:id/exclusion`, les
+ * jeux écartés dans la lecture. Matrice d'entrées/sorties de la spec, de bout en bout (droit `EVENT_GAME_EXCLUDE`
+ * réservé à l'hôte, verrou de la soirée, refus dans l'ordre, cascade, émission, lecture par rôle).
+ */
+describe('Jeux sur place — écarter un jeu pour ce soir (Story 49.4)', () => {
+  let h: Harness;
+
+  beforeAll(async () => {
+    h = await Harness.start();
+  });
+
+  afterAll(async () => {
+    await h?.close();
+  });
+
+  const UNKNOWN_ID = '4f9a7f0e-2c1b-4b8e-9d34-0a5c6e7f8a9b';
+
+  const addGame = async (u: { agent: Agent }, name: string): Promise<BoardGameDto> =>
+    body<BoardGameDto>(await u.agent.post('/me/board-games').send({ name }).expect(201));
+  const exclusionUrl = (eventId: string, gameId: string) =>
+    `/events/${eventId}/board-games/${gameId}/exclusion`;
+  const bringUrl = (eventId: string, gameId: string) =>
+    `/events/${eventId}/board-games/${gameId}/bring`;
+  const read = async (who: { agent: Agent }, eventId: string) =>
+    body<EventBoardGamesDto>(await who.agent.get(`/events/${eventId}/board-games`).expect(200));
+  type Card = { id: string; seance: { id: string } };
+  const propose = async (who: { agent: Agent }, groupId: string) =>
+    body<Card>(
+      await who.agent
+        .post(`/parties/${groupId}/events`)
+        .send({ title: 'Soirée plateaux', date: isoDay(6), slot: 'EVENING' })
+        .expect(201),
+    );
+  const signUp = (who: { agent: Agent }, seanceId: string) =>
+    who.agent.post(`/scenarios/seances/${seanceId}/inscription`).expect(201);
+  const messageOf = (res: request.Response) => body<{ message?: string }>(res).message;
+  const excludedCount = (eventId: string) =>
+    h.prisma.eventGameExcluded.count({ where: { eventId } });
+
+  /** Un groupe, son administrateur, son hôte (membre), un invité inscrit et un membre non inscrit. */
+  async function setup(label: string) {
+    const admin = await h.createUser(`bg494-${label}-admin`);
+    const host = await h.createUser(`bg494-${label}-hote`);
+    const zoe = await h.createUser(`bg494-${label}-zoe`);
+    const outsider = await h.createUser(`bg494-${label}-hors`);
+    const group = await h.createPartie(
+      admin,
+      'CAMPAGNE_EPISODIQUE',
+      `bg494-${label}`,
+      'ralliement',
+    );
+    for (const u of [host, zoe, outsider]) await h.addMember(group.id, u);
+    const card = await propose(host, group.id);
+    await signUp(zoe, card.seance.id);
+    return { admin, host, zoe, outsider, groupId: group.id, card };
+  }
+
+  it('écarter : 204 ; le jeu quitte `games` pour tous et entre dans `excludedGames` de l’hôte SEUL', async () => {
+    const { admin, host, zoe, outsider, card } = await setup('ecarter');
+    const azul = await addGame(host, 'Azul');
+    const brass = await addGame(host, 'Brass');
+
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+
+    const hostView = await read(host, card.id);
+    expect(hostView.games.map((g) => g.name)).toEqual(['Brass']);
+    expect(hostView.excludedGames).toEqual([azul]);
+    for (const viewer of [zoe, outsider, admin]) {
+      const dto = await read(viewer, card.id);
+      expect(dto.games).toEqual([brass]);
+      // La clé est absente : la réponse elle-même ne dit rien du jeu écarté.
+      expect(keysOf(dto)).toEqual(['brings', 'games', 'participantsCount']);
+      expect(JSON.stringify(dto)).not.toContain('Azul');
+    }
+  });
+
+  it('remettre : 204 ; le jeu revient dans `games` pour tous, `excludedGames` se vide', async () => {
+    const { host, zoe, card } = await setup('remettre');
+    const azul = await addGame(host, 'Azul');
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+
+    await host.agent.delete(exclusionUrl(card.id, azul.id)).expect(204);
+
+    expect((await read(zoe, card.id)).games).toEqual([azul]);
+    const hostView = await read(host, card.id);
+    expect(hostView.games).toEqual([azul]);
+    expect(hostView.excludedGames).toEqual([]);
+  });
+
+  it('écarter deux fois : 204 et une seule ligne ; remettre deux fois : 204', async () => {
+    const { host, card } = await setup('idempotent');
+    const azul = await addGame(host, 'Azul');
+
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+    expect(await excludedCount(card.id)).toBe(1);
+
+    await host.agent.delete(exclusionUrl(card.id, azul.id)).expect(204);
+    await host.agent.delete(exclusionUrl(card.id, azul.id)).expect(204);
+    expect(await excludedCount(card.id)).toBe(0);
+  });
+
+  it('un jeu écarté pour une soirée reste sur les autres soirées', async () => {
+    const { host, zoe, groupId, card } = await setup('autre-soiree');
+    const azul = await addGame(host, 'Azul');
+    const second = await propose(host, groupId);
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+
+    expect((await read(zoe, card.id)).games).toEqual([]);
+    expect((await read(zoe, second.id)).games).toEqual([azul]);
+  });
+
+  it('un membre non hôte, un administrateur, un invité : 403 « réservée à l’hôte », rien n’est écrit ni émis', async () => {
+    const { admin, zoe, outsider, host, card } = await setup('non-hote');
+    const azul = await addGame(host, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      for (const who of [admin, zoe, outsider]) {
+        const put = await who.agent.put(exclusionUrl(card.id, azul.id)).expect(403);
+        await who.agent.delete(exclusionUrl(card.id, azul.id)).expect(403);
+        expect(messageOf(put)).toBe("Action réservée à l'hôte de la conjonction");
+      }
+      expect(emit).not.toHaveBeenCalled();
+    } finally {
+      emit.mockRestore();
+    }
+    expect(await excludedCount(card.id)).toBe(0);
+  });
+
+  it('un étranger à la partie : 403 ; sans session : 403', async () => {
+    const { host, card } = await setup('etranger');
+    const stranger = await h.createUser('bg494-etranger');
+    const azul = await addGame(host, 'Azul');
+
+    await stranger.agent.put(exclusionUrl(card.id, azul.id)).expect(403);
+    await request(h.app.getHttpServer()).put(exclusionUrl(card.id, azul.id)).expect(403);
+    expect(await excludedCount(card.id)).toBe(0);
+  });
+
+  it('un événement sans hôte (ownerId nul) : refusé à tous (403)', async () => {
+    const { admin, host, card } = await setup('sans-hote');
+    const azul = await addGame(host, 'Azul');
+    await h.prisma.event.update({ where: { id: card.id }, data: { ownerId: null } });
+
+    await admin.agent.put(exclusionUrl(card.id, azul.id)).expect(403);
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(403);
+    expect(await excludedCount(card.id)).toBe(0);
+  });
+
+  it('soirée annulée : 400 en français, rien n’est écrit ; la lecture ne liste plus rien', async () => {
+    const { host, groupId, card } = await setup('annulee');
+    const azul = await addGame(host, 'Azul');
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+    await host.agent.post(`/parties/${groupId}/events/${card.id}/cancel`).expect(201);
+
+    const put = await host.agent.put(exclusionUrl(card.id, azul.id)).expect(400);
+    const del = await host.agent.delete(exclusionUrl(card.id, azul.id)).expect(400);
+
+    expect(messageOf(put)).toBe('Cette conjonction est annulée : plus rien ne peut y changer');
+    expect(messageOf(del)).toBe(messageOf(put));
+    expect(await excludedCount(card.id)).toBe(1);
+    const dto = await read(host, card.id);
+    expect(dto.games).toEqual([]);
+    expect(dto.excludedGames).toEqual([]);
+  });
+
+  it('soirée passée : 400 en français, rien n’est écrit ; l’hôte lit `excludedGames: []`', async () => {
+    const { host, zoe, card } = await setup('passee');
+    const azul = await addGame(host, 'Azul');
+    const day = new Date(`${isoDay(-2)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: card.seance.id },
+      data: { startDate: day, endDate: day },
+    });
+
+    const res = await host.agent.put(exclusionUrl(card.id, azul.id)).expect(400);
+
+    expect(messageOf(res)).toBe(
+      'Cette conjonction est passée : les inscriptions ne peuvent plus changer',
+    );
+    expect(await excludedCount(card.id)).toBe(0);
+    expect((await read(host, card.id)).excludedGames).toEqual([]);
+    expect('excludedGames' in (await read(zoe, card.id))).toBe(false);
+  });
+
+  it('rencontre isolée : l’hôte écarte ; close → 400 « terminée », annulée → 400 « annulée »', async () => {
+    const admin = await h.createUser('bg494-iso-admin');
+    const m1 = await h.createUser('bg494-iso-m1');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg494-iso', 'ralliement');
+    await h.addMember(evening.id, m1);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+    const game = await addGame(admin, 'Codenames');
+
+    await admin.agent.put(exclusionUrl(event.id, game.id)).expect(204);
+    expect((await read(m1, event.id)).games).toEqual([]);
+    expect((await read(admin, event.id)).excludedGames).toEqual([game]);
+    await m1.agent.put(exclusionUrl(event.id, game.id)).expect(403);
+
+    await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: new Date() } });
+    const closed = await admin.agent.put(exclusionUrl(event.id, game.id)).expect(400);
+    expect(messageOf(closed)).toBe('Cette soirée est terminée : plus rien ne peut y changer');
+
+    await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: null } });
+    await h.prisma.event.update({ where: { id: event.id }, data: { cancelledAt: new Date() } });
+    const cancelled = await admin.agent.put(exclusionUrl(event.id, game.id)).expect(400);
+    expect(messageOf(cancelled)).toBe('Cette soirée est annulée : plus rien ne peut y changer');
+  });
+
+  it('jeu d’autrui ou inconnu : 404, même corps, rien n’est écrit', async () => {
+    const { host, zoe, card } = await setup('autrui');
+    const hers = await addGame(zoe, 'Skull');
+
+    const other = await host.agent.put(exclusionUrl(card.id, hers.id)).expect(404);
+    const unknown = await host.agent.put(exclusionUrl(card.id, UNKNOWN_ID)).expect(404);
+    await host.agent.delete(exclusionUrl(card.id, hers.id)).expect(404);
+
+    expect(body<unknown>(other)).toEqual(body<unknown>(unknown));
+    expect(await excludedCount(card.id)).toBe(0);
+  });
+
+  it('partie de JDR : 403 ; identifiants mal formés : 400 ; événement inconnu : 404', async () => {
+    const gm = await h.createUser('bg494-jdr-mj');
+    const jdr = await h.createPartie(gm, 'ONE_SHOT', 'bg494-jdr');
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: jdr.id } });
+    const game = await addGame(gm, 'Azul');
+
+    await gm.agent.put(exclusionUrl(event.id, game.id)).expect(403);
+    await gm.agent.put(exclusionUrl('pas-un-uuid', game.id)).expect(400);
+    await gm.agent.put(exclusionUrl(event.id, 'pas-un-uuid')).expect(400);
+    await gm.agent.put(exclusionUrl(UNKNOWN_ID, game.id)).expect(404);
+    expect(await excludedCount(event.id)).toBe(0);
+  });
+
+  it('émission : `partie:{groupe}` après chaque écriture, jamais sur une lecture ni sur un refus', async () => {
+    const { host, zoe, groupId, card } = await setup('emission');
+    const azul = await addGame(host, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+
+      emit.mockClear();
+      await host.agent.delete(exclusionUrl(card.id, azul.id)).expect(204);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+
+      emit.mockClear();
+      await read(host, card.id);
+      await zoe.agent.put(exclusionUrl(card.id, azul.id)).expect(403);
+      expect(emit).not.toHaveBeenCalled();
+    } finally {
+      emit.mockRestore();
+    }
+  });
+
+  it('une émission en échec ne fait pas échouer l’écart (204 conservé, ligne écrite)', async () => {
+    const { host, card } = await setup('emission-ko');
+    const azul = await addGame(host, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit').mockImplementation(() => {
+      throw new Error('flux coupé');
+    });
+    try {
+      await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+    } finally {
+      emit.mockRestore();
+    }
+    expect(await excludedCount(card.id)).toBe(1);
+  });
+
+  it('doublon : « Azul » de l’hôte écarté, Zoé apporte « azul » — seul l’apport reste sur place', async () => {
+    const { host, zoe, card } = await setup('doublon');
+    const hostAzul = await addGame(host, 'Azul');
+    const mine = await addGame(zoe, 'azul');
+    await zoe.agent.put(bringUrl(card.id, mine.id)).expect(204);
+    await host.agent.put(exclusionUrl(card.id, hostAzul.id)).expect(204);
+
+    const dto = await read(zoe, card.id);
+
+    expect(dto.games).toEqual([]);
+    expect(dto.brings.map((b) => b.game.nameKey)).toEqual(['azul']);
+  });
+
+  it('tout est écarté : `games` vide, tous les jeux dans `excludedGames` (triés)', async () => {
+    const { host, card } = await setup('tout');
+    const zombicide = await addGame(host, 'Zombicide');
+    const azul = await addGame(host, 'Azul');
+    for (const g of [zombicide, azul])
+      await host.agent.put(exclusionUrl(card.id, g.id)).expect(204);
+
+    const dto = await read(host, card.id);
+
+    expect(dto.games).toEqual([]);
+    expect(dto.excludedGames).toEqual([azul, zombicide]);
+  });
+
+  it('un invité qui apporte garde son apport quand l’hôte écarte un jeu (apports et N inchangés)', async () => {
+    const { host, zoe, card } = await setup('apports');
+    const azul = await addGame(host, 'Azul');
+    const skull = await addGame(zoe, 'Skull');
+    await zoe.agent.put(bringUrl(card.id, skull.id)).expect(204);
+
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+
+    const dto = await read(zoe, card.id);
+    expect(dto.brings.map((b) => b.game.name)).toEqual(['Skull']);
+    expect(dto.participantsCount).toBe(2);
+  });
+
+  it('retirer le jeu de la Ludothèque supprime son écart (cascade)', async () => {
+    const { host, card } = await setup('cascade');
+    const azul = await addGame(host, 'Azul');
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+    expect(await excludedCount(card.id)).toBe(1);
+
+    await host.agent.delete(`/me/board-games/${azul.id}`).expect(204);
+
+    expect(await excludedCount(card.id)).toBe(0);
+    expect((await read(host, card.id)).excludedGames).toEqual([]);
+  });
+
+  it('l’écart disparaît avec la soirée (cascade sur l’événement)', async () => {
+    const { host, card } = await setup('cascade-event');
+    const azul = await addGame(host, 'Azul');
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+
+    await h.prisma.event.delete({ where: { id: card.id } });
+
+    expect(await excludedCount(card.id)).toBe(0);
   });
 });

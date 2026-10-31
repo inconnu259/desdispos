@@ -13,13 +13,31 @@ import { fitsHeadcount, formatBoardGameMeasures } from '../../board-games/board-
  * (`{colors.status-todo}`, toujours en texte), la provenance (« par moi », « par Zoé »), la ligne « aussi chez … /
  * aussi apporté par … », l'avertissement « ⚠ déjà chez … » et une action (« J'apporte », « Je ne l'apporte
  * plus »). L'action est un bouton de 44 px au moins sur la dernière ligne ; occupée, elle est désactivée (un
- * second toucher ne part pas). Ni ♥ ni ⋮ à ce palier (Stories 49.4 et 49.5).
+ * second toucher ne part pas). Story 49.4 : sur ses propres jeux, l'hôte a un ⋮ de 44 px à droite du nom (nom
+ * accessible « Actions pour {jeu} ») ; le menu lui-même est tenu par l'onglet. Pas de ♥ à ce palier (Story 49.5).
  */
 @Component({
   selector: 'app-game-row',
   template: `
     <div class="gr">
-      <span class="gr__name">{{ game().name }}</span>
+      @if (menuLabel(); as label) {
+        <!-- Story 49.4 : ⋮ de l'hôte sur ses propres jeux, à droite du nom. -->
+        <span class="gr__head">
+          <span class="gr__name">{{ game().name }}</span>
+          <button
+            type="button"
+            class="gr__menu"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="menuOpen()"
+            [attr.aria-label]="label"
+            (click)="onMenu($event)"
+          >
+            <span aria-hidden="true">&#8942;</span>
+          </button>
+        </span>
+      } @else {
+        <span class="gr__name">{{ game().name }}</span>
+      }
       @if (measures() || fits() || duplicateText()) {
         <span class="gr__line">
           @if (measures(); as text) {
@@ -85,6 +103,36 @@ import { fitsHeadcount, formatBoardGameMeasures } from '../../board-games/board-
       font-size: 13px;
       font-weight: 600;
       overflow-wrap: anywhere;
+    }
+
+    /* Nom à gauche, ⋮ à droite : la cible de 44 px déborde sur le remplissage de la ligne pour ne pas la grossir. */
+    .gr__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .gr__menu {
+      box-sizing: border-box;
+      flex: none;
+      width: 44px;
+      height: 44px;
+      margin: -7px -9px -7px 0;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+      font: inherit;
+      font-size: 1.25rem;
+      line-height: 1;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 2px solid var(--mat-sys-primary);
+        outline-offset: -2px;
+      }
     }
 
     .gr__line {
@@ -190,6 +238,16 @@ export class GameRow {
   readonly actionBusy = input(false);
   /** L'action de la ligne a été touchée. */
   readonly act = output<void>();
+  /** Story 49.4 : nom accessible du ⋮ (« Actions pour {jeu} ») ; `null` : pas de ⋮ (jeu qui n'est pas à l'hôte, ou lecteur autre que l'hôte). */
+  readonly menuLabel = input<string | null>(null);
+  /** Le menu de CETTE ligne est ouvert (`aria-expanded`). */
+  readonly menuOpen = input(false);
+  /** Le ⋮ a été touché : rend le bouton, ancre du menu et cible du retour du focus. */
+  readonly menu = output<HTMLElement>();
+
+  protected onMenu(event: Event): void {
+    this.menu.emit(event.currentTarget as HTMLElement);
+  }
 
   protected readonly measures = computed(() =>
     formatBoardGameMeasures(this.game(), this.theme.tone()),

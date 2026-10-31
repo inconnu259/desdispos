@@ -271,7 +271,8 @@ export class BoardGamesService {
   /**
    * Retire un de mes jeux (Story 48.2) — immédiat côté API : la confirmation « apporté à N soirées à venir »
    * (Story 49.2) est demandée par l'écran, qui lit `GET /me/board-games/:id/brought-count` avant d'appeler ici.
-   * Les apports du jeu à des soirées disparaissent en cascade (`EventGameBring`).
+   * Les apports du jeu à des soirées disparaissent en cascade (`EventGameBring`), comme ses écarts par l'hôte
+   * (`EventGameExcluded`, Story 49.4).
    * Suppression filtrée sur le propriétaire : un jeu qui n'est pas à moi n'est jamais touché et répond
    * 404, avec le même message que la correction.
    */

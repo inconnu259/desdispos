@@ -371,6 +371,10 @@ export type PermissionAction =
   // Story 49.2 : apporter un de ses jeux à une soirée — tout membre d'un groupe de ralliement ; la condition
   // « participant, autre que l'hôte » est décidée par `events/`. Fermée à tous en JDR.
   | 'EVENT_GAME_BRING'
+  // Story 49.4 : écarter un des jeux de l'hôte pour une soirée — l'hôte de l'événement seul (règle décidée
+  // dans `PermissionService`) ; la condition « soirée ouverte, jeu à l'hôte » est décidée par `events/`.
+  // Fermée à tous en JDR.
+  | 'EVENT_GAME_EXCLUDE'
   // Invitations et liens d'invitation (couche 2, aucune capacité requise)
   | 'INVITATION_CREATE'
   | 'INVITATION_READ'
@@ -2139,11 +2143,14 @@ export interface EventBringDto {
  *  l'hôte, triés par clé normalisée puis nom, et le nombre de participants N (hôte compris, jamais une place
  *  seulement réservée). Story 49.2 : `brings` — les jeux apportés par les participants actuels (triés comme
  *  `games`). Soirée passée, terminée ou annulée : `games` et `brings` vides, N tel que
- *  calculé. Jamais d'e-mail. */
+ *  calculé. Story 49.4 : `games` ne liste plus les jeux que l'hôte a écartés pour cette soirée ; ceux-ci
+ *  ne sont rendus QUE à l'hôte, dans `excludedGames` (clé absente pour tout autre lecteur, `[]` sur une soirée
+ *  fermée) — la réponse elle-même ne dit rien aux autres. Jamais d'e-mail. */
 export interface EventBoardGamesDto {
   games: BoardGameDto[];
   brings: EventBringDto[];
   participantsCount: number;
+  excludedGames?: BoardGameDto[];
 }
 
 /** Combien d'apports de soirées encore ouvertes pèsent sur l'un de mes jeux (`GET

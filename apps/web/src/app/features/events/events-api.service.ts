@@ -64,6 +64,28 @@ export class EventsApiService {
     );
   }
 
+  /** Story 49.4 : l'hôte écarte l'un de ses jeux pour cette soirée (`PUT …/exclusion`, 204, idempotent). Rejette
+   *  avec la réponse HTTP : 400 soirée close, 403 pas l'hôte, 404 jeu retiré entre-temps. */
+  async exclude(eventId: string, boardGameId: string): Promise<void> {
+    await firstValueFrom(
+      this.http.put<void>(
+        `${API_BASE}/events/${eventId}/board-games/${boardGameId}/exclusion`,
+        null,
+        { withCredentials: true },
+      ),
+    );
+  }
+
+  /** Story 49.4 : l'hôte remet ce jeu pour cette soirée (`DELETE …/exclusion`, 204, idempotent). Mêmes refus que
+   *  `exclude`. */
+  async restore(eventId: string, boardGameId: string): Promise<void> {
+    await firstValueFrom(
+      this.http.delete<void>(`${API_BASE}/events/${eventId}/board-games/${boardGameId}/exclusion`, {
+        withCredentials: true,
+      }),
+    );
+  }
+
   /** Story 49.2 : à combien de soirées encore ouvertes l'un de MES jeux est apporté — lu avant de le retirer de
    *  ma Ludothèque. Rejette avec la réponse HTTP (404 : jeu d'autrui ou retiré). */
   broughtCount(boardGameId: string): Promise<BoardGameBroughtCountDto> {

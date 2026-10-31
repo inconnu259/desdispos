@@ -7,6 +7,7 @@ import {
 } from '../permissions/permission.service';
 import { EventBoardGamesService } from './event-board-games.service';
 import type { EventGameBringService } from './event-game-bring.service';
+import type { EventGameExclusionService } from './event-game-exclusion.service';
 import type { EventBoardGamesBasis, EventsService } from './events.service';
 
 const GAME = {
@@ -31,6 +32,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
   let events: { boardGamesBasis: jest.Mock };
   let boardGames: { listOfOwner: jest.Mock };
   let brings: { listFor: jest.Mock };
+  let exclusions: { excludedIds: jest.Mock };
   let service: EventBoardGamesService;
 
   const group = {
@@ -56,11 +58,13 @@ describe('EventBoardGamesService (Story 49.1)', () => {
     events = { boardGamesBasis: jest.fn().mockResolvedValue(basis()) };
     boardGames = { listOfOwner: jest.fn().mockResolvedValue([GAME]) };
     brings = { listFor: jest.fn().mockResolvedValue([]) };
+    exclusions = { excludedIds: jest.fn().mockResolvedValue(new Set()) };
     service = new EventBoardGamesService(
       permissions as unknown as PermissionService,
       events as unknown as EventsService,
       boardGames as unknown as BoardGamesService,
       brings as unknown as EventGameBringService,
+      exclusions as unknown as EventGameExclusionService,
     );
   });
 
@@ -183,6 +187,65 @@ describe('EventBoardGamesService (Story 49.1)', () => {
         brings: [BRING],
         participantsCount: 1,
       });
+    });
+  });
+
+  describe('jeux écartés par l’hôte (Story 49.4)', () => {
+    const AZUL = GAME;
+    const BRASS = { ...GAME, id: 'g2', name: 'Brass', nameKey: 'brass' };
+
+    beforeEach(() => {
+      boardGames.listOfOwner.mockResolvedValue([AZUL, BRASS]);
+      exclusions.excludedIds.mockResolvedValue(new Set(['g2']));
+    });
+
+    it('l’hôte : `games` sans le jeu écarté, `excludedGames` avec', async () => {
+      const result = await service.list('e1', 'host');
+
+      expect(exclusions.excludedIds).toHaveBeenCalledWith('e1');
+      expect(result).toEqual({
+        games: [AZUL],
+        brings: [],
+        participantsCount: 1,
+        excludedGames: [BRASS],
+      });
+    });
+
+    it('un autre lecteur : `games` sans le jeu écarté, et la clé `excludedGames` est ABSENTE', async () => {
+      const result = await service.list('e1', 'u1');
+
+      expect(result.games).toEqual([AZUL]);
+      expect('excludedGames' in result).toBe(false);
+      expect(JSON.stringify(result)).not.toContain('Brass');
+    });
+
+    it('l’hôte sans rien d’écarté : `excludedGames` vaut []', async () => {
+      exclusions.excludedIds.mockResolvedValue(new Set());
+
+      const result = await service.list('e1', 'host');
+
+      expect(result.games).toEqual([AZUL, BRASS]);
+      expect(result.excludedGames).toEqual([]);
+    });
+
+    it('soirée fermée : l’hôte reçoit `excludedGames: []`, les autres pas la clé, rien n’est lu', async () => {
+      events.boardGamesBasis.mockResolvedValue(basis({ cancelledAt: new Date() }));
+
+      expect(await service.list('e1', 'host')).toEqual({
+        games: [],
+        brings: [],
+        participantsCount: 1,
+        excludedGames: [],
+      });
+      const other = await service.list('e1', 'u1');
+      expect('excludedGames' in other).toBe(false);
+      expect(exclusions.excludedIds).not.toHaveBeenCalled();
+    });
+
+    it('sans hôte (compte supprimé) : aucun lecteur n’est l’hôte, pas de clé `excludedGames`', async () => {
+      events.boardGamesBasis.mockResolvedValue(basis({ hostId: null }));
+
+      expect('excludedGames' in (await service.list('e1', 'u1'))).toBe(false);
     });
   });
 

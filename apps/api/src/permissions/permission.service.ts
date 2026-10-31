@@ -236,6 +236,8 @@ export const JDR_POLICY: Readonly<Record<PermissionAction, readonly PartieRole[]
   EVENT_CANCEL: NOBODY,
   // Story 49.2 : apporter un jeu à une soirée — n'existe pas en JDR.
   EVENT_GAME_BRING: NOBODY,
+  // Story 49.4 : écarter un jeu de l'hôte pour une soirée — n'existe pas en JDR.
+  EVENT_GAME_EXCLUDE: NOBODY,
   // Invitations : le MJ invite, liste et révoque (l'invitant est toujours le propriétaire, la
   // propriété d'une partie étant immuable).
   INVITATION_CREATE: OWNER_ONLY,
@@ -361,6 +363,10 @@ export const RALLIEMENT_POLICY: Readonly<Record<PermissionAction, readonly Parti
   // soirée, autre que l'hôte » est décidé sous le verrou de l'événement par `EventGameBringService` (le rôle
   // seul ne dit rien de l'inscription CONFIRMÉE) — ce n'est donc PAS une action réservée à l'hôte.
   EVENT_GAME_BRING: ADMIN_AND_MEMBERS,
+  // Story 49.4 : écarter un jeu de l'hôte pour une soirée. Tout membre passe la cellule ; « hôte de
+  // l'événement » est décidé plus bas (HOST_ONLY_ACTIONS), « soirée ouverte, jeu à l'hôte » sous le verrou
+  // de l'événement par `EventGameExclusionService`.
+  EVENT_GAME_EXCLUDE: ADMIN_AND_MEMBERS,
   // Invitations (Story 39.3) : l'administrateur invite, liste et révoque ; un simple membre n'a que
   // la lecture de la liste des membres. La cellule vaut pour la famille entière (l'invitation à
   // usage unique, épopée 41, n'a pas encore d'interface : l'UI reste réservée aux groupes).
@@ -403,6 +409,8 @@ const HOST_ONLY_ACTIONS: ReadonlySet<PermissionAction> = new Set<PermissionActio
   // Story 40.4 : réserver / retirer une réservation — cible `{ seanceId }` (l'hôte est celui de
   // l'événement de la séance).
   'SEANCE_RESERVE',
+  // Story 49.4 : écarter un jeu de l'hôte pour une soirée — cible `{ eventId }`.
+  'EVENT_GAME_EXCLUDE',
 ]);
 
 /** Story 42.1 — actions ouvertes à l'HÔTE de l'événement visé OU à un administrateur du groupe (cible

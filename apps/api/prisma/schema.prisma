@@ -169,6 +169,8 @@ model BoardGame {
   createdAt   DateTime @default(now())
 
   gameBrings  EventGameBring[]
+  /// Story 49.4 : les soirées pour lesquelles l'hôte a écarté ce jeu (`EventGameExcluded`, écrit par `events/`).
+  gameExclusions EventGameExcluded[]
 
   @@unique([ownerId, nameKey])
 }
@@ -619,6 +621,8 @@ model Event {
   scenario Scenario?
   seances  Seance[]
   gameBrings EventGameBring[]
+  /// Story 49.4 : les jeux de l'hôte écartés pour cette soirée seulement (`EventGameExcluded`).
+  gameExclusions EventGameExcluded[]
 
   @@index([partieId])
 }
@@ -800,4 +804,20 @@ model EventGameBring {
   @@unique([eventId, boardGameId])
   @@index([boardGameId])
   @@index([userId])
+}
+
+/// Un jeu de l'hôte écarté pour UNE soirée (Story 49.4, épic 49) : il reste dans la Ludothèque et sur les autres
+/// soirées. Au plus une ligne par jeu et par soirée. Seul `events/` écrit cette table, sous le verrou de
+/// l'événement ; elle disparaît en cascade avec l'événement ou le jeu (retiré de la Ludothèque). Pas de lien vers
+/// `User` : l'hôte est celui de l'événement, jamais copié.
+model EventGameExcluded {
+  id          String    @id @default(uuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  boardGameId String
+  boardGame   BoardGame @relation(fields: [boardGameId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([eventId, boardGameId])
+  @@index([boardGameId])
 }

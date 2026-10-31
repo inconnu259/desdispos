@@ -1,6 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -9,6 +12,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { CdkConnectedOverlay, type ConnectedPosition } from '@angular/cdk/overlay';
 import { RouterLink } from '@angular/router';
 import type {
   BoardGameDto,
@@ -25,9 +29,20 @@ import { EventsApiService } from '../events-api.service';
 import { GameRow } from './game-row';
 import { GamesSection } from './games-section';
 import { GamesSummary } from './games-summary';
+import { UnavailableRow } from './unavailable-row';
 
 /** Clé de la section « Chez {hôte} » / « Chez moi » (état replié retenu dans ce navigateur). */
 export const HOST_SECTION_KEY = 'host';
+/** Clé de la section du bas de l'hôte, « Scellées ce soir / Restés au logis / Hors service » (Story 49.4). */
+export const EXCLUDED_SECTION_KEY = 'excluded';
+
+/** Story 49.4 — position du menu ⋮ d'une ligne, même patron que le ⋮ de la fiche de personnage : sous le déclencheur,
+ *  aligné sur son bord de fin (le ⋮ est à droite de la ligne), repli au-dessus pour les très petites hauteurs. */
+const ROW_MENU_POSITIONS: ConnectedPosition[] = [
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 4 },
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -4 },
+];
 /** Clé de la section des apports (Story 49.2). */
 export const BROUGHT_SECTION_KEY = 'brought';
 /** Clé de la section « Dans mon cabinet / coffre / Sur mon râtelier » (Story 49.2). */
@@ -49,6 +64,8 @@ interface RowView {
   alsoText: string | null;
   warnText: string | null;
   action: 'bring' | 'unbring' | null;
+  /** Story 49.4 : la ligne porte le ⋮ de l'hôte (ses propres jeux seulement). */
+  menu: boolean;
 }
 
 /** Même ordre que l'API : clé normalisée, puis nom (puis identifiant, voir l'appelant). */
@@ -86,6 +103,14 @@ function joinNames(names: string[]): string {
  * est remonté par `countChange` pour le libellé de l'onglet (« Reliques · 6 »). Mes jeux viennent de
  * `BoardGamesService.list()`, lus seulement pour un participant autre que l'hôte.
  *
+ * Story 49.4 — écarter un jeu pour ce soir (l'hôte seul) : chaque ligne de « Chez moi » porte un ⋮ qui ouvre un
+ * menu d'UNE entrée (« Sceller pour ce soir » etc.), tenu ici par un unique `cdkConnectedOverlay` (`role="menu"`,
+ * flèches / Début / Fin / Échap, le fond ferme, le focus revient au ⋮). Choisir l'entrée retire le jeu de « Chez moi »
+ * aussitôt (mise à jour locale, même garde « occupé » et même échec silencieux + relecture que l'apport) et le range
+ * dans la section du bas, qui n'existe que pour l'hôte et que si `excludedGames` n'est pas vide — même quand « Chez
+ * moi » est vide. Son bouton themé remet le jeu à tous aussitôt. Le ⋮ disparaissant avec la ligne, le focus va à la
+ * ligne suivante, à défaut à l'en-tête de la section.
+ *
  * Temps réel : la page de la partie tient DÉJÀ la connexion `partie:{id}` et `PartiesService.changed()` est notifié
  * à chaque mutation (jeu ajouté, apport, inscription, désinscription) — l'onglet s'y abonne par un `effect()`
  * (premier passage ignoré), sans ouvrir de connexion ni ajouter de handler. Rechargement protégé par un numéro de
@@ -95,7 +120,15 @@ function joinNames(names: string[]): string {
  */
 @Component({
   selector: 'app-event-games-tab',
-  imports: [NgTemplateOutlet, RouterLink, GamesSummary, GamesSection, GameRow],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    CdkConnectedOverlay,
+    GamesSummary,
+    GamesSection,
+    GameRow,
+    UnavailableRow,
+  ],
   templateUrl: './event-games-tab.html',
   styleUrl: './event-games-tab.scss',
 })
@@ -132,8 +165,24 @@ export class EventGamesTab {
   protected readonly hostSectionKey = HOST_SECTION_KEY;
   protected readonly broughtSectionKey = BROUGHT_SECTION_KEY;
   protected readonly mineSectionKey = MINE_SECTION_KEY;
+  protected readonly excludedSectionKey = EXCLUDED_SECTION_KEY;
+  protected readonly ROW_MENU_POSITIONS = ROW_MENU_POSITIONS;
+
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly injector = inject(Injector);
+
+  /** Le jeu dont le menu ⋮ est ouvert ; `null` : menu fermé. Un seul menu à la fois, tenu par l'onglet. */
+  protected readonly menuGame = signal<BoardGameDto | null>(null);
+  /** Le ⋮ qui a ouvert le menu (ancre du menu, cible du retour du focus) ; l'hôte de l'onglet tant que rien n'est ouvert. */
+  protected readonly menuOrigin = signal<HTMLElement>(this.host.nativeElement);
 
   private readonly hostGames = computed(() => this.data()?.games ?? []);
+  /** Story 49.4 : les jeux que l'hôte a écartés pour cette soirée — vide pour tout autre lecteur (clé absente). */
+  protected readonly excludedGames = computed(() =>
+    this.isHost() ? (this.data()?.excludedGames ?? []) : [],
+  );
+  /** La section du bas n'existe que pour l'hôte et qu'avec au moins un jeu écarté — même si « Chez moi » est vide. */
+  protected readonly showExcluded = computed(() => this.excludedGames().length > 0);
   private readonly brings = computed(() => this.data()?.brings ?? []);
   /** Lignes sur place : jeux de l'hôte + apports (des lignes, pas des noms distincts). */
   protected readonly siteTotal = computed(() => this.hostGames().length + this.brings().length);
@@ -220,6 +269,7 @@ export class EventGamesTab {
       alsoText: this.alsoText(game.nameKey, { kind: 'host', userId: hostId }),
       warnText: null,
       action: null,
+      menu: this.isHost(),
     }));
   });
 
@@ -240,6 +290,7 @@ export class EventGamesTab {
         }),
         warnText: null,
         action: mine ? 'unbring' : null,
+        menu: false,
       };
     });
   });
@@ -269,6 +320,7 @@ export class EventGamesTab {
                 })
               : null,
           action: 'bring',
+          menu: false,
         };
       });
   });
@@ -330,6 +382,156 @@ export class EventGamesTab {
   protected onAct(item: RowView): void {
     if (item.action === 'bring') void this.write(item.game, true);
     else if (item.action === 'unbring') void this.write(item.game, false);
+  }
+
+  /** Nom accessible du ⋮ d'une ligne (« Actions pour Azul ») ; `null` : la ligne n'en porte pas. */
+  protected menuLabel(item: RowView): string | null {
+    return item.menu
+      ? fillTone(this.theme.tone()['event_games.menu_trigger_aria'], { nom: item.game.name })
+      : null;
+  }
+
+  protected menuAriaLabel(): string {
+    return fillTone(this.theme.tone()['event_games.menu_aria'], {
+      nom: this.menuGame()?.name ?? '',
+    });
+  }
+
+  /** Le ⋮ d'une ligne a été touché : ouvre le menu de ce jeu, ancré sur le bouton, le focus sur son entrée. */
+  protected openMenu(game: BoardGameDto, trigger: HTMLElement): void {
+    this.menuOrigin.set(trigger);
+    this.menuGame.set(game);
+    // Le menu n'existe dans le DOM qu'après le prochain rendu : le focus va sur sa première entrée.
+    afterNextRender(() => this.menuItems()[0]?.focus({ preventScroll: true }), {
+      injector: this.injector,
+    });
+  }
+
+  /** Referme le menu ; `restoreFocus` rend le focus au ⋮ (sauf quand la ligne va disparaître). */
+  protected closeMenu(restoreFocus: boolean): void {
+    const trigger = this.menuOrigin();
+    this.menuGame.set(null);
+    if (restoreFocus) trigger.focus();
+  }
+
+  /** Les entrées du menu ouvert — dans le conteneur d'overlays du CDK, hors du DOM de l'onglet. */
+  private menuItems(): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>('.egt-menu [role="menuitem"]'));
+  }
+
+  /** Clavier du menu (patron WAI-ARIA « menu button ») : Échap referme et rend le focus au ⋮, les flèches bouclent sur
+   *  les entrées, Début / Fin vont aux extrémités ; Tab referme et laisse le focus continuer depuis le ⋮. */
+  protected onMenuKeydown(event: KeyboardEvent): void {
+    const items = this.menuItems();
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    const focusAt = (i: number) => {
+      event.preventDefault();
+      items[(i + items.length) % items.length]?.focus();
+    };
+    switch (event.key) {
+      case 'Escape':
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeMenu(true);
+        break;
+      case 'ArrowDown':
+        focusAt(index + 1);
+        break;
+      case 'ArrowUp':
+        focusAt(index - 1);
+        break;
+      case 'Home':
+        focusAt(0);
+        break;
+      case 'End':
+        focusAt(items.length - 1);
+        break;
+      case 'Tab':
+        // Le focus passe au ⋮ AVANT la fermeture (l'entrée focalisée va disparaître) ; pas de preventDefault.
+        this.closeMenu(true);
+        break;
+    }
+  }
+
+  /** L'entrée unique du menu a été choisie : le jeu quitte « Chez moi » aussitôt. */
+  protected onExcludeChosen(): void {
+    const game = this.menuGame();
+    if (game === null) return;
+    this.closeMenu(false);
+    void this.setAside(game, true);
+  }
+
+  /** « Lever le sceau / Ressortir / Remettre en service » : le jeu retourne dans « Chez moi », pour tous. */
+  protected onRestore(game: BoardGameDto): void {
+    void this.setAside(game, false);
+  }
+
+  /**
+   * Écarter / remettre un jeu pour cette soirée (Story 49.4) : le jeu change de section AUSSITÔT (mise à jour locale),
+   * puis l'écriture part et la liste est relue — le serveur est seul juge. Même garde que l'apport : un refus
+   * (400/403) ou un jeu disparu (404) n'affiche rien de bloquant, la relecture remet la liste d'aplomb ; un second
+   * toucher sur le même jeu pendant l'écriture est ignoré. Le bouton touché disparaît avec la ligne : le focus va à la
+   * ligne voisine, à défaut à l'en-tête de la section.
+   */
+  private async setAside(game: BoardGameDto, aside: boolean): Promise<void> {
+    const eventId = this.event()?.id ?? null;
+    if (eventId === null || !this.isHost() || this.busy().has(game.id)) return;
+    this.busy.update((s) => new Set(s).add(game.id));
+    this.focusNeighbour(game, aside);
+    this.data.update((dto) => {
+      if (dto === null) return dto;
+      const games = dto.games.filter((g) => g.id !== game.id);
+      const excluded = (dto.excludedGames ?? []).filter((g) => g.id !== game.id);
+      const byName = (a: BoardGameDto, b: BoardGameDto) =>
+        compareGames(a, b) || a.id.localeCompare(b.id);
+      return aside
+        ? { ...dto, games, excludedGames: [...excluded, game].sort(byName) }
+        : { ...dto, games: [...games, game].sort(byName), excludedGames: excluded };
+    });
+    try {
+      await (aside ? this.api.exclude(eventId, game.id) : this.api.restore(eventId, game.id));
+    } catch {
+      // Refus ou jeu disparu : rien de bloquant — la relecture ci-dessous dit l'état réel.
+    }
+    try {
+      await this.reload();
+    } finally {
+      this.busy.update((s) => {
+        const next = new Set(s);
+        next.delete(game.id);
+        return next;
+      });
+    }
+  }
+
+  /** Après le prochain rendu, donne le focus à la ligne voisine de celle qui part, sinon à l'en-tête de sa section
+   *  (puis à celui de l'autre section) — la ligne touchée, et son bouton avec elle, ne sont plus dans le DOM. */
+  private focusNeighbour(game: BoardGameDto, aside: boolean): void {
+    const leaving = aside ? HOST_SECTION_KEY : EXCLUDED_SECTION_KEY;
+    const arriving = aside ? EXCLUDED_SECTION_KEY : HOST_SECTION_KEY;
+    const control = aside ? '.gr__menu' : '.ur__action';
+    const rows = aside ? this.hostView().map((i) => i.game) : this.excludedGames();
+    const at = rows.findIndex((g) => g.id === game.id);
+    const next = rows[at + 1] ?? rows[at - 1] ?? null;
+    afterNextRender(
+      () => {
+        const root = this.host.nativeElement;
+        const section = (key: string) =>
+          root.querySelector<HTMLElement>(`app-games-section[data-section="${key}"]`);
+        const neighbour =
+          next === null
+            ? undefined
+            : Array.from(section(leaving)?.querySelectorAll<HTMLElement>('li') ?? []).find(
+                (li) => li.dataset['gameId'] === next.id,
+              );
+        const target =
+          neighbour?.querySelector<HTMLElement>(control) ??
+          section(leaving)?.querySelector<HTMLElement>('.gs__header') ??
+          section(arriving)?.querySelector<HTMLElement>('.gs__header');
+        target?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   /**

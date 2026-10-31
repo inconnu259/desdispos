@@ -17,6 +17,7 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { CreateEventDto, UpdateEventDto } from './dto/create-event.dto';
 import { EventBoardGamesService } from './event-board-games.service';
 import { EventGameBringService } from './event-game-bring.service';
+import { EventGameExclusionService } from './event-game-exclusion.service';
 import { GroupEventsService } from './group-events.service';
 
 /**
@@ -32,6 +33,7 @@ export class EventsController {
     private readonly groupEvents: GroupEventsService,
     private readonly eventBoardGames: EventBoardGamesService,
     private readonly gameBrings: EventGameBringService,
+    private readonly gameExclusions: EventGameExclusionService,
   ) {}
 
   @Post('parties/:id/events')
@@ -95,6 +97,28 @@ export class EventsController {
     @CurrentUser() user: AuthUser,
   ): Promise<void> {
     await this.gameBrings.unbring(eventId, boardGameId, user.id);
+  }
+
+  /** Story 49.4 : l'hôte écarte l'un de ses jeux pour cette soirée — `EVENT_GAME_EXCLUDE`, idempotent (204). */
+  @Put('events/:eventId/board-games/:boardGameId/exclusion')
+  @HttpCode(204)
+  async exclude(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('boardGameId', ParseUUIDPipe) boardGameId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    await this.gameExclusions.exclude(eventId, boardGameId, user.id);
+  }
+
+  /** Story 49.4 : l'hôte remet ce jeu pour cette soirée — idempotent (204). */
+  @Delete('events/:eventId/board-games/:boardGameId/exclusion')
+  @HttpCode(204)
+  async restore(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('boardGameId', ParseUUIDPipe) boardGameId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    await this.gameExclusions.restore(eventId, boardGameId, user.id);
   }
 
   /** Story 49.2 : combien de soirées à venir attendent l'un de mes jeux — lu avant de le retirer de ma Ludothèque. */

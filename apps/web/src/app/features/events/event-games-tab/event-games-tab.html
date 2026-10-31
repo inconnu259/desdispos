@@ -1,4 +1,4 @@
-<!-- Stories 49.1 et 49.2 : onglet des jeux sur place. La région d'annonce est TOUJOURS présente (une région ajoutée
+<!-- Stories 49.1, 49.2 et 49.4 : onglet des jeux sur place. La région d'annonce est TOUJOURS présente (une région ajoutée
      en même temps que son texte n'est pas lue) ; aucun bandeau visible. -->
 <div class="egt">
   <div class="egt__live" role="status" aria-live="polite">{{ announcement() }}</div>
@@ -71,6 +71,30 @@
         }
       </app-games-section>
     }
+
+    <!-- Story 49.4 : section du bas, l'hôte seul, seulement s'il a écarté un jeu — même quand « Chez moi » est vide.
+         Le filtre « Jouables à N » ne la touche pas : ces jeux ne sont pas sur place. -->
+    @if (showExcluded()) {
+      <app-games-section
+        [sectionKey]="excludedSectionKey"
+        [title]="theme.tone()['event_games.excluded_section']"
+        [total]="excludedGames().length"
+        [note]="theme.tone()['event_games.excluded_note']"
+      >
+        <ul class="egt__list">
+          @for (game of excludedGames(); track game.id) {
+            <li [attr.data-game-id]="game.id">
+              <app-unavailable-row
+                [game]="game"
+                [restoreLabel]="theme.tone()['event_games.restore_btn']"
+                [busy]="isBusy(game.id)"
+                (restore)="onRestore(game)"
+              />
+            </li>
+          }
+        </ul>
+      </app-games-section>
+    }
   } @else if (failed()) {
     <p class="egt__error">{{ theme.tone()['board_games.error_fallback'] }}</p>
   }
@@ -79,7 +103,7 @@
 <ng-template #rows let-items let-headcount="headcount">
   <ul class="egt__list">
     @for (item of items; track item.game.id) {
-      <li>
+      <li [attr.data-game-id]="item.game.id">
         <app-game-row
           [game]="item.game"
           [headcount]="headcount"
@@ -96,8 +120,32 @@
           "
           [actionBusy]="isBusy(item.game.id)"
           (act)="onAct(item)"
+          [menuLabel]="menuLabel(item)"
+          [menuOpen]="menuGame()?.id === item.game.id"
+          (menu)="openMenu(item.game, $event)"
         />
       </li>
     }
   </ul>
+</ng-template>
+
+<!-- Story 49.4 : le menu ⋮ des jeux de l'hôte — un seul `cdkConnectedOverlay`, tenu par l'onglet (même patron que le ⋮ de
+     la fiche de personnage, jamais `MatMenu`). Une entrée ; le fond (transparent) referme. -->
+<ng-template
+  cdkConnectedOverlay
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  [cdkConnectedOverlayOrigin]="menuOrigin()"
+  [cdkConnectedOverlayOpen]="menuGame() !== null"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPositions]="ROW_MENU_POSITIONS"
+  cdkConnectedOverlayPush
+  [cdkConnectedOverlayViewportMargin]="8"
+  (backdropClick)="closeMenu(true)"
+  (overlayKeydown)="onMenuKeydown($event)"
+>
+  <div class="egt-menu" role="menu" [attr.aria-label]="menuAriaLabel()">
+    <button type="button" role="menuitem" class="egt-menu__item" (click)="onExcludeChosen()">
+      {{ theme.tone()['event_games.exclude_entry'] }}
+    </button>
+  </div>
 </ng-template>

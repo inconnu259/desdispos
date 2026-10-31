@@ -365,6 +365,11 @@ export const grimoireEmeraude = {
   'event_games.bring_btn': "J'apporte",
   'event_games.unbring_btn': "Je ne l'apporte plus",
   'event_games.mine_empty': 'Votre cabinet est vide.',
+  /* — Story 49.4 : écarter un jeu pour ce soir (hôte) — entrée du menu ⋮, titre et mention de la section du bas, « Remettre » : une voix par thème — */
+  'event_games.exclude_entry': 'Sceller pour ce soir',
+  'event_games.excluded_section': 'Scellées ce soir',
+  'event_games.excluded_note': 'visible par vous seul·e',
+  'event_games.restore_btn': 'Lever le sceau',
   /* — doublons et provenance : neutres (NEUTRAL_KEYS) — */
   'event_games.dup_pill': '×{n}',
   'event_games.also_at': 'aussi chez {noms}',
@@ -373,6 +378,9 @@ export const grimoireEmeraude = {
   'event_games.by_other': 'par {nom}',
   'event_games.by_me': 'par moi',
   'event_games.holder_me': 'moi',
+  /* — Story 49.4 : noms accessibles du ⋮ et de son menu : neutres (NEUTRAL_KEYS) — */
+  'event_games.menu_trigger_aria': 'Actions pour {nom}',
+  'event_games.menu_aria': 'Menu des actions pour {nom}',
   /* — retrait d'un jeu apporté à des soirées à venir (page Ludothèque) : neutre (NEUTRAL_KEYS) — */
   'board_games.remove_brought_one': 'Ce jeu est apporté à 1 soirée à venir : il en sera retiré.',
   'board_games.remove_brought_many':

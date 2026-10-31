@@ -1204,9 +1204,14 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'event_games.holder_me',
     'board_games.remove_brought_one',
     'board_games.remove_brought_many',
+    // Story 49.4 : noms accessibles du ⋮ d'un jeu de l'hôte et de son menu (« Actions pour {nom} ») — libellés
+    // fonctionnels d'accessibilité, volontairement hors thème ; l'entrée du menu, le titre et la mention de la
+    // section du bas et « Remettre » ont une voix
+    'event_games.menu_trigger_aria',
+    'event_games.menu_aria',
   ]);
 
-  const REFERENCE =TONE_MAP['grimoire-emeraude'];
+  const REFERENCE = TONE_MAP['grimoire-emeraude'];
   const identicalKeys = () =>
     Object.keys(REFERENCE).filter(
       (key) => new Set(THEMES.map((theme) => TONE_MAP[theme][key])).size === 1,
@@ -2131,11 +2136,12 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
 
 // Story 44.3 — la liste des destinées (puce ✦). Le mode soirée l'affiche : aucun mot du JDR, ni « partie ».
 describe('Tones — la liste des destinées (Story 44.3)', () => {
-  const KEYS = Object.keys(TONE_MAP['grimoire-emeraude']).filter((key) =>
-    key.startsWith('calendar.destiny_list_') ||
-    key.startsWith('calendar.destiny_row_') ||
-    key.startsWith('calendar.destiny_state_') ||
-    key === 'calendar.destiny_quit',
+  const KEYS = Object.keys(TONE_MAP['grimoire-emeraude']).filter(
+    (key) =>
+      key.startsWith('calendar.destiny_list_') ||
+      key.startsWith('calendar.destiny_row_') ||
+      key.startsWith('calendar.destiny_state_') ||
+      key === 'calendar.destiny_quit',
   );
 
   it('onze clés, présentes dans les trois thèmes, sans mot du JDR ni « partie »', () => {
@@ -2159,7 +2165,9 @@ describe('Tones — la liste des destinées (Story 44.3)', () => {
     for (const theme of THEMES) {
       const tone = TONE_MAP[theme];
       expect(
-        ['todo', 'answered', 'organizer', 'not_voting'].map((s) => tone[`calendar.destiny_state_${s}`]),
+        ['todo', 'answered', 'organizer', 'not_voting'].map(
+          (s) => tone[`calendar.destiny_state_${s}`],
+        ),
         theme,
       ).toEqual(attendu[theme]);
     }
@@ -2186,8 +2194,12 @@ describe('Tones — le plateau de la destinée (Story 44.4)', () => {
 
   it('les chevrons parlent de créneaux, plus de votes', () => {
     for (const theme of THEMES) {
-      expect(TONE_MAP[theme]['calendar.destiny_prev_aria'], theme).not.toMatch(/conseil|scrutin|cercle/i);
-      expect(TONE_MAP[theme]['calendar.destiny_next_aria'], theme).not.toMatch(/conseil|scrutin|cercle/i);
+      expect(TONE_MAP[theme]['calendar.destiny_prev_aria'], theme).not.toMatch(
+        /conseil|scrutin|cercle/i,
+      );
+      expect(TONE_MAP[theme]['calendar.destiny_next_aria'], theme).not.toMatch(
+        /conseil|scrutin|cercle/i,
+      );
     }
   });
 });
@@ -2280,7 +2292,8 @@ describe('Tones — lignes en clair du formulaire de création (Story 45.7)', ()
     'partie.ralliement_kind_plain_CAMPAGNE_EPISODIQUE',
   ];
   const SOIREE = PLAIN.filter((k) => k.includes('ralliement'));
-  const JDR_WORDS = /(^|[^\p{L}])(mj|campagnes?|sc[ée]narios?|s[ée]ances?|joueurs?|qu[êe]tes?|troupe|parties?)(?=$|[^\p{L}])/iu;
+  const JDR_WORDS =
+    /(^|[^\p{L}])(mj|campagnes?|sc[ée]narios?|s[ée]ances?|joueurs?|qu[êe]tes?|troupe|parties?)(?=$|[^\p{L}])/iu;
 
   it.each(PLAIN)('%s : le même texte dans les trois thèmes, jamais vide', (key) => {
     const texts = THEMES.map((theme) => TONE_MAP[theme][key]);
@@ -2533,5 +2546,60 @@ describe('Tones — ce que j’apporte à une soirée (Story 49.2)', () => {
     expect(TONE_MAP['foret-ancienne']['event_games.mine_empty']).toMatch(/^Ton /);
     expect(TONE_MAP['grimoire-emeraude']['event_games.mine_empty']).toMatch(/^Votre /);
     expect(TONE_MAP['atelier-cuivre']['event_games.mine_empty']).toMatch(/^Votre /);
+  });
+});
+
+// Story 49.4 — écarter un jeu pour ce soir (hôte) : l'entrée du menu ⋮, le titre et la mention de la section du bas
+// et le bouton « Remettre » prennent la voix de chaque thème (textes validés le 2026-10-29, EXPERIENCE.md §3.1-3.2) ;
+// les noms accessibles du ⋮ et de son menu sont neutres.
+describe('Tones — écarter un jeu pour ce soir (Story 49.4)', () => {
+  const VOICED: Record<string, Record<string, string>> = {
+    'event_games.exclude_entry': {
+      'grimoire-emeraude': 'Sceller pour ce soir',
+      'foret-ancienne': 'Laisser au logis ce soir',
+      'atelier-cuivre': 'Hors service ce soir',
+    },
+    'event_games.excluded_section': {
+      'grimoire-emeraude': 'Scellées ce soir',
+      'foret-ancienne': 'Restés au logis',
+      'atelier-cuivre': 'Hors service',
+    },
+    'event_games.excluded_note': {
+      'grimoire-emeraude': 'visible par vous seul·e',
+      'foret-ancienne': 'visible par toi seul·e',
+      'atelier-cuivre': 'visible par vous seul·e',
+    },
+    'event_games.restore_btn': {
+      'grimoire-emeraude': 'Lever le sceau',
+      'foret-ancienne': 'Ressortir',
+      'atelier-cuivre': 'Remettre en service',
+    },
+  };
+
+  for (const theme of THEMES) {
+    it(`${theme} porte l’entrée du menu, la section du bas, sa mention et « Remettre » validés`, () => {
+      for (const [key, byTheme] of Object.entries(VOICED)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(byTheme[theme]);
+      }
+    });
+  }
+
+  it('chaque libellé a des voix différentes d’un thème à l’autre', () => {
+    for (const key of Object.keys(VOICED)) {
+      const texts = new Set(THEMES.map((theme) => TONE_MAP[theme][key]));
+      expect(texts.size, key).toBeGreaterThan(1);
+    }
+  });
+
+  it('noms accessibles du ⋮ et de son menu : identiques dans les trois thèmes', () => {
+    const expected: Record<string, string> = {
+      'event_games.menu_trigger_aria': 'Actions pour {nom}',
+      'event_games.menu_aria': 'Menu des actions pour {nom}',
+    };
+    for (const theme of THEMES) {
+      for (const [key, text] of Object.entries(expected)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(text);
+      }
+    }
   });
 });

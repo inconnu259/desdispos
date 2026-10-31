@@ -41,7 +41,7 @@ describe('EventGameExclusionService (Story 49.4)', () => {
     eventGameExcluded: { upsert: jest.Mock; deleteMany: jest.Mock; findMany: jest.Mock };
   };
   let permissions: { assert: jest.Mock };
-  let events: { boardGamesBasis: jest.Mock };
+  let events: { boardGamesBasis: jest.Mock; releaseOrphanEnviesInTx: jest.Mock };
   let boardGames: { ownedGameIds: jest.Mock };
   let realtime: { emit: jest.Mock };
   let service: EventGameExclusionService;
@@ -69,7 +69,10 @@ describe('EventGameExclusionService (Story 49.4)', () => {
     // Transaction interactive simulée : la fonction reçoit le même client.
     prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     permissions = { assert: jest.fn().mockResolvedValue(testGrant(group, 'member')) };
-    events = { boardGamesBasis: jest.fn().mockResolvedValue(basis()) };
+    events = {
+      boardGamesBasis: jest.fn().mockResolvedValue(basis()),
+      releaseOrphanEnviesInTx: jest.fn().mockResolvedValue(0),
+    };
     boardGames = { ownedGameIds: jest.fn().mockResolvedValue(new Set(['g1'])) };
     realtime = { emit: jest.fn() };
     service = new EventGameExclusionService(
@@ -112,6 +115,22 @@ describe('EventGameExclusionService (Story 49.4)', () => {
         update: {},
       });
       expect(realtime.emit).toHaveBeenCalledWith(partieTopic('p1'));
+    });
+
+    it('Story 49.5 : purge les Envies orphelines dans la même transaction, APRÈS l’écart', async () => {
+      await service.exclude('e1', 'g1', 'host');
+
+      expect(events.releaseOrphanEnviesInTx).toHaveBeenCalledWith(prisma, 'e1');
+      expect(prisma.eventGameExcluded.upsert.mock.invocationCallOrder[0]).toBeLessThan(
+        events.releaseOrphanEnviesInTx.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('Story 49.5 : une purge en échec annule l’écart (rien n’est émis)', async () => {
+      events.releaseOrphanEnviesInTx.mockRejectedValue(new Error('boum'));
+
+      await expect(service.exclude('e1', 'g1', 'host')).rejects.toThrow('boum');
+      expect(realtime.emit).not.toHaveBeenCalled();
     });
 
     it('rencontre isolée : l’hôte écarte un jeu', async () => {
@@ -243,6 +262,12 @@ describe('EventGameExclusionService (Story 49.4)', () => {
   });
 
   describe('restore', () => {
+    it('Story 49.5 : remettre un jeu ne purge aucune Envie (une source de plus, jamais de moins)', async () => {
+      await service.restore('e1', 'g1', 'host');
+
+      expect(events.releaseOrphanEnviesInTx).not.toHaveBeenCalled();
+    });
+
     it('mêmes décisions sous le verrou, puis lève l’écart (deleteMany) et émet', async () => {
       await service.restore('e1', 'g1', 'host');
 

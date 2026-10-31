@@ -66,6 +66,7 @@ import { GAME_SYSTEMS, isOpenForCreation, kindsOf } from '@master-jdr/shared';
 import { AvailabilityService } from '../availability/availability.service';
 import type { EventCancellationMailer } from '../events/event-cancellation-mailer.service';
 import { EVENING_CANCELLED_MESSAGE, EventsService } from '../events/events.service';
+import type { BoardGamesService } from '../board-games/board-games.service';
 import { PollVoteCleanupService } from '../poll/poll-vote-cleanup.service';
 import {
   ADMIN_ONLY_MESSAGE,
@@ -145,6 +146,11 @@ describe('PartiesService', () => {
       deleteMany: jest.Mock;
     };
     eventGameBring: {
+      findMany: jest.Mock;
+      deleteMany: jest.Mock;
+    };
+    // Story 49.5 : Envies de qui sort d'un groupe (les siennes partent avec lui).
+    eventGameEnvy: {
       findMany: jest.Mock;
       deleteMany: jest.Mock;
     };
@@ -264,6 +270,11 @@ describe('PartiesService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
+      // Story 49.5 : Envies de qui sort d'un groupe (défaut : aucune).
+      eventGameEnvy: {
+        findMany: jest.fn().mockResolvedValue([]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       // Défaut « aucun favori » — les tests dédiés au favori (Story 29.8) reconfigurent
       // explicitement ces mocks.
       partieFavorite: {
@@ -315,6 +326,7 @@ describe('PartiesService', () => {
       new EventsService(
         prisma as unknown as PrismaService,
         realtimeEvents as unknown as RealtimeEventsService,
+        {} as unknown as BoardGamesService,
       ),
       // Story 37.6 — le vrai service de permission, sur les mêmes mocks Prisma : les droits
       // restent exercés de bout en bout (partie lue, puis `Membership` si l'appelant n'est pas
@@ -1952,6 +1964,33 @@ describe('PartiesService', () => {
       ).toEqual(objectLike({ userId: 'membre1' }));
     });
 
+    it('Story 49.5 : une personne sans apport mais avec des Envies les perd (soirées verrouillées, triées) ; les Envies des autres restent', async () => {
+      const ordre: string[] = [];
+      prisma.$queryRaw.mockImplementation((strings: TemplateStringsArray) => {
+        ordre.push(strings.join('?').includes('"Partie"') ? 'verrou-partie' : 'verrou-event');
+        return Promise.resolve([{ id: 'x' }]);
+      });
+      prisma.eventGameBring.findMany.mockResolvedValue([]);
+      prisma.eventGameEnvy.findMany.mockImplementation((args: { distinct?: string[] }) =>
+        Promise.resolve(args.distinct ? [] : [{ eventId: 'evB' }, { eventId: 'evA' }]),
+      );
+      prisma.eventGameEnvy.deleteMany.mockImplementation(() => {
+        ordre.push('envies');
+        return Promise.resolve({ count: 2 });
+      });
+
+      await service.leave('p1', 'membre1', { type: 'LEFT' });
+
+      expect(ordre).toEqual(['verrou-partie', 'verrou-event', 'verrou-event', 'envies']);
+      // Seulement SES Envies, sur les soirées à venir de ce groupe : jamais celles d'un autre.
+      const where = callArg<{ where: { userId: string; event: { partieId: string } } }>(
+        prisma.eventGameEnvy.deleteMany,
+      ).where;
+      expect(where.userId).toBe('membre1');
+      expect(where.event.partieId).toBe('p1');
+      expect(prisma.membership.deleteMany).toHaveBeenCalled();
+    });
+
     it('Story 49.3 : un échec de la suppression des apports laisse l’adhésion en place (transaction annulée)', async () => {
       prisma.eventGameBring.findMany.mockResolvedValue([{ eventId: 'evA' }]);
       prisma.eventGameBring.deleteMany.mockRejectedValue(new Error('boom'));
@@ -3322,7 +3361,7 @@ describe('PartiesService', () => {
       const permissions = new PermissionService(p);
       // Story 37.8 : les ports du calendrier sont câblés sur la vraie implémentation (`events/`),
       // comme `PortsModule` en production — les attentes de ce test restent celles de la 37.1.
-      const realEvents = new EventsService(p, realtime);
+      const realEvents = new EventsService(p, realtime, {} as unknown as BoardGamesService);
       const realAvailability = new AvailabilityService(
         p,
         { emit: jest.fn() } as unknown as RealtimeEventsService,
@@ -3334,7 +3373,7 @@ describe('PartiesService', () => {
         p,
         realAvailability,
         realtime,
-        new EventsService(p, realtime),
+        new EventsService(p, realtime, {} as unknown as BoardGamesService),
         permissions,
         {
           removeOpenVotesInTx: jest.fn(),

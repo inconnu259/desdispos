@@ -53,6 +53,7 @@ model User {
   calendarLayers            UserCalendarLayer[]
   boardGames                BoardGame[]
   eventGameBrings           EventGameBring[]
+  eventGameEnvies           EventGameEnvy[]
 }
 
 enum PartieKind {
@@ -623,6 +624,8 @@ model Event {
   gameBrings EventGameBring[]
   /// Story 49.4 : les jeux de l'hôte écartés pour cette soirée seulement (`EventGameExcluded`).
   gameExclusions EventGameExcluded[]
+  /// Story 49.5 : les Envies de cette soirée (`EventGameEnvy`, par nom de jeu).
+  gameEnvies EventGameEnvy[]
 
   @@index([partieId])
 }
@@ -820,4 +823,22 @@ model EventGameExcluded {
 
   @@unique([eventId, boardGameId])
   @@index([boardGameId])
+}
+
+/// Une Envie (Story 49.5, épic 49) : une personne dit qu'elle veut jouer à un jeu, PAR NOM (`nameKey`, la clé
+/// normalisée de la Ludothèque) et non par identifiant de jeu — le même nom tenu par deux sources, ou qui
+/// revient, partage une seule envie. Au plus une Envie par personne, par nom et par soirée. Seul `events/`
+/// écrit cette table, sous le verrou de l'événement ; elle disparaît en cascade avec l'événement ou la personne.
+/// Pas de lien vers `BoardGame` : l'Envie est purgée par `events/` quand le nom quitte la soirée.
+model EventGameEnvy {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nameKey   String
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId, nameKey])
+  @@index([userId])
 }

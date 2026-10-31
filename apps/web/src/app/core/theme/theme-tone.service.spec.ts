@@ -1209,6 +1209,11 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     // section du bas et « Remettre » ont une voix
     'event_games.menu_trigger_aria',
     'event_games.menu_aria',
+    // Story 49.5 : noms accessibles du compte d'Envies (« Voir les noms — {nom}, {n} {unite} ») et de la liste des
+    // noms (« Noms pour {nom} ») — libellés fonctionnels d'accessibilité, volontairement hors thème ; le libellé
+    // du ♥, l'unité du compte (appel / envie / demande) et la puce de tri ont une voix
+    'event_games.envy_count_aria',
+    'event_games.envy_names_aria',
   ]);
 
   const REFERENCE = TONE_MAP['grimoire-emeraude'];
@@ -2595,6 +2600,61 @@ describe('Tones — écarter un jeu pour ce soir (Story 49.4)', () => {
     const expected: Record<string, string> = {
       'event_games.menu_trigger_aria': 'Actions pour {nom}',
       'event_games.menu_aria': 'Menu des actions pour {nom}',
+    };
+    for (const theme of THEMES) {
+      for (const [key, text] of Object.entries(expected)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(text);
+      }
+    }
+  });
+});
+
+// Story 49.5 — signaler une Envie : le libellé du ♥, l'unité du compte (singulier et pluriel) et la puce de tri
+// prennent la voix de chaque thème (textes validés le 2026-10-29, EXPERIENCE.md §3.2) ; les noms accessibles du
+// compte et de la liste des noms sont neutres.
+describe('Tones — signaler une Envie (Story 49.5)', () => {
+  const VOICED: Record<string, Record<string, string>> = {
+    'event_games.envy_btn': {
+      'grimoire-emeraude': "Cette relique m'appelle",
+      'foret-ancienne': "J'ai envie d'y jouer",
+      'atelier-cuivre': "Je veux l'essayer",
+    },
+    'event_games.envy_unit_one': {
+      'grimoire-emeraude': 'appel',
+      'foret-ancienne': 'envie',
+      'atelier-cuivre': 'demande',
+    },
+    'event_games.envy_unit_many': {
+      'grimoire-emeraude': 'appels',
+      'foret-ancienne': 'envies',
+      'atelier-cuivre': 'demandes',
+    },
+    'event_games.sort_envy': {
+      'grimoire-emeraude': 'Les plus appelées',
+      'foret-ancienne': 'Les plus attendus',
+      'atelier-cuivre': 'Les plus demandés',
+    },
+  };
+
+  for (const theme of THEMES) {
+    it(`${theme} porte le libellé du ♥, l’unité du compte et la puce de tri validés`, () => {
+      for (const [key, byTheme] of Object.entries(VOICED)) {
+        expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBe(byTheme[theme]);
+      }
+    });
+  }
+
+  it('chaque libellé a des voix différentes d’un thème à l’autre (trois voix distinctes)', () => {
+    for (const key of Object.keys(VOICED)) {
+      const texts = new Set(THEMES.map((theme) => TONE_MAP[theme][key]));
+      expect(texts.size, key).toBe(3);
+    }
+  });
+
+  it('noms accessibles du compte et de la liste des noms : identiques dans les trois thèmes', () => {
+    const expected: Record<string, string> = {
+      'event_games.envy_count_aria': 'Voir les noms — {nom}, {n} {unite}',
+      'event_games.envy_names_aria': 'Noms pour {nom}',
     };
     for (const theme of THEMES) {
       for (const [key, text] of Object.entries(expected)) {

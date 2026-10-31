@@ -36,10 +36,12 @@ import {
 import type { GroupPollVotePort } from '../poll/ports/group-poll-vote.port';
 import type { RendezVousDurationPort } from '../poll/ports/rendez-vous-duration.port';
 import type { SeanceDatePort } from '../poll/ports/seance-date.port';
+import { BoardGamesService } from '../board-games/board-games.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseDayKey, todayKeyUtc } from './day-key';
 import { eligibleVoters } from './eligible-voters';
 import { eventClosure } from './event-is-open';
+import { onSiteNameKeys } from './on-site-name-keys';
 import {
   DURATION_POLL_PENDING_MESSAGE,
   assertDuration,
@@ -365,6 +367,8 @@ export class EventsService
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtimeEvents: RealtimeEventsService,
+    // Story 49.5 : seul lecteur de `BoardGame` — les noms de jeu sur place d'une soirée (purge des Envies).
+    private readonly boardGames: BoardGamesService,
   ) {}
 
   /** Création composite (événement + extension + première séance) dans une transaction, puis
@@ -1784,34 +1788,104 @@ export class EventsService
    * `{ partieId, upcomingOnly: true }` (les soirées À VENIR de la partie — séance sans date ou dont le
    * jour est aujourd'hui ou plus tard, jour UTC ; les soirées passées gardent leurs lignes). Cherche
    * par `Event.partieId`, pas par les inscriptions : les rencontres isolées sont couvertes.
+   * Story 49.5 : la personne y perd aussi ses PROPRES Envies, et les soirées visées sont celles où elle a un
+   * apport OU une Envie (une personne sans apport, qui n'avait que des Envies, est couverte). Les Envies des
+   * autres sur un nom qui n'est plus sur place (le jeu qu'elle apportait était la dernière source) sont
+   * supprimées dans la foulée (`releaseOrphanEnviesInTx`).
    * Même ordre des verrous que `releaseUpcomingInscriptionsInTx` : les lignes `Event` concernées, triées
    * par identifiant, `FOR UPDATE` (le verrou de `EventGameBringService.write`) AVANT la suppression, pour
-   * qu'aucun apport ne se glisse après. N'émet rien : l'appelant émet `partie:{id}` après SON commit.
-   * Renvoie le nombre de lignes supprimées.
+   * qu'aucun apport ni Envie ne se glisse après. N'émet rien : l'appelant émet `partie:{id}` après SON
+   * commit. Renvoie le nombre d'apports supprimés.
    */
   async releaseGameBringsInTx(
     tx: Prisma.TransactionClient,
     scope: { eventId: string } | { partieId: string; upcomingOnly: true },
     userId: string,
   ): Promise<number> {
-    const where: Prisma.EventGameBringWhereInput =
+    // La même portée sert aux apports et aux Envies : une soirée précise, ou les soirées à venir de la partie.
+    const eventFilter: Prisma.EventWhereInput | undefined =
       'eventId' in scope
-        ? { userId, eventId: scope.eventId }
+        ? undefined
         : {
-            userId,
-            event: {
-              partieId: scope.partieId,
-              seances: { some: { OR: upcomingSeanceOr(parseDayKey(todayKeyUtc())) } },
-            },
+            partieId: scope.partieId,
+            seances: { some: { OR: upcomingSeanceOr(parseDayKey(todayKeyUtc())) } },
           };
-    const rows = await tx.eventGameBring.findMany({ where, select: { eventId: true } });
-    if (rows.length === 0) return 0;
-    const eventIds = [...new Set(rows.map((r) => r.eventId))].sort();
+    const where: Prisma.EventGameBringWhereInput =
+      'eventId' in scope ? { userId, eventId: scope.eventId } : { userId, event: eventFilter };
+    const envyWhere: Prisma.EventGameEnvyWhereInput =
+      'eventId' in scope ? { userId, eventId: scope.eventId } : { userId, event: eventFilter };
+    const bringRows = await tx.eventGameBring.findMany({ where, select: { eventId: true } });
+    const envyRows = await tx.eventGameEnvy.findMany({
+      where: envyWhere,
+      select: { eventId: true },
+    });
+    if (bringRows.length === 0 && envyRows.length === 0) return 0;
+    const eventIds = [...new Set([...bringRows, ...envyRows].map((r) => r.eventId))].sort();
     for (const eventId of eventIds) {
       await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = ${eventId} FOR UPDATE`;
     }
-    // Suppression sous les verrous, par la même condition : seuls les apports de la personne.
+    // Suppression sous les verrous, par la même condition : seuls les apports et Envies de la personne.
     const { count } = await tx.eventGameBring.deleteMany({ where });
+    await tx.eventGameEnvy.deleteMany({ where: envyWhere });
+    // Les Envies des AUTRES sur un nom qui n'est plus tenu par personne partent aussi (même transaction).
+    for (const eventId of eventIds) {
+      await this.releaseOrphanEnviesInTx(tx, eventId);
+    }
+    return count;
+  }
+
+  /**
+   * Story 49.5 — les noms de jeu SUR PLACE d'une soirée, lus sur le client de la transaction de l'appelant
+   * (sous le verrou de l'événement) : les jeux de l'hôte moins ceux qu'il a écartés, plus les jeux apportés —
+   * la définition unique est `onSiteNameKeys`. `hostId` est l'hôte de l'événement (`null` s'il a disparu : pas de
+   * jeux d'hôte, les apports restent). Les clés sont lues par `BoardGamesService`, seul lecteur de `BoardGame`.
+   */
+  async onSiteNameKeysInTx(
+    tx: Prisma.TransactionClient,
+    eventId: string,
+    hostId: string | null,
+  ): Promise<Set<string>> {
+    const hostGames = hostId === null ? [] : await this.boardGames.nameKeysOfOwner(hostId, tx);
+    const excluded = await tx.eventGameExcluded.findMany({
+      where: { eventId },
+      select: { boardGameId: true },
+    });
+    const brings = await tx.eventGameBring.findMany({
+      where: { eventId },
+      select: { boardGameId: true },
+    });
+    const bringNameKeys = await this.boardGames.nameKeysByIds(
+      brings.map((b) => b.boardGameId),
+      tx,
+    );
+    return onSiteNameKeys({
+      hostGames,
+      excludedIds: excluded.map((e) => e.boardGameId),
+      bringNameKeys,
+    });
+  }
+
+  /**
+   * Story 49.5 — supprime, DANS la transaction de l'appelant et SOUS le verrou de l'événement (déjà pris), les
+   * Envies dont le nom n'est plus sur place : le dernier jeu qui le portait a été écarté par l'hôte, ou le
+   * dernier apport retiré (ou parti avec son porteur). Un nom encore tenu par une autre source — une copie de
+   * l'hôte, un autre porteur — garde ses Envies. N'émet rien : l'appelant émet après SON commit. Renvoie le
+   * nombre d'Envies supprimées.
+   */
+  async releaseOrphanEnviesInTx(tx: Prisma.TransactionClient, eventId: string): Promise<number> {
+    const envied = await tx.eventGameEnvy.findMany({
+      where: { eventId },
+      select: { nameKey: true },
+      distinct: ['nameKey'],
+    });
+    if (envied.length === 0) return 0;
+    const event = await tx.event.findUnique({ where: { id: eventId }, select: { ownerId: true } });
+    const onSite = await this.onSiteNameKeysInTx(tx, eventId, event?.ownerId ?? null);
+    const orphans = envied.map((e) => e.nameKey).filter((key) => !onSite.has(key));
+    if (orphans.length === 0) return 0;
+    const { count } = await tx.eventGameEnvy.deleteMany({
+      where: { eventId, nameKey: { in: orphans } },
+    });
     return count;
   }
 

@@ -9,6 +9,7 @@ import { AvailabilityService, DeclarationLike } from './availability.service';
 import type { OccupiedSpansPort } from './ports/occupied-spans.port';
 import type { OwnEventsPort } from './ports/own-events.port';
 import { EventsService } from '../events/events.service';
+import type { BoardGamesService } from '../board-games/board-games.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../permissions/permission.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
@@ -55,7 +56,11 @@ function asPermissionService(mock: MockPermissions = makeMockPermissions()): Per
  * attentes restent INCHANGÉES. Les tests « fakes » du bas du fichier isolent, eux, le service.
  */
 function wirePorts(prisma: unknown): [OccupiedSpansPort, OwnEventsPort] {
-  const events = new EventsService(prisma as PrismaService, makeMockRealtimeEvents());
+  const events = new EventsService(
+    prisma as PrismaService,
+    makeMockRealtimeEvents(),
+    {} as unknown as BoardGamesService,
+  );
   return [events, events];
 }
 

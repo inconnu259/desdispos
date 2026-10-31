@@ -7,6 +7,7 @@ import { PollModule } from '../poll/poll.module';
 import { DatableSeancesService } from './datable-seances.service';
 import { EventBoardGamesService } from './event-board-games.service';
 import { EventGameBringService } from './event-game-bring.service';
+import { EventGameEnvyService } from './event-game-envy.service';
 import { EventGameExclusionService } from './event-game-exclusion.service';
 import { EventCancellationMailer } from './event-cancellation-mailer.service';
 import { EventsController } from './events.controller';
@@ -55,6 +56,9 @@ import { OpenPollContextService } from './open-poll-context.service';
  * Story 49.4 : `EventGameExclusionService` écrit `EventGameExcluded` (les jeux de l'hôte écartés pour une soirée) ; même
  * lecture de la propriété d'un jeu par `BoardGamesService`.
  *
+ * Story 49.5 : `EventGameEnvyService` écrit `EventGameEnvy` (les Envies, par nom de jeu) ; `EventsService` reçoit
+ * `BoardGamesService` pour lire les noms sur place (purge des Envies orphelines) — toujours `events/ → board-games/`.
+ *
  * Story 40.3 : `GroupEventsService` est exporté — les routes d'inscription partagées avec le JDR
  * (`scenarios/seances/:id/inscription`) y délèguent la branche « groupe ».
  */
@@ -69,6 +73,7 @@ import { OpenPollContextService } from './open-poll-context.service';
     EventBoardGamesService,
     EventGameBringService,
     EventGameExclusionService,
+    EventGameEnvyService,
     GroupPollChoiceService,
     GroupPollExtensionService,
     OpenPollContextService,

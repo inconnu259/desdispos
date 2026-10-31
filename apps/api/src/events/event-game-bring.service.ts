@@ -69,6 +69,8 @@ export class EventGameBringService {
   async unbring(eventId: string, boardGameId: string, userId: string): Promise<void> {
     const partieId = await this.write(eventId, boardGameId, userId, async (tx) => {
       await tx.eventGameBring.deleteMany({ where: { eventId, boardGameId, userId } });
+      // Story 49.5 : si c'était la dernière source de ce nom, ses Envies partent dans la même transaction.
+      await this.events.releaseOrphanEnviesInTx(tx, eventId);
     });
     this.emit(partieId, eventId);
   }

@@ -149,6 +149,56 @@ describe('BoardGamesService (Story 48.1)', () => {
     });
   });
 
+  describe('nameKeysOfOwner (Story 49.5)', () => {
+    it('lit l’identifiant et la clé de mes seuls jeux, sans autre colonne', async () => {
+      prisma.boardGame.findMany.mockResolvedValue([{ id: 'g1', nameKey: 'azul' }]);
+
+      const keys = await service.nameKeysOfOwner('u1');
+
+      expect(prisma.boardGame.findMany).toHaveBeenCalledWith({
+        where: { ownerId: 'u1' },
+        select: { id: true, nameKey: true },
+      });
+      expect(keys).toEqual([{ id: 'g1', nameKey: 'azul' }]);
+    });
+
+    it('lit sur le client fourni (transaction) quand il y en a un', async () => {
+      const tx = { boardGame: { findMany: jest.fn().mockResolvedValue([]) } };
+
+      await service.nameKeysOfOwner('u1', tx as never);
+
+      expect(tx.boardGame.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('nameKeysByIds (Story 49.5)', () => {
+    it('rend les clés des jeux demandés, sans doublon', async () => {
+      prisma.boardGame.findMany.mockResolvedValue([{ nameKey: 'azul' }, { nameKey: 'azul' }]);
+
+      const keys = await service.nameKeysByIds(['g1', 'g2']);
+
+      expect(prisma.boardGame.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['g1', 'g2'] } },
+        select: { nameKey: true },
+      });
+      expect(keys).toEqual(['azul']);
+    });
+
+    it('lit sur le client fourni (transaction) quand il y en a un', async () => {
+      const tx = { boardGame: { findMany: jest.fn().mockResolvedValue([{ nameKey: 'go' }]) } };
+
+      await expect(service.nameKeysByIds(['g1'], tx as never)).resolves.toEqual(['go']);
+
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+    });
+
+    it('aucun identifiant : liste vide, aucune lecture', async () => {
+      await expect(service.nameKeysByIds([])).resolves.toEqual([]);
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('listMine', () => {
     it('lit mes seuls jeux, triés par clé normalisée puis par nom', async () => {
       prisma.boardGame.findMany.mockResolvedValue([row()]);

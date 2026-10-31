@@ -364,7 +364,7 @@ async function createFixture(
           // Story 49.1 : les jeux sur place d'une soirée (onglet posé après « Conjonction · Invités »).
           boardGames: vi
             .fn()
-            .mockResolvedValue(options.eventBoardGames ?? { games: [], brings: [], participantsCount: 1 }),
+            .mockResolvedValue(options.eventBoardGames ?? { games: [], brings: [], participantsCount: 1, envies: [] }),
         },
       },
     ],
@@ -6925,6 +6925,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       games: [game('Azul', 2, 4), game('Codenames', 4, 8), game('Skull', null, null)],
       brings: [],
       participantsCount: 4,
+      envies: [],
     };
 
     it.each(THEMES)(
@@ -6988,7 +6989,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       const { fixture, el } = await createFixture(soiree({ role: 'member' }), OTHER_ID, {
         members,
         events: [event()],
-        eventBoardGames: { games: [], brings: [], participantsCount: 2 },
+        eventBoardGames: { games: [], brings: [], participantsCount: 2, envies: [] },
         noopAnimations: true,
       });
       await settle(fixture);

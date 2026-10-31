@@ -15,8 +15,10 @@ import type { AuthUser } from '@master-jdr/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { CreateEventDto, UpdateEventDto } from './dto/create-event.dto';
+import { EventEnvyBodyDto } from './dto/event-envy.dto';
 import { EventBoardGamesService } from './event-board-games.service';
 import { EventGameBringService } from './event-game-bring.service';
+import { EventGameEnvyService } from './event-game-envy.service';
 import { EventGameExclusionService } from './event-game-exclusion.service';
 import { GroupEventsService } from './group-events.service';
 
@@ -34,6 +36,7 @@ export class EventsController {
     private readonly eventBoardGames: EventBoardGamesService,
     private readonly gameBrings: EventGameBringService,
     private readonly gameExclusions: EventGameExclusionService,
+    private readonly gameEnvies: EventGameEnvyService,
   ) {}
 
   @Post('parties/:id/events')
@@ -119,6 +122,28 @@ export class EventsController {
     @CurrentUser() user: AuthUser,
   ): Promise<void> {
     await this.gameExclusions.restore(eventId, boardGameId, user.id);
+  }
+
+  /** Story 49.5 : j'ai envie de jouer à ce jeu (par nom) ce soir — `EVENT_GAME_ENVY`, idempotent (204). */
+  @Put('events/:eventId/envies')
+  @HttpCode(204)
+  async envy(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() dto: EventEnvyBodyDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    await this.gameEnvies.envy(eventId, dto.nameKey, user.id);
+  }
+
+  /** Story 49.5 : je n'ai plus envie de ce jeu — idempotent (204). */
+  @Delete('events/:eventId/envies')
+  @HttpCode(204)
+  async unenvy(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() dto: EventEnvyBodyDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    await this.gameEnvies.unenvy(eventId, dto.nameKey, user.id);
   }
 
   /** Story 49.2 : combien de soirées à venir attendent l'un de mes jeux — lu avant de le retirer de ma Ludothèque. */

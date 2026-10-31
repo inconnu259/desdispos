@@ -3,6 +3,7 @@ import { NotificationsService } from './notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { EventsService } from '../events/events.service';
+import type { BoardGamesService } from '../board-games/board-games.service';
 import type { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { anyOf, objectLike } from '../common/test-utils/jest-typed';
 
@@ -44,7 +45,11 @@ describe('NotificationsService', () => {
     service = new NotificationsService(
       prisma as unknown as PrismaService,
       email as unknown as EmailService,
-      new EventsService(prisma as unknown as PrismaService, {} as unknown as RealtimeEventsService),
+      new EventsService(
+        prisma as unknown as PrismaService,
+        {} as unknown as RealtimeEventsService,
+        {} as unknown as BoardGamesService,
+      ),
     );
   });
 

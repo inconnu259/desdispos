@@ -27,10 +27,11 @@ export const BOARD_GAME_NOT_FOUND = 'Jeu introuvable dans votre Ludothèque';
 
 /** Systèmes de la famille `ralliement` : seules ces parties (groupes, rencontres isolées) entendent
  *  parler des jeux de leurs membres — une partie de JDR jamais (même copie locale que
- *  `NotificationsService`, Story 40.7). */
-const RALLIEMENT_SYSTEM_IDS: string[] = GAME_SYSTEMS.filter((g) => g.family === 'ralliement').map(
-  (g) => g.id,
-);
+ *  `NotificationsService`, Story 40.7). Lus À L'APPEL, pas à l'import : `events/` importe ce module
+ *  (Story 49.5) et certains tests doublent `@master-jdr/shared` sans `GAME_SYSTEMS`. */
+function ralliementSystemIds(): string[] {
+  return GAME_SYSTEMS.filter((g) => g.family === 'ralliement').map((g) => g.id);
+}
 
 /** Forme minimale d'une ligne `BoardGame` lue par le mappeur — sans dépendance à @prisma/client. */
 interface BoardGameRow {
@@ -135,6 +136,36 @@ export class BoardGamesService {
       select: { id: true },
     });
     return new Set(rows.map((r) => r.id));
+  }
+
+  /**
+   * L'identifiant et la clé normalisée (`nameKey`) de chaque jeu de `ownerId` — SANS décision de droit
+   * (Story 49.5) : lue par `events/` pour décider quels noms sont « sur place » (`onSiteNameKeys`, qui retire
+   * les jeux écartés par leur identifiant). `db` permet de lire sur le client d'une transaction, sous le
+   * verrou de la soirée.
+   */
+  async nameKeysOfOwner(
+    ownerId: string,
+    db: Pick<PrismaService, 'boardGame'> = this.prisma,
+  ): Promise<{ id: string; nameKey: string }[]> {
+    return db.boardGame.findMany({ where: { ownerId }, select: { id: true, nameKey: true } });
+  }
+
+  /**
+   * Les clés normalisées des jeux désignés par `ids`, sans doublon — SANS décision de droit (Story 49.5) : les
+   * identifiants viennent des apports d'une soirée. Un identifiant inconnu est simplement absent. `db` permet
+   * de lire sur le client d'une transaction.
+   */
+  async nameKeysByIds(
+    ids: string[],
+    db: Pick<PrismaService, 'boardGame'> = this.prisma,
+  ): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const rows = await db.boardGame.findMany({
+      where: { id: { in: ids } },
+      select: { nameKey: true },
+    });
+    return [...new Set(rows.map((r) => r.nameKey))];
   }
 
   /**
@@ -296,7 +327,7 @@ export class BoardGamesService {
     try {
       this.realtimeEvents.emit(userTopic(ownerId));
       const memberships = await this.prisma.membership.findMany({
-        where: { userId: ownerId, partie: { gameSystemId: { in: RALLIEMENT_SYSTEM_IDS } } },
+        where: { userId: ownerId, partie: { gameSystemId: { in: ralliementSystemIds() } } },
         select: { partieId: true },
       });
       for (const partieId of new Set(memberships.map((m) => m.partieId))) {

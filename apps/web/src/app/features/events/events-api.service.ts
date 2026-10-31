@@ -86,6 +86,30 @@ export class EventsApiService {
     );
   }
 
+  /** Story 49.5 : j'ai envie de jouer à ce jeu ce soir (`PUT …/envies`, corps `{ nameKey }`, 204, idempotent) — par
+   *  NOM (la clé normalisée reçue, jamais recalculée), pas par jeu. Rejette avec la réponse HTTP : 400 soirée close ou
+   *  nom plus sur place, 403 pas participant. */
+  async envy(eventId: string, nameKey: string): Promise<void> {
+    await firstValueFrom(
+      this.http.put<void>(
+        `${API_BASE}/events/${eventId}/envies`,
+        { nameKey },
+        { withCredentials: true },
+      ),
+    );
+  }
+
+  /** Story 49.5 : je n'ai plus envie de ce jeu (`DELETE …/envies`, corps `{ nameKey }`, 204, idempotent). Mêmes refus
+   *  que `envy`, sauf la participation et le « sur place » qui ne sont pas revérifiés. */
+  async unenvy(eventId: string, nameKey: string): Promise<void> {
+    await firstValueFrom(
+      this.http.delete<void>(`${API_BASE}/events/${eventId}/envies`, {
+        body: { nameKey },
+        withCredentials: true,
+      }),
+    );
+  }
+
   /** Story 49.2 : à combien de soirées encore ouvertes l'un de MES jeux est apporté — lu avant de le retirer de
    *  ma Ludothèque. Rejette avec la réponse HTTP (404 : jeu d'autrui ou retiré). */
   broughtCount(boardGameId: string): Promise<BoardGameBroughtCountDto> {

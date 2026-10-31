@@ -238,6 +238,8 @@ export const JDR_POLICY: Readonly<Record<PermissionAction, readonly PartieRole[]
   EVENT_GAME_BRING: NOBODY,
   // Story 49.4 : écarter un jeu de l'hôte pour une soirée — n'existe pas en JDR.
   EVENT_GAME_EXCLUDE: NOBODY,
+  // Story 49.5 : signaler une Envie sur un jeu d'une soirée — n'existe pas en JDR.
+  EVENT_GAME_ENVY: NOBODY,
   // Invitations : le MJ invite, liste et révoque (l'invitant est toujours le propriétaire, la
   // propriété d'une partie étant immuable).
   INVITATION_CREATE: OWNER_ONLY,
@@ -367,6 +369,10 @@ export const RALLIEMENT_POLICY: Readonly<Record<PermissionAction, readonly Parti
   // l'événement » est décidé plus bas (HOST_ONLY_ACTIONS), « soirée ouverte, jeu à l'hôte » sous le verrou
   // de l'événement par `EventGameExclusionService`.
   EVENT_GAME_EXCLUDE: ADMIN_AND_MEMBERS,
+  // Story 49.5 : signaler une Envie. Tout membre passe la cellule ; « participant de la soirée (place réservée
+  // exclue), nom de jeu sur place » est décidé sous le verrou de l'événement par `EventGameEnvyService` — ce
+  // n'est donc PAS une action réservée à l'hôte.
+  EVENT_GAME_ENVY: ADMIN_AND_MEMBERS,
   // Invitations (Story 39.3) : l'administrateur invite, liste et révoque ; un simple membre n'a que
   // la lecture de la liste des membres. La cellule vaut pour la famille entière (l'invitation à
   // usage unique, épopée 41, n'a pas encore d'interface : l'UI reste réservée aux groupes).

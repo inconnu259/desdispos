@@ -34,6 +34,7 @@ import { CharacterService } from '../characters/character.service';
 import { PollService } from '../poll/poll.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { ScenariosService } from './scenarios.service';
+import { BoardGamesService } from '../board-games/board-games.service';
 import { EventsService } from '../events/events.service';
 import { GroupEventsService } from '../events/group-events.service';
 import { PermissionService } from '../permissions/permission.service';
@@ -281,6 +282,8 @@ describe('ScenariosService', () => {
         { provide: RealtimeEventsService, useValue: realtimeEvents },
         // Story 37.3 — l'EventsService réel, sur les mêmes mocks Prisma/temps réel.
         EventsService,
+        // Story 49.5 — `EventsService` lit les noms de jeu sur place par `BoardGamesService` (jamais atteint ici).
+        { provide: BoardGamesService, useValue: {} },
         // Story 40.3 — branche « groupe » des routes d'inscription (jamais atteinte par ces tests JDR).
         {
           provide: GroupEventsService,

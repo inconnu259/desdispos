@@ -375,6 +375,9 @@ export type PermissionAction =
   // dans `PermissionService`) ; la condition « soirée ouverte, jeu à l'hôte » est décidée par `events/`.
   // Fermée à tous en JDR.
   | 'EVENT_GAME_EXCLUDE'
+  // Story 49.5 : signaler une Envie de jouer à un jeu — tout membre d'un groupe de ralliement ; la condition
+  // « participant de la soirée, nom de jeu sur place » est décidée par `events/`. Fermée à tous en JDR.
+  | 'EVENT_GAME_ENVY'
   // Invitations et liens d'invitation (couche 2, aucune capacité requise)
   | 'INVITATION_CREATE'
   | 'INVITATION_READ'
@@ -2139,18 +2142,33 @@ export interface EventBringDto {
   bringer: { userId: string; pseudo: string; displayName: string };
 }
 
+/** Les Envies d'un nom de jeu sur place (Story 49.5) : qui a envie d'y jouer ce soir — pseudo et nom affiché
+ *  seulement, jamais d'e-mail. `nameKey` est la clé normalisée reçue, jamais recalculée côté web. */
+export interface EventEnvyDto {
+  nameKey: string;
+  users: { userId: string; pseudo: string; displayName: string }[];
+}
+
 /** Les jeux sur place d'une soirée à venir (`GET /events/:eventId/board-games`, Story 49.1) : les jeux de
  *  l'hôte, triés par clé normalisée puis nom, et le nombre de participants N (hôte compris, jamais une place
  *  seulement réservée). Story 49.2 : `brings` — les jeux apportés par les participants actuels (triés comme
  *  `games`). Soirée passée, terminée ou annulée : `games` et `brings` vides, N tel que
  *  calculé. Story 49.4 : `games` ne liste plus les jeux que l'hôte a écartés pour cette soirée ; ceux-ci
  *  ne sont rendus QUE à l'hôte, dans `excludedGames` (clé absente pour tout autre lecteur, `[]` sur une soirée
- *  fermée) — la réponse elle-même ne dit rien aux autres. Jamais d'e-mail. */
+ *  fermée) — la réponse elle-même ne dit rien aux autres. Story 49.5 : `envies` — les Envies des participants
+ *  actuels sur les noms sur place (triées par clé puis pseudo), toujours présent, `[]` sur une soirée fermée.
+ *  Jamais d'e-mail. */
 export interface EventBoardGamesDto {
   games: BoardGameDto[];
   brings: EventBringDto[];
   participantsCount: number;
+  envies: EventEnvyDto[];
   excludedGames?: BoardGameDto[];
+}
+
+/** Corps de `PUT/DELETE /events/:eventId/envies` (Story 49.5) : la clé normalisée du nom de jeu. */
+export interface EventEnvyInput {
+  nameKey: string;
 }
 
 /** Combien d'apports de soirées encore ouvertes pèsent sur l'un de mes jeux (`GET

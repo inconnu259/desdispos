@@ -54,6 +54,8 @@ export class EventGameExclusionService {
         create: { eventId, boardGameId },
         update: {},
       });
+      // Story 49.5 : si c'était la dernière source de ce nom, ses Envies partent dans la même transaction.
+      await this.events.releaseOrphanEnviesInTx(tx, eventId);
     });
     this.emit(partieId, eventId);
   }

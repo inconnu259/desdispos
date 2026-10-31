@@ -7,6 +7,7 @@ import {
 } from '../permissions/permission.service';
 import { EventBoardGamesService } from './event-board-games.service';
 import type { EventGameBringService } from './event-game-bring.service';
+import type { EventGameEnvyService } from './event-game-envy.service';
 import type { EventGameExclusionService } from './event-game-exclusion.service';
 import type { EventBoardGamesBasis, EventsService } from './events.service';
 
@@ -33,6 +34,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
   let boardGames: { listOfOwner: jest.Mock };
   let brings: { listFor: jest.Mock };
   let exclusions: { excludedIds: jest.Mock };
+  let envies: { listFor: jest.Mock };
   let service: EventBoardGamesService;
 
   const group = {
@@ -59,12 +61,14 @@ describe('EventBoardGamesService (Story 49.1)', () => {
     boardGames = { listOfOwner: jest.fn().mockResolvedValue([GAME]) };
     brings = { listFor: jest.fn().mockResolvedValue([]) };
     exclusions = { excludedIds: jest.fn().mockResolvedValue(new Set()) };
+    envies = { listFor: jest.fn().mockResolvedValue([]) };
     service = new EventBoardGamesService(
       permissions as unknown as PermissionService,
       events as unknown as EventsService,
       boardGames as unknown as BoardGamesService,
       brings as unknown as EventGameBringService,
       exclusions as unknown as EventGameExclusionService,
+      envies as unknown as EventGameEnvyService,
     );
   });
 
@@ -83,7 +87,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
     expect(permissions.assert).toHaveBeenCalledWith('u1', 'PARTIE_READ', { eventId: 'e1' });
     expect(events.boardGamesBasis).toHaveBeenCalledWith('e1', { id: 'p1', isolated: false });
     expect(boardGames.listOfOwner).toHaveBeenCalledWith('host');
-    expect(result).toEqual({ games: [GAME], brings: [], participantsCount: 3 });
+    expect(result).toEqual({ games: [GAME], brings: [], participantsCount: 3, envies: [] });
   });
 
   it('une place réservée n’est pas comptée', async () => {
@@ -120,7 +124,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
 
     const result = await service.list('e1', 'u1');
 
-    expect(result).toEqual({ games: [], brings: [], participantsCount: 2 });
+    expect(result).toEqual({ games: [], brings: [], participantsCount: 2, envies: [] });
     expect(boardGames.listOfOwner).not.toHaveBeenCalled();
   });
 
@@ -128,7 +132,12 @@ describe('EventBoardGamesService (Story 49.1)', () => {
     permissions.assert.mockResolvedValue(testGrant({ ...evening, closedAt: new Date() }, 'member'));
     events.boardGamesBasis.mockResolvedValue(basis({ memberIds: ['host'] }));
 
-    expect(await service.list('e1', 'u1')).toEqual({ games: [], brings: [], participantsCount: 1 });
+    expect(await service.list('e1', 'u1')).toEqual({
+      games: [],
+      brings: [],
+      participantsCount: 1,
+      envies: [],
+    });
     expect(boardGames.listOfOwner).not.toHaveBeenCalled();
   });
 
@@ -137,7 +146,12 @@ describe('EventBoardGamesService (Story 49.1)', () => {
       basis({ hostId: null, inscriptions: [{ userId: 'a', status: 'CONFIRMED' }] }),
     );
 
-    expect(await service.list('e1', 'u1')).toEqual({ games: [], brings: [], participantsCount: 1 });
+    expect(await service.list('e1', 'u1')).toEqual({
+      games: [],
+      brings: [],
+      participantsCount: 1,
+      envies: [],
+    });
     expect(boardGames.listOfOwner).not.toHaveBeenCalled();
   });
 
@@ -186,6 +200,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
         games: [],
         brings: [BRING],
         participantsCount: 1,
+        envies: [],
       });
     });
   });
@@ -207,6 +222,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
         games: [AZUL],
         brings: [],
         participantsCount: 1,
+        envies: [],
         excludedGames: [BRASS],
       });
     });
@@ -235,6 +251,7 @@ describe('EventBoardGamesService (Story 49.1)', () => {
         games: [],
         brings: [],
         participantsCount: 1,
+        envies: [],
         excludedGames: [],
       });
       const other = await service.list('e1', 'u1');
@@ -246,6 +263,60 @@ describe('EventBoardGamesService (Story 49.1)', () => {
       events.boardGamesBasis.mockResolvedValue(basis({ hostId: null }));
 
       expect('excludedGames' in (await service.list('e1', 'u1'))).toBe(false);
+    });
+  });
+
+  describe('Envies (Story 49.5)', () => {
+    const AZUL = GAME;
+    const BRASS = { ...GAME, id: 'g2', name: 'Brass', nameKey: 'brass' };
+    const ENVY = { nameKey: 'azul', users: [{ userId: 'a', pseudo: 'zoe', displayName: 'Zoé' }] };
+
+    it('lit les Envies des participants actuels sur les noms sur place (jeux de l’hôte, écarts exclus, apports inclus)', async () => {
+      events.boardGamesBasis.mockResolvedValue(
+        basis({ inscriptions: [{ userId: 'a', status: 'CONFIRMED' }] }),
+      );
+      boardGames.listOfOwner.mockResolvedValue([AZUL, BRASS]);
+      exclusions.excludedIds.mockResolvedValue(new Set(['g2']));
+      brings.listFor.mockResolvedValue([
+        {
+          game: { ...GAME, id: 'g3', name: 'Catane', nameKey: 'catane' },
+          bringer: { userId: 'a', pseudo: 'zoe', displayName: 'Zoé' },
+        },
+      ]);
+      envies.listFor.mockResolvedValue([ENVY]);
+
+      const result = await service.list('e1', 'u1');
+
+      expect(envies.listFor).toHaveBeenCalledWith('e1', ['host', 'a'], new Set(['azul', 'catane']));
+      expect(result.envies).toEqual([ENVY]);
+    });
+
+    it('un nom écarté chez l’hôte mais apporté reste sur place', async () => {
+      boardGames.listOfOwner.mockResolvedValue([AZUL]);
+      exclusions.excludedIds.mockResolvedValue(new Set(['g1']));
+      brings.listFor.mockResolvedValue([
+        {
+          game: { ...GAME, id: 'g9', nameKey: 'azul' },
+          bringer: { userId: 'a', pseudo: 'zoe', displayName: 'Zoé' },
+        },
+      ]);
+
+      await service.list('e1', 'u1');
+
+      expect(envies.listFor).toHaveBeenCalledWith('e1', ['host'], new Set(['azul']));
+    });
+
+    it('soirée fermée : `envies` vaut [] et rien n’est lu', async () => {
+      events.boardGamesBasis.mockResolvedValue(basis({ cancelledAt: new Date() }));
+
+      expect((await service.list('e1', 'u1')).envies).toEqual([]);
+      expect(envies.listFor).not.toHaveBeenCalled();
+    });
+
+    it('l’hôte reçoit aussi les Envies', async () => {
+      envies.listFor.mockResolvedValue([ENVY]);
+
+      expect((await service.list('e1', 'host')).envies).toEqual([ENVY]);
     });
   });
 

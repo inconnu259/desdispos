@@ -370,6 +370,11 @@ export const grimoireEmeraude = {
   'event_games.excluded_section': 'Scellées ce soir',
   'event_games.excluded_note': 'visible par vous seul·e',
   'event_games.restore_btn': 'Lever le sceau',
+  /* — Story 49.5 : signaler une Envie — libellé du ♥, unité du compte (singulier / pluriel) et puce de tri : une voix par thème — */
+  'event_games.envy_btn': "Cette relique m'appelle",
+  'event_games.envy_unit_one': 'appel',
+  'event_games.envy_unit_many': 'appels',
+  'event_games.sort_envy': 'Les plus appelées',
   /* — doublons et provenance : neutres (NEUTRAL_KEYS) — */
   'event_games.dup_pill': '×{n}',
   'event_games.also_at': 'aussi chez {noms}',
@@ -381,6 +386,9 @@ export const grimoireEmeraude = {
   /* — Story 49.4 : noms accessibles du ⋮ et de son menu : neutres (NEUTRAL_KEYS) — */
   'event_games.menu_trigger_aria': 'Actions pour {nom}',
   'event_games.menu_aria': 'Menu des actions pour {nom}',
+  /* — Story 49.5 : noms accessibles du compte d'Envies et de la liste des noms : neutres (NEUTRAL_KEYS) — */
+  'event_games.envy_count_aria': 'Voir les noms — {nom}, {n} {unite}',
+  'event_games.envy_names_aria': 'Noms pour {nom}',
   /* — retrait d'un jeu apporté à des soirées à venir (page Ludothèque) : neutre (NEUTRAL_KEYS) — */
   'board_games.remove_brought_one': 'Ce jeu est apporté à 1 soirée à venir : il en sera retiré.',
   'board_games.remove_brought_many':

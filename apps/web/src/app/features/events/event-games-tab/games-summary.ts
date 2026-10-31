@@ -8,6 +8,10 @@ import { fillTone } from '../../../core/theme/tone-format';
  * « Jouables à {N} » (`aria-pressed`, éteinte au départ). Puce active : fond `accent-1` à 18 % avec ✕. Le
  * texte dit toujours l'état — jamais la couleur seule. Sans jeu sur place, il n'y a rien à filtrer : la puce
  * n'est pas posée.
+ *
+ * Story 49.5 : une seconde puce à bascule, « Les plus appelées / attendus / demandés » (`aria-pressed`, éteinte au
+ * départ, même rendu actif), cumulable avec la première ; elle ne filtre rien et ne touche pas aux comptes du résumé :
+ * l'onglet trie chaque section par Envies décroissantes, puis alphabétique.
  */
 @Component({
   selector: 'app-games-summary',
@@ -25,6 +29,18 @@ import { fillTone } from '../../../core/theme/tone-format';
           >
             {{ filterLabel() }}
             @if (fitOnly()) {
+              <span aria-hidden="true">✕</span>
+            }
+          </button>
+          <button
+            type="button"
+            class="gsum__chip"
+            [class.gsum__chip--on]="sortEnvy()"
+            [attr.aria-pressed]="sortEnvy()"
+            (click)="sortEnvy.set(!sortEnvy())"
+          >
+            {{ sortLabel() }}
+            @if (sortEnvy()) {
               <span aria-hidden="true">✕</span>
             }
           </button>
@@ -98,6 +114,8 @@ export class GamesSummary {
   readonly headcount = input.required<number>();
   /** Filtre « Jouables à {N} » actif. */
   readonly fitOnly = model(false);
+  /** Story 49.5 : tri « Les plus appelées » actif. */
+  readonly sortEnvy = model(false);
 
   /** « {n} jeu(x) sur place · {k} jouable(s) à {N} » : chaque morceau s'accorde avec son propre nombre — « jeu »
    *  pour n ≤ 1, « jouable » pour k = 1 seulement (k = 0 reste au pluriel). */
@@ -122,4 +140,6 @@ export class GamesSummary {
   protected readonly filterLabel = computed(() =>
     fillTone(this.theme.tone()['event_games.filter_fit'], { total: this.headcount() }),
   );
+
+  protected readonly sortLabel = computed(() => this.theme.tone()['event_games.sort_envy']);
 }

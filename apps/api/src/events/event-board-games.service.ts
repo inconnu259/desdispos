@@ -6,9 +6,11 @@ import {
   RALLIEMENT_UNAVAILABLE_MESSAGE,
 } from '../permissions/permission.service';
 import { EventGameBringService } from './event-game-bring.service';
+import { EventGameEnvyService } from './event-game-envy.service';
 import { EventGameExclusionService } from './event-game-exclusion.service';
 import { eventIsOpen } from './event-is-open';
 import { EventsService, isRalliementGroup } from './events.service';
+import { onSiteNameKeys } from './on-site-name-keys';
 import { participantsOf } from './participants-of';
 
 /**
@@ -17,7 +19,8 @@ import { participantsOf } from './participants-of';
  * (`PARTIE_READ` sur la cible `{ eventId }`) ; la lecture de l'hôte et de la séance est celle d'`EventsService`
  * (écrivain d'`Event`) ; les jeux viennent de `BoardGamesService` (seul lecteur de `BoardGame`) ; les apports des
  * participants, d'`EventGameBringService` (Story 49.2) ; les jeux écartés par l'hôte, d'`EventGameExclusionService`
- * (Story 49.4 : retirés de `games` pour tous, rendus à l'hôte seul dans `excludedGames`). Aucune émission : une lecture ne change rien.
+ * (Story 49.4 : retirés de `games` pour tous, rendus à l'hôte seul dans `excludedGames`) ; les Envies des participants
+ * sur les noms sur place, d'`EventGameEnvyService` (Story 49.5, le « sur place » étant `onSiteNameKeys`). Aucune émission : une lecture ne change rien.
  */
 @Injectable()
 export class EventBoardGamesService {
@@ -27,6 +30,7 @@ export class EventBoardGamesService {
     private readonly boardGames: BoardGamesService,
     private readonly bringsOfEvent: EventGameBringService,
     private readonly exclusions: EventGameExclusionService,
+    private readonly envyOfEvent: EventGameEnvyService,
   ) {}
 
   async list(eventId: string, userId: string): Promise<EventBoardGamesDto> {
@@ -60,8 +64,8 @@ export class EventBoardGamesService {
     // Soirée fermée : aucun jeu sur place, ni de l'hôte ni apporté.
     if (!open) {
       return readerIsHost
-        ? { games: [], brings: [], participantsCount, excludedGames: [] }
-        : { games: [], brings: [], participantsCount };
+        ? { games: [], brings: [], participantsCount, envies: [], excludedGames: [] }
+        : { games: [], brings: [], participantsCount, envies: [] };
     }
     // Sans hôte (compte supprimé) : pas de jeux d'hôte, mais les apports des participants restent sur place.
     const [hostGames, brings, excludedIds] = await Promise.all([
@@ -73,11 +77,20 @@ export class EventBoardGamesService {
     ]);
     // Un jeu écarté sort des jeux sur place pour tout le monde (résumé, compte, doublons, « jouables »).
     const games = hostGames.filter((g) => !excludedIds.has(g.id));
-    if (!readerIsHost) return { games, brings, participantsCount };
+    // Story 49.5 : les Envies des participants actuels sur les noms sur place — la même définition que le
+    // contrôle d'écriture et la purge (`onSiteNameKeys`), ici sur les faits déjà lus.
+    const onSite = onSiteNameKeys({
+      hostGames,
+      excludedIds,
+      bringNameKeys: brings.map((b) => b.game.nameKey),
+    });
+    const envies = await this.envyOfEvent.listFor(eventId, participants, onSite);
+    if (!readerIsHost) return { games, brings, participantsCount, envies };
     return {
       games,
       brings,
       participantsCount,
+      envies,
       excludedGames: hostGames.filter((g) => excludedIds.has(g.id)),
     };
   }

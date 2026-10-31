@@ -8,6 +8,7 @@ import type {
   EventBoardGamesDto,
   EventBringDto,
   EventCardDto,
+  EventEnvyDto,
 } from '@master-jdr/shared';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { PartiesService } from '../../../core/parties/parties.service';
@@ -59,10 +60,12 @@ const served = (
   games: BoardGameDto[],
   participantsCount: number,
   brings: EventBringDto[] = [],
+  envies: EventEnvyDto[] = [],
 ): EventBoardGamesDto => ({
   games,
   brings,
   participantsCount,
+  envies,
 });
 
 @Component({
@@ -82,7 +85,7 @@ class Host {
   counts: number[] = [];
 }
 
-describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
+describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
   let changed: ReturnType<typeof signal<number>>;
   let api: {
     boardGames: ReturnType<typeof vi.fn>;
@@ -91,6 +94,8 @@ describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
     unbring: ReturnType<typeof vi.fn>;
     exclude: ReturnType<typeof vi.fn>;
     restore: ReturnType<typeof vi.fn>;
+    envy: ReturnType<typeof vi.fn>;
+    unenvy: ReturnType<typeof vi.fn>;
   };
   let library: ReturnType<typeof vi.fn>;
   let activeTheme: ReturnType<typeof signal<Theme>>;
@@ -136,6 +141,8 @@ describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
       unbring: vi.fn().mockResolvedValue(undefined),
       exclude: vi.fn().mockResolvedValue(undefined),
       restore: vi.fn().mockResolvedValue(undefined),
+      envy: vi.fn().mockResolvedValue(undefined),
+      unenvy: vi.fn().mockResolvedValue(undefined),
     };
     await TestBed.configureTestingModule({
       imports: [Host],
@@ -1364,6 +1371,499 @@ describe('EventGamesTab (Stories 49.1 et 49.2)', () => {
 
       expect(rowNames()).toEqual(['Brass']);
       expect(unavailableNames()).toEqual(['Azul']);
+    });
+  });
+
+  describe('signaler une Envie (Story 49.5)', () => {
+    const azul = game('Azul', 2, 4, 40);
+    const brass = game('Brass', 2, 4);
+    const codenames = game('Codenames', 5, 8);
+    const user = (id: string, displayName: string) => ({ userId: id, pseudo: id, displayName });
+    const envyOf = (nameKey: string, ...users: [string, string][]): EventEnvyDto => ({
+      nameKey,
+      users: users.map(([id, name]) => user(id, name)),
+    });
+    const bringOf = (name: string, who = 'zoe'): EventBringDto => ({
+      game: { ...game(name, 2, 4), id: `b-${name}-${who}` },
+      bringer: { userId: `u-${who}`, pseudo: who, displayName: who.toUpperCase() },
+    });
+    /** Un participant (inscrit CONFIRMED), autre que l'hôte. */
+    const asParticipant = () => host.card.set(card({ myInscription: 'CONFIRMED' }));
+    const asHost = () => host.userId.set(HOST);
+    const rowOf = (name: string): HTMLElement =>
+      Array.from(el().querySelectorAll<HTMLElement>('app-game-row')).find(
+        (r) => r.querySelector('.gr__name')!.textContent!.trim() === name,
+      )!;
+    const rowsOf = (name: string): HTMLElement[] =>
+      Array.from(el().querySelectorAll<HTMLElement>('app-game-row')).filter(
+        (r) => r.querySelector('.gr__name')!.textContent!.trim() === name,
+      );
+    const heart = (row: HTMLElement): HTMLButtonElement | null =>
+      row.querySelector<HTMLButtonElement>('.et__heart');
+    const count = (row: HTMLElement): HTMLButtonElement | null =>
+      row.querySelector<HTMLButtonElement>('.et__count');
+    const names = (): HTMLElement | null => document.querySelector<HTMLElement>('.egt-names');
+    const sortChip = (): HTMLButtonElement =>
+      Array.from(el().querySelectorAll<HTMLButtonElement>('.gsum__chip'))[1];
+    const press = (key: string): void => {
+      (document.activeElement ?? document.body).dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      );
+    };
+
+    describe('le ♥ et le compte', () => {
+      it('sans Envie : un ♥ seul sur les jeux de l’hôte et les apports, nommé avec le jeu, pas de compte', async () => {
+        await setup(served([azul], 3, [bringOf('Skull')]));
+        asParticipant();
+        await settle();
+
+        for (const name of ['Azul', 'Skull']) {
+          const button = heart(rowOf(name))!;
+          expect(button.getAttribute('type')).toBe('button');
+          expect(button.getAttribute('aria-pressed')).toBe('false');
+          expect(button.getAttribute('aria-label')).toBe(
+            `Cette relique m'appelle — ${name}, 0 appel`,
+          );
+          expect(count(rowOf(name))).toBeNull();
+        }
+      });
+
+      it('avec des Envies : « ♥ n » — ♥ pressé si j’en ai une, compte dans un second bouton, nom accessible au pluriel', async () => {
+        await setup(
+          served([azul, brass], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'], [ME, 'Moi-même'])]),
+        );
+        asParticipant();
+        await settle();
+
+        const row = rowOf('Azul');
+        expect(heart(row)!.getAttribute('aria-pressed')).toBe('true');
+        expect(heart(row)!.getAttribute('aria-label')).toBe(
+          "Cette relique m'appelle — Azul, 2 appels",
+        );
+        expect(count(row)!.textContent!.trim()).toBe('2');
+        expect(count(row)!.getAttribute('aria-haspopup')).toBe('dialog');
+        expect(count(row)!.getAttribute('aria-label')).toBe('Voir les noms — Azul, 2 appels');
+        expect(heart(rowOf('Brass'))!.getAttribute('aria-pressed')).toBe('false');
+        expect(count(rowOf('Brass'))).toBeNull();
+      });
+
+      it('une seule Envie : l’unité reste au singulier', async () => {
+        await setup(served([azul], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'])]));
+        asParticipant();
+        await settle();
+
+        expect(heart(rowOf('Azul'))!.getAttribute('aria-label')).toBe(
+          "Cette relique m'appelle — Azul, 1 appel",
+        );
+      });
+
+      it.each([
+        ['grimoire-emeraude', "Cette relique m'appelle", 'appels', 'Les plus appelées'],
+        ['foret-ancienne', "J'ai envie d'y jouer", 'envies', 'Les plus attendus'],
+        ['atelier-cuivre', 'Je veux l’essayer', 'demandes', 'Les plus demandés'],
+      ] as [Theme, string, string, string][])(
+        'thème %s : libellé du ♥, unité et puce de tri à sa voix',
+        async (theme, label, unit, sort) => {
+          await setup(
+            served([azul], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'], ['u-yan', 'Yan'])]),
+            theme,
+          );
+          asParticipant();
+          await settle();
+
+          const expected = `${label.replace('’', "'")} — Azul, 2 ${unit}`;
+          expect(heart(rowOf('Azul'))!.getAttribute('aria-label')).toBe(expected);
+          expect(sortChip().textContent).toContain(sort);
+        },
+      );
+
+      it('le même nom sur deux lignes (jeu de l’hôte et apport) montre la même Envie, sur les deux', async () => {
+        await setup(
+          served(
+            [azul],
+            3,
+            [bringOf('azul', 'yan')],
+            [envyOf('azul', ['u-zoe', 'Zoé'], [ME, 'Moi'])],
+          ),
+        );
+        asParticipant();
+        await settle();
+
+        const rows = rowsOf('Azul').concat(rowsOf('azul'));
+        expect(rows).toHaveLength(2);
+        for (const row of rows) {
+          expect(heart(row)!.getAttribute('aria-pressed')).toBe('true');
+          expect(count(row)!.textContent!.trim()).toBe('2');
+        }
+      });
+
+      it('jamais sur « Dans mon … » ni sur les jeux écartés', async () => {
+        await setup(
+          {
+            ...served([azul], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'])]),
+            excludedGames: [brass],
+          },
+          'grimoire-emeraude',
+          [{ ...game('Dixit', 2, 4), id: 'mine-Dixit' }],
+        );
+        asParticipant();
+        await settle();
+        expect(heart(rowOf('Dixit'))).toBeNull();
+        expect(rowOf('Dixit').querySelector('app-envy-toggle')).toBeNull();
+
+        TestBed.resetTestingModule();
+        await setup({
+          ...served([azul], 3, [], []),
+          excludedGames: [brass],
+        });
+        asHost();
+        await settle();
+        expect(el().querySelectorAll('app-unavailable-row')).toHaveLength(1);
+        expect(el().querySelector('app-unavailable-row app-envy-toggle')).toBeNull();
+        expect(heart(rowOf('Azul'))).not.toBeNull();
+      });
+
+      it('lecture seule : le compte se voit et ouvre les noms, mais aucun ♥ ne bascule', async () => {
+        await setup(served([azul, brass], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'])]));
+        await settle();
+
+        expect(heart(rowOf('Azul'))).toBeNull();
+        expect(heart(rowOf('Brass'))).toBeNull();
+        expect(count(rowOf('Azul'))!.textContent!.replace(/\s+/g, ' ').trim()).toBe('♥ 1');
+        expect(count(rowOf('Brass'))).toBeNull();
+
+        count(rowOf('Azul'))!.click();
+        await settle();
+        expect(names()).not.toBeNull();
+        expect(api.envy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('basculer', () => {
+      it('le ♥ s’allume AUSSITÔT (l’écriture n’a pas répondu), appelle envy avec le nameKey reçu, puis la liste est relue', async () => {
+        await setup(served([azul], 3));
+        asParticipant();
+        await settle();
+        let finish!: () => void;
+        api.envy.mockImplementation(() => new Promise<void>((r) => (finish = r)));
+        api.boardGames.mockResolvedValue(served([azul], 3, [], [envyOf('azul', [ME, 'Moi'])]));
+
+        heart(rowOf('Azul'))!.click();
+        await settle();
+
+        expect(api.envy).toHaveBeenCalledWith('e1', 'azul');
+        expect(heart(rowOf('Azul'))!.getAttribute('aria-pressed')).toBe('true');
+        expect(count(rowOf('Azul'))!.textContent!.trim()).toBe('1');
+        expect(api.boardGames).toHaveBeenCalledTimes(1);
+
+        finish();
+        await settle();
+
+        expect(api.boardGames).toHaveBeenCalledTimes(2);
+        expect(heart(rowOf('Azul'))!.getAttribute('aria-pressed')).toBe('true');
+      });
+
+      it('un second toucher retire mon Envie : unenvy, le ♥ s’éteint et le compte disparaît', async () => {
+        await setup(served([azul], 3, [], [envyOf('azul', [ME, 'Moi'])]));
+        asParticipant();
+        await settle();
+        api.boardGames.mockResolvedValue(served([azul], 3));
+
+        heart(rowOf('Azul'))!.click();
+        await settle();
+
+        expect(api.unenvy).toHaveBeenCalledWith('e1', 'azul');
+        expect(api.envy).not.toHaveBeenCalled();
+        expect(heart(rowOf('Azul'))!.getAttribute('aria-pressed')).toBe('false');
+        expect(count(rowOf('Azul'))).toBeNull();
+      });
+
+      it('garde « occupé » par NOM : pendant l’écriture, toucher le même nom sur l’autre ligne est ignoré', async () => {
+        await setup(served([azul], 3, [bringOf('azul', 'yan')]));
+        asParticipant();
+        await settle();
+        let finish!: () => void;
+        api.envy.mockImplementation(() => new Promise<void>((r) => (finish = r)));
+
+        heart(rowsOf('Azul')[0])!.click();
+        await settle();
+        heart(rowsOf('azul')[0])!.click();
+        await settle();
+
+        expect(api.envy).toHaveBeenCalledTimes(1);
+        finish();
+        await settle();
+        // Une fois l'écriture finie, la garde est levée.
+        heart(rowOf('Azul'))!.click();
+        await settle();
+        expect(api.unenvy.mock.calls.length + api.envy.mock.calls.length).toBe(2);
+      });
+
+      it('un refus (soirée close, nom parti) échoue en silence et la liste est relue', async () => {
+        await setup(served([azul], 3));
+        asParticipant();
+        await settle();
+        api.envy.mockRejectedValue(new HttpErrorResponse({ status: 400 }));
+
+        heart(rowOf('Azul'))!.click();
+        await settle();
+
+        expect(api.boardGames).toHaveBeenCalledTimes(2);
+        expect(heart(rowOf('Azul'))!.getAttribute('aria-pressed')).toBe('false');
+        expect(el().querySelector('.egt__error')).toBeNull();
+      });
+
+      it('temps réel : un signal de la partie relit les Envies des autres', async () => {
+        await setup(served([azul], 3));
+        asParticipant();
+        await settle();
+        expect(count(rowOf('Azul'))).toBeNull();
+
+        api.boardGames.mockResolvedValue(
+          served([azul], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'], ['u-yan', 'Yan'])]),
+        );
+        changed.set(1);
+        await settle();
+
+        expect(count(rowOf('Azul'))!.textContent!.trim()).toBe('2');
+      });
+    });
+
+    describe('la liste des noms', () => {
+      const withEnvies = () =>
+        served(
+          [azul],
+          3,
+          [],
+          [envyOf('azul', ['u-zoe', 'Zoé'], [ME, 'Moi-même'], ['u-yan', 'Yan'])],
+        );
+
+      it('le compte ouvre un dialogue nommé qui liste les noms affichés, « moi » pour moi, le focus dessus', async () => {
+        await setup(withEnvies());
+        asParticipant();
+        await settle();
+
+        count(rowOf('Azul'))!.click();
+        await settle();
+
+        expect(names()!.getAttribute('role')).toBe('dialog');
+        expect(names()!.getAttribute('aria-label')).toBe('Noms pour Azul');
+        expect(
+          Array.from(names()!.querySelectorAll('li')).map((n) => n.textContent!.trim()),
+        ).toEqual(['Zoé', 'moi', 'Yan']);
+        expect(JSON.stringify(names()!.textContent)).not.toContain('@');
+        expect(count(rowOf('Azul'))!.getAttribute('aria-expanded')).toBe('true');
+        expect(document.activeElement).toBe(names());
+      });
+
+      it('Échap referme et rend le focus au compte', async () => {
+        await setup(withEnvies());
+        asParticipant();
+        await settle();
+        count(rowOf('Azul'))!.click();
+        await settle();
+
+        press('Escape');
+        await settle();
+
+        expect(names()).toBeNull();
+        expect(document.activeElement).toBe(count(rowOf('Azul')));
+        expect(count(rowOf('Azul'))!.getAttribute('aria-expanded')).toBe('false');
+      });
+
+      it('le fond referme et rend le focus au compte ; rien n’est écrit', async () => {
+        await setup(withEnvies());
+        asParticipant();
+        await settle();
+        count(rowOf('Azul'))!.click();
+        await settle();
+
+        document.querySelector<HTMLElement>('.cdk-overlay-backdrop')!.click();
+        await settle();
+
+        expect(names()).toBeNull();
+        expect(document.activeElement).toBe(count(rowOf('Azul')));
+        expect(api.envy).not.toHaveBeenCalled();
+        expect(api.unenvy).not.toHaveBeenCalled();
+      });
+
+      it('la liste suit la relecture, et se referme quand il n’y a plus d’Envie', async () => {
+        await setup(withEnvies());
+        asParticipant();
+        await settle();
+        count(rowOf('Azul'))!.click();
+        await settle();
+
+        api.boardGames.mockResolvedValue(served([azul], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'])]));
+        changed.set(1);
+        await settle();
+        expect(
+          Array.from(names()!.querySelectorAll('li')).map((n) => n.textContent!.trim()),
+        ).toEqual(['Zoé']);
+
+        api.boardGames.mockResolvedValue(served([azul], 3));
+        changed.set(2);
+        await settle();
+        expect(names()).toBeNull();
+      });
+    });
+
+    describe('la liste des noms : fermeture pour de bon', () => {
+      const zoe = envyOf('azul', ['u-zoe', 'Zoé']);
+
+      it('la dernière Envie disparaît à la relecture : la liste se ferme, et une Envie ultérieure ne la rouvre pas', async () => {
+        await setup(served([azul, brass], 3, [], [zoe]));
+        asParticipant();
+        await settle();
+        count(rowOf('Azul'))!.click();
+        await settle();
+        expect(names()).not.toBeNull();
+
+        api.boardGames.mockResolvedValue(served([azul, brass], 3));
+        changed.set(1);
+        await settle();
+        expect(names()).toBeNull();
+
+        api.boardGames.mockResolvedValue(served([azul, brass], 3, [], [zoe]));
+        changed.set(2);
+        await settle();
+
+        expect(count(rowOf('Azul'))!.textContent!.trim()).toBe('1');
+        expect(names()).toBeNull();
+        expect(count(rowOf('Azul'))!.getAttribute('aria-expanded')).toBe('false');
+      });
+
+      it('la ligne qui porte le compte disparaît pendant que la liste est ouverte : elle se ferme, le focus va au ♥ du même nom s’il existe', async () => {
+        await setup(served([azul, brass], 3, [bringOf('azul', 'yan')], [zoe]));
+        asParticipant();
+        await settle();
+        count(rowsOf('Azul')[0])!.click();
+        await settle();
+        expect(names()).not.toBeNull();
+
+        // Le jeu de l'hôte est écarté ; le même nom reste sur place par un apport.
+        api.boardGames.mockResolvedValue(served([brass], 3, [bringOf('azul', 'yan')], [zoe]));
+        changed.set(1);
+        await settle();
+
+        expect(names()).toBeNull();
+        expect(document.activeElement).toBe(heart(rowsOf('azul')[0]));
+      });
+
+      it('plus aucune ligne de ce jeu : la liste se ferme et ne se rouvre pas quand le jeu revient', async () => {
+        await setup(served([azul, brass], 3, [], [zoe]));
+        asParticipant();
+        await settle();
+        count(rowOf('Azul'))!.click();
+        await settle();
+
+        api.boardGames.mockResolvedValue(served([brass], 3, [], [zoe]));
+        changed.set(1);
+        await settle();
+        expect(names()).toBeNull();
+
+        api.boardGames.mockResolvedValue(served([azul, brass], 3, [], [zoe]));
+        changed.set(2);
+        await settle();
+        expect(names()).toBeNull();
+      });
+    });
+
+    describe('la puce « Les plus appelées »', () => {
+      const games = [azul, brass, codenames];
+      const envies = [
+        envyOf('brass', ['u-zoe', 'Zoé'], ['u-yan', 'Yan']),
+        envyOf('codenames', ['u-zoe', 'Zoé']),
+      ];
+
+      it('absente sans jeu sur place', async () => {
+        await setup(served([], 3));
+        await settle();
+
+        expect(el().querySelectorAll('.gsum__chip')).toHaveLength(0);
+      });
+
+      it('éteinte au départ (aria-pressed), allumée : chaque section par Envies décroissantes puis A→Z', async () => {
+        await setup(
+          served(
+            games,
+            3,
+            [bringOf('Dixit'), bringOf('Skull')],
+            [...envies, envyOf('skull', ['u-zoe', 'Zoé'], ['u-yan', 'Yan'], ['u-max', 'Max'])],
+          ),
+        );
+        asParticipant();
+        await settle();
+        expect(sortChip().getAttribute('aria-pressed')).toBe('false');
+        expect(rowNames()).toEqual(['Azul', 'Brass', 'Codenames', 'Dixit', 'Skull']);
+
+        sortChip().click();
+        await settle();
+
+        expect(sortChip().getAttribute('aria-pressed')).toBe('true');
+        expect(sortChip().textContent).toContain('✕');
+        // « Chez Léa » : Brass (2), Codenames (1), Azul (0) ; « Apportées » : Skull (3), Dixit (0).
+        expect(rowNames()).toEqual(['Brass', 'Codenames', 'Azul', 'Skull', 'Dixit']);
+
+        sortChip().click();
+        await settle();
+        expect(rowNames()).toEqual(['Azul', 'Brass', 'Codenames', 'Dixit', 'Skull']);
+      });
+
+      it('à nombre d’Envies égal : alphabétique', async () => {
+        await setup(
+          served(
+            games,
+            3,
+            [],
+            [envyOf('codenames', ['u-zoe', 'Zoé']), envyOf('brass', ['u-yan', 'Yan'])],
+          ),
+        );
+        await settle();
+
+        sortChip().click();
+        await settle();
+
+        expect(rowNames()).toEqual(['Brass', 'Codenames', 'Azul']);
+      });
+
+      it('cumulable avec « Jouables à N » ; les comptes « k sur n » ne suivent que le filtre', async () => {
+        await setup(served(games, 4, [], envies));
+        await settle();
+
+        chip().click();
+        await settle();
+        const afterFit = Array.from(el().querySelectorAll('.gs__count')).map((n) =>
+          n.textContent!.trim(),
+        );
+        expect(rowNames()).toEqual(['Azul', 'Brass']);
+        expect(afterFit).toEqual(['· 2 sur 3']);
+
+        sortChip().click();
+        await settle();
+
+        expect(rowNames()).toEqual(['Brass', 'Azul']);
+        expect(
+          Array.from(el().querySelectorAll('.gs__count')).map((n) => n.textContent!.trim()),
+        ).toEqual(afterFit);
+        expect(chip().getAttribute('aria-pressed')).toBe('true');
+        expect(sortChip().getAttribute('aria-pressed')).toBe('true');
+        expect(text()).toContain('3 jeux sur place · 2 jouables à 4');
+      });
+
+      it('« Dans mon … » garde son ordre alphabétique', async () => {
+        await setup(served(games, 3, [], envies), 'grimoire-emeraude', [
+          { ...game('Dixit', 2, 4), id: 'mine-Dixit' },
+          { ...game('Everdell', 2, 4), id: 'mine-Everdell' },
+        ]);
+        asParticipant();
+        await settle();
+
+        sortChip().click();
+        await settle();
+
+        expect(rowNames()).toEqual(['Brass', 'Codenames', 'Azul', 'Dixit', 'Everdell']);
+      });
     });
   });
 });

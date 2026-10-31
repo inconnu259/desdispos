@@ -3,6 +3,7 @@ import type {
   BoardGameBroughtCountDto,
   BoardGameDto,
   EventBoardGamesDto,
+  EventEnvyDto,
   UserLibraryDto,
 } from '@master-jdr/shared';
 import {
@@ -652,7 +653,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
     const dto = body<EventBoardGamesDto>(res);
     expect(dto.games.map((g) => g.name)).toEqual(['Azul', 'éclipse', 'Zombicide']);
     expect(dto.participantsCount).toBe(3);
-    expect(keysOf(dto)).toEqual(['brings', 'games', 'participantsCount']);
+    expect(keysOf(dto)).toEqual(['brings', 'envies', 'games', 'participantsCount']);
     expect(keysOf(dto.games[0])).toEqual(
       ['createdAt', 'durationMin', 'id', 'maxPlayers', 'minPlayers', 'name', 'nameKey'].sort(),
     );
@@ -713,6 +714,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
       games: [],
       brings: [],
       participantsCount: 1,
+      envies: [],
       excludedGames: [],
     });
   });
@@ -732,6 +734,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
       games: [],
       brings: [],
       participantsCount: 2,
+      envies: [],
     });
   });
 
@@ -756,6 +759,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
       games: [],
       brings: [],
       participantsCount: 1,
+      envies: [],
       excludedGames: [],
     });
 
@@ -780,6 +784,7 @@ describe('Jeux sur place — voir les jeux de l’hôte avant la soirée (Story 
       games: [],
       brings: [],
       participantsCount: 1,
+      envies: [],
     });
   });
 
@@ -1427,7 +1432,7 @@ describe('Jeux sur place — écarter un jeu pour ce soir (Story 49.4)', () => {
       const dto = await read(viewer, card.id);
       expect(dto.games).toEqual([brass]);
       // La clé est absente : la réponse elle-même ne dit rien du jeu écarté.
-      expect(keysOf(dto)).toEqual(['brings', 'games', 'participantsCount']);
+      expect(keysOf(dto)).toEqual(['brings', 'envies', 'games', 'participantsCount']);
       expect(JSON.stringify(dto)).not.toContain('Azul');
     }
   });
@@ -1684,5 +1689,516 @@ describe('Jeux sur place — écarter un jeu pour ce soir (Story 49.4)', () => {
     await h.prisma.event.delete({ where: { id: card.id } });
 
     expect(await excludedCount(card.id)).toBe(0);
+  });
+});
+
+/**
+ * Story 49.5 — signaler une Envie : `PUT/DELETE /events/:eventId/envies` (corps `{ nameKey }`), `envies` dans la
+ * lecture. Matrice d'entrées/sorties de la spec, de bout en bout (droit `EVENT_GAME_ENVY`, verrou de la soirée,
+ * refus dans l'ordre, nom « sur place », purge dans la transaction de chaque chemin qui retire une source ou un
+ * participant, cascade, émission, lecture).
+ */
+describe('Jeux sur place — signaler une Envie (Story 49.5)', () => {
+  let h: Harness;
+
+  beforeAll(async () => {
+    h = await Harness.start();
+  });
+
+  afterAll(async () => {
+    await h?.close();
+  });
+
+  const addGame = async (u: { agent: Agent }, name: string): Promise<BoardGameDto> =>
+    body<BoardGameDto>(await u.agent.post('/me/board-games').send({ name }).expect(201));
+  const enviesUrl = (eventId: string) => `/events/${eventId}/envies`;
+  const bringUrl = (eventId: string, gameId: string) =>
+    `/events/${eventId}/board-games/${gameId}/bring`;
+  const exclusionUrl = (eventId: string, gameId: string) =>
+    `/events/${eventId}/board-games/${gameId}/exclusion`;
+  const read = async (who: { agent: Agent }, eventId: string) =>
+    body<EventBoardGamesDto>(await who.agent.get(`/events/${eventId}/board-games`).expect(200));
+  type Card = { id: string; seance: { id: string } };
+  const propose = async (
+    who: { agent: Agent },
+    groupId: string,
+    over: Record<string, unknown> = {},
+  ) =>
+    body<Card>(
+      await who.agent
+        .post(`/parties/${groupId}/events`)
+        .send({ title: 'Soirée plateaux', date: isoDay(6), slot: 'EVENING', ...over })
+        .expect(201),
+    );
+  const signUp = (who: { agent: Agent }, seanceId: string) =>
+    who.agent.post(`/scenarios/seances/${seanceId}/inscription`).expect(201);
+  const messageOf = (res: request.Response) => body<{ message?: string | string[] }>(res).message;
+  const envyCount = (eventId: string, where: Record<string, unknown> = {}) =>
+    h.prisma.eventGameEnvy.count({ where: { eventId, ...where } });
+  const envy = (who: { agent: Agent }, eventId: string, nameKey: string) =>
+    who.agent.put(enviesUrl(eventId)).send({ nameKey });
+  const unenvy = (who: { agent: Agent }, eventId: string, nameKey: string) =>
+    who.agent.delete(enviesUrl(eventId)).send({ nameKey });
+  const namesOf = (envies: EventEnvyDto[], nameKey: string) =>
+    envies.find((e) => e.nameKey === nameKey)?.users.map((u) => u.pseudo);
+
+  /** Un groupe, son hôte (membre), deux invités inscrits et un membre non inscrit ; une conjonction à venir. */
+  async function setup(label: string) {
+    const admin = await h.createUser(`bg495-${label}-admin`);
+    const host = await h.createUser(`bg495-${label}-hote`);
+    const zoe = await h.createUser(`bg495-${label}-zoe`);
+    const yan = await h.createUser(`bg495-${label}-yan`);
+    const outsider = await h.createUser(`bg495-${label}-hors`);
+    const group = await h.createPartie(
+      admin,
+      'CAMPAGNE_EPISODIQUE',
+      `bg495-${label}`,
+      'ralliement',
+    );
+    for (const u of [host, zoe, yan, outsider]) await h.addMember(group.id, u);
+    const card = await propose(host, group.id);
+    await signUp(zoe, card.seance.id);
+    await signUp(yan, card.seance.id);
+    return { admin, host, zoe, yan, outsider, groupId: group.id, card };
+  }
+
+  it('envie : 204 ; `envies` la liste avec qui (pseudo, nom affiché, jamais d’e-mail), vue par tous', async () => {
+    const { host, zoe, yan, outsider, card } = await setup('envie');
+    await addGame(host, 'Azul');
+
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+
+    for (const viewer of [host, zoe, outsider]) {
+      const dto = await read(viewer, card.id);
+      expect(dto.envies).toHaveLength(1);
+      expect(dto.envies[0].nameKey).toBe('azul');
+      expect(namesOf(dto.envies, 'azul')).toEqual([zoe.pseudo, yan.pseudo].sort());
+      expect(keysOf(dto.envies[0].users[0])).toEqual(['displayName', 'pseudo', 'userId']);
+      expect(JSON.stringify(dto.envies)).not.toContain('@');
+    }
+  });
+
+  it('retirer son envie : 204, elle disparaît ; deux fois : 204 ; deux envies identiques : une seule ligne', async () => {
+    const { host, zoe, card } = await setup('idempotent');
+    await addGame(host, 'Azul');
+
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(zoe, card.id, 'azul').expect(204);
+    expect(await envyCount(card.id)).toBe(1);
+
+    await unenvy(zoe, card.id, 'azul').expect(204);
+    await unenvy(zoe, card.id, 'azul').expect(204);
+    expect(await envyCount(card.id)).toBe(0);
+    expect((await read(zoe, card.id)).envies).toEqual([]);
+  });
+
+  it('retirer ne touche que MON envie', async () => {
+    const { host, zoe, yan, card } = await setup('miennes');
+    await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+
+    await unenvy(zoe, card.id, 'azul').expect(204);
+
+    expect(namesOf((await read(host, card.id)).envies, 'azul')).toEqual([yan.pseudo]);
+  });
+
+  it('l’hôte a aussi le droit d’avoir envie ; un jeu apporté est sur place ; l’envie suit le NOM', async () => {
+    const { host, zoe, yan, card } = await setup('sources');
+    await addGame(host, 'Azul');
+    const skull = await addGame(zoe, 'Skull');
+    await zoe.agent.put(bringUrl(card.id, skull.id)).expect(204);
+
+    await envy(host, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'skull').expect(204);
+
+    const dto = await read(yan, card.id);
+    expect(namesOf(dto.envies, 'azul')).toEqual([host.pseudo]);
+    expect(namesOf(dto.envies, 'skull')).toEqual([yan.pseudo]);
+  });
+
+  it('ordre de la lecture : par clé, puis par pseudo', async () => {
+    const { host, zoe, yan, card } = await setup('ordre');
+    await addGame(host, 'Zombicide');
+    await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'zombicide').expect(204);
+    await envy(yan, card.id, 'zombicide').expect(204);
+    await envy(zoe, card.id, 'azul').expect(204);
+
+    const dto = await read(host, card.id);
+
+    expect(dto.envies.map((e) => e.nameKey)).toEqual(['azul', 'zombicide']);
+    expect(namesOf(dto.envies, 'zombicide')).toEqual([zoe.pseudo, yan.pseudo].sort());
+  });
+
+  it('nom sur place par aucune source : 400 en français, rien n’est écrit ni émis', async () => {
+    const { host, zoe, card } = await setup('hors-place');
+    await addGame(host, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      const res = await envy(zoe, card.id, 'catane').expect(400);
+      expect(messageOf(res)).toBe("Ce jeu n'est pas sur place pour cette soirée");
+      expect(emit).not.toHaveBeenCalled();
+    } finally {
+      emit.mockRestore();
+    }
+    expect(await envyCount(card.id)).toBe(0);
+  });
+
+  it('clé mal formée (espaces, majuscule, vide, 81 caractères, champ en trop) : 400 en français, rien n’est écrit', async () => {
+    const { host, zoe, card } = await setup('cle');
+    await addGame(host, 'Azul');
+
+    for (const nameKey of [' azul ', 'Azul', '', 'x'.repeat(81)]) {
+      await envy(zoe, card.id, nameKey).expect(400);
+      await unenvy(zoe, card.id, nameKey).expect(400);
+    }
+    await zoe.agent.put(enviesUrl(card.id)).send({ nameKey: 'azul', userId: host.id }).expect(400);
+    await zoe.agent.put(enviesUrl(card.id)).send({}).expect(400);
+    expect(await envyCount(card.id)).toBe(0);
+  });
+
+  it('un membre non inscrit, un étranger, une place RÉSERVÉE : 403, rien n’est écrit', async () => {
+    const { admin, host, outsider, zoe, groupId, card } = await setup('refus');
+    await addGame(host, 'Azul');
+    const reserved = await propose(host, groupId, {
+      capacity: 6,
+      reservedUserIds: [outsider.id],
+      date: isoDay(8),
+    });
+    const stranger = await h.createUser('bg495-refus-etranger');
+
+    await envy(outsider, card.id, 'azul').expect(403);
+    await envy(outsider, reserved.id, 'azul').expect(403);
+    await envy(stranger, card.id, 'azul').expect(403);
+    await envy(zoe, reserved.id, 'azul').expect(403);
+    // L'administrateur non inscrit n'est pas participant non plus.
+    await envy(admin, card.id, 'azul').expect(403);
+    expect(await envyCount(card.id)).toBe(0);
+    expect(await envyCount(reserved.id)).toBe(0);
+  });
+
+  it('soirée annulée / passée : 400 en français pour envier ET pour retirer, rien n’est écrit ; la lecture est vide', async () => {
+    const { host, zoe, yan, groupId, card } = await setup('fermee');
+    await addGame(host, 'Azul');
+    const past = await propose(host, groupId, { date: isoDay(9) });
+    await signUp(zoe, past.seance.id);
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(zoe, past.id, 'azul').expect(204);
+
+    await host.agent.post(`/parties/${groupId}/events/${card.id}/cancel`).send({}).expect(201);
+    const day = new Date(`${isoDay(-2)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: past.seance.id },
+      data: { startDate: day, endDate: day },
+    });
+
+    for (const eventId of [card.id, past.id]) {
+      const viewer = eventId === card.id ? yan : zoe;
+      await envy(viewer, eventId, 'azul').expect(400);
+      await unenvy(zoe, eventId, 'azul').expect(400);
+      expect((await read(viewer, eventId)).envies).toEqual([]);
+    }
+    // Les lignes d'une soirée fermée ne sont pas touchées (le passé est conservé).
+    expect(await envyCount(card.id)).toBe(1);
+    expect(await envyCount(past.id)).toBe(1);
+  });
+
+  it('rencontre isolée : un membre envie ; close → 400 « terminée »', async () => {
+    const admin = await h.createUser('bg495-iso-admin');
+    const m1 = await h.createUser('bg495-iso-m1');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg495-iso', 'ralliement');
+    await h.addMember(evening.id, m1);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+    const codenames = await addGame(m1, 'Codenames');
+    await m1.agent.put(bringUrl(event.id, codenames.id)).expect(204);
+
+    await envy(admin, event.id, 'codenames').expect(204);
+    expect(namesOf((await read(m1, event.id)).envies, 'codenames')).toEqual([admin.pseudo]);
+
+    await h.prisma.partie.update({ where: { id: evening.id }, data: { closedAt: new Date() } });
+    const closed = await envy(m1, event.id, 'codenames').expect(400);
+    expect(messageOf(closed)).toMatch(/terminée/);
+  });
+
+  it('partie de JDR : 403 ; identifiant mal formé : 400 ; événement inconnu : 404', async () => {
+    const mj = await h.createUser('bg495-jdr-mj');
+    const player = await h.createUser('bg495-jdr-joueur');
+    const jdr = await h.createPartie(mj, 'ONE_SHOT', 'bg495-jdr');
+    await h.addMember(jdr.id, player);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: jdr.id } });
+    const { zoe } = await setup('jdr');
+
+    for (const who of [mj, player]) await envy(who, event.id, 'azul').expect(403);
+    await envy(zoe, 'pas-un-uuid', 'azul').expect(400);
+    await envy(zoe, '4f9a7f0e-2c1b-4b8e-9d34-0a5c6e7f8a9b', 'azul').expect(404);
+  });
+
+  it('émission : `partie:{groupe}` après chaque écriture, jamais sur une lecture ni sur un refus', async () => {
+    const { host, zoe, outsider, groupId, card } = await setup('emission');
+    await addGame(host, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await envy(zoe, card.id, 'azul').expect(204);
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+
+      emit.mockClear();
+      await unenvy(zoe, card.id, 'azul').expect(204);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+
+      emit.mockClear();
+      await read(host, card.id);
+      await envy(outsider, card.id, 'azul').expect(403);
+      expect(emit).not.toHaveBeenCalled();
+    } finally {
+      emit.mockRestore();
+    }
+  });
+
+  it('une émission en échec ne fait pas échouer l’envie (204 conservé, ligne écrite)', async () => {
+    const { host, zoe, card } = await setup('emission-ko');
+    await addGame(host, 'Azul');
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit').mockImplementation(() => {
+      throw new Error('flux coupé');
+    });
+    try {
+      await envy(zoe, card.id, 'azul').expect(204);
+    } finally {
+      emit.mockRestore();
+    }
+    expect(await envyCount(card.id)).toBe(1);
+  });
+
+  // ─── Purge : un nom qui quitte la soirée perd ses Envies, dans la transaction de l'écriture ─────────
+
+  it('dernière source : l’hôte écarte « Azul » (sans apport) → toutes ses Envies partent ; le remettre ne les ressuscite pas', async () => {
+    const { host, zoe, yan, card } = await setup('ecarte');
+    const azul = await addGame(host, 'Azul');
+    await addGame(host, 'Skull');
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+    await envy(zoe, card.id, 'skull').expect(204);
+
+    await host.agent.put(exclusionUrl(card.id, azul.id)).expect(204);
+
+    expect(await envyCount(card.id, { nameKey: 'azul' })).toBe(0);
+    expect(await envyCount(card.id, { nameKey: 'skull' })).toBe(1);
+    await envy(zoe, card.id, 'azul').expect(400);
+
+    await host.agent.delete(exclusionUrl(card.id, azul.id)).expect(204);
+    expect(namesOf((await read(zoe, card.id)).envies, 'azul')).toBeUndefined();
+  });
+
+  it('deux sources : l’hôte écarte « Azul » mais Zoé l’apporte → les Envies survivent ; quand elle ne l’apporte plus, elles partent', async () => {
+    const { host, zoe, yan, card } = await setup('deux-sources');
+    const hostAzul = await addGame(host, 'Azul');
+    const hers = await addGame(zoe, 'azul');
+    await zoe.agent.put(bringUrl(card.id, hers.id)).expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+
+    await host.agent.put(exclusionUrl(card.id, hostAzul.id)).expect(204);
+    expect(await envyCount(card.id)).toBe(1);
+    expect(namesOf((await read(yan, card.id)).envies, 'azul')).toEqual([yan.pseudo]);
+
+    await zoe.agent.delete(bringUrl(card.id, hers.id)).expect(204);
+    expect(await envyCount(card.id)).toBe(0);
+  });
+
+  it('dernier apport : seul un invité apporte « Skull », il ne l’apporte plus → ses Envies partent', async () => {
+    const { zoe, yan, card } = await setup('dernier-apport');
+    const skull = await addGame(zoe, 'Skull');
+    await zoe.agent.put(bringUrl(card.id, skull.id)).expect(204);
+    await envy(yan, card.id, 'skull').expect(204);
+    await envy(zoe, card.id, 'skull').expect(204);
+
+    await zoe.agent.delete(bringUrl(card.id, skull.id)).expect(204);
+
+    expect(await envyCount(card.id)).toBe(0);
+  });
+
+  it('un nom encore tenu par l’hôte : retirer l’apport d’un doublon garde les Envies', async () => {
+    const { host, zoe, yan, card } = await setup('doublon');
+    await addGame(host, 'Azul');
+    const hers = await addGame(zoe, 'azul');
+    await zoe.agent.put(bringUrl(card.id, hers.id)).expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+
+    await zoe.agent.delete(bringUrl(card.id, hers.id)).expect(204);
+
+    expect(await envyCount(card.id)).toBe(1);
+  });
+
+  it('sortie 1/5 — se désinscrire : SES Envies partent, celles des autres restent ; le nom qu’elle apportait seule perd les siennes', async () => {
+    const { host, zoe, yan, card } = await setup('sortie-desinscrit');
+    await addGame(host, 'Azul');
+    const skull = await addGame(zoe, 'Skull');
+    await zoe.agent.put(bringUrl(card.id, skull.id)).expect(204);
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'skull').expect(204);
+
+    await zoe.agent.delete(`/scenarios/seances/${card.seance.id}/inscription`).expect(200);
+
+    // Son envie sur « azul » est partie ; celle de Yan reste ; « skull » n'a plus de source : ses Envies partent.
+    expect(await envyCount(card.id, { userId: zoe.id })).toBe(0);
+    expect(namesOf((await read(host, card.id)).envies, 'azul')).toEqual([yan.pseudo]);
+    expect(await envyCount(card.id, { nameKey: 'skull' })).toBe(0);
+  });
+
+  it('sortie 1/5 — personne sans aucun apport mais avec des Envies : elles partent aussi (pas d’arrêt faute d’apport)', async () => {
+    const { host, zoe, card } = await setup('sortie-sans-apport');
+    await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'azul').expect(204);
+    expect(await h.prisma.eventGameBring.count({ where: { eventId: card.id } })).toBe(0);
+
+    await zoe.agent.delete(`/scenarios/seances/${card.seance.id}/inscription`).expect(200);
+
+    expect(await envyCount(card.id)).toBe(0);
+  });
+
+  it('sortie 2/5 — place réservée refusée ou retirée par l’hôte : les Envies posées en base partent', async () => {
+    const { host, outsider, zoe, groupId } = await setup('sortie-reserve');
+    await addGame(host, 'Azul');
+    const declined = await propose(host, groupId, {
+      capacity: 6,
+      reservedUserIds: [outsider.id],
+      date: isoDay(8),
+    });
+    const removed = await propose(host, groupId, {
+      capacity: 6,
+      reservedUserIds: [outsider.id],
+      date: isoDay(9),
+    });
+    await signUp(zoe, declined.seance.id);
+    for (const ev of [declined, removed]) {
+      await h.prisma.eventGameEnvy.create({
+        data: { eventId: ev.id, userId: outsider.id, nameKey: 'azul' },
+      });
+    }
+
+    await outsider.agent.delete(`/scenarios/seances/${declined.seance.id}/inscription`).expect(200);
+    await host.agent
+      .delete(`/scenarios/seances/${removed.seance.id}/reservations/${outsider.id}`)
+      .expect(200);
+
+    expect(await envyCount(declined.id)).toBe(0);
+    expect(await envyCount(removed.id)).toBe(0);
+  });
+
+  it('sortie 3/5 — quitter le groupe : les Envies des soirées à venir partent, celles d’une soirée passée restent', async () => {
+    const { host, zoe, yan, groupId, card } = await setup('sortie-depart');
+    await addGame(host, 'Azul');
+    const second = await propose(host, groupId, { date: isoDay(9) });
+    await signUp(zoe, second.seance.id);
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+    await envy(zoe, second.id, 'azul').expect(204);
+    const day = new Date(`${isoDay(-2)}T00:00:00.000Z`);
+    await h.prisma.seance.update({
+      where: { id: second.seance.id },
+      data: { startDate: day, endDate: day },
+    });
+
+    const emit = jest.spyOn(h.app.get(RealtimeEventsService), 'emit');
+    try {
+      await zoe.agent.delete(`/parties/${groupId}/members/me`).expect(200);
+      expect(emit).toHaveBeenCalledWith(partieTopic(groupId));
+    } finally {
+      emit.mockRestore();
+    }
+
+    expect(await envyCount(card.id, { userId: zoe.id })).toBe(0);
+    expect(await envyCount(card.id, { userId: yan.id })).toBe(1);
+    expect(await envyCount(second.id)).toBe(1);
+  });
+
+  it('sortie 4/5 — retrait par un administrateur : les Envies à venir de la cible partent, celles des autres restent', async () => {
+    const { admin, host, zoe, yan, groupId, card } = await setup('sortie-retire');
+    await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+
+    await admin.agent.delete(`/parties/${groupId}/members/${zoe.id}`).expect(200);
+
+    expect(await envyCount(card.id, { userId: zoe.id })).toBe(0);
+    expect(await envyCount(card.id, { userId: yan.id })).toBe(1);
+  });
+
+  it('sortie 5/5 — effacement du compte : les Envies du compte partent (cascade), celles des autres restent', async () => {
+    const { host, zoe, yan, card } = await setup('sortie-compte');
+    await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'azul').expect(204);
+    await envy(yan, card.id, 'azul').expect(204);
+
+    await zoe.agent.delete('/me').send({ password: h.userPassword }).expect(200);
+
+    expect(await h.prisma.eventGameEnvy.count({ where: { userId: zoe.id } })).toBe(0);
+    expect(await envyCount(card.id)).toBe(1);
+  });
+
+  it('rencontre isolée : l’administrateur retire un membre, ses Envies partent', async () => {
+    const admin = await h.createUser('bg495-isoretire-admin');
+    const m1 = await h.createUser('bg495-isoretire-m1');
+    const m2 = await h.createUser('bg495-isoretire-m2');
+    const evening = await h.createPartie(admin, 'ONE_SHOT', 'bg495-isoretire', 'ralliement');
+    await h.addMember(evening.id, m1);
+    await h.addMember(evening.id, m2);
+    const event = await h.prisma.event.findFirstOrThrow({ where: { partieId: evening.id } });
+    const skull = await addGame(m2, 'Skull');
+    await m2.agent.put(bringUrl(event.id, skull.id)).expect(204);
+    await envy(m1, event.id, 'skull').expect(204);
+    await envy(m2, event.id, 'skull').expect(204);
+
+    await admin.agent.delete(`/parties/${evening.id}/members/${m1.id}`).expect(200);
+
+    expect(await envyCount(event.id, { userId: m1.id })).toBe(0);
+    expect(await envyCount(event.id, { userId: m2.id })).toBe(1);
+  });
+
+  // ─── Lecture ────────────────────────────────────────────────────────────────────────────────────
+
+  it('lecture : une Envie dont le nom a quitté la soirée est ignorée (suppression de la Ludothèque, ligne laissée)', async () => {
+    const { host, zoe, card } = await setup('ignoree');
+    const azul = await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'azul').expect(204);
+
+    await host.agent.delete(`/me/board-games/${azul.id}`).expect(204);
+
+    // La ligne reste (accepté : pas de purge depuis `board-games/`), mais elle n'est pas lue.
+    expect(await envyCount(card.id)).toBe(1);
+    expect((await read(zoe, card.id)).envies).toEqual([]);
+  });
+
+  it('lecture : une Envie d’une personne qui n’est pas participante n’est pas lue', async () => {
+    const { host, zoe, outsider, card } = await setup('non-participante');
+    await addGame(host, 'Azul');
+    await h.prisma.eventGameEnvy.create({
+      data: { eventId: card.id, userId: outsider.id, nameKey: 'azul' },
+    });
+    await envy(zoe, card.id, 'azul').expect(204);
+
+    expect(namesOf((await read(host, card.id)).envies, 'azul')).toEqual([zoe.pseudo]);
+  });
+
+  it('cascade : les Envies disparaissent avec la soirée', async () => {
+    const { host, zoe, card } = await setup('cascade-event');
+    await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'azul').expect(204);
+
+    await h.prisma.event.delete({ where: { id: card.id } });
+
+    expect(await envyCount(card.id)).toBe(0);
+  });
+
+  it('une lecture de soirée annulée donne `envies: []` à tous', async () => {
+    const { host, zoe, yan, groupId, card } = await setup('lecture-fermee');
+    await addGame(host, 'Azul');
+    await envy(zoe, card.id, 'azul').expect(204);
+    await host.agent.post(`/parties/${groupId}/events/${card.id}/cancel`).send({}).expect(201);
+
+    expect((await read(yan, card.id)).envies).toEqual([]);
+    expect((await read(host, card.id)).envies).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import type { BoardGameDto } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { fitsHeadcount, formatBoardGameMeasures } from '../../board-games/board-game-measures';
+import { EnvyToggle, type EnvyView } from './envy-toggle';
 
 /**
  * `GameRow` (Stories 49.1 et 49.2, DESIGN §7.3) — un jeu sur place : son nom, ses mesures (« 2–4 joueurs · 40 min »,
@@ -14,26 +15,43 @@ import { fitsHeadcount, formatBoardGameMeasures } from '../../board-games/board-
  * aussi apporté par … », l'avertissement « ⚠ déjà chez … » et une action (« J'apporte », « Je ne l'apporte
  * plus »). L'action est un bouton de 44 px au moins sur la dernière ligne ; occupée, elle est désactivée (un
  * second toucher ne part pas). Story 49.4 : sur ses propres jeux, l'hôte a un ⋮ de 44 px à droite du nom (nom
- * accessible « Actions pour {jeu} ») ; le menu lui-même est tenu par l'onglet. Pas de ♥ à ce palier (Story 49.5).
+ * accessible « Actions pour {jeu} ») ; le menu lui-même est tenu par l'onglet.
+ *
+ * Story 49.5 : sur les lignes de l'hôte et des apports, l'`EnvyToggle` (♥, compte) se pose à droite du nom, avant le ⋮ ;
+ * la ligne ne décide rien, elle relaie `envyToggle` et `envyNames` à l'onglet.
  */
 @Component({
   selector: 'app-game-row',
+  imports: [EnvyToggle],
   template: `
     <div class="gr">
-      @if (menuLabel(); as label) {
-        <!-- Story 49.4 : ⋮ de l'hôte sur ses propres jeux, à droite du nom. -->
+      @if (menuLabel() || envy()) {
+        <!-- Story 49.4 : ⋮ de l'hôte sur ses propres jeux ; Story 49.5 : ♥ et compte d'Envies — à droite du nom. -->
         <span class="gr__head">
           <span class="gr__name">{{ game().name }}</span>
-          <button
-            type="button"
-            class="gr__menu"
-            aria-haspopup="menu"
-            [attr.aria-expanded]="menuOpen()"
-            [attr.aria-label]="label"
-            (click)="onMenu($event)"
-          >
-            <span aria-hidden="true">&#8942;</span>
-          </button>
+          <span class="gr__actions">
+            @if (envy(); as e) {
+              <app-envy-toggle
+                [gameName]="game().name"
+                [envy]="e"
+                [namesOpen]="envyNamesOpen()"
+                (heartTouch)="envyToggle.emit()"
+                (countTouch)="envyNames.emit($event)"
+              />
+            }
+            @if (menuLabel(); as label) {
+              <button
+                type="button"
+                class="gr__menu"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="menuOpen()"
+                [attr.aria-label]="label"
+                (click)="onMenu($event)"
+              >
+                <span aria-hidden="true">&#8942;</span>
+              </button>
+            }
+          </span>
         </span>
       } @else {
         <span class="gr__name">{{ game().name }}</span>
@@ -113,12 +131,19 @@ import { fitsHeadcount, formatBoardGameMeasures } from '../../board-games/board-
       gap: 8px;
     }
 
+    /* Les cibles de 44 px (♥, compte, ⋮) débordent sur le remplissage de la ligne pour ne pas la grossir. */
+    .gr__actions {
+      display: flex;
+      flex: none;
+      align-items: center;
+      margin: -7px -9px -7px 0;
+    }
+
     .gr__menu {
       box-sizing: border-box;
       flex: none;
       width: 44px;
       height: 44px;
-      margin: -7px -9px -7px 0;
       padding: 0;
       border: 0;
       border-radius: 999px;
@@ -244,6 +269,15 @@ export class GameRow {
   readonly menuOpen = input(false);
   /** Le ⋮ a été touché : rend le bouton, ancre du menu et cible du retour du focus. */
   readonly menu = output<HTMLElement>();
+  /** Story 49.5 : l'Envie du NOM de ce jeu (déjà calculée par l'onglet) ; `null` : pas de ♥ sur cette ligne
+   *  (« Dans mon … », jeux écartés). */
+  readonly envy = input<EnvyView | null>(null);
+  /** La liste des noms de CETTE ligne est ouverte (`aria-expanded` du compte). */
+  readonly envyNamesOpen = input(false);
+  /** Le ♥ a été touché. */
+  readonly envyToggle = output<void>();
+  /** Le compte a été touché : rend le bouton, ancre de la liste et cible du retour du focus. */
+  readonly envyNames = output<HTMLElement>();
 
   protected onMenu(event: Event): void {
     this.menu.emit(event.currentTarget as HTMLElement);

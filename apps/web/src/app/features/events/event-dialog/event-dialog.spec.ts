@@ -19,7 +19,7 @@ const TODAY = '2026-10-17';
 const HOST = 'host';
 const ME = 'me';
 const OTHER = 'other';
-const NO_GAMES = { games: [], brings: [], participantsCount: 1 };
+const NO_GAMES = { games: [], brings: [], participantsCount: 1, envies: [] };
 
 const member = (userId: string, displayName: string): PartieMemberDto => ({
   userId,
@@ -441,7 +441,7 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
       },
     ];
     const withGames = () => ({
-      boardGames: vi.fn().mockResolvedValue({ games, brings: [], participantsCount: 3 }),
+      boardGames: vi.fn().mockResolvedValue({ games, brings: [], participantsCount: 3, envies: [] }),
     });
     const tabs = () => Array.from(document.body.querySelectorAll<HTMLElement>('.ed__tab'));
     const panel = (name: 'main' | 'games') =>
@@ -519,7 +519,7 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
     it('l’hôte sans jeu : la ligne du thème et le lien vers « mon cabinet »', async () => {
       const { settle } = await mount(pollCard(), HOST, {
         api: {
-          boardGames: vi.fn().mockResolvedValue({ games: [], brings: [], participantsCount: 1 }),
+          boardGames: vi.fn().mockResolvedValue({ games: [], brings: [], participantsCount: 1, envies: [] }),
         },
       });
       tabs()[1].click();

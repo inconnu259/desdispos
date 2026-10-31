@@ -42,7 +42,7 @@ describe('EventsApiService (Story 40.1)', () => {
   });
 
   it('boardGames → GET /events/:eventId/board-games, avec withCredentials (Story 49.1)', async () => {
-    const dto = { games: [], brings: [], participantsCount: 3 };
+    const dto = { games: [], brings: [], participantsCount: 3, envies: [] };
     const p = service.boardGames('e1');
     const req = http.expectOne(`${API}/events/e1/board-games`);
     expect(req.request.method).toBe('GET');
@@ -87,6 +87,34 @@ describe('EventsApiService (Story 40.1)', () => {
     expect(req.request.withCredentials).toBe(true);
     req.flush(null, { status: 204, statusText: 'No Content' });
     await expect(p).resolves.toBeUndefined();
+  });
+
+  it('envy → PUT /events/:eventId/envies avec { nameKey }, avec withCredentials (Story 49.5)', async () => {
+    const p = service.envy('e1', 'azul');
+    const req = http.expectOne(`${API}/events/e1/envies`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.body).toEqual({ nameKey: 'azul' });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(p).resolves.toBeUndefined();
+  });
+
+  it('unenvy → DELETE /events/:eventId/envies avec { nameKey } en corps, avec withCredentials (Story 49.5)', async () => {
+    const p = service.unenvy('e1', 'azul');
+    const req = http.expectOne(`${API}/events/e1/envies`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.body).toEqual({ nameKey: 'azul' });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(p).resolves.toBeUndefined();
+  });
+
+  it('un refus d’envy rejette avec la réponse HTTP (400 : nom plus sur place)', async () => {
+    const p = service.envy('e1', 'azul');
+    http
+      .expectOne(`${API}/events/e1/envies`)
+      .flush({ message: 'Hors place' }, { status: 400, statusText: 'Bad Request' });
+    await expect(p).rejects.toMatchObject({ status: 400 });
   });
 
   it('un refus de bring rejette avec la réponse HTTP (la page décide quoi en faire)', async () => {

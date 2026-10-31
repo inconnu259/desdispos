@@ -150,6 +150,20 @@ describe('Compte — effacer mon compte (Story 43.2)', () => {
       });
       await me.agent.put(`/events/${theirs.id}/board-games/${azul.id}/bring`).expect(204);
       expect(await h.prisma.eventGameBring.count({ where: { userId: me.id } })).toBe(1);
+      // Story 49.5 : une Envie du compte sur une soirée PASSÉE d'un groupe qui survit (la purge applicative ne la voit pas :
+      // seule la cascade `EventGameEnvy.user` l'efface) ; celle d'un autre sur la même soirée doit rester.
+      const oldEvening = await propose(admin2, joined.id, 'Soirée passée', isoDay(9));
+      const longAgo = new Date(`${isoDay(-3)}T00:00:00.000Z`);
+      await h.prisma.seance.update({
+        where: { id: oldEvening.seance.id },
+        data: { startDate: longAgo, endDate: longAgo },
+      });
+      await h.prisma.eventGameEnvy.create({
+        data: { eventId: oldEvening.id, userId: me.id, nameKey: 'azul' },
+      });
+      await h.prisma.eventGameEnvy.create({
+        data: { eventId: oldEvening.id, userId: admin2.id, nameKey: 'azul' },
+      });
       // Une seconde session.
       const second = request.agent(h.app.getHttpServer());
       await second
@@ -225,6 +239,13 @@ describe('Compte — effacer mon compte (Story 43.2)', () => {
       expect(await h.prisma.boardGame.count({ where: { ownerId: me.id } })).toBe(0);
       // Story 49.2 : mon apport disparaît avec moi ; la conjonction de l'autre, elle, reste.
       expect(await h.prisma.eventGameBring.count({ where: { eventId: theirs.id } })).toBe(0);
+      // Story 49.5 : son Envie d'une soirée passée part avec le compte (cascade) ; celle d'un autre reste.
+      expect(await h.prisma.eventGameEnvy.count({ where: { userId: me.id } })).toBe(0);
+      expect(
+        await h.prisma.eventGameEnvy.count({
+          where: { eventId: oldEvening.id, userId: admin2.id },
+        }),
+      ).toBe(1);
       // Les autres comptes restent connectés et intacts.
       for (const other of [admin2, guest, player, gm, bystander]) {
         expect(await userExists(other.id)).toBe(true);

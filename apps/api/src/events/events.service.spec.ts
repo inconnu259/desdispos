@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { BoardGamesService } from '../board-games/board-games.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import {
@@ -89,6 +90,13 @@ function makePrisma() {
       findMany: jest.fn().mockResolvedValue([]),
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
+    // Story 49.5 : Envies d'une personne qui cesse d'être participante, et celles que ses apports retirés
+    // laissent orphelines ; jeux écartés lus pour décider ce qui est encore sur place.
+    eventGameEnvy: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    eventGameExcluded: { findMany: jest.fn().mockResolvedValue([]) },
   };
   return {
     tx,
@@ -131,14 +139,20 @@ function makePrisma() {
 describe('EventsService (Story 37.3)', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let realtime: { emit: jest.Mock };
+  let boardGames: { nameKeysOfOwner: jest.Mock; nameKeysByIds: jest.Mock };
   let service: EventsService;
 
   beforeEach(() => {
     prisma = makePrisma();
     realtime = { emit: jest.fn() };
+    boardGames = {
+      nameKeysOfOwner: jest.fn().mockResolvedValue([]),
+      nameKeysByIds: jest.fn().mockResolvedValue([]),
+    };
     service = new EventsService(
       prisma as unknown as PrismaService,
       realtime as unknown as RealtimeEventsService,
+      boardGames as unknown as BoardGamesService,
     );
   });
 
@@ -2336,6 +2350,133 @@ describe('EventsService (Story 37.3)', () => {
         },
       });
       expect(callArg<{ where: unknown }>(prisma.tx.eventGameBring.findMany).where).toEqual(where);
+    });
+  });
+
+  describe('releaseGameBringsInTx() — Envies de la personne (Story 49.5)', () => {
+    it('sans apport mais avec des Envies : les soirées sont verrouillées (triées) et SES Envies supprimées', async () => {
+      const ordre: string[] = [];
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([]);
+      prisma.tx.eventGameEnvy.findMany.mockImplementation((args: { distinct?: string[] }) =>
+        Promise.resolve(args.distinct ? [] : [{ eventId: 'evB' }, { eventId: 'evA' }]),
+      );
+      prisma.tx.$queryRaw.mockImplementation((_s: TemplateStringsArray, id: string) => {
+        ordre.push(`verrou:${id}`);
+        return Promise.resolve([{ id }]);
+      });
+      prisma.tx.eventGameEnvy.deleteMany.mockImplementation(() => {
+        ordre.push('envies');
+        return Promise.resolve({ count: 2 });
+      });
+
+      await expect(
+        service.releaseGameBringsInTx(prisma.tx as never, { eventId: 'e1' }, 'u1'),
+      ).resolves.toBe(0);
+
+      expect(ordre).toEqual(['verrou:evA', 'verrou:evB', 'envies']);
+      expect(callArg<{ where: unknown }>(prisma.tx.eventGameEnvy.deleteMany).where).toEqual({
+        userId: 'u1',
+        eventId: 'e1',
+      });
+    });
+
+    it('les soirées verrouillées sont celles des apports OU des Envies, sans doublon', async () => {
+      const locked: string[] = [];
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ eventId: 'evA' }]);
+      prisma.tx.eventGameEnvy.findMany.mockImplementation((args: { distinct?: string[] }) =>
+        Promise.resolve(args.distinct ? [] : [{ eventId: 'evA' }, { eventId: 'evC' }]),
+      );
+      prisma.tx.$queryRaw.mockImplementation((_s: TemplateStringsArray, id: string) => {
+        locked.push(id);
+        return Promise.resolve([{ id }]);
+      });
+
+      await service.releaseGameBringsInTx(
+        prisma.tx as never,
+        { partieId: 'p1', upcomingOnly: true },
+        'u1',
+      );
+
+      expect(locked).toEqual(['evA', 'evC']);
+      const envyWhere = callArg<{ where: unknown }>(prisma.tx.eventGameEnvy.deleteMany).where;
+      expect(envyWhere).toEqual(
+        callArg<{ where: unknown }>(prisma.tx.eventGameBring.deleteMany).where,
+      );
+    });
+
+    it('purge ensuite les Envies des autres dont le nom n’est plus tenu par personne, soirée par soirée', async () => {
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ eventId: 'e1' }]);
+      prisma.tx.eventGameEnvy.findMany.mockImplementation((args: { distinct?: string[] }) =>
+        Promise.resolve(args.distinct ? [{ nameKey: 'azul' }] : []),
+      );
+      prisma.tx.event.findUnique.mockResolvedValue({ ownerId: 'hote' });
+
+      await service.releaseGameBringsInTx(prisma.tx as never, { eventId: 'e1' }, 'u1');
+
+      // Plus aucune source de « azul » : ses Envies sont supprimées (après celles de la personne).
+      expect(prisma.tx.eventGameEnvy.deleteMany).toHaveBeenLastCalledWith({
+        where: { eventId: 'e1', nameKey: { in: ['azul'] } },
+      });
+    });
+  });
+
+  describe('releaseOrphanEnviesInTx() et onSiteNameKeysInTx() (Story 49.5)', () => {
+    const envied = (...keys: string[]) =>
+      prisma.tx.eventGameEnvy.findMany.mockResolvedValue(keys.map((nameKey) => ({ nameKey })));
+
+    it('aucune Envie : rien n’est lu d’autre, rien n’est supprimé', async () => {
+      envied();
+
+      await expect(service.releaseOrphanEnviesInTx(prisma.tx as never, 'e1')).resolves.toBe(0);
+
+      expect(boardGames.nameKeysOfOwner).not.toHaveBeenCalled();
+      expect(prisma.tx.eventGameEnvy.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('supprime les Envies d’un nom que plus aucune source ne porte, garde les autres', async () => {
+      envied('azul', 'go');
+      prisma.tx.event.findUnique.mockResolvedValue({ ownerId: 'hote' });
+      boardGames.nameKeysOfOwner.mockResolvedValue([{ id: 'g2', nameKey: 'go' }]);
+      prisma.tx.eventGameEnvy.deleteMany.mockResolvedValue({ count: 3 });
+
+      await expect(service.releaseOrphanEnviesInTx(prisma.tx as never, 'e1')).resolves.toBe(3);
+
+      expect(prisma.tx.eventGameEnvy.deleteMany).toHaveBeenCalledWith({
+        where: { eventId: 'e1', nameKey: { in: ['azul'] } },
+      });
+    });
+
+    it('un nom écarté chez l’hôte mais encore apporté par un invité garde ses Envies', async () => {
+      envied('azul');
+      prisma.tx.event.findUnique.mockResolvedValue({ ownerId: 'hote' });
+      boardGames.nameKeysOfOwner.mockResolvedValue([{ id: 'g1', nameKey: 'azul' }]);
+      prisma.tx.eventGameExcluded.findMany.mockResolvedValue([{ boardGameId: 'g1' }]);
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ boardGameId: 'g9' }]);
+      boardGames.nameKeysByIds.mockResolvedValue(['azul']);
+
+      await expect(service.releaseOrphanEnviesInTx(prisma.tx as never, 'e1')).resolves.toBe(0);
+
+      expect(boardGames.nameKeysByIds).toHaveBeenCalledWith(['g9'], prisma.tx);
+      expect(prisma.tx.eventGameEnvy.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('lit les noms par BoardGamesService, sur le client de la transaction', async () => {
+      envied('azul');
+      prisma.tx.event.findUnique.mockResolvedValue({ ownerId: 'hote' });
+
+      await service.releaseOrphanEnviesInTx(prisma.tx as never, 'e1');
+
+      expect(boardGames.nameKeysOfOwner).toHaveBeenCalledWith('hote', prisma.tx);
+    });
+
+    it('sans hôte (compte supprimé) : pas de jeux d’hôte, les apports restent sur place', async () => {
+      prisma.tx.eventGameBring.findMany.mockResolvedValue([{ boardGameId: 'g9' }]);
+      boardGames.nameKeysByIds.mockResolvedValue(['catane']);
+
+      const keys = await service.onSiteNameKeysInTx(prisma.tx as never, 'e1', null);
+
+      expect(boardGames.nameKeysOfOwner).not.toHaveBeenCalled();
+      expect([...keys]).toEqual(['catane']);
     });
   });
 

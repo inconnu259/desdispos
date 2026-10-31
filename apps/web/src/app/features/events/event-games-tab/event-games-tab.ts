@@ -26,6 +26,7 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { fitsHeadcount } from '../../board-games/board-game-measures';
 import { EventsApiService } from '../events-api.service';
+import { type EnvyView } from './envy-toggle';
 import { GameRow } from './game-row';
 import { GamesSection } from './games-section';
 import { GamesSummary } from './games-summary';
@@ -66,6 +67,8 @@ interface RowView {
   action: 'bring' | 'unbring' | null;
   /** Story 49.4 : la ligne porte le ⋮ de l'hôte (ses propres jeux seulement). */
   menu: boolean;
+  /** Story 49.5 : la ligne porte l'Envie de son nom (jeux de l'hôte et apports, jamais « Dans mon … »). */
+  envy: boolean;
 }
 
 /** Même ordre que l'API : clé normalisée, puis nom (puis identifiant, voir l'appelant). */
@@ -110,6 +113,13 @@ function joinNames(names: string[]): string {
  * dans la section du bas, qui n'existe que pour l'hôte et que si `excludedGames` n'est pas vide — même quand « Chez
  * moi » est vide. Son bouton themé remet le jeu à tous aussitôt. Le ⋮ disparaissant avec la ligne, le focus va à la
  * ligne suivante, à défaut à l'en-tête de la section.
+ *
+ * Story 49.5 — signaler une Envie : sur les lignes de l'hôte et des apports (jamais « Dans mon … » ni la section du bas),
+ * l'`EnvyToggle` montre ♥ seul ou « ♥ n » ; l'Envie est lue par NOM REÇU (`nameKey`, jamais recalculé), donc le même nom
+ * sur deux lignes montre la même. Seul un participant (`canFill`) bascule — optimiste, garde « occupé » par `nameKey`,
+ * échec silencieux + relecture, comme l'apport ; un lecteur en lecture seule voit le compte et la liste des noms (un
+ * unique overlay `role="dialog"`, Échap / fond ferment, le focus revient au compte). La seconde puce du résumé, « Les plus
+ * appelées », trie chaque section de lignes à Envie par nombre décroissant puis alphabétique, sans toucher aux comptes.
  *
  * Temps réel : la page de la partie tient DÉJÀ la connexion `partie:{id}` et `PartiesService.changed()` est notifié
  * à chaque mutation (jeu ajouté, apport, inscription, désinscription) — l'onglet s'y abonne par un `effect()`
@@ -158,10 +168,14 @@ export class EventGamesTab {
   private readonly myGames = signal<BoardGameDto[] | null>(null);
   protected readonly failed = signal(false);
   protected readonly fitOnly = signal(false);
+  /** Story 49.5 : tri « Les plus appelées » (cumulable avec « Jouables à N »). */
+  protected readonly sortEnvy = signal(false);
   /** Annonce polie du dernier changement de N (vide tant que N n'a pas changé). */
   protected readonly announcement = signal('');
   /** Jeux dont une écriture (apporter / ne plus apporter) est en cours : un second toucher est ignoré. */
   private readonly busy = signal<ReadonlySet<string>>(new Set());
+  /** Story 49.5 : noms (`nameKey`) dont une Envie est en cours d'écriture — le même nom sur deux lignes est gardé ensemble. */
+  private readonly envyBusy = signal<ReadonlySet<string>>(new Set());
   protected readonly hostSectionKey = HOST_SECTION_KEY;
   protected readonly broughtSectionKey = BROUGHT_SECTION_KEY;
   protected readonly mineSectionKey = MINE_SECTION_KEY;
@@ -175,6 +189,13 @@ export class EventGamesTab {
   protected readonly menuGame = signal<BoardGameDto | null>(null);
   /** Le ⋮ qui a ouvert le menu (ancre du menu, cible du retour du focus) ; l'hôte de l'onglet tant que rien n'est ouvert. */
   protected readonly menuOrigin = signal<HTMLElement>(this.host.nativeElement);
+
+  /** Story 49.5 : la ligne dont la liste des noms d'Envie est ouverte ; `null` : fermée. Une seule liste à la fois. */
+  protected readonly envyNamesGame = signal<{ id: string; name: string; nameKey: string } | null>(
+    null,
+  );
+  /** Le compte qui a ouvert la liste (ancre, cible du retour du focus) ; l'hôte de l'onglet tant que rien n'est ouvert. */
+  protected readonly envyNamesOrigin = signal<HTMLElement>(this.host.nativeElement);
 
   private readonly hostGames = computed(() => this.data()?.games ?? []);
   /** Story 49.4 : les jeux que l'hôte a écartés pour cette soirée — vide pour tout autre lecteur (clé absente). */
@@ -212,6 +233,41 @@ export class EventGamesTab {
   );
   /** « Dans mon … » : un participant autre que l'hôte (jamais un lecteur seul, jamais l'hôte). */
   protected readonly showMine = computed(() => this.canFill() && !this.isHost());
+
+  /** Story 49.5 : l'Envie de chaque NOM reçu (`nameKey`, jamais recalculé) — le même nom sur deux lignes montre la même. */
+  protected readonly envyViews = computed(() => {
+    const me = this.currentUserId();
+    const canToggle = this.canFill();
+    const meName = this.theme.tone()['event_games.holder_me'];
+    const views = new Map<string, EnvyView>();
+    for (const envy of this.data()?.envies ?? []) {
+      views.set(envy.nameKey, {
+        count: envy.users.length,
+        mine: me !== null && envy.users.some((u) => u.userId === me),
+        canToggle,
+        users: envy.users.map((u) => ({
+          userId: u.userId,
+          displayName: u.userId === me ? meName : u.displayName,
+        })),
+      });
+    }
+    return views;
+  });
+  /** L'Envie d'un nom que personne n'a signalé : ♥ seul. */
+  protected readonly noEnvy = computed<EnvyView>(() => ({
+    count: 0,
+    mine: false,
+    canToggle: this.canFill(),
+    users: [],
+  }));
+  /** Les noms de la liste ouverte, tenus à jour par la relecture (liste vide : l'overlay se referme). */
+  protected readonly envyNamesList = computed(() => {
+    const game = this.envyNamesGame();
+    return game === null ? [] : (this.envyViews().get(game.nameKey)?.users ?? []);
+  });
+  protected readonly envyNamesOpen = computed(
+    () => this.envyNamesGame() !== null && this.envyNamesList().length > 0,
+  );
 
   /** Les détenteurs de chaque nom normalisé (clé REÇUE du serveur, jamais recalculée). */
   private readonly holders = computed(() => {
@@ -270,6 +326,7 @@ export class EventGamesTab {
       warnText: null,
       action: null,
       menu: this.isHost(),
+      envy: true,
     }));
   });
 
@@ -291,6 +348,7 @@ export class EventGamesTab {
         warnText: null,
         action: mine ? 'unbring' : null,
         menu: false,
+        envy: true,
       };
     });
   });
@@ -321,15 +379,28 @@ export class EventGamesTab {
               : null,
           action: 'bring',
           menu: false,
+          envy: false,
         };
       });
   });
 
-  /** Sous le filtre « Jouables à {N} », ne garde que les lignes jouables (un jeu sans bornes n'y est jamais). */
+  /**
+   * Sous le filtre « Jouables à {N} », ne garde que les lignes jouables (un jeu sans bornes n'y est jamais). Story 49.5 :
+   * sous le tri « Les plus appelées », range les lignes qui portent une Envie par nombre d'Envies décroissant, puis
+   * alphabétique (même ordre que l'API) — jamais « Dans mon … », dont les lignes n'ont pas d'Envie. Le tri ne retire rien :
+   * les comptes « k sur n » ne suivent que le filtre.
+   */
   private filtered(items: RowView[]): RowView[] {
-    return this.fitOnly()
+    const fit = this.fitOnly()
       ? items.filter((item) => fitsHeadcount(item.game, this.headcount()))
       : items;
+    if (!this.sortEnvy() || !fit.some((item) => item.envy)) return fit;
+    const views = this.envyViews();
+    const count = (item: RowView) => views.get(item.game.nameKey)?.count ?? 0;
+    return [...fit].sort(
+      (a, b) =>
+        count(b) - count(a) || compareGames(a.game, b.game) || a.game.id.localeCompare(b.game.id),
+    );
   }
 
   protected readonly hostView = computed(() => this.filtered(this.hostItems()));
@@ -362,6 +433,27 @@ export class EventGamesTab {
         return;
       }
       untracked(() => void this.reload());
+    });
+
+    // La liste des noms se referme pour de bon quand elle n'a plus rien à dire (dernière Envie partie) ou que la ligne
+    // qui porte son compte a disparu (jeu écarté, apport retiré, filtre) : sans cela une Envie ultérieure la rouvrirait
+    // d'elle-même, ancrée sur un bouton détruit. Le focus n'est rendu que s'il était dans la liste.
+    effect(() => {
+      const game = this.envyNamesGame();
+      if (game === null) return;
+      const rowPresent = [...this.hostView(), ...this.broughtView()].some(
+        (item) => item.game.id === game.id,
+      );
+      if (rowPresent && this.envyNamesList().length > 0) return;
+      untracked(() => {
+        const hadFocus = document.querySelector('.egt-names')?.contains(document.activeElement);
+        const trigger = this.envyNamesOrigin();
+        this.closeEnvyNames(false);
+        // Le focus est rendu APRÈS le rendu qui retire la ligne : avant, le compte est encore dans le DOM.
+        if (hadFocus === true) {
+          afterNextRender(() => this.restoreEnvyFocus(trigger, game), { injector: this.injector });
+        }
+      });
     });
 
     // La personne devient participante après le premier chargement (inscription acceptée) : sa Ludothèque est lue.
@@ -450,6 +542,105 @@ export class EventGamesTab {
         // Le focus passe au ⋮ AVANT la fermeture (l'entrée focalisée va disparaître) ; pas de preventDefault.
         this.closeMenu(true);
         break;
+    }
+  }
+
+  /** Story 49.5 : le ♥ d'une ligne a été touché — bascule mon Envie sur ce NOM. */
+  protected onEnvyToggle(nameKey: string): void {
+    const mine = this.envyViews().get(nameKey)?.mine ?? false;
+    void this.setEnvy(nameKey, !mine);
+  }
+
+  /** Story 49.5 : le compte d'une ligne a été touché — ouvre la liste des noms, ancrée sur le bouton, le focus dessus. */
+  protected openEnvyNames(game: BoardGameDto, trigger: HTMLElement): void {
+    this.envyNamesOrigin.set(trigger);
+    this.envyNamesGame.set({ id: game.id, name: game.name, nameKey: game.nameKey });
+    afterNextRender(
+      () => document.querySelector<HTMLElement>('.egt-names')?.focus({ preventScroll: true }),
+      { injector: this.injector },
+    );
+  }
+
+  /** Referme la liste ; `restoreFocus` rend le focus au compte qui l'a ouverte. */
+  protected closeEnvyNames(restoreFocus: boolean): void {
+    const trigger = this.envyNamesOrigin();
+    const game = this.envyNamesGame();
+    this.envyNamesGame.set(null);
+    if (restoreFocus) this.restoreEnvyFocus(trigger, game);
+  }
+
+  /** Rend le focus au compte ; s'il a disparu avec sa ligne, au ♥ d'une ligne du même nom, à défaut il n'est pas déplacé. */
+  private restoreEnvyFocus(trigger: HTMLElement, game: { nameKey: string } | null): void {
+    if (trigger.isConnected) {
+      trigger.focus();
+      return;
+    }
+    if (game === null) return;
+    const ids = new Set(
+      [...this.hostView(), ...this.broughtView()]
+        .filter((item) => item.game.nameKey === game.nameKey)
+        .map((item) => item.game.id),
+    );
+    const li = Array.from(
+      this.host.nativeElement.querySelectorAll<HTMLElement>('li[data-game-id]'),
+    );
+    li.find((el) => ids.has(el.dataset['gameId'] ?? ''))
+      ?.querySelector<HTMLElement>('.et__heart')
+      ?.focus();
+  }
+
+  /** Clavier de la liste : Échap referme et rend le focus au compte ; Tab referme et laisse le focus continuer. */
+  protected onEnvyNamesKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeEnvyNames(true);
+    } else if (event.key === 'Tab') {
+      this.closeEnvyNames(true);
+    }
+  }
+
+  protected envyNamesAriaLabel(): string {
+    return fillTone(this.theme.tone()['event_games.envy_names_aria'], {
+      nom: this.envyNamesGame()?.name ?? '',
+    });
+  }
+
+  /**
+   * Signaler / retirer mon Envie sur un NOM (Story 49.5) : le ♥ et le compte changent AUSSITÔT (mise à jour locale), puis
+   * l'écriture part et la liste est relue — le serveur est seul juge. Même garde que l'apport, mais par `nameKey` (deux
+   * lignes du même nom partagent l'Envie et la garde) ; un refus (400/403) ou un nom disparu n'affiche rien de bloquant,
+   * la relecture remet la liste d'aplomb. Seul un participant bascule.
+   */
+  private async setEnvy(nameKey: string, on: boolean): Promise<void> {
+    const eventId = this.event()?.id ?? null;
+    const me = this.currentUserId();
+    if (eventId === null || me === null || !this.canFill() || this.envyBusy().has(nameKey)) return;
+    this.envyBusy.update((s) => new Set(s).add(nameKey));
+    this.data.update((dto) => {
+      if (dto === null) return dto;
+      const current = dto.envies.find((e) => e.nameKey === nameKey);
+      const users = (current?.users ?? []).filter((u) => u.userId !== me);
+      if (on) users.push({ userId: me, pseudo: '', displayName: '' });
+      const others = dto.envies.filter((e) => e.nameKey !== nameKey);
+      const envies = (users.length > 0 ? [...others, { nameKey, users }] : others).sort((a, b) =>
+        a.nameKey.localeCompare(b.nameKey, 'fr'),
+      );
+      return { ...dto, envies };
+    });
+    try {
+      await (on ? this.api.envy(eventId, nameKey) : this.api.unenvy(eventId, nameKey));
+    } catch {
+      // Refus ou nom disparu : rien de bloquant — la relecture ci-dessous dit l'état réel.
+    }
+    try {
+      await this.reload();
+    } finally {
+      this.envyBusy.update((s) => {
+        const next = new Set(s);
+        next.delete(nameKey);
+        return next;
+      });
     }
   }
 

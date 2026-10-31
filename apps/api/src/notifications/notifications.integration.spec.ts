@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { BoardGamesService } from '../board-games/board-games.service';
 import { EventsService } from '../events/events.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { NotificationsService } from './notifications.service';
@@ -28,6 +29,8 @@ class FakeEmailService {
     { provide: EmailService, useClass: FakeEmailService },
     // Story 40.3 : seul décideur des destinataires ; le temps réel n'est jamais atteint par un rappel.
     EventsService,
+    // Story 49.5 : `EventsService` en dépend pour les jeux sur place — jamais atteint par un rappel.
+    { provide: BoardGamesService, useValue: {} },
     { provide: RealtimeEventsService, useValue: { emit: () => undefined } },
   ],
 })

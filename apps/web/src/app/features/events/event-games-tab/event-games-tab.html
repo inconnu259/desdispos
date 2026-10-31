@@ -9,6 +9,7 @@
       [fitting]="fitting()"
       [headcount]="headcount()"
       [(fitOnly)]="fitOnly"
+      [(sortEnvy)]="sortEnvy"
     />
 
     @if (siteTotal() === 0) {
@@ -123,6 +124,10 @@
           [menuLabel]="menuLabel(item)"
           [menuOpen]="menuGame()?.id === item.game.id"
           (menu)="openMenu(item.game, $event)"
+          [envy]="item.envy ? (envyViews().get(item.game.nameKey) ?? noEnvy()) : null"
+          [envyNamesOpen]="envyNamesOpen() && envyNamesGame()?.id === item.game.id"
+          (envyToggle)="onEnvyToggle(item.game.nameKey)"
+          (envyNames)="openEnvyNames(item.game, $event)"
         />
       </li>
     }
@@ -147,5 +152,28 @@
     <button type="button" role="menuitem" class="egt-menu__item" (click)="onExcludeChosen()">
       {{ theme.tone()['event_games.exclude_entry'] }}
     </button>
+  </div>
+</ng-template>
+
+<!-- Story 49.5 : la liste des noms d'une Envie — un seul `cdkConnectedOverlay`, tenu par l'onglet, ancré sur le compte
+     touché. `role="dialog"` nommé, Échap et fond ferment, le focus revient au compte. -->
+<ng-template
+  cdkConnectedOverlay
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  [cdkConnectedOverlayOrigin]="envyNamesOrigin()"
+  [cdkConnectedOverlayOpen]="envyNamesOpen()"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPositions]="ROW_MENU_POSITIONS"
+  cdkConnectedOverlayPush
+  [cdkConnectedOverlayViewportMargin]="8"
+  (backdropClick)="closeEnvyNames(true)"
+  (overlayKeydown)="onEnvyNamesKeydown($event)"
+>
+  <div class="egt-names" role="dialog" tabindex="-1" [attr.aria-label]="envyNamesAriaLabel()">
+    <ul class="egt-names__list">
+      @for (user of envyNamesList(); track user.userId) {
+        <li>{{ user.displayName }}</li>
+      }
+    </ul>
   </div>
 </ng-template>

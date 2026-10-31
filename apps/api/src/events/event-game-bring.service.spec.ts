@@ -54,7 +54,7 @@ describe('EventGameBringService (Story 49.2)', () => {
     eventGameBring: { upsert: jest.Mock; deleteMany: jest.Mock; findMany: jest.Mock };
   };
   let permissions: { assert: jest.Mock };
-  let events: { boardGamesBasis: jest.Mock };
+  let events: { boardGamesBasis: jest.Mock; releaseOrphanEnviesInTx: jest.Mock };
   let boardGames: { ownedGameIds: jest.Mock; listByIds: jest.Mock };
   let realtime: { emit: jest.Mock };
   let service: EventGameBringService;
@@ -82,7 +82,10 @@ describe('EventGameBringService (Story 49.2)', () => {
     // Transaction interactive simulée : la fonction reçoit le même client.
     prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     permissions = { assert: jest.fn().mockResolvedValue(testGrant(group, 'member')) };
-    events = { boardGamesBasis: jest.fn().mockResolvedValue(basis()) };
+    events = {
+      boardGamesBasis: jest.fn().mockResolvedValue(basis()),
+      releaseOrphanEnviesInTx: jest.fn().mockResolvedValue(0),
+    };
     boardGames = {
       ownedGameIds: jest.fn().mockResolvedValue(new Set(['g1'])),
       listByIds: jest.fn().mockResolvedValue([GAME]),
@@ -293,6 +296,21 @@ describe('EventGameBringService (Story 49.2)', () => {
         where: { eventId: 'e1', boardGameId: 'g1', userId: 'zoe' },
       });
       expect(realtime.emit).toHaveBeenCalledWith(partieTopic('p1'));
+    });
+
+    it('Story 49.5 : purge les Envies orphelines dans la même transaction, APRÈS la suppression de l’apport', async () => {
+      await service.unbring('e1', 'g1', 'zoe');
+
+      expect(events.releaseOrphanEnviesInTx).toHaveBeenCalledWith(prisma, 'e1');
+      expect(prisma.eventGameBring.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+        events.releaseOrphanEnviesInTx.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('Story 49.5 : apporter un jeu ne purge aucune Envie', async () => {
+      await service.bring('e1', 'g1', 'zoe');
+
+      expect(events.releaseOrphanEnviesInTx).not.toHaveBeenCalled();
     });
 
     it('apport absent : rien à supprimer, succès', async () => {

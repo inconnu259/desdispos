@@ -56,6 +56,35 @@ describe('BoardGamesService (Story 48.1)', () => {
     expect(((await p) as { status: number }).status).toBe(404);
   });
 
+  it('listOfGroup() → GET /parties/:id/board-games avec withCredentials, identifiant encodé (Story 50.1)', async () => {
+    const dto = {
+      games: [
+        {
+          nameKey: 'azul',
+          name: 'Azul',
+          minPlayers: 2,
+          maxPlayers: 4,
+          durationMin: 40,
+          owners: [{ userId: 'u1', pseudo: 'lea', displayName: 'Léa' }],
+        },
+      ],
+    };
+    const p = service.listOfGroup('p 1');
+    const req = http.expectOne(`${API_BASE}/parties/p%201/board-games`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(dto);
+    expect(await p).toEqual(dto);
+  });
+
+  it('listOfGroup() : un refus (403) rejette avec la réponse HTTP', async () => {
+    const p = service.listOfGroup('p1').catch((e: unknown) => e);
+    http
+      .expectOne(`${API_BASE}/parties/p1/board-games`)
+      .flush({ message: 'refus' }, { status: 403, statusText: 'Forbidden' });
+    expect(((await p) as { status: number }).status).toBe(403);
+  });
+
   it('list() : chaque appel émet sa propre requête, jamais un instantané partagé', async () => {
     const a = service.list();
     const b = service.list();

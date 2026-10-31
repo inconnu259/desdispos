@@ -1,6 +1,15 @@
-import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { PermissionService } from '../permissions/permission.service';
+import {
+  PermissionService,
+  RALLIEMENT_UNAVAILABLE_MESSAGE,
+} from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import { callArg } from '../common/test-utils/jest-typed';
@@ -9,6 +18,7 @@ import {
   BOARD_GAME_NOT_FOUND,
   BoardGamesService,
   toBoardGameDto,
+  toGroupBoardGamesDto,
   toUserLibraryDto,
 } from './board-games.service';
 
@@ -52,12 +62,12 @@ describe('BoardGamesService (Story 48.1)', () => {
   let service: BoardGamesService;
   let prisma: ReturnType<typeof makePrisma>;
   let realtime: { emit: jest.Mock };
-  let permissions: { assertLibraryRead: jest.Mock };
+  let permissions: { assertLibraryRead: jest.Mock; assert: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrisma();
     realtime = { emit: jest.fn() };
-    permissions = { assertLibraryRead: jest.fn().mockResolvedValue(undefined) };
+    permissions = { assertLibraryRead: jest.fn().mockResolvedValue(undefined), assert: jest.fn() };
     prisma.boardGame.count.mockResolvedValue(0);
     prisma.membership.findMany.mockResolvedValue([]);
     const module = await Test.createTestingModule({
@@ -271,6 +281,145 @@ describe('BoardGamesService (Story 48.1)', () => {
       prisma.boardGame.findMany.mockResolvedValue([]);
 
       expect((await service.listOf('u1', 'u2')).games).toEqual([]);
+    });
+  });
+
+  describe('toGroupBoardGamesDto / listOfGroup (Story 50.1)', () => {
+    const ZOE = { id: 'u2', pseudo: 'zoe', displayName: 'Zoé', email: 'zoe@test.local' };
+    const LEA = { id: 'u1', pseudo: 'lea', displayName: 'Léa', email: 'lea@test.local' };
+    const GROUP = { kind: 'CAMPAGNE_EPISODIQUE', gameSystemId: 'ralliement' };
+
+    function groupRow(owner: typeof ZOE, overrides: Record<string, unknown> = {}) {
+      return { ...row({ ownerId: owner.id, ...overrides }), owner };
+    }
+
+    it('regroupe les copies d’un même nom normalisé : une entrée, tous les propriétaires', () => {
+      const dto = toGroupBoardGamesDto([
+        groupRow(ZOE, { id: 'g2', name: 'azul' }),
+        groupRow(LEA, { id: 'g1', name: 'Azul' }),
+      ]);
+
+      expect(dto.games).toHaveLength(1);
+      expect(dto.games[0].nameKey).toBe('azul');
+      expect(dto.games[0].owners.map((o) => o.userId)).toEqual(['u1', 'u2']);
+    });
+
+    it('propriétaires triés par nom affiché, pseudo puis identifiant ; nom et mesures de la copie du premier', () => {
+      const dto = toGroupBoardGamesDto([
+        groupRow(ZOE, { name: 'AZUL', minPlayers: 1, maxPlayers: 9, durationMin: null }),
+        groupRow(LEA, { name: 'Azul', minPlayers: 2, maxPlayers: 4, durationMin: 40 }),
+      ]);
+
+      expect(dto.games[0]).toMatchObject({
+        name: 'Azul',
+        minPlayers: 2,
+        maxPlayers: 4,
+        durationMin: 40,
+      });
+    });
+
+    it('homonymes (même nom affiché, accents et casse ignorés) : le pseudo départage, puis l’identifiant — dans les deux ordres d’entrée', () => {
+      const ZOE_A = { id: 'u5', pseudo: 'zoe-a', displayName: 'Zoé', email: 'a@test.local' };
+      const ZOE_B = { id: 'u4', pseudo: 'zoe-b', displayName: 'ZOE', email: 'b@test.local' };
+      const a = groupRow(ZOE_A, { name: 'Azul A', minPlayers: 2, maxPlayers: 4 });
+      const b = groupRow(ZOE_B, { name: 'Azul B', minPlayers: 1, maxPlayers: 9 });
+
+      for (const rows of [
+        [a, b],
+        [b, a],
+      ]) {
+        const entry = toGroupBoardGamesDto(rows).games[0];
+        expect(entry.owners.map((o) => o.userId)).toEqual(['u5', 'u4']);
+        expect(entry.name).toBe('Azul A');
+        expect([entry.minPlayers, entry.maxPlayers]).toEqual([2, 4]);
+      }
+
+      // Même nom affiché et même pseudo : l'identifiant tranche, quel que soit l'ordre reçu.
+      const twinA = groupRow({ ...ZOE_A, id: 'u1' }, { name: 'Azul 1' });
+      const twinB = groupRow({ ...ZOE_A, id: 'u2' }, { name: 'Azul 2' });
+      for (const rows of [
+        [twinA, twinB],
+        [twinB, twinA],
+      ]) {
+        expect(toGroupBoardGamesDto(rows).games[0].owners.map((o) => o.userId)).toEqual([
+          'u1',
+          'u2',
+        ]);
+      }
+    });
+
+    it('garde l’ordre des lignes reçues (déjà triées par clé) pour les entrées', () => {
+      const dto = toGroupBoardGamesDto([
+        groupRow(LEA, { nameKey: 'azul', name: 'Azul' }),
+        groupRow(LEA, { nameKey: 'skull', name: 'Skull' }),
+      ]);
+
+      expect(dto.games.map((g) => g.nameKey)).toEqual(['azul', 'skull']);
+    });
+
+    it('projette champ par champ : jamais l’e-mail ni l’identifiant d’un jeu', () => {
+      const dto = toGroupBoardGamesDto([groupRow(LEA)]);
+
+      expect(JSON.stringify(dto)).not.toContain('lea@test.local');
+      expect(Object.keys(dto.games[0]).sort()).toEqual([
+        'durationMin',
+        'maxPlayers',
+        'minPlayers',
+        'name',
+        'nameKey',
+        'owners',
+      ]);
+      expect(Object.keys(dto.games[0].owners[0]).sort()).toEqual([
+        'displayName',
+        'pseudo',
+        'userId',
+      ]);
+    });
+
+    it('décide le droit AVANT de lire, puis lit les jeux des seuls membres actuels du groupe', async () => {
+      permissions.assert.mockResolvedValue({ partie: GROUP });
+      prisma.boardGame.findMany.mockResolvedValue([groupRow(LEA)]);
+
+      const result = await service.listOfGroup('u1', 'p1');
+
+      expect(permissions.assert).toHaveBeenCalledWith('u1', 'PARTIE_READ', { partieId: 'p1' });
+      expect(prisma.boardGame.findMany).toHaveBeenCalledWith({
+        where: { owner: { memberships: { some: { partieId: 'p1' } } } },
+        orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],
+        include: { owner: { select: { id: true, pseudo: true, displayName: true } } },
+      });
+      expect(result.games).toHaveLength(1);
+    });
+
+    it('droit refusé : refus propagé, aucune lecture de jeux', async () => {
+      permissions.assert.mockRejectedValue(new ForbiddenException('refus'));
+
+      await expect(service.listOfGroup('u9', 'p1')).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['une rencontre isolée', { kind: 'ONE_SHOT', gameSystemId: 'ralliement' }],
+      ['une partie de JDR', { kind: 'CAMPAGNE_EPISODIQUE', gameSystemId: 'ryuutama' }],
+    ])(
+      '%s : 403 RALLIEMENT_UNAVAILABLE_MESSAGE, aucune lecture de jeux',
+      async (_label, partie) => {
+        permissions.assert.mockResolvedValue({ partie });
+
+        const err = await service.listOfGroup('u1', 'p1').catch((e: unknown) => e);
+
+        expect(err).toBeInstanceOf(ForbiddenException);
+        expect((err as ForbiddenException).message).toBe(RALLIEMENT_UNAVAILABLE_MESSAGE);
+        expect(prisma.boardGame.findMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it('groupe sans jeu : une liste vide', async () => {
+      permissions.assert.mockResolvedValue({ partie: GROUP });
+      prisma.boardGame.findMany.mockResolvedValue([]);
+
+      await expect(service.listOfGroup('u1', 'p1')).resolves.toEqual({ games: [] });
     });
   });
 

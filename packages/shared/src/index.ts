@@ -2135,6 +2135,25 @@ export interface UserLibraryDto {
   games: BoardGameDto[];
 }
 
+/** Un jeu des membres d'un groupe (Story 50.1) : toutes les copies d'un même nom normalisé (`nameKey`, reçue,
+ *  jamais recalculée côté web pour le regroupement) en une ligne, avec leurs propriétaires — pseudo et nom
+ *  affiché seulement, jamais d'e-mail. Le nom et les mesures sont ceux de la copie du premier propriétaire
+ *  (ordre de `owners`) : ce que la ligne annonce est ce que le filtre teste. */
+export interface GroupBoardGameDto {
+  nameKey: string;
+  name: string;
+  minPlayers: number | null;
+  maxPlayers: number | null;
+  durationMin: number | null;
+  owners: UserLibraryOwnerDto[];
+}
+
+/** Les jeux des membres actuels d'un groupe (`GET /parties/:id/board-games`, Story 50.1), triés par clé
+ *  normalisée ; un groupe sans jeu renvoie `games: []`. */
+export interface GroupBoardGamesDto {
+  games: GroupBoardGameDto[];
+}
+
 /** Un jeu apporté à une soirée par un participant (Story 49.2) : le jeu et qui l'apporte — pseudo et nom
  *  affiché seulement, jamais d'e-mail. */
 export interface EventBringDto {

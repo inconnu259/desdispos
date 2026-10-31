@@ -64,6 +64,18 @@
               (countChange)="conjonctionCount.set($event)"
             />
           </mat-tab>
+          <!-- Story 50.1 (⚠️ contrat UI) : le 4ᵉ onglet d'un groupe s'insère après « Conjonctions » — les jeux
+               de ses membres (Reliques / Trésors / Joyaux), lecture seule, pour tout membre. Contenu chargé à
+               l'ouverture de l'onglet seulement (jusqu'à plusieurs milliers de jeux). Jamais sur une rencontre
+               isolée ni une partie de JDR. -->
+          <mat-tab [label]="theme.tone()['event_games.tab']">
+            <ng-template matTabContent>
+              <app-group-games-tab
+                [partieId]="p.id"
+                [currentUserId]="auth.currentUser()?.id ?? null"
+              />
+            </ng-template>
+          </mat-tab>
         }
         @if (isSoiree()) {
           <!-- Story 41.1 (⚠️ contrat UI) : une rencontre isolée n'a ni liste ni onglet « Détails » — son

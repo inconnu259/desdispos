@@ -1166,6 +1166,19 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     // Story 48.3 : « Fermer » de la feuille d’une Ludothèque — libellé fonctionnel d’un bouton de
     // fermeture, volontairement hors thème (comme les autres boutons d’action neutres de cette liste)
     'board_games.sheet_close',
+    // Story 50.1 : onglet des jeux du groupe — « Chercher un jeu… », « Jouable à : » et son nom accessible,
+    // « chez {noms} », « moi », pied « {n} jeux chez {m} membres » (accordé) et « Aucun jeu ne correspond. » :
+    // saisie, mesure ou provenance, volontairement hors thème (EXPERIENCE.md §3.3) ; seule la ligne
+    // « groupe sans jeu » (`board_games.group_empty`) a une voix
+    'board_games.group_search',
+    'board_games.group_fit_label',
+    'board_games.group_fit_chip_aria',
+    'board_games.group_owners_prefix',
+    'board_games.group_owner_me',
+    'board_games.group_footer',
+    'board_games.group_footer_members_one',
+    'board_games.group_footer_members_many',
+    'board_games.group_no_match',
     // Story 49.1 : jeux sur place d'une soirée — « Chez {nom} » / « Chez moi » (provenance), résumé « {n} jeux sur
     // place · {k} jouables à {total} » (jeux et jouables accordés chacun avec son nombre), puce « Jouables à {total} », pastille
     // « jouable à {total} », comptes de section (« · 6 », « · 3 sur 6 »), nom accessible d'un en-tête, annonce
@@ -2387,6 +2400,12 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'foret-ancienne': 'Le coffre de {nom} est vide.',
       'atelier-cuivre': 'Le râtelier de {nom} est vide.',
     },
+    // Story 50.1 : « groupe sans jeu » (EXPERIENCE.md §3.2)
+    'board_games.group_empty': {
+      'grimoire-emeraude': "Personne n'a encore rempli son cabinet.",
+      'foret-ancienne': "Personne n'a encore rempli son coffre.",
+      'atelier-cuivre': "Personne n'a encore garni son râtelier.",
+    },
   };
 
   for (const theme of THEMES) {
@@ -2418,6 +2437,16 @@ describe('Tones — Ludothèque (Story 48.1)', () => {
       'board_games.undo_btn': 'Annuler',
       // Story 48.3
       'board_games.sheet_close': 'Fermer',
+      // Story 50.1
+      'board_games.group_search': 'Chercher un jeu…',
+      'board_games.group_fit_label': 'Jouable à :',
+      'board_games.group_fit_chip_aria': 'Jouable à {n}',
+      'board_games.group_owners_prefix': 'chez',
+      'board_games.group_owner_me': 'moi',
+      'board_games.group_footer': '{games} chez {members}',
+      'board_games.group_footer_members_one': '{m} membre',
+      'board_games.group_footer_members_many': '{m} membres',
+      'board_games.group_no_match': 'Aucun jeu ne correspond.',
     };
     for (const theme of THEMES) {
       for (const [key, text] of Object.entries(expected)) {

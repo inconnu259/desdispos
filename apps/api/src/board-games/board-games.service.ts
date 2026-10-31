@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,11 +9,18 @@ import {
 import {
   GAME_SYSTEMS,
   boardGameNameKey,
+  familyOf,
   type BoardGameDto,
+  type GroupBoardGameDto,
+  type GroupBoardGamesDto,
   type UserLibraryDto,
 } from '@master-jdr/shared';
 import { hasPrismaErrorCode } from '../common/prisma-error.util';
-import { LIBRARY_NOT_FOUND_MESSAGE, PermissionService } from '../permissions/permission.service';
+import {
+  LIBRARY_NOT_FOUND_MESSAGE,
+  PermissionService,
+  RALLIEMENT_UNAVAILABLE_MESSAGE,
+} from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import type { CreateBoardGameDto } from './dto/create-board-game.dto';
@@ -72,6 +80,54 @@ export function toUserLibraryDto(owner: LibraryOwnerRow, games: BoardGameRow[]):
     owner: { userId: owner.id, pseudo: owner.pseudo, displayName: owner.displayName },
     games: games.map(toBoardGameDto),
   };
+}
+
+/** Ligne `BoardGame` lue avec l'identité publique de son propriétaire, pour la vue d'un groupe (Story 50.1). */
+interface GroupBoardGameRow extends BoardGameRow {
+  owner: LibraryOwnerRow;
+}
+
+/** Ordre des propriétaires d'un jeu : nom affiché (accents et casse ignorés), pseudo, identifiant — total et
+ *  stable, de sorte que « la copie du premier propriétaire » est toujours la même. */
+function compareOwners(a: LibraryOwnerRow, b: LibraryOwnerRow): number {
+  return (
+    a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' }) ||
+    a.pseudo.localeCompare(b.pseudo, 'fr', { sensitivity: 'base' }) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+/**
+ * Regroupe les jeux des membres d'un groupe par clé normalisée (Story 50.1) : une entrée par `nameKey`, dans
+ * l'ordre des lignes reçues (déjà triées par clé), avec tous ses propriétaires. Le nom et les mesures sont ceux
+ * de la copie du premier propriétaire — ce que la ligne annonce est ce que le filtre du web teste. Projection
+ * explicite champ par champ : jamais l'e-mail ni une colonne ajoutée plus tard.
+ */
+export function toGroupBoardGamesDto(rows: GroupBoardGameRow[]): GroupBoardGamesDto {
+  const byKey = new Map<string, GroupBoardGameRow[]>();
+  for (const row of rows) {
+    const copies = byKey.get(row.nameKey);
+    if (copies) copies.push(row);
+    else byKey.set(row.nameKey, [row]);
+  }
+  const games: GroupBoardGameDto[] = [];
+  for (const [nameKey, copies] of byKey) {
+    const sorted = [...copies].sort((a, b) => compareOwners(a.owner, b.owner));
+    const first = sorted[0];
+    games.push({
+      nameKey,
+      name: first.name,
+      minPlayers: first.minPlayers,
+      maxPlayers: first.maxPlayers,
+      durationMin: first.durationMin,
+      owners: sorted.map((c) => ({
+        userId: c.owner.id,
+        pseudo: c.owner.pseudo,
+        displayName: c.owner.displayName,
+      })),
+    });
+  }
+  return { games };
 }
 
 /**
@@ -187,6 +243,26 @@ export class BoardGamesService {
     ]);
     if (!owner) throw new NotFoundException(LIBRARY_NOT_FOUND_MESSAGE);
     return toUserLibraryDto(owner, games);
+  }
+
+  /**
+   * Les jeux des membres ACTUELS d'un groupe (Story 50.1), regroupés par nom normalisé. Le droit est décidé par
+   * `PermissionService` (`PARTIE_READ`) AVANT toute lecture : un non-membre est refusé comme partout ; aucune
+   * règle de visibilité n'est recodée ici. Seul un GROUPE (`CAMPAGNE_EPISODIQUE` de la famille `ralliement`)
+   * a des « jeux du groupe » : une rencontre isolée ou une partie de JDR répond le même 403 que `events/`.
+   * Le nombre de membres bornant la lecture (un groupe en compte une vingtaine), aucune pagination.
+   */
+  async listOfGroup(userId: string, partieId: string): Promise<GroupBoardGamesDto> {
+    const { partie } = await this.permissions.assert(userId, 'PARTIE_READ', { partieId });
+    if (partie.kind !== 'CAMPAGNE_EPISODIQUE' || familyOf(partie.gameSystemId) !== 'ralliement') {
+      throw new ForbiddenException(RALLIEMENT_UNAVAILABLE_MESSAGE);
+    }
+    const rows = await this.prisma.boardGame.findMany({
+      where: { owner: { memberships: { some: { partieId } } } },
+      orderBy: [{ nameKey: 'asc' }, { name: 'asc' }],
+      include: { owner: { select: { id: true, pseudo: true, displayName: true } } },
+    });
+    return toGroupBoardGamesDto(rows);
   }
 
   /**

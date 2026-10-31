@@ -332,6 +332,18 @@ export const grimoireEmeraude = {
   'board_games.sheet_empty': 'Le cabinet de {nom} est vide.',
   /* — bouton « Fermer » de la feuille : neutre (NEUTRAL_KEYS) — */
   'board_games.sheet_close': 'Fermer',
+  /* — onglet des jeux du groupe (Story 50.1) : seule la ligne « groupe sans jeu » a une voix ; recherche, puces,
+       ligne des propriétaires et pied de page sont neutres (NEUTRAL_KEYS) — */
+  'board_games.group_empty': "Personne n'a encore rempli son cabinet.",
+  'board_games.group_search': 'Chercher un jeu…',
+  'board_games.group_fit_label': 'Jouable à :',
+  'board_games.group_fit_chip_aria': 'Jouable à {n}',
+  'board_games.group_owners_prefix': 'chez',
+  'board_games.group_owner_me': 'moi',
+  'board_games.group_footer': '{games} chez {members}',
+  'board_games.group_footer_members_one': '{m} membre',
+  'board_games.group_footer_members_many': '{m} membres',
+  'board_games.group_no_match': 'Aucun jeu ne correspond.',
 
   /* ═══ Jeux sur place d'une soirée (Story 49.1) ═══ */
   /* — onglet, ligne « aucun jeu » et lien discret : une voix par thème — */

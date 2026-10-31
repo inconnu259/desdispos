@@ -342,6 +342,8 @@ async function createFixture(
             owner: { userId: 'member-2', pseudo: 'membre', displayName: 'Membre Deux' },
             games: [],
           }),
+          // Story 50.1 : les jeux du groupe, lus à l'ouverture de leur onglet.
+          listOfGroup: vi.fn().mockResolvedValue({ games: [] }),
           changed: signal(0),
         },
       },
@@ -3577,7 +3579,7 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
   it.each([
     ['admin', MJ_ID, 'admin'],
     ['membre', OTHER_ID, 'member'],
-  ] as const)('%s : exactement deux onglets, Détails puis Missives', async (_nom, userId, role) => {
+  ] as const)('%s : quatre onglets : Conjonctions, Reliques, Détails puis Missives', async (_nom, userId, role) => {
     // Story 41.1 ⚠️ : la soirée isolée (ONE_SHOT) a ses propres onglets (describe dédié plus bas) ;
     // « Détails puis Missives » est ici celui d'un groupe, après ses Conjonctions.
     const { el } = await createFixture(ralliement({ role, kind: 'CAMPAGNE_EPISODIQUE' }), userId, {
@@ -3586,6 +3588,7 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
     const tone = TONE_MAP['grimoire-emeraude'];
     expect(tabLabels(el)).toEqual([
       tone['partie.ralliement_conjonctions_tab'],
+      tone['event_games.tab'],
       tone['parties.detail_tab_details'],
       tone['partie.invitations_tab_label'],
     ]);
@@ -3597,7 +3600,7 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
       MJ_ID,
       { members, noopAnimations: true },
     );
-    el.querySelectorAll<HTMLElement>('div[role="tab"]')[1].click();
+    el.querySelectorAll<HTMLElement>('div[role="tab"]')[2].click();
     fixture.detectChanges();
     expect(
       el.querySelector('.details-zone--reference .zone-card--reference')?.textContent,
@@ -3863,10 +3866,16 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
         expect(TestBed.inject(ContextualNavService).subtitle()).toBe(
           `${tone['partie.mode_ralliement']} · ${tone[`partie.ralliement_kind_${kind}`]}`,
         );
-        // Onglet d'ouverture (Détails, ou Conjonctions pour un groupe), puis Missives : balayés.
+        // Onglet d'ouverture (Détails, ou Conjonctions pour un groupe), puis Missives : balayés. Story 50.1 :
+        // un groupe a aussi « Reliques » (2ᵉ onglet), balayé avant Missives (4ᵉ).
         expect(BANNED.test(el.textContent ?? ''), `${theme}/${kind} ouverture`).toBe(false);
+        if (kind === 'CAMPAGNE_EPISODIQUE') {
+          el.querySelectorAll<HTMLElement>('div[role="tab"]')[1].click();
+          fixture.detectChanges();
+          expect(BANNED.test(el.textContent ?? ''), `${theme}/${kind} jeux du groupe`).toBe(false);
+        }
         el.querySelectorAll<HTMLElement>('div[role="tab"]')[
-          kind === 'CAMPAGNE_EPISODIQUE' ? 2 : 1
+          kind === 'CAMPAGNE_EPISODIQUE' ? 3 : 1
         ].click();
         fixture.detectChanges();
         expect(BANNED.test(el.textContent ?? ''), `${theme}/${kind} Missives`).toBe(false);
@@ -3902,7 +3911,7 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
         tone['identity.ralliement_homonymy_warning'],
       );
       // Story 41.1 : la description se lit dans « Détails », second onglet d'un groupe.
-      el.querySelectorAll<HTMLElement>('div[role="tab"]')[1].click();
+      el.querySelectorAll<HTMLElement>('div[role="tab"]')[2].click();
       fixture.detectChanges();
       expect(el.textContent).toContain(tone['partie.ralliement_no_description']);
       expect(el.querySelector('.closed-banner')?.textContent).toContain(
@@ -3968,13 +3977,19 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
     tabs(el)[index].click();
     fixture.detectChanges();
   };
+  const settleTabs = async (fixture: ComponentFixture<PartieDetail>) => {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  };
   /** Libellé d'une action du pied de carte, sans la ligature de son icône (`<mat-icon>` en tête). */
   const label = (node: Element) => (node.textContent ?? '').trim().replace(/^\S+\s+/, '');
   const footerButtons = (el: HTMLElement) =>
     Array.from(el.querySelectorAll('mat-card-actions button')).map(label);
 
   it.each(THEMES)(
-    'thème %s : un membre voit Conjonctions (ouvert), Détails, Missives, avec les mots du thème',
+    'thème %s : un membre voit Conjonctions (ouvert), Reliques, Détails, Missives, avec les mots du thème',
     async (theme) => {
       const tone = TONE_MAP[theme];
       const { el } = await createFixture(groupe({ role: 'member' }), OTHER_ID, {
@@ -3983,12 +3998,51 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
       });
       expect(tabLabels(el)).toEqual([
         tone['partie.ralliement_conjonctions_tab'],
+        tone['event_games.tab'],
         tone['parties.detail_tab_details'],
         tone['partie.invitations_tab_label'],
       ]);
       expect(tabs(el)[0].getAttribute('aria-selected')).toBe('true');
     },
   );
+
+  it('Reliques (Story 50.1) : le 4ᵉ onglet du groupe ne lit les jeux qu’à son ouverture, pour tout membre', async () => {
+    const { fixture, el } = await createFixture(groupe({ role: 'member' }), OTHER_ID, {
+      members,
+      noopAnimations: true,
+    });
+    const boardGames = TestBed.inject(BoardGamesService) as unknown as {
+      listOfGroup: ReturnType<typeof vi.fn>;
+    };
+    expect(tabLabels(el)[1]).toBe(TONE_MAP['grimoire-emeraude']['event_games.tab']);
+    expect(el.querySelector('app-group-games-tab')).toBeNull();
+    expect(boardGames.listOfGroup).not.toHaveBeenCalled();
+
+    openTab(el, fixture, 1);
+    await settleTabs(fixture);
+
+    expect(el.querySelector('app-group-games-tab')).not.toBeNull();
+    expect(boardGames.listOfGroup).toHaveBeenCalledWith('party-1');
+  });
+
+  it('Reliques (Story 50.1) : une rencontre isolée n’a pas l’onglet des jeux du groupe', async () => {
+    const { fixture, el } = await createFixture(
+      groupe({ kind: 'ONE_SHOT', role: 'member' }),
+      OTHER_ID,
+      { members, noopAnimations: true },
+    );
+    const boardGames = TestBed.inject(BoardGamesService) as unknown as {
+      listOfGroup: ReturnType<typeof vi.fn>;
+    };
+
+    for (let i = 0; i < tabs(el).length; i++) {
+      openTab(el, fixture, i);
+      await settleTabs(fixture);
+    }
+
+    expect(el.querySelector('app-group-games-tab')).toBeNull();
+    expect(boardGames.listOfGroup).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['admin', MJ_ID, 'admin'],
@@ -4034,7 +4088,7 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
 
   it('Détails : la description, aucune carte de conjonction, aucun « Sceller des secrets »', async () => {
     const { fixture, el } = await createFixture(groupe(), MJ_ID, { members, noopAnimations: true });
-    openTab(el, fixture, 1);
+    openTab(el, fixture, 2);
 
     expect(
       el.querySelector('.details-zone--reference .zone-card--reference')?.textContent,
@@ -4044,9 +4098,9 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
     expect(el.textContent).not.toContain(TONE_MAP['grimoire-emeraude']['partie.visibility_btn']);
   });
 
-  it('Missives : la liste des membres reste accessible en troisième position', async () => {
+  it('Missives : la liste des membres reste accessible en quatrième position', async () => {
     const { fixture, el } = await createFixture(groupe(), MJ_ID, { members, noopAnimations: true });
-    openTab(el, fixture, 2);
+    openTab(el, fixture, 3);
     const rows = Array.from(el.querySelectorAll('.ralliement-members .result-row')).map((r) =>
       (r.textContent ?? '').trim(),
     );
@@ -4205,7 +4259,7 @@ describe('PartieDetail — Missives d’un groupe : invitation et retrait (Story
     },
   ];
   const openMissives = (el: HTMLElement, fixture: ComponentFixture<PartieDetail>) => {
-    el.querySelectorAll<HTMLElement>('div[role="tab"]')[2].click();
+    el.querySelectorAll<HTMLElement>('div[role="tab"]')[3].click();
     fixture.detectChanges();
   };
   const panel = (el: HTMLElement) => el.querySelector('.ralliement-members') as HTMLElement;
@@ -4420,7 +4474,7 @@ describe('PartieDetail — admins d’un groupe : nommer et quitter l’office (
   const seul = [member(MJ_ID, 'Créateur', 'ADMIN'), member(THIRD_ID, 'Membre', 'MEMBER')];
 
   const openMissives = (el: HTMLElement, fixture: ComponentFixture<PartieDetail>) => {
-    el.querySelectorAll<HTMLElement>('div[role="tab"]')[2].click();
+    el.querySelectorAll<HTMLElement>('div[role="tab"]')[3].click();
     fixture.detectChanges();
   };
   const rows = (el: HTMLElement) =>
@@ -4889,7 +4943,7 @@ describe('PartieDetail — quitter un groupe, retirer le créateur (Story 39.5)'
       members,
       noopAnimations: true,
     });
-    el.querySelectorAll<HTMLElement>('div[role="tab"]')[2].click();
+    el.querySelectorAll<HTMLElement>('div[role="tab"]')[3].click();
     fixture.detectChanges();
     const tone = TONE_MAP['grimoire-emeraude'];
     const [createur, moi] = Array.from(
@@ -5063,7 +5117,7 @@ describe('PartieDetail — les conjonctions d’un groupe (Story 40.1)', () => {
       noopAnimations: true,
     });
     // L'onglet des conjonctions est quitté (son contenu est détruit) avant toute nouvelle conjonction.
-    el.querySelectorAll<HTMLElement>('div[role="tab"]')[2].click();
+    el.querySelectorAll<HTMLElement>('div[role="tab"]')[3].click();
     await settle(fixture);
     api().list.mockResolvedValue([card('a', 3), card('b', 6), card('c', -5)]);
     const dialog = TestBed.inject(MatDialog) as unknown as { open: ReturnType<typeof vi.fn> };

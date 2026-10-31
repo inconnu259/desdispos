@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   BoardGameDto,
   CreateBoardGameInput,
+  GroupBoardGamesDto,
   UpdateBoardGameInput,
   UserLibraryDto,
 } from '@master-jdr/shared';
@@ -44,6 +45,18 @@ export class BoardGamesService {
       this.http.get<UserLibraryDto>(`${API_BASE}/users/${encodeURIComponent(userId)}/board-games`, {
         withCredentials: true,
       }),
+    );
+  }
+
+  /** Les jeux des membres actuels d'un groupe (Story 50.1, lecture seule), regroupés par nom normalisé par
+   *  l'API. Rejette avec la réponse HTTP (403 pour une rencontre isolée, une partie de JDR ou un non-membre,
+   *  404 pour une partie inconnue). Chaque appel émet sa propre requête. */
+  listOfGroup(partieId: string): Promise<GroupBoardGamesDto> {
+    return firstValueFrom(
+      this.http.get<GroupBoardGamesDto>(
+        `${API_BASE}/parties/${encodeURIComponent(partieId)}/board-games`,
+        { withCredentials: true },
+      ),
     );
   }
 

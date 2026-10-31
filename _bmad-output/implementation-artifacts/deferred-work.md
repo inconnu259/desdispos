@@ -472,3 +472,7 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/spec-48-1-ajouter-mes-jeux-et-les-retrouver.md`
   summary: Protected web routes (e.g. `profile/board-games`, `profile/calendar`) have no route-level test that navigating the real route table renders the page.
   evidence: Only `href` assertions exist (`account.spec.ts`, `shell.spec.ts:105`); `app.config.spec.ts` navigates public routes only, so a path typo or wrong lazy import would fall through to `'**'` unnoticed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-50-1-trouver-qui-possede-un-jeu-dans-le-groupe.md`
+  summary: Measure the four group tabs (Conjonctions/Haltes/Réunions + Reliques/Trésors/Joyaux + Détails + Missives) at 360 px in each theme, and 20 members × 300 games on a phone.
+  evidence: Acceptance criterion « measured and noted » could not be checked without a browser; `partie-detail.scss` is untouched, so the Material tab header may scroll. Unverified, would be medium if it overflows.

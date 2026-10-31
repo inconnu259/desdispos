@@ -78,6 +78,7 @@ import { scrollToAnnouncement } from '../../../core/announcements/scroll-to-anno
 import { CharacterRolesService } from '../../../core/character-roles/character-roles.service';
 import { HommeDragonAventurePanel } from '../../homme-dragon/homme-dragon-aventure-panel/homme-dragon-aventure-panel';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
+import { GroupGamesTab } from '../../board-games/group-games-tab/group-games-tab';
 import { LibrarySheet } from '../../board-games/library-sheet/library-sheet';
 import { ConjonctionsTab } from '../../events/conjonctions-tab/conjonctions-tab';
 import { EventGamesTab } from '../../events/event-games-tab/event-games-tab';
@@ -126,6 +127,7 @@ const SEARCH_DEBOUNCE_MS = 500;
     ConjonctionsTab,
     SoireeTab,
     EventGamesTab,
+    GroupGamesTab,
     LibrarySheet,
   ],
   templateUrl: './partie-detail.html',

@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planche clé — Paliers 10.6 et 10.8</title>
+<style>
+/* Planche clé (.working) — Paliers 10.6 (déclarer ses dispos) et 10.8 (cartes et fiche de scénario d'une partie de JDR).
+   Gouverné par :
+     EXPERIENCE.md §3.1 (bouton « Déclarer mes dispos »), §3.2 (bandeau du mode, texte Grimoire), §3.3 (sélection,
+       barre collée au bas), §3.5 (rappel du tableau de bord), §4.1 (pastille « Ma situation », badge d'état),
+       §5.1 (ordre joueur : séances en tête), §5.2 (encadré de situation), §5.3 (vote en résumé, colonnes joueur / MJ),
+       §7 (parcours de Nina, Hugo, Marc).
+     DESIGN.md components : declare-action, declare-banner, declare-grid, selection-bar-sticky, reminder-banner,
+       situation-pill (tons), seance-situation.
+   Tokens : thème Grimoire Émeraude réel (apps/web/src/styles.scss, .theme-grimoire-emeraude) ; statuts « Vitrail »
+   (ux-jdr-master-2026-08-04/DESIGN.md) ; StatusBadge (08-04 §7.1) ; situation-panel (10-08 DESIGN).
+   Vouvoiement (Grimoire). Planche validée par l'utilisateur le 2026-10-31 ; les spines l'emportent sur elle.
+   Écart volontaire : le libellé « Autre… » du spine est rendu par sa valeur Grimoire réelle « Autrement… ». */
+:root{
+  --bg:#0d0a14; --bg-deep:#09070f; --surface:#1a1428; --surface-high:#221c35; --surface-top:#2a2340;
+  --accent-1:#7ec8a4; --accent-1-rgb:126,200,164; --accent-2:#9b6dff; --on-primary:#062018;
+  --text:#e8e0f0; --muted:#9b8fb0; --outline:#6e6383; --outline-v:#2a2340; --toolbar:#150f20;
+  --todo:#f0a030; --todo-rgb:240,160,48; --live:#3fd4ff; --live-rgb:63,212,255; --soon:#ff7ad9;
+  --done:#5a5a6a; --done-rgb:90,90,106; --unavail:#e74c3c; --overlay:rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050409;color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px}
+h1{font-size:18px;margin:0 0 4px}
+.intro{color:var(--muted);max-width:1180px;margin:0 0 18px;font-size:13px}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-bottom:34px}
+.frame{max-width:100%}
+.cap{margin:0 0 8px;max-width:390px}
+.cap.wide{max-width:1100px}
+.cap .l{display:inline-block;font-weight:700;font-size:13px;width:24px;height:24px;line-height:24px;text-align:center;border-radius:999px;background:rgba(var(--accent-1-rgb),.15);border:1px solid rgba(var(--accent-1-rgb),.55);color:#cfeedd;margin-right:6px}
+.cap b{font-size:14px}
+.cap small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.note{font-size:12px;color:var(--muted);margin-top:8px;max-width:390px}
+
+/* — appareils — */
+.phone{position:relative;width:390px;max-width:100%;height:800px;border-radius:32px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 0 0 1px #333;display:flex;flex-direction:column}
+.phone.short{height:560px}
+.hd{padding:10px 14px 8px;background:var(--toolbar);border-bottom:1px solid var(--outline-v)}
+.hd b{display:block;font-size:16px}
+.hd small{color:var(--muted);font-size:11px}
+.body{flex:1;overflow:hidden;padding:10px 10px;position:relative}
+.nav{height:46px;flex:0 0 46px;background:var(--toolbar);border-top:1px solid var(--outline-v);display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--muted)}
+.nav span.on{color:var(--accent-1)}
+.win{width:1100px;max-width:100%;border-radius:12px;border:1px solid #333;background:var(--bg);overflow:hidden}
+.wbar{height:30px;background:#1d1a24;display:flex;align-items:center;padding:0 12px;gap:6px}
+.wbar i{width:10px;height:10px;border-radius:50%;background:#444;display:block}
+.tb{height:50px;background:var(--toolbar);display:flex;align-items:center;padding:0 18px;gap:22px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--outline-v)}
+.tb .brand{color:var(--text);font-weight:700;font-size:15px;margin-right:12px}
+.tb .on{color:var(--accent-1);font-weight:600}
+
+/* — boutons, pastilles, badges — */
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;border-radius:8px;padding:0 14px;font-weight:600;font-size:13px;border:1px solid var(--outline);white-space:nowrap;color:var(--text)}
+.btn.sm{min-height:32px;padding:0 11px;font-size:12.5px}
+.btn.fill{background:var(--accent-1);color:var(--on-primary);border-color:var(--accent-1)}
+.btn.out{border-color:var(--accent-1);color:var(--accent-1)}
+.btn.txt{border-color:transparent;color:var(--accent-1);padding:0 8px}
+.btn.txt.muted{color:var(--muted)}
+.chip{display:inline-flex;align-items:center;min-height:32px;border:1px solid var(--outline);border-radius:999px;padding:0 12px;font-size:12.5px;white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--outline);border-radius:999px;overflow:hidden;font-size:12px}
+.seg span{padding:6px 10px}
+.seg .on{background:rgba(var(--accent-1-rgb),.18);font-weight:600}
+.badge{display:inline-block;font-size:12px;padding:1px 8px;border-radius:6px;border:1px solid;white-space:nowrap}
+.badge.todo{color:var(--todo);border-color:var(--todo);background:rgba(var(--todo-rgb),.16)}
+.badge.live{color:var(--live);border-color:var(--live);background:rgba(var(--live-rgb),.15)}
+.badge.done{color:var(--muted);border-color:var(--done);background:rgba(var(--done-rgb),.12)}
+/* situation-pill (DESIGN components) */
+.sp{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:6px;border:1px solid transparent;white-space:nowrap}
+.sp.mene{border-color:var(--accent-1);color:var(--accent-1)}
+.sp.todo{background:rgba(var(--todo-rgb),.16);border-color:var(--todo);color:var(--todo)}
+.sp.vote{border-color:var(--live);color:var(--live)}
+.sp.part{background:rgba(var(--live-rgb),.12);border-color:var(--live);color:var(--live)}
+.sp.pasins{border:1px dashed var(--muted);color:var(--muted)}
+.sp.etais{background:rgba(var(--done-rgb),.12);color:var(--muted)}
+.sitline{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:7px;border-top:1px solid var(--outline-v);font-size:12px;color:var(--muted)}
+
+/* — A. tableau de bord — */
+.reminder{background:rgba(var(--todo-rgb),.12);border:1px solid var(--todo);border-radius:14px;padding:12px 16px;font-size:14px;font-weight:500;color:var(--text)}
+.reminder .acts{display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.sec{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 2px 6px}
+.pcard{background:var(--surface);border:1px solid var(--outline-v);border-radius:10px;padding:11px 12px}
+.pcard .t{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.pcard .n{font-weight:600;font-size:15px}
+.meta{font-size:12px;color:var(--muted);margin-top:2px}
+.signal{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--todo);background:rgba(var(--todo-rgb),.2);border-radius:6px;padding:2px 8px}
+.fade{opacity:.45}
+
+/* — calendrier — */
+.controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.spring{flex:1}
+.mnav{display:flex;align-items:center;gap:8px;margin:8px 2px 6px;font-weight:600}
+.mnav .ar{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--outline);color:var(--text);font-weight:400}
+.mnav .today{margin-left:auto;font-size:12px;font-weight:600;color:var(--accent-1)}
+.declare-banner{background:rgba(var(--accent-1-rgb),.10);border:1px solid var(--accent-1);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;margin-top:8px}
+.declare-banner span{flex:1}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:10.5px;color:var(--muted);text-align:center;margin-bottom:3px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.grid.declare{outline:2px solid var(--accent-1);outline-offset:3px;border-radius:10px}
+.c{background:var(--surface);border-radius:7px;padding:3px 4px 4px;display:flex;flex-direction:column;gap:2px;height:60px}
+.c i{font-style:normal;font-size:11px;line-height:14px;color:var(--text);align-self:flex-start;padding:0 3px;border-radius:4px}
+.c b{flex:1;border-radius:3px;background:rgba(255,255,255,.04)}
+.c.dim{opacity:.3}
+.c.now i{outline:1.5px solid var(--accent-1);color:var(--accent-1);font-weight:700}
+.c b.s{outline:2px solid var(--accent-1);outline-offset:-1px;background:rgba(var(--accent-1-rgb),.28)}
+.c.dsel i{background:var(--accent-1);color:var(--on-primary);font-weight:700}
+.c b.av{background:rgba(var(--accent-1-rgb),.32)}
+.c b.un{background:rgba(231,76,60,.30)}
+.c b.ev{background:rgba(var(--live-rgb),.18);border:1px solid var(--live)}
+.selbar-sticky{position:absolute;left:0;right:0;bottom:0;background:var(--bg);box-shadow:0 -4px 16px var(--overlay);padding:8px 12px;border-top:1px solid var(--outline-v)}
+.selbar-sticky .l1{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;font-size:13px}
+.selbar-sticky .l2{display:flex;align-items:center;gap:6px}
+.selbar-sticky .seg span{padding:5px 8px}
+.selbar-sticky .btn{padding:0 9px}
+
+/* — onglets, cartes de chronologie — */
+.tabs{display:flex;border-bottom:1px solid var(--outline-v);margin:0 -10px 10px}
+.tabs span{flex:1;text-align:center;padding:9px 0;font-size:13px;font-weight:600;color:var(--muted)}
+.tabs span.on{color:var(--text);border-bottom:2px solid var(--accent-1)}
+.chap{font-size:12px;color:var(--muted);margin:2px 2px 6px;font-weight:600}
+.scard{background:var(--surface);border:1px solid var(--outline-v);border-left:3px solid var(--outline);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.scard.todo{border-color:rgba(var(--todo-rgb),.6);border-left-color:var(--todo)}
+.scard .t{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.scard .n{font-weight:600;font-size:14px}
+.scard .d{font-size:13px;font-weight:600;margin-top:6px}
+.legend{margin-top:12px;background:var(--surface-high);border:1px dashed var(--outline);border-radius:10px;padding:8px 10px}
+.legend .h{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.legend .ps{display:flex;flex-wrap:wrap;gap:6px}
+
+/* — fiche de scénario — */
+.dlg{position:absolute;inset:0;background:var(--surface-high);display:flex;flex-direction:column}
+.dlg .top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px}
+.dlg .top .x{color:var(--muted);font-size:18px}
+.dlg h2{font-size:20px;font-weight:600;margin:0 14px 4px}
+.dlg .inner{padding:4px 14px 14px;overflow:hidden}
+.h3{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.seance{background:var(--surface);border:1px solid var(--outline-v);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.seance .n{font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ssit{border:1.5px solid var(--todo);background:rgba(var(--todo-rgb),.07);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13.5px;font-weight:500}
+.ssit.mj{border-color:var(--accent-1);background:rgba(var(--accent-1-rgb),.07)}
+.ssit .acts{margin-top:8px;display:flex;gap:6px}
+.ssit.inline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ssit.inline .acts{margin-top:0}
+.vs{font-size:13px;line-height:1.55}
+.vs div{padding:2px 0}
+.vs .k{color:var(--muted)}
+.vs b{font-weight:600}
+.vs .acts{display:flex;gap:6px;align-items:center;margin-top:8px}
+.desc{font-size:13px;color:var(--text);line-height:1.5}
+.small{font-size:12px;color:var(--muted)}
+
+/* — F. éditeur MJ — */
+.ed{display:flex;gap:18px;padding:16px 20px 20px}
+.ed .main{flex:1}
+.ed .aside{flex:0 0 300px}
+.edhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.edhead h2{font-size:22px;margin:0;font-weight:600}
+.edblk{background:var(--surface);border:1px solid var(--outline-v);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.edblk .n{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;font-size:15px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px}
+.field{border:1px solid var(--outline);border-radius:4px;padding:7px 9px;font-size:13px;margin-top:4px}
+.flab{font-size:11.5px;color:var(--muted)}
+.mark{outline:2px dashed var(--todo);outline-offset:4px;border-radius:8px;position:relative}
+.mark::after{content:"nouveau";position:absolute;top:-22px;left:0;font-size:10.5px;font-weight:700;color:var(--todo);letter-spacing:.04em}
+</style>
+</head>
+<body>
+<h1>Planche clé — Paliers 10.6 et 10.8 (Grimoire Émeraude)</h1>
+<p class="intro">« La Route des Brumes » (Ryuutama), MJ <b>Marc</b>, joueurs <b>Hugo, Nina, Lou, Sam</b>. Chapitre en cours : « Le Col des Vents ». Aujourd'hui : samedi 31 octobre. Planche validée par l'utilisateur le 2026-10-31 ; les spines l'emportent sur elle.</p>
+
+<!-- ═══════════════ RANGÉE 1 : A · B ═══════════════ -->
+<div class="row">
+
+  <!-- A -->
+  <div class="frame">
+    <p class="cap"><span class="l">A</span><b>Tableau de bord de Nina, rappel en tête</b><small>EXPERIENCE §3.5 · DESIGN reminder-banner. Un seul bandeau au-dessus des listes, teinte status-todo ; « Déclarer mes dispos » plein, « Ne plus me le rappeler » en bouton texte.</small></p>
+    <div class="phone short">
+      <div class="hd"><b>Mes aventures</b><small>Bonjour Nina</small></div>
+      <div class="body">
+        <div class="reminder" role="status">
+          Rien n'est inscrit à votre almanach pour les quatre semaines à venir.
+          <div class="acts">
+            <span class="btn fill">Déclarer mes dispos</span>
+            <span class="btn txt">Ne plus me le rappeler</span>
+          </div>
+        </div>
+
+        <div class="sec">Ce qui vous attend</div>
+        <div class="pcard">
+          <div class="t">
+            <div><div class="n">La Route des Brumes</div><div class="meta">Ryuutama · MJ Marc · 4 voyageurs</div></div>
+            <span class="badge live">En cours</span>
+          </div>
+          <div class="meta" style="margin-top:6px">Le Col des Vents · séance 2 — date au vote</div>
+          <span class="signal">Répondez au vote</span>
+        </div>
+
+        <div class="sec fade">En cours</div>
+        <div class="pcard fade"><div class="n" style="font-size:14px">Les Lanternes de Kiri</div><div class="meta">Ryuutama · MJ Sam</div></div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="frame">
+    <p class="cap"><span class="l">B</span><b>Almanach de Nina, Mois, mode déclaration allumé</b><small>EXPERIENCE §3.1-§3.3 · DESIGN declare-action (pressed), declare-banner, declare-grid, selection-bar-sticky. Trois soirées et le samedi 7 entier : 4 fenêtres. La barre colle au bas de l'écran, la grille passe dessous.</small></p>
+    <div class="phone">
+      <div class="hd"><b>Almanach</b><small>Mon almanach personnel</small></div>
+      <div class="body">
+        <div class="controls">
+          <span class="chip">☰ Affichage</span>
+          <span class="chip">✦ 1</span>
+          <span class="btn sm fill" aria-pressed="true">Terminer</span>
+          <span class="spring"></span>
+          <span class="seg"><span class="on">Mois</span><span>Semaine</span><span>Agenda</span></span>
+        </div>
+        <div class="declare-banner" role="status"><span>Touchez les créneaux où vous êtes disponible ou non, puis validez.</span><span class="btn sm txt" style="flex:0 0 auto">Terminer</span></div>
+        <div class="mnav"><span class="ar">‹</span>Novembre 2026<span class="ar">›</span><span class="today">Aujourd'hui</span></div>
+        <div class="dow"><div>lun.</div><div>mar.</div><div>mer.</div><div>jeu.</div><div>ven.</div><div>sam.</div><div>dim.</div></div>
+        <div class="grid declare">
+          <div class="c dim"><i>26</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>27</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>28</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>29</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>30</i><b></b><b></b><b></b></div>
+          <div class="c now"><i>31</i><b></b><b></b><b></b></div>
+          <div class="c"><i>1</i><b></b><b></b><b></b></div>
+
+          <div class="c"><i>2</i><b></b><b></b><b></b></div>
+          <div class="c"><i>3</i><b></b><b></b><b class="s"></b></div>
+          <div class="c"><i>4</i><b></b><b></b><b></b></div>
+          <div class="c"><i>5</i><b></b><b></b><b class="s"></b></div>
+          <div class="c"><i>6</i><b></b><b></b><b></b></div>
+          <div class="c dsel"><i>7</i><b class="s"></b><b class="s"></b><b class="s"></b></div>
+          <div class="c"><i>8</i><b></b><b></b><b></b></div>
+
+          <div class="c"><i>9</i><b></b><b></b><b></b></div>
+          <div class="c"><i>10</i><b></b><b></b><b></b></div>
+          <div class="c"><i>11</i><b></b><b></b><b></b></div>
+          <div class="c"><i>12</i><b></b><b></b><b></b></div>
+          <div class="c"><i>13</i><b></b><b></b><b class="s"></b></div>
+          <div class="c"><i>14</i><b></b><b></b><b></b></div>
+          <div class="c"><i>15</i><b></b><b></b><b></b></div>
+
+          <div class="c"><i>16</i><b></b><b></b><b></b></div>
+          <div class="c"><i>17</i><b></b><b></b><b></b></div>
+          <div class="c"><i>18</i><b></b><b></b><b></b></div>
+          <div class="c"><i>19</i><b></b><b></b><b></b></div>
+          <div class="c"><i>20</i><b></b><b></b><b></b></div>
+          <div class="c"><i>21</i><b></b><b></b><b></b></div>
+          <div class="c"><i>22</i><b></b><b></b><b></b></div>
+
+          <div class="c"><i>23</i><b></b><b></b><b></b></div>
+          <div class="c"><i>24</i><b></b><b></b><b></b></div>
+          <div class="c"><i>25</i><b></b><b></b><b></b></div>
+          <div class="c"><i>26</i><b></b><b></b><b></b></div>
+          <div class="c"><i>27</i><b></b><b></b><b></b></div>
+          <div class="c"><i>28</i><b></b><b></b><b></b></div>
+          <div class="c"><i>29</i><b></b><b></b><b></b></div>
+
+          <div class="c"><i>30</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>1</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>2</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>3</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>4</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>5</i><b></b><b></b><b></b></div>
+          <div class="c dim"><i>6</i><b></b><b></b><b></b></div>
+        </div>
+
+        <div class="selbar-sticky" role="toolbar" aria-label="Actions du grimoire sur la sélection">
+          <div class="l1"><b aria-live="polite">4 fenêtres sélectionnées</b>
+            <span class="seg" role="radiogroup" aria-label="Étendue de la sélection"><span>Journée</span><span>Matin</span><span>Après-m.</span><span>Soir</span></span></div>
+          <div class="l2">
+            <span class="btn sm fill">Disponible</span>
+            <span class="btn sm out">Indisponible</span>
+            <span class="btn sm txt">Autrement…</span>
+            <span class="spring"></span>
+            <span class="btn sm txt muted">Annuler</span>
+          </div>
+        </div>
+      </div>
+      <div class="nav"><span>Mes aventures</span><span>Personnages</span><span class="on">Almanach</span><span>Mon grimoire</span></div>
+    </div>
+    <p class="note">Chaque jour porte trois bandes : matin, après-midi, soir. Le samedi 7 est pris en entier par un tap sur son numéro. Aucun segment de portée n'est marqué : le spine ne dit pas lequel s'affiche quand on a touché des bandes une à une.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ RANGÉE 2 : C ═══════════════ -->
+<div class="row">
+  <div class="frame">
+    <p class="cap wide"><span class="l">C</span><b>Almanach de Marc sur ordinateur, Mois, mode lecture : où se place le bouton</b><small>EXPERIENCE §3.1 · DESIGN declare-action. Bouton à contour « Déclarer mes dispos », même gabarit que « Proposer des dates » : juste après ✦, avant « Proposer des dates » ; bascule Mois | Semaine | Agenda au bout de la ligne. Colonne de droite MJ (40 %, side-dock) présente, en retrait ici.</small></p>
+    <div class="win">
+      <div class="wbar"><i></i><i></i><i></i></div>
+      <div class="tb"><span class="brand">jdr-master</span><span>Mes aventures</span><span>Personnages</span><span class="on">Almanach</span><span>Mon grimoire</span></div>
+      <div style="display:flex;gap:18px;padding:14px 18px 18px">
+        <div style="flex:1;min-width:0">
+          <div class="controls" style="gap:8px">
+            <span class="chip">☰ Affichage</span>
+            <span class="chip">✦ 1</span>
+            <span class="mark"><span class="btn sm out" aria-pressed="false">Déclarer mes dispos</span></span>
+            <span class="btn sm out">Proposer des dates</span>
+            <span class="spring"></span>
+            <span class="seg"><span class="on">Mois</span><span>Semaine</span><span>Agenda</span></span>
+          </div>
+          <div class="mnav" style="margin-top:12px"><span class="ar">‹</span>Novembre 2026<span class="ar">›</span><span class="today">Aujourd'hui</span></div>
+          <div class="dow"><div>lun.</div><div>mar.</div><div>mer.</div><div>jeu.</div><div>ven.</div><div>sam.</div><div>dim.</div></div>
+          <div class="grid" style="gap:4px">
+            <div class="c dim" style="height:66px"><i>26</i><b></b><b></b><b class="av"></b></div>
+            <div class="c dim" style="height:66px"><i>27</i><b></b><b></b><b></b></div>
+            <div class="c dim" style="height:66px"><i>28</i><b></b><b></b><b class="av"></b></div>
+            <div class="c dim" style="height:66px"><i>29</i><b></b><b></b><b></b></div>
+            <div class="c dim" style="height:66px"><i>30</i><b></b><b></b><b class="av"></b></div>
+            <div class="c now" style="height:66px"><i>31</i><b class="av"></b><b class="av"></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>1</i><b class="av"></b><b class="av"></b><b></b></div>
+
+            <div class="c" style="height:66px"><i>2</i><b></b><b></b><b class="un"></b></div>
+            <div class="c" style="height:66px"><i>3</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>4</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>5</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>6</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>7</i><b class="av"></b><b class="av"></b><b class="ev"></b></div>
+            <div class="c" style="height:66px"><i>8</i><b class="av"></b><b class="av"></b><b class="ev"></b></div>
+
+            <div class="c" style="height:66px"><i>9</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>10</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>11</i><b></b><b></b><b class="un"></b></div>
+            <div class="c" style="height:66px"><i>12</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>13</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>14</i><b class="un"></b><b class="un"></b><b class="un"></b></div>
+            <div class="c" style="height:66px"><i>15</i><b></b><b></b><b></b></div>
+
+            <div class="c" style="height:66px"><i>16</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>17</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>18</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>19</i><b></b><b></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>20</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>21</i><b class="av"></b><b class="av"></b><b class="av"></b></div>
+            <div class="c" style="height:66px"><i>22</i><b></b><b></b><b></b></div>
+
+            <div class="c" style="height:66px"><i>23</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>24</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>25</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>26</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>27</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>28</i><b></b><b></b><b></b></div>
+            <div class="c" style="height:66px"><i>29</i><b></b><b></b><b></b></div>
+          </div>
+          <p class="small" style="margin:8px 2px 0">Bandes sauge : disponible · rouges : indisponible · contour cyan : créneau du vote en cours.</p>
+        </div>
+        <div style="flex:0 0 40%;min-width:280px;background:var(--surface);border-radius:12px;padding:14px" class="fade">
+          <div style="font-weight:600;margin-bottom:8px">La Route des Brumes</div>
+          <div class="small" style="margin-bottom:10px">Le Col des Vents · séance 2 — vote ouvert jusqu'au jeudi 5 novembre</div>
+          <div class="small" style="margin-top:10px">Réponses : 3 sur 4 joueurs</div>
+        </div>
+      </div>
+    </div>
+    <p class="note" style="max-width:1100px">Repère pointillé ambre = annotation de planche, pas de l'interface. Bouton allumé : plein, libellé « Terminer » (comme en B). En vue Agenda, le bouton reste à la même place.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ RANGÉE 3 : D · E ═══════════════ -->
+<div class="row">
+
+  <!-- D -->
+  <div class="frame">
+    <p class="cap"><span class="l">D</span><b>Chronologie d'Hugo : la séance porte « Vote à faire »</b><small>EXPERIENCE §4.1, §4.2 · DESIGN situation-pill. Ligne « Ma situation » en bas de la séance, pastille à droite ; le badge d'état dit « Vote ouvert », sans appel à l'action.</small></p>
+    <div class="phone">
+      <div class="hd"><b>La Route des Brumes</b><small>Ryuutama · MJ Marc</small></div>
+      <div class="body">
+        <div class="tabs"><span class="on">Chronologie</span><span>Détails</span><span>Folios</span></div>
+        <div class="chap">Chapitre 2 · Le Col des Vents</div>
+
+        <div class="scard todo">
+          <div class="t"><span class="n">Séance 2</span><span class="badge todo">Vote ouvert</span></div>
+          <div class="d">Date au vote · échéance jeudi 5 novembre</div>
+          <div class="meta">Chez Marc</div>
+          <div class="sitline"><span>Ma situation</span><span class="sp todo">Vote à faire</span></div>
+        </div>
+
+        <div class="scard">
+          <div class="t"><span class="n">Séance 1</span><span class="badge done">Jouée</span></div>
+          <div class="d">Samedi 17 octobre, soir</div>
+          <div class="meta">Chez Marc</div>
+          <div class="sitline"><span>Ma situation</span><span class="sp etais">J'y étais</span></div>
+        </div>
+
+        <div class="chap fade" style="margin-top:12px">Chapitre 1 · Le Marché de Ganzo</div>
+        <div class="scard fade">
+          <div class="t"><span class="n">Séance 2</span><span class="badge done">Jouée</span></div>
+          <div class="d">Samedi 3 octobre, soir</div>
+        </div>
+
+        <div class="legend">
+          <div class="h">Légende de planche — tons de « Ma situation »</div>
+          <div class="ps">
+            <span class="sp mene">Je mène</span>
+            <span class="sp todo">Vote à faire</span>
+            <span class="sp vote">J'ai voté</span>
+            <span class="sp part">Je participe</span>
+            <span class="sp pasins">Pas inscrit·e</span>
+            <span class="sp etais">J'y étais</span>
+          </div>
+        </div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+    <p class="note">La légende n'est pas dans l'interface : elle montre les six tons du composant. Après son vote, la pastille d'Hugo passe à « J'ai voté » (contour cyan).</p>
+  </div>
+
+  <!-- E -->
+  <div class="frame">
+    <p class="cap"><span class="l">E</span><b>Fiche de scénario d'Hugo : les séances d'abord</b><small>EXPERIENCE §5.1-§5.3 · DESIGN seance-situation (joueur, status-todo). Titre et badge → séances → description. Séance 2 : encadré de situation, puis le vote en résumé.</small></p>
+    <div class="phone">
+      <div class="hd"><b>La Route des Brumes</b><small>Ryuutama · MJ Marc</small></div>
+      <div class="body" style="padding:0">
+        <div class="dlg" role="dialog">
+          <div class="top"><span class="small">Chapitre 2</span><span class="x">✕</span></div>
+          <h2>Le Col des Vents</h2>
+          <div style="margin:0 14px"><span class="badge live">En cours</span></div>
+          <div class="inner">
+            <div class="h3">Séances</div>
+
+            <div class="seance">
+              <div class="n"><span>Séance 2</span><span class="badge todo">Vote ouvert</span></div>
+              <div class="ssit">
+                Le vote est ouvert jusqu'à jeudi.
+                <div class="acts"><span class="btn sm fill">Voter dans le calendrier</span></div>
+              </div>
+              <div class="vs">
+                <div><span class="k">Vos réponses :</span> 0 créneau sur 5</div>
+                <div><span class="k">Meilleur créneau pour l'instant :</span> <b>samedi 7 novembre, soir — 3 oui</b></div>
+                <div>2 personnes n'ont pas encore répondu</div>
+                <div><span class="k">Échéance :</span> jeudi 5 novembre</div>
+              </div>
+              <div class="small" style="margin-top:8px">Chez Marc · apportez vos dés et de quoi grignoter</div>
+            </div>
+
+            <div class="seance">
+              <div class="n"><span>Séance 1</span><span class="badge done">Jouée</span></div>
+              <div class="d" style="font-size:13px;font-weight:600;margin-top:4px">Samedi 17 octobre, soir</div>
+              <div class="sitline"><span>Ma situation</span><span class="sp etais">J'y étais</span></div>
+            </div>
+
+            <div class="h3">Description</div>
+            <p class="desc" style="margin:0">Les voyageurs ont quitté Ganzo avec un chargement de sel. Au-dessus des nuages, le Col des Vents ne se franchit qu'entre deux bourrasques, et l'auberge du sommet n'ouvre plus depuis l'hiver dernier.</p>
+            <div class="small" style="margin-top:6px">Durée prévue : 2 séances de 4 h</div>
+          </div>
+        </div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+    <p class="note">Le vote créneau par créneau (app-poll-response) a disparu de la fiche ⚠️ : on vote dans le calendrier. Le bouton plein n'est montré qu'une fois, dans l'encadré.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ RANGÉE 4 : F ═══════════════ -->
+<div class="row">
+  <div class="frame">
+    <p class="cap wide"><span class="l">F</span><b>Éditeur de scénario de Marc sur ordinateur : bloc de la séance 2</b><small>EXPERIENCE §5.2, §5.3 (colonne MJ), §7 (Marc fixe la date) · DESIGN seance-situation (MJ, accent-1). Encadré « Le vote est ouvert jusqu'à jeudi. » + « Fixer la date… », puis le résumé MJ et ses trois actions.</small></p>
+    <div class="win">
+      <div class="wbar"><i></i><i></i><i></i></div>
+      <div class="tb"><span class="brand">jdr-master</span><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+      <div class="ed">
+        <div class="main">
+          <div class="edhead">
+            <div><div class="small">La Route des Brumes · Chapitre 2</div><h2>Le Col des Vents</h2></div>
+            <span class="btn out">+ Ajouter une séance</span>
+          </div>
+
+          <div class="edblk fade">
+            <div class="n"><span>Séance 1</span><span class="badge done">Jouée</span></div>
+            <div class="small" style="margin-top:4px">Samedi 17 octobre, soir · compte rendu rédigé</div>
+          </div>
+
+          <div class="edblk" style="border-color:var(--outline)">
+            <div class="n"><span>Séance 2</span><span class="badge todo">Vote ouvert</span></div>
+
+            <div class="ssit mj inline">
+              <span>Le vote est ouvert jusqu'à jeudi.</span>
+              <div class="acts"><span class="btn sm fill">Fixer la date…</span></div>
+            </div>
+
+            <div class="vs" style="font-size:13.5px">
+              <div><span class="k">Réponses :</span> 3 sur 4 joueurs</div>
+              <div><span class="k">Meilleur créneau pour l'instant :</span> <b>samedi 7 novembre, soir — 3 oui</b></div>
+              <div><span class="k">N'ont pas encore répondu :</span> Lou</div>
+              <div><span class="k">Échéance :</span> jeudi 5 novembre</div>
+              <div class="acts">
+                <span class="btn out">Clôturer le vote</span>
+                <span class="btn txt">Voir dans le calendrier →</span>
+              </div>
+            </div>
+
+            <div class="cols" style="margin-top:14px">
+              <div><div class="flab">Infos pratiques</div><div class="field">Chez Marc · apportez vos dés et de quoi grignoter</div></div>
+              <div><div class="flab">Compte rendu</div><div class="field" style="color:var(--muted)">Rédigé après la séance</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="aside fade">
+          <div class="edblk">
+            <div style="font-weight:600;margin-bottom:6px">Participants</div>
+            <div class="small">Hugo · Nina · Lou · Sam</div>
+          </div>
+          <div class="edblk">
+            <div style="font-weight:600;margin-bottom:6px">Description</div>
+            <div class="small">Les voyageurs ont quitté Ganzo avec un chargement de sel…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note" style="max-width:1100px">« Fixer la date… » ouvre la confirmation de la Destinée, samedi soir présélectionné ; une fois confirmée, le résumé laisse place à la date, en grand. La liste « Choisir cette date » / « Sceller ce créneau » (app-poll-status) disparaît de la fiche ⚠️.</p>
+  </div>
+</div>
+
+</body>
+</html>

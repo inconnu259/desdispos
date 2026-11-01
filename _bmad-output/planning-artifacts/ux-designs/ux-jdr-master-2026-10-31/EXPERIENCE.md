@@ -221,7 +221,7 @@ L'action principale n'apparaît qu'une fois, dans l'encadré de situation (§5.2
 - **Vote clôturé sans date** : le résumé laisse place au message actuel (« Conseil clos sans date scellée. » / « Cercle clos sans date choisie. » / « Scrutin clôturé sans date retenue. »), repris dans l'encadré du MJ (§5.2).
 - Rendez-vous de plusieurs créneaux : le meilleur créneau s'affiche avec sa plage (« du vendredi soir au dimanche après-midi »).
 - « Fixer la date… » ouvre la confirmation de la Destinée (radios, meilleur créneau présélectionné) ; effet identique à « Sceller ce créneau ».
-- « Clôturer le vote » garde sa confirmation actuelle.
+- « Clôturer le vote » demande une confirmation (fenêtre de confirmation existante ; « Renoncer » laisse le vote ouvert). Il n'en avait pas : ajout décidé le 2026-11-01, à l'écriture de la story 54.3, le bouton étant désormais voisin de « Fixer la date… ».
 - Date fixée : le résumé laisse place à la date, en grand.
 - ⚠️ Disparaissent de la fiche : `app-poll-response` (vote créneau par créneau du joueur) et la liste « Choisir cette date » / « Sceller ce créneau » de `app-poll-status`.
 
@@ -288,6 +288,7 @@ Le dessin est fixé dans `DESIGN.md` (§Components, « Icônes ») ; cette secti
 - §4.3 : les pastilles de couverture se placent sur une bannière illustrée en tête de l'onglet Détails, la page d'une partie n'ayant pas de bannière dans son en-tête.
 - §4.3 : pas d'« Annuler » après un changement de couverture ; « Retirer » demande une confirmation.
 - §4.1 : « Je participe » et « J'y étais » d'une séance sans inscriptions valent pour les joueurs actuels de la partie.
+- §4.1, carte d'événement (soirée) : avec la pastille unique, « J'y étais » passe en `status-done` et « Place réservée » en `status-todo`, comme le voulait la spec du Palier 10 (alignement complet décidé le 2026-11-01, à l'écriture de la story 53.2).
 
 **Hors UX, à reprendre en architecture / stories**
 - Retrait de la police Material chargée depuis Google Fonts, une fois toutes les icônes remplacées (NFR du 10.7).

@@ -94,7 +94,7 @@ petite zone pleine qui porte l'identité (le fermoir, l'étoile, le bec de la pl
 
 **Deux niveaux.**
 - **Icônes de sens**, dessinées une fois par thème (30 par thème, le favori comptant pour deux : vide et posé).
-- **Icônes utilitaires**, communes aux trois thèmes (37).
+- **Icônes utilitaires**, communes aux trois thèmes (41).
 
 Le jeu retenu, un SVG par icône, est dans [`mockups/icones/`](mockups/icones/) (`grimoire-emeraude/`, `foret-ancienne/`,
 `atelier-cuivre/`, `communes/`) et rassemblé dans `mockups/icones/icones-retenues.json`. Les noms de fichier sont les
@@ -201,6 +201,8 @@ point de l'info et de l'avertissement, trou de serrure, pupille, case du jour).
 | `grid_view` / `view_agenda` / `view_list` | `vue-large` / `vue-moyenne` / `vue-compacte` |
 | ✅ ⚠️ ❌ des compteurs de dispos | `dispo-oui` / `dispo-partiel` / `dispo-non` |
 | ☰ « Affichage » | `menu-affichage` |
+| ⋮ menu d'actions | `menu-actions` |
+| pictos matin / après-midi / soir du calendrier | `matin` / `apres-midi` / `soir` |
 | déconnexion | `quitter` |
 | *(nouveau)* « Déclarer mes dispos » | `declarer-dispos` |
 

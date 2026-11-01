@@ -2,6 +2,11 @@
   color: var(--mat-sys-on-surface-variant, #666);
   margin-top: 1.5rem;
 }
+// Icônes des boutons d'invitation (accepter / refuser) : taille d'une icône de bouton Material (18 px),
+// sinon <app-icon> prend les 24 px par défaut. Le texte du bouton porte le nom, l'icône est décorative.
+mat-card-actions app-icon {
+  --app-icon-size: 1.125rem;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
@@ -163,9 +168,7 @@
   font-size: 0.85em;
 }
 .role-icon {
-  font-size: 1rem;
-  width: 1rem;
-  height: 1rem;
+  --app-icon-size: 1rem;
 }
 
 // Story 29.7 (AC8) : teinte --jdr-status-todo (Story 29.0) pour une partie qui réclame une
@@ -203,10 +206,8 @@
   background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 20%, transparent);
   border: 1px solid var(--jdr-status-todo, #f0a030);
 
-  mat-icon {
-    font-size: 0.9rem;
-    width: 0.9rem;
-    height: 0.9rem;
+  app-icon {
+    --app-icon-size: 0.9rem;
   }
 }
 .signal-badge--more {
@@ -253,10 +254,8 @@
   vertical-align: middle;
   color: var(--mat-sys-on-surface-variant, #666);
 
-  mat-icon {
-    font-size: 1.1rem;
-    width: 1.1rem;
-    height: 1.1rem;
+  app-icon {
+    --app-icon-size: 1.1rem;
   }
 }
 .favorite-btn--active {

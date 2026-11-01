@@ -15,8 +15,8 @@
           </mat-card-content>
         }
         <mat-card-actions>
-          <button mat-flat-button (click)="accept(inv)"><mat-icon>check</mat-icon> {{ theme.tone()['common.accepter'] }}</button>
-          <button mat-button (click)="decline(inv)"><mat-icon>close</mat-icon> {{ theme.tone()['common.refuser'] }}</button>
+          <button mat-flat-button (click)="accept(inv)"><app-icon name="valider" /> {{ theme.tone()['common.accepter'] }}</button>
+          <button mat-button (click)="decline(inv)"><app-icon name="fermer" /> {{ theme.tone()['common.refuser'] }}</button>
         </mat-card-actions>
       </mat-card>
     }
@@ -219,7 +219,7 @@
         [attr.aria-label]="favoriteAriaLabel(t.partie.isFavorite)"
         (click)="$event.stopPropagation(); toggleFavorite(t.partie)"
       >
-        <mat-icon aria-hidden="true">{{ t.partie.isFavorite ? 'star' : 'star_border' }}</mat-icon>
+        <app-icon [name]="t.partie.isFavorite ? 'favori-pose' : 'favori-vide'" />
       </button>
       @if (canHide(t.partie)) {
         <!-- Story 42.5 : « Retirer de ma liste » (partie terminée ou annulée), pour soi seul ; l'icône est doublée du
@@ -231,7 +231,7 @@
           [attr.aria-label]="hideAriaLabel(t.partie)"
           (click)="$event.stopPropagation(); confirmHide(t.partie)"
         >
-          <mat-icon aria-hidden="true">visibility_off</mat-icon>
+          <app-icon name="masquer" />
         </button>
       }
     </div>
@@ -292,7 +292,7 @@
           [attr.aria-label]="favoriteAriaLabel(t.partie.isFavorite)"
           (click)="$event.stopPropagation(); toggleFavorite(t.partie)"
         >
-          <mat-icon aria-hidden="true">{{ t.partie.isFavorite ? 'star' : 'star_border' }}</mat-icon>
+          <app-icon [name]="t.partie.isFavorite ? 'favori-pose' : 'favori-vide'" />
         </button>
         @if (canHide(t.partie)) {
           <!-- Story 42.5 : « Retirer de ma liste » (partie terminée ou annulée), pour soi seul ; l'icône est doublée du
@@ -304,7 +304,7 @@
             [attr.aria-label]="hideAriaLabel(t.partie)"
             (click)="$event.stopPropagation(); confirmHide(t.partie)"
           >
-            <mat-icon aria-hidden="true">visibility_off</mat-icon>
+            <app-icon name="masquer" />
           </button>
         }
       </mat-card-title>
@@ -314,20 +314,23 @@
           class="role-indicator"
           [attr.aria-label]="theme.tone()['dashboard.role_prefix'] + ' ' + roleLabel(t.partie)"
         >
-          <mat-icon aria-hidden="true" class="role-icon">{{ roleIcon(t.partie) }}</mat-icon>
+          <app-icon
+            class="role-icon"
+            [name]="roleIconName(t.partie.role, { soireeIsolee: t.partie.kind === 'ONE_SHOT' })"
+          />
           <span aria-hidden="true">{{ roleLabel(t.partie) }}</span>
         </span>
         <span class="system-chip">{{ system(t.partie.gameSystemId) }}</span>
         @if (t.partie.status === 'TERMINEE') {
           <span class="status-indicator" [attr.aria-label]="theme.tone()['dashboard.status_closed_badge']">
-            <mat-icon aria-hidden="true" class="role-icon">flag</mat-icon>
+            <app-icon class="role-icon" name="etat-terminee" />
             <span aria-hidden="true">{{ theme.tone()['dashboard.status_closed_badge'] }}</span>
           </span>
         }
         @if (t.partie.status === 'ANNULEE') {
           <!-- Story 42.2 : l'état « Annulée » est écrit (jamais le trait seul), avec son pictogramme. -->
           <span class="status-indicator status-indicator--cancelled" [attr.aria-label]="theme.tone()['dashboard.status_cancelled_badge']">
-            <mat-icon aria-hidden="true" class="role-icon">event_busy</mat-icon>
+            <app-icon class="role-icon" name="etat-annulee" />
             <span aria-hidden="true">{{ theme.tone()['dashboard.status_cancelled_badge'] }}</span>
           </span>
         }
@@ -335,7 +338,9 @@
           <!-- AC9/P-1 : sans badge visible, la teinte de bord (couleur seule) doit être doublée
                d'un signal non chromatique — icône + libellé, même patron que .status-indicator. -->
           <span class="status-indicator" [attr.aria-label]="tintLabel(t.tint)">
-            <mat-icon aria-hidden="true" class="role-icon">{{ tintIcon(t.tint) }}</mat-icon>
+            @if (tintIcon(t.tint); as icon) {
+              <app-icon class="role-icon" [name]="icon" />
+            }
             <span aria-hidden="true">{{ tintLabel(t.tint) }}</span>
           </span>
         }
@@ -352,7 +357,7 @@
             [class.signal-badge--dominant]="code === t.dominant"
             [class.signal-badge--soon]="badgeTone(code) === 'soon'"
           >
-            <mat-icon aria-hidden="true">flag</mat-icon>
+            <app-icon name="signal" />
             <span>{{ badgeLabel(code, t.partie) }}</span>
           </span>
         }

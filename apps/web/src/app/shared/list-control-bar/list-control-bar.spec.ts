@@ -49,7 +49,7 @@ describe('ListControlBar (Story 29.9)', () => {
     expect(emitted).toEqual(['large']);
   });
 
-  it('aucun libellé texte de mode dans le DOM (AC2) — seul le nom de l’icône Material est présent', async () => {
+  it('aucun libellé texte de mode dans le DOM (AC2) — le bouton ne porte que son icône', async () => {
     const fixture = await setup();
 
     const buttons: NodeListOf<HTMLButtonElement> =
@@ -63,8 +63,7 @@ describe('ListControlBar (Story 29.9)', () => {
       'compact',
     ];
     buttons.forEach((btn) => {
-      const iconText = btn.querySelector('mat-icon')?.textContent?.trim() ?? '';
-      expect(btn.textContent?.trim()).toBe(iconText);
+      expect(btn.textContent?.trim()).toBe('');
       forbiddenLabels.forEach((label) => expect(btn.textContent).not.toContain(label));
     });
   });
@@ -108,6 +107,49 @@ describe('ListControlBar (Story 29.9)', () => {
     fixture.detectChanges();
 
     expect(bar.classList.contains('list-control-bar--expanded')).toBe(true);
+  });
+
+  describe('icônes du jeu de thème (Story 51.2)', () => {
+    const iconOf = (el: Element | null) => el?.querySelector('app-icon')?.getAttribute('data-icon');
+
+    it('filtres, trois modes de vue et recherche (desktop et mobile) portent leur utilitaire', async () => {
+      const desktop = await setup({ desktop: true });
+      desktop.componentRef.setInput('searchQuery', '');
+      desktop.detectChanges();
+      const d = desktop.nativeElement as HTMLElement;
+      expect(iconOf(d.querySelector('.list-control-bar__toggle'))).toBe('filtres');
+      expect(
+        Array.from(d.querySelectorAll('.list-control-bar__mode')).map((b) => iconOf(b)),
+      ).toEqual(['vue-large', 'vue-moyenne', 'vue-compacte']);
+      expect(iconOf(d.querySelector('.list-control-bar__search'))).toBe('rechercher');
+      TestBed.resetTestingModule();
+
+      const mobile = await setup({ desktop: false });
+      mobile.componentRef.setInput('searchQuery', '');
+      mobile.detectChanges();
+      expect(
+        iconOf(
+          (mobile.nativeElement as HTMLElement).querySelector('.list-control-bar__search--mobile'),
+        ),
+      ).toBe('rechercher');
+    });
+
+    it('pastille de réinitialisation : icône reinitialiser', async () => {
+      const fixture = await setup();
+      fixture.componentRef.setInput('hasDeviatedFromDefault', true);
+      fixture.detectChanges();
+      expect(iconOf(fixture.nativeElement.querySelector('.list-control-bar__reset'))).toBe(
+        'reinitialiser',
+      );
+    });
+
+    it('les icônes restent décoratives : le bouton garde son nom accessible, l’icône n’en a pas', async () => {
+      const fixture = await setup();
+      const mode = fixture.nativeElement.querySelector('.list-control-bar__mode') as HTMLElement;
+      expect(mode.getAttribute('aria-label')).toBeTruthy();
+      expect(mode.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+      expect(mode.querySelector('[aria-label], [role="img"]')).toBeNull();
+    });
   });
 
   describe('recherche (AC7)', () => {

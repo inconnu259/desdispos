@@ -16,7 +16,9 @@ import { MatCardModule } from '@angular/material/card';
 import type { StatusBadgeState } from '../../core/status/status-derivation';
 import { StatusBadge } from '../../shared/status-badge/status-badge';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../core/icons/app-icon';
+import type { IconName } from '../../core/icons/icon-registry.generated';
+import { roleIconName } from '../../core/icons/role-icon-name';
 import type {
   DaySlot,
   InvitationDto,
@@ -97,7 +99,7 @@ export interface PartieTileVm {
     FormsModule,
     MatCardModule,
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     NgTemplateOutlet,
     ListControlBar,
     PartyBanner,
@@ -184,10 +186,9 @@ export class Dashboard implements OnInit {
     }
   }
 
-  /** Icône du rôle : bouclier pour celui qui administre (mj, admin), silhouette pour les autres. */
-  protected roleIcon(partie: PartieDto): string {
-    return partie.role === 'mj' || partie.role === 'admin' ? 'shield' : 'person';
-  }
+  /** Icône du rôle : l'unique correspondance `roleIconName` (MJ, admin de groupe, hôte d'une
+   *  soirée isolée, joueur/membre), appelée depuis le gabarit. */
+  protected readonly roleIconName = roleIconName;
 
   /** Critères de filtre (AC2/AC5) — purement transitoires (écran), jamais mémorisés sur le compte
    *  (EXPERIENCE.md §4.2 : seul le tri par défaut vit dans les préférences). */
@@ -467,9 +468,20 @@ export class Dashboard implements OnInit {
 
   /** Icône du signal non chromatique accompagnant la teinte de carte pour les tuiles sans badge
    *  visible (AC9 : jamais la couleur seule) — cf. `tintLabel()`. */
-  protected tintIcon(tint: TileTint): string {
-    if (tint === 'cancelled') return 'event_busy';
-    return tint === 'live' ? 'play_circle' : tint === 'soon' ? 'schedule' : 'flag';
+  protected tintIcon(tint: TileTint): IconName | null {
+    switch (tint) {
+      case 'live':
+        return 'etat-en-cours';
+      case 'soon':
+        return 'etat-a-venir';
+      case 'done':
+        return 'etat-terminee';
+      case 'cancelled':
+        return 'etat-annulee';
+      case 'todo':
+        // Pas d'icône de repli : sans dessin pour ce sens, le gabarit n'affiche que le texte.
+        return null;
+    }
   }
 
   /** Libellé non chromatique doublant la teinte de carte `.tile--live`/`.tile--soon`/`.tile--closed`

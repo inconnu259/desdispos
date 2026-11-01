@@ -204,7 +204,7 @@ describe('Dashboard — indicateur de rôle non chromatique (Story 29.1, AC2)', 
     const { fixture } = await createFixture(new Map(), undefined, [makeParty('p-mj', 'mj')]);
     const indicator = fixture.nativeElement.querySelector('.role-indicator');
     expect(indicator).not.toBeNull();
-    expect(indicator.querySelector('mat-icon')).not.toBeNull();
+    expect(indicator.querySelector('app-icon')).not.toBeNull();
     expect(indicator.textContent).toContain('Maître'); // dashboard.role_mj, thème grimoire-emeraude
   });
 
@@ -444,7 +444,7 @@ describe('Dashboard — traitement « en retrait » des parties terminées (Stor
     expect(tile.classList.contains('tile--closed')).toBe(true);
     const indicator = fixture.nativeElement.querySelector('.status-indicator');
     expect(indicator).not.toBeNull();
-    expect(indicator.querySelector('mat-icon')).not.toBeNull();
+    expect(indicator.querySelector('app-icon')).not.toBeNull();
     expect(indicator.textContent).toContain(
       TONE_MAP['grimoire-emeraude']['dashboard.status_closed_badge'],
     );
@@ -493,7 +493,7 @@ describe('Dashboard — rencontre isolée annulée (Story 42.2)', () => {
     expect(tile.classList.contains('tile--closed')).toBe(false);
     const indicator = fixture.nativeElement.querySelector('.status-indicator--cancelled');
     expect(indicator).not.toBeNull();
-    expect(indicator.querySelector('mat-icon')).not.toBeNull();
+    expect(indicator.querySelector('app-icon')).not.toBeNull();
     expect(indicator.textContent).toContain(
       TONE_MAP['grimoire-emeraude']['dashboard.status_cancelled_badge'],
     );
@@ -575,7 +575,7 @@ describe('Dashboard — badges de signal (Story 29.7, AC3/AC9)', () => {
     );
     const badge = fixture.nativeElement.querySelector('.signal-badge');
     expect(badge).not.toBeNull();
-    expect(badge.querySelector('mat-icon')).not.toBeNull();
+    expect(badge.querySelector('app-icon')).not.toBeNull();
     expect(badge.textContent.trim().length).toBeGreaterThan(0);
   });
 
@@ -773,7 +773,7 @@ describe('Dashboard — teinte des cartes selon le statut (bug fix, revue utilis
     expect(tile.classList.contains('tile--live')).toBe(true);
     const indicator = tile.querySelector('.status-indicator');
     expect(indicator).not.toBeNull();
-    expect(indicator.querySelector('mat-icon')).not.toBeNull();
+    expect(indicator.querySelector('app-icon')).not.toBeNull();
     expect(indicator.textContent).toContain(
       TONE_MAP['grimoire-emeraude']['dashboard.section_ongoing'],
     );
@@ -1738,16 +1738,16 @@ describe('Dashboard — pastille, badge, sous-titre et rôle des ralliements (St
       const indicator = tileOf(root, id).querySelector('.role-indicator') as HTMLElement;
       return {
         word: roleWord(indicator),
-        icon: textOf(indicator.querySelector('mat-icon')),
+        icon: indicator.querySelector('app-icon')?.getAttribute('data-icon'),
         aria: indicator.getAttribute('aria-label'),
       };
     };
-    expect(roleOf('a')).toMatchObject({ word: 'Hôte', icon: 'shield' });
-    expect(roleOf('b')).toMatchObject({ word: 'Invité', icon: 'person' });
-    expect(roleOf('c')).toMatchObject({ word: 'Admin', icon: 'shield' });
-    expect(roleOf('d')).toMatchObject({ word: 'Membre', icon: 'person' });
-    expect(roleOf('e')).toMatchObject({ word: 'Maître', icon: 'shield' });
-    expect(roleOf('f')).toMatchObject({ word: 'Héros', icon: 'person' });
+    expect(roleOf('a')).toMatchObject({ word: 'Hôte', icon: 'role-hote' });
+    expect(roleOf('b')).toMatchObject({ word: 'Invité', icon: 'role-joueur' });
+    expect(roleOf('c')).toMatchObject({ word: 'Admin', icon: 'role-admin' });
+    expect(roleOf('d')).toMatchObject({ word: 'Membre', icon: 'role-joueur' });
+    expect(roleOf('e')).toMatchObject({ word: 'Maître', icon: 'role-mj' });
+    expect(roleOf('f')).toMatchObject({ word: 'Héros', icon: 'role-joueur' });
     expect(roleOf('a').aria).toBe(`${GRIMOIRE_TONE['dashboard.role_prefix']} Hôte`);
   });
 });
@@ -2161,5 +2161,197 @@ describe('Dashboard — signal « place réservée » d’un groupe (Story 40.4)
     });
     const sub = fixture.nativeElement.querySelector('.row__sub');
     expect(sub.textContent).toContain(GRIMOIRE_TONE['partie.signal_reservation_a_confirmer']);
+  });
+});
+
+// ── Story 51.2 : icônes propres à chaque thème (tableau de bord) ─────────────────────────────────
+describe('Dashboard — icônes du jeu de thème (Story 51.2)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const iconsOf = (root: ParentNode | null): (string | null)[] =>
+    Array.from(root?.querySelectorAll('app-icon') ?? []).map((i) => i.getAttribute('data-icon'));
+
+  /** Les tracés rendus d'une icône, pour constater qu'un même nom change de dessin selon le thème. */
+  const drawingOf = (el: Element | null): string =>
+    Array.from(el?.querySelectorAll('svg > *') ?? [])
+      .map((n) => n.outerHTML)
+      .join('');
+
+  const pendingInvitation = () => {
+    const invitationsSvc = makeInvitationsService();
+    invitationsSvc.listReceived.mockResolvedValue([
+      {
+        id: 'inv',
+        partie: { id: 'q1', name: 'La Quête', gameSystemId: 'ryuutama' },
+        inviterPseudo: 'Léa',
+        status: 'PENDING' as const,
+        createdAt: '2026-10-11T00:00:00.000Z',
+      },
+    ]);
+    return invitationsSvc;
+  };
+
+  it('favori : favori-pose si favorite, favori-vide sinon, nom du bouton inchangé', async () => {
+    const { fixture } = await createFixture(new Map(), undefined, [
+      makeParty('on', 'player', 'EN_COURS', true),
+      makeParty('off', 'player', 'EN_COURS', false),
+    ]);
+    const root = fixture.nativeElement as HTMLElement;
+    const btn = (id: string) => tileOf(root, id).querySelector('.favorite-btn') as HTMLElement;
+    expect(btn('on').querySelector('app-icon')?.getAttribute('data-icon')).toBe('favori-pose');
+    expect(btn('off').querySelector('app-icon')?.getAttribute('data-icon')).toBe('favori-vide');
+    expect(btn('on').getAttribute('aria-label')).toBeTruthy();
+    expect(btn('on').getAttribute('aria-label')).not.toBe(btn('off').getAttribute('aria-label'));
+    // L'icône reste décorative : le nom du bouton n'est jamais donné deux fois.
+    expect(btn('on').querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(btn('on').querySelector('[aria-label], [role="img"]')).toBeNull();
+  });
+
+  it('mode liste : favori et « retirer de ma liste » portent favori-* et masquer', async () => {
+    const { fixture } = await createFixture(
+      new Map(),
+      undefined,
+      [makeParty('p1', 'player', 'TERMINEE', true)],
+      new Map(),
+      { partiesViewMode: 'compact' },
+    );
+    const row = fixture.nativeElement.querySelector('.row') as HTMLElement;
+    expect(iconsOf(row.querySelector('.favorite-btn:not(.hide-btn)'))).toEqual(['favori-pose']);
+    expect(iconsOf(row.querySelector('.hide-btn'))).toEqual(['masquer']);
+  });
+
+  it('carte : « retirer de ma liste » (terminée) porte masquer', async () => {
+    const { fixture } = await createFixture(new Map(), undefined, [
+      makeParty('p1', 'player', 'TERMINEE'),
+    ]);
+    expect(iconsOf(fixture.nativeElement.querySelector('.hide-btn'))).toEqual(['masquer']);
+  });
+
+  it('rôle : MJ, admin de groupe, hôte de soirée isolée et joueur/membre ont chacun leur icône', async () => {
+    const { fixture } = await createFixture(new Map(), undefined, [
+      makeQuete('mj', 'mj'),
+      makeRalliement('adm', 'admin', 'CAMPAGNE_EPISODIQUE'),
+      makeRalliement('hote', 'admin', 'ONE_SHOT'),
+      makeQuete('joueur', 'player'),
+      makeRalliement('membre', 'member', 'CAMPAGNE_EPISODIQUE'),
+    ]);
+    const root = fixture.nativeElement as HTMLElement;
+    const roleIcon = (id: string) =>
+      tileOf(root, id).querySelector('.role-indicator app-icon')?.getAttribute('data-icon');
+    expect(roleIcon('mj')).toBe('role-mj');
+    expect(roleIcon('adm')).toBe('role-admin');
+    expect(roleIcon('hote')).toBe('role-hote');
+    expect(roleIcon('joueur')).toBe('role-joueur');
+    expect(roleIcon('membre')).toBe('role-joueur');
+  });
+
+  it('états écrits : terminée -> etat-terminee, annulée -> etat-annulee, à côté du mot', async () => {
+    const { fixture } = await createFixture(new Map(), undefined, [
+      makeParty('fin', 'player', 'TERMINEE'),
+      makeParty('ann', 'player', 'ANNULEE'),
+    ]);
+    const root = fixture.nativeElement as HTMLElement;
+    const statusIcon = (id: string) =>
+      tileOf(root, id).querySelector('.status-indicator app-icon')?.getAttribute('data-icon');
+    expect(statusIcon('fin')).toBe('etat-terminee');
+    expect(statusIcon('ann')).toBe('etat-annulee');
+    expect(textOf(tileOf(root, 'fin').querySelector('.status-indicator'))).toContain(
+      GRIMOIRE_TONE['dashboard.status_closed_badge'],
+    );
+    expect(textOf(tileOf(root, 'ann').querySelector('.status-indicator'))).toContain(
+      GRIMOIRE_TONE['dashboard.status_cancelled_badge'],
+    );
+  });
+
+  it('badge de signal : icône signal', async () => {
+    const signals = new Map([
+      [
+        'p1',
+        {
+          partieId: 'p1',
+          status: 'EN_COURS' as const,
+          signals: ['AUCUN_MEMBRE_INVITE'] as const,
+        },
+      ],
+    ]);
+    const { fixture } = await createFixture(
+      new Map(),
+      undefined,
+      [makeParty('p1', 'mj', 'EN_COURS')],
+      signals as any,
+    );
+    expect(iconsOf(fixture.nativeElement.querySelector('.signal-badge'))).toEqual(['signal']);
+  });
+
+  it('tintIcon : un sens, une icône ; « todo » n’a aucune icône (jamais de repli)', async () => {
+    const { fixture } = await createFixture(new Map(), undefined, []);
+    const comp = fixture.componentInstance as unknown as { tintIcon(t: string): string | null };
+    expect(comp.tintIcon('live')).toBe('etat-en-cours');
+    expect(comp.tintIcon('soon')).toBe('etat-a-venir');
+    expect(comp.tintIcon('done')).toBe('etat-terminee');
+    expect(comp.tintIcon('cancelled')).toBe('etat-annulee');
+    expect(comp.tintIcon('todo')).toBeNull();
+  });
+
+  it('partie en cours sans signal : le libellé de teinte est accompagné de etat-en-cours', async () => {
+    const { fixture } = await createFixture(
+      new Map(),
+      undefined,
+      [makeParty('p1', 'player', 'EN_COURS')],
+      new Map(),
+    );
+    const indicator = fixture.nativeElement.querySelector('.tile .status-indicator');
+    expect(iconsOf(indicator)).toEqual(['etat-en-cours']);
+    expect(textOf(indicator)).toContain(GRIMOIRE_TONE['dashboard.section_ongoing']);
+  });
+
+  it('invitations : accepter -> valider, refuser -> fermer', async () => {
+    const { fixture } = await createFixture(new Map(), pendingInvitation());
+    const buttons = fixture.nativeElement.querySelectorAll('mat-card-actions button');
+    expect(iconsOf(buttons[0])).toEqual(['valider']);
+    expect(iconsOf(buttons[1])).toEqual(['fermer']);
+  });
+
+  it('barre des listes : filtres, rechercher et modes de vue portent leurs utilitaires', async () => {
+    const { fixture } = await createFixture(new Map(), undefined, [makeParty('p1', 'player')]);
+    const bar = fixture.nativeElement.querySelector('app-list-control-bar') as HTMLElement;
+    expect(iconsOf(bar.querySelector('.list-control-bar__toggle'))).toEqual(['filtres']);
+    expect(iconsOf(bar.querySelector('.list-control-bar__modes'))).toEqual([
+      'vue-large',
+      'vue-moyenne',
+      'vue-compacte',
+    ]);
+  });
+
+  it('changement de thème : les icônes de sens changent de dessin sur place, pas les utilitaires', async () => {
+    const { fixture } = await createFixture(new Map(), pendingInvitation(), [
+      makeParty('p1', 'player', 'TERMINEE', true),
+    ]);
+    const root = fixture.nativeElement as HTMLElement;
+    const snapshot = () => ({
+      role: drawingOf(root.querySelector('.role-indicator app-icon')),
+      closed: drawingOf(root.querySelector('.status-indicator app-icon')),
+      favorite: drawingOf(root.querySelector('.tile .favorite-btn app-icon')),
+      valider: drawingOf(root.querySelector('mat-card-actions button app-icon')),
+      filtres: drawingOf(root.querySelector('.list-control-bar__toggle app-icon')),
+    });
+    const before = snapshot();
+    expect(before.role).not.toBe('');
+    expect(before.valider).not.toBe('');
+
+    const theme = TestBed.inject(ThemeToneService) as unknown as {
+      activeTheme: ReturnType<typeof signal<Theme>>;
+    };
+    theme.activeTheme.set('foret-ancienne');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const after = snapshot();
+
+    expect(after.role).not.toBe(before.role);
+    expect(after.closed).not.toBe(before.closed);
+    expect(after.favorite).not.toBe(before.favorite);
+    expect(after.valider).toBe(before.valider);
+    expect(after.filtres).toBe(before.filtres);
   });
 });

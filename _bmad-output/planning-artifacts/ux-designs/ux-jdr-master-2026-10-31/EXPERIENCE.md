@@ -41,7 +41,7 @@ Aucune nouvelle page. Les changements de surface :
 | Tableau de bord | bandeau « Dispos à déclarer », au-dessus des listes | FR-4, FR-5 |
 | Page Compte | case « Me rappeler de déclarer mes dispos » | FR-5 |
 | Page d'une partie de JDR | ordre et onglet par défaut | FR-13 |
-| Page d'une partie, JDR et soirée | pastilles « Changer » / « Retirer » sur la bannière | FR-14 |
+| Page d'une partie, JDR et soirée | bannière illustrée en tête de l'onglet Détails, avec « Changer » / « Retirer » | FR-14 |
 | Cartes de chapitres et de séances | pastille « Ma situation » ; badge d'état sans situation personnelle | FR-10 |
 | Fiche de scénario | séances remontées en tête (joueur) ; encadré de situation par séance ; vote en résumé | FR-11, FR-12 |
 | Toute l'application | icônes (§6) | FR-6 à FR-9 |
@@ -141,9 +141,11 @@ Cette case ne concerne que ce rappel : les autres signaux à traiter (« Répond
 | Je mène | MJ | `{colors.accent-1}`, contour |
 | Vote à faire | joueur, vote ouvert sans réponse | `{colors.status-todo}` |
 | J'ai voté | joueur, vote ouvert avec réponse | contour `{colors.status-live}` |
-| Je participe | joueur inscrit | `{colors.status-live}` |
+| Je participe | joueur inscrit ; séance sans inscriptions, datée et à venir : tout joueur actuel | `{colors.status-live}` |
 | Pas inscrit·e | joueur non inscrit, inscriptions ouvertes ou fermées | pointillé `{colors.text-muted}` |
-| J'y étais | séance passée, joueur présent | `{colors.status-done}` |
+| J'y étais | séance passée : inscrit (séance à inscriptions) ou joueur actuel (séance sans inscriptions) | `{colors.status-done}` |
+
+Séance **sans inscriptions** (à vote ou datée directement) : « Je participe » puis « J'y étais » valent pour les joueurs **actuels** de la partie, l'application ne gardant pas l'historique des membres (amendement d'architecture, §9).
 
 - Les tons suivent la spec du Palier 10 ; le code actuel de la carte d'événement, où « Vote à faire » est en `status-live`, s'aligne au passage sur `status-todo` (amendement au PRD, §9).
 - **Sans pastille** (la ligne « Ma situation » n'est pas affichée ; le badge d'état suffit) : séance passée sans participation du joueur ; séance à dater sans vote, côté joueur ; vote clôturé sans date, côté joueur qui n'avait pas répondu (s'il avait répondu, « J'ai voté » reste) ; carte d'un chapitre sans séance à venir. Le MJ garde « Je mène » dans tous les cas.
@@ -164,13 +166,15 @@ Les noms d'onglets ci-dessus sont les libellés Grimoire. Noms génériques empl
 
 « + Inviter » ouvre toujours Invitations (Missives en Grimoire). Les autres accès internes qui visent un onglet précis (le signal « Créer son héros » vers Fiches, par exemple) l'ouvrent aussi après le réordonnancement : un onglet se désigne par son nom, jamais par sa position.
 
-### 4.3 Couverture depuis la bannière (JDR et soirée)
+### 4.3 Couverture depuis l'onglet Détails (JDR et soirée)
 
-- **Les deux modes** : la bannière est commune, les pastilles valent donc pour la page d'une partie de JDR comme pour celle d'une soirée.
-- Pastilles « Changer » et « Retirer » en haut à droite de la bannière de la page de la partie, même aspect que dans le formulaire (Palier 10, couverture V1). Visibles seulement pour qui peut modifier la partie (MJ, hôte, admin).
+- **Où** : la page d'une partie n'a pas de bannière illustrée dans son en-tête (c'est le bandeau texte commun à l'application). L'**onglet Détails s'ouvre sur la bannière illustrée** de la partie (la même que sur le tableau de bord), qui porte les pastilles (amendement d'architecture, §9).
+- **Les deux modes** : vaut pour la page d'une partie de JDR comme pour celle d'une soirée.
+- Pastilles « Changer » et « Retirer » en haut à droite de cette bannière, même aspect que dans le formulaire (Palier 10, couverture V1). Visibles seulement pour qui peut modifier la partie (MJ, hôte, admin).
 - **Libellés** : ceux du formulaire, déjà thématisés (`partie.cover_change`, `partie.cover_remove`, `partie.cover_add`) : « Changer l'enluminure » / « Retirer l'enluminure » (Grimoire), « Changer l'image » / « Retirer l'image » (Forêt), « Changer la plaque » / « Retirer la plaque » (Atelier).
-- « Changer » ouvre le même sélecteur d'image que le formulaire ; la couverture est enregistrée aussitôt, avec une snackbar et « Annuler » : « Enluminure changée » (Grimoire), « Image changée » (Forêt), « Plaque changée » (Atelier).
-- « Retirer » retire aussitôt, avec « Annuler » dans la snackbar : « Enluminure retirée » / « Image retirée » / « Plaque retirée ».
+- « Changer » ouvre le même sélecteur d'image que le formulaire ; la couverture est enregistrée aussitôt, avec une snackbar sans « Annuler » : « Enluminure changée » (Grimoire), « Image changée » (Forêt), « Plaque changée » (Atelier).
+- « Retirer » demande d'abord une confirmation (fenêtre de confirmation existante), puis retire ; snackbar sans « Annuler » : « Enluminure retirée » / « Image retirée » / « Plaque retirée ».
+- Pas d'« Annuler » : le serveur supprime l'ancienne image dès le changement (amendement d'architecture, §9).
 - **Sans couverture** (la bannière générée s'affiche) : « Retirer » est absente ; la pastille unique prend le libellé d'ajout du formulaire, « Enluminer ce grimoire » (Grimoire), « Donner un visage au sentier » (Forêt), « Ajouter une plaque d'identification » (Atelier), et ouvre le même sélecteur.
 
 ## 5. Palier 10.8 — Fiche de scénario
@@ -267,8 +271,8 @@ Le dessin est fixé dans `DESIGN.md` (§Components, « Icônes ») ; cette secti
 - Calendrier : nouveau bouton dans la ligne de contrôles ; bandeau du mode ; barre de sélection collante en mode déclaration (Épics 30 et 36, Story 36.3).
 - Tableau de bord : nouveau bandeau de rappel en tête.
 - Page Compte : nouvelle case.
-- Page d'une partie de JDR : ordre et onglet par défaut ; pastilles sur la bannière.
-- Page d'une soirée : pastilles sur la bannière.
+- Page d'une partie de JDR : ordre et onglet par défaut ; bannière illustrée avec ses pastilles en tête de l'onglet Détails.
+- Page d'une soirée : bannière illustrée avec ses pastilles en tête de l'onglet Détails.
 - Cartes de chapitres et de séances : pastille « Ma situation » ; badge d'état sans « Répondez au vote ».
 - Carte d'événement (soirée) : « Vote à faire » passe en `status-todo`, conformément à la spec du Palier 10.
 - Fiche de scénario : séances en tête côté joueur ; encadré de situation ; vote en résumé (amende le PRD du 10.4, FR-11 et §4.7).
@@ -279,6 +283,11 @@ Le dessin est fixé dans `DESIGN.md` (§Components, « Icônes ») ; cette secti
 - NFR « Mode soirée non régressé » : sur la carte d'événement de soirée, « Vote à faire » passe en `status-todo`, alignement sur la spec du Palier 10 (§4.1).
 - FR-11 : dans la fiche de scénario du joueur, les séances remontent au-dessus de la description ; le PRD ne prévoyait de changement qu'à l'intérieur de chaque séance (§5.1).
 - FR-8 : l'écu Admin n'est pas repris ; il est remplacé par l'icône admin de chaque thème (`role-admin`), y compris en badge de 14 px sur l'avatar (`DESIGN.md`, « Icônes »).
+
+**Amendements de l'architecture, validés par l'utilisateur le 2026-11-01 ⚠️** (`architecture-jdr-master-2026-11-01-p10-6-8`, AD-6 et AD-8)
+- §4.3 : les pastilles de couverture se placent sur une bannière illustrée en tête de l'onglet Détails, la page d'une partie n'ayant pas de bannière dans son en-tête.
+- §4.3 : pas d'« Annuler » après un changement de couverture ; « Retirer » demande une confirmation.
+- §4.1 : « Je participe » et « J'y étais » d'une séance sans inscriptions valent pour les joueurs actuels de la partie.
 
 **Hors UX, à reprendre en architecture / stories**
 - Retrait de la police Material chargée depuis Google Fonts, une fois toutes les icônes remplacées (NFR du 10.7).

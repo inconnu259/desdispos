@@ -53,7 +53,7 @@ components:
     rounded: 10px
     padding: "10px 12px"
     border: "1.5px solid {colors.status-todo} (joueur) / {colors.accent-1} (MJ)"
-  cover-chips:                         # « Changer » / « Retirer » sur la bannière de la page (§4.3)
+  cover-chips:                         # « Changer » / « Retirer » sur la bannière en tête de l'onglet Détails (§4.3)
     extends: "pastille de couverture V1 du Palier 10 (ux-jdr-master-2026-10-08)"
     position: "haut droit de la bannière, 8px du bord"
   icon:                                # jeu d'icônes du Palier 10.7 (§Components, Icônes)

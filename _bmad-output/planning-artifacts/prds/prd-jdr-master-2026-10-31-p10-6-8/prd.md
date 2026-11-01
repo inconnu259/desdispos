@@ -2,7 +2,7 @@
 title: "Paliers 10.6 à 10.8 — Finitions UX avant la mise en production (dispos, icônes, acquis soirée côté JDR)"
 status: final
 created: 2026-10-31
-updated: 2026-10-31
+updated: 2026-11-01
 scope: personal / scope-1
 ---
 
@@ -171,7 +171,7 @@ Aucun emoji ni caractère spécial ne sert d'icône dans l'interface. Réalise U
 
 ### 4.3 Palier 10.8 — Le JDR profite des acquis des paliers soirée
 
-**Description :** Le Palier 10 a laissé le JDR inchangé, tandis que les paliers 10, 10.4 et 10.5 ont donné au mode soirée une interface « situation d'abord » et un vote qui se fait dans le calendrier. Ce palier les reporte sur les pages de JDR : la situation de chacun sur les cartes, une fiche de scénario qui commence par l'action à faire et présente le vote en résumé, une partie qui s'ouvre sur la suite de ses séances, et le changement de couverture depuis la bannière. Les règles du JDR ne changent pas : une séance a toujours soit un vote, soit des inscriptions, et voter n'inscrit pas. Réalise UJ-3.
+**Description :** Le Palier 10 a laissé le JDR inchangé, tandis que les paliers 10, 10.4 et 10.5 ont donné au mode soirée une interface « situation d'abord » et un vote qui se fait dans le calendrier. Ce palier les reporte sur les pages de JDR : la situation de chacun sur les cartes, une fiche de scénario qui commence par l'action à faire et présente le vote en résumé, une partie qui s'ouvre sur la suite de ses séances, et le changement de couverture depuis l'onglet Détails. Les règles du JDR ne changent pas : une séance a toujours soit un vote, soit des inscriptions, et voter n'inscrit pas. Réalise UJ-3.
 
 ⚠️ **Modifie des écrans validés** : page d'une partie de JDR (ordre et onglet par défaut), cartes de chapitres et de séances, fiche de scénario et son vote. ⚠️ **Amende le PRD du 10.4** : sa FR-11 (« les chemins existants [fiche de scénario] restent en place ») et son §4.7 (« contenu de la fiche de scénario inchangé ») — le vote dans la fiche change de forme, changement que le 10.4 avait renvoyé au 10.8 (FR-14, « Out of Scope »).
 
@@ -183,7 +183,7 @@ Chaque séance affichée sur la page d'une partie de JDR porte, distincte de son
 - MJ : « Je mène ».
 - Joueur, séance à vote : « Vote à faire » tant qu'il n'a pas répondu, puis « J'ai voté ».
 - Joueur, séance à inscriptions : « Je participe » ou « Pas inscrit·e ».
-- Séance passée à laquelle il a participé : « J'y étais ».
+- Séance passée à laquelle il a participé : « J'y étais ». Pour une séance **sans inscriptions** (à vote ou datée directement), « Je participe » puis « J'y étais » valent pour les **joueurs actuels** de la partie, l'application ne gardant pas l'historique des membres. *(Amendé à l'architecture le 2026-11-01.)*
 - Libellés alignés sur ceux des cartes d'événement (`event-card`), déclinés dans les trois thèmes.
 - Le badge d'état ne porte plus la situation personnelle (aujourd'hui, « Répondez au vote » y remplace « vote ouvert »).
 - La pastille suit les changements faits par les autres, sans recharger la page.
@@ -222,12 +222,13 @@ La page d'une partie de JDR s'ouvre sur l'onglet qui montre la suite des séance
 
 **Notes:** Les badges de rôle sur les avatars (MJ, initiale du rôle) existent déjà en JDR ; rien à ajouter ici. La fusion de Chapitres et Chronologie en un seul onglet, sur le modèle d'un groupe, n'est pas retenue.
 
-#### FR-14 : Changer la couverture depuis la bannière
+#### FR-14 : Changer la couverture depuis l'onglet Détails
 
-Le MJ d'une partie de JDR, comme l'hôte ou l'admin en mode soirée, peut changer ou retirer la couverture depuis la bannière de la page de la partie, sans passer par « Retranscrire ».
+Le MJ d'une partie de JDR, comme l'hôte ou l'admin en mode soirée, peut changer ou retirer la couverture depuis la page de la partie, sans passer par « Retranscrire ».
 
 **Consequences (testable):**
-- La bannière de la page de la partie porte les pastilles « Changer » et « Retirer » pour qui peut modifier la partie, et pour lui seul. (ajout retenu en plus de la vérification ; vaut pour les deux modes puisque la bannière est commune)
+- L'onglet Détails de la page de la partie s'ouvre sur la bannière illustrée de la partie, qui porte les pastilles « Changer » et « Retirer » pour qui peut modifier la partie, et pour lui seul. Vaut pour les deux modes. *(Amendé à l'architecture le 2026-11-01 : la page d'une partie n'a pas de bannière illustrée dans son en-tête, qui est le bandeau texte commun.)*
+- « Changer » enregistre aussitôt l'image choisie ; « Retirer » demande une confirmation. Aucun « Annuler » après coup : l'ancienne image est supprimée dès le changement. *(Amendé à l'architecture le 2026-11-01.)*
 - Le formulaire d'édition d'une partie de JDR propose bien « Changer » et « Retirer » (déjà livré en Story 38.3, à vérifier).
 
 **Out of Scope (10.8):**
@@ -237,7 +238,7 @@ Le MJ d'une partie de JDR, comme l'hôte ou l'admin en mode soirée, peut change
 ### Cross-cutting NFRs
 
 - **Écrans validés.** Chaque écran validé modifié est signalé ⚠️ dans sa section ; l'UX en tient la liste et fait valider les nouvelles planches.
-- **Mode soirée non régressé.** Hors icônes (10.7) et bannière (FR-14), aucun écran du mode soirée ne change.
+- **Mode soirée non régressé.** Hors icônes (10.7) et couverture dans l'onglet Détails (FR-14), aucun écran du mode soirée ne change.
 - **Trois thèmes.** Chaque nouveau libellé (bouton de déclaration, bandeau, signal, pastilles, boutons du vote) existe dans les trois thèmes, avec le ton de chacun.
 - **Temps réel.** Le signal des dispos, propre à l'utilisateur, suit le canal `user:{id}` ; les pastilles « Ma situation » et le vote en résumé suivent le signal de changement de leur partie (`docs/checklist.md`).
 - **Mobile.** Tout est utilisable au doigt ; aucune fonction n'exige un appui long pour être trouvée (règle déjà posée par le PRD du 10.4).
@@ -257,7 +258,7 @@ Le MJ d'une partie de JDR, comme l'hôte ou l'admin en mode soirée, peut change
 
 - 10.6 : mode déclaration (FR-1 à FR-3), rappel « Dispos à déclarer » et sa mise en sourdine (FR-4, FR-5).
 - 10.7 : icônes de sens par thème, icônes utilitaires communes, surcharges levées, plus d'emoji (FR-6 à FR-9).
-- 10.8 : « Ma situation » sur les cartes, fiche situation d'abord, vote en résumé, ouverture sur la suite des séances, couverture depuis la bannière (FR-10 à FR-14).
+- 10.8 : « Ma situation » sur les cartes, fiche situation d'abord, vote en résumé, ouverture sur la suite des séances, couverture depuis l'onglet Détails (FR-10 à FR-14).
 
 ### 6.2 Out of Scope for MVP
 
@@ -293,4 +294,4 @@ Toutes les hypothèses du brouillon ont été confirmées par l'utilisateur le 2
 - §4.2 NFR : la police Material chargée depuis Google Fonts est retirée.
 - §4.3 FR-11 : situation d'abord par séance dans la fiche de scénario.
 - §4.3 FR-13 : quête unique, le joueur arrive sur Détails.
-- §4.3 FR-14 : pastilles « Changer » et « Retirer » ajoutées sur la bannière de la page, dans les deux modes.
+- §4.3 FR-14 : pastilles « Changer » et « Retirer » sur la bannière en tête de l'onglet Détails, dans les deux modes (lieu et absence d'« Annuler » amendés à l'architecture le 2026-11-01).

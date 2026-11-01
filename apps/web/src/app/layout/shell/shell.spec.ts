@@ -10,7 +10,7 @@ import { OpenPollsService } from '../../core/poll/open-polls.service';
 import { UnseenAnnouncementsService } from '../../core/announcements/unseen-announcements.service';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
-import { TONE_MAP } from '../../core/theme/tones';
+import { TONE_MAP, type Theme } from '../../core/theme/tones';
 import { fillTone } from '../../core/theme/tone-format';
 
 const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
@@ -80,7 +80,14 @@ async function createFixture(
           markRead: opts.markRead ?? vi.fn().mockResolvedValue(undefined),
         },
       },
-      { provide: ThemeToneService, useValue: { tone: signal(TONE_MAP['grimoire-emeraude']) } },
+      {
+        provide: ThemeToneService,
+        useValue: {
+          tone: signal(TONE_MAP['grimoire-emeraude']),
+          // Lu par <app-icon> : les icônes de sens suivent le thème actif.
+          activeTheme: signal<Theme>('grimoire-emeraude'),
+        },
+      },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(Shell);
@@ -227,6 +234,83 @@ describe('Shell — bandeau « push » d’annonce non vue (Story 29.13, révisi
     await fixture.whenStable();
 
     expect(markRead).toHaveBeenCalledWith('ann-x');
+  });
+});
+
+describe('Shell — icônes aux couleurs du thème (Story 51.1)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const navIcons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('nav.nav-bar a')).map((a) => a.querySelector('app-icon')!);
+
+  it('chaque destination porte son icône de sens, décorative', async () => {
+    const fixture = await createFixture(0);
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('nav.nav-bar a'),
+    ) as HTMLAnchorElement[];
+    const byHref = Object.fromEntries(
+      links.map((a) => [a.getAttribute('routerLink'), a.querySelector('app-icon')]),
+    );
+
+    expect(byHref['/']?.getAttribute('data-icon')).toBe('nav-parties');
+    expect(byHref['/characters']?.getAttribute('data-icon')).toBe('nav-personnages');
+    expect(byHref['/profile/calendar']?.getAttribute('data-icon')).toBe('nav-calendrier');
+    expect(byHref['/account']?.getAttribute('data-icon')).toBe('nav-compte');
+    for (const icon of navIcons(fixture.nativeElement)) {
+      const svg = icon.querySelector('svg')!;
+      expect(svg.getAttribute('aria-hidden')).toBe('true');
+      expect(svg.getAttribute('focusable')).toBe('false');
+      expect(svg.getAttribute('role')).toBeNull();
+    }
+    // Plus aucune ligature Material Icons dans la barre.
+    expect(fixture.nativeElement.querySelector('nav.nav-bar mat-icon')).toBeNull();
+  });
+
+  it('les quatre icônes changent avec le thème, sans recréer le composant', async () => {
+    const fixture = await createFixture(0);
+    const el = fixture.nativeElement as HTMLElement;
+    const drawings = () => navIcons(el).map((i) => i.querySelector('svg')!.innerHTML);
+    const before = drawings();
+    const instances = navIcons(el);
+
+    (TestBed.inject(ThemeToneService).activeTheme as ReturnType<typeof signal<Theme>>).set(
+      'foret-ancienne',
+    );
+    fixture.detectChanges();
+
+    const after = drawings();
+    navIcons(el).forEach((icon, i) => expect(icon).toBe(instances[i]));
+    for (let i = 0; i < 4; i++) expect(after[i]).not.toBe(before[i]);
+  });
+
+  it('le badge et aria-current restent portés par le lien, pas par l’icône', async () => {
+    const fixture = await createFixture(2);
+    await TestBed.inject(Router).navigate(['/']);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const partiesLink = fixture.nativeElement.querySelector('nav.nav-bar a[routerLink="/"]');
+    expect(partiesLink.getAttribute('aria-current')).toBe('page');
+    expect(partiesLink.querySelector('.mat-badge-content')?.textContent?.trim()).toBe('2');
+    expect(partiesLink.querySelector('app-icon')?.getAttribute('aria-current')).toBeNull();
+  });
+
+  it('la croix du bandeau d’annonce est décorative : le bouton garde son aria-label de thème', async () => {
+    const fixture = await createFixture(0, 1, {
+      unseenAnnouncements: [makeAnnouncement()],
+      parties: [makePartie({ id: 'p1', name: 'La Forêt Noire' })],
+    });
+
+    const close = fixture.nativeElement.querySelector('.announcement-banner__close') as HTMLElement;
+    expect(close.getAttribute('aria-label')).toBe(
+      fillTone(GRIMOIRE_TONE['shell.banner_close_aria'], { partie: 'La Forêt Noire' }),
+    );
+    const icon = close.querySelector('app-icon')!;
+    expect(icon.getAttribute('data-icon')).toBe('fermer');
+    expect(icon.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(icon.querySelector('svg')?.getAttribute('aria-label')).toBeNull();
+    expect(close.querySelector('mat-icon')).toBeNull();
   });
 });
 

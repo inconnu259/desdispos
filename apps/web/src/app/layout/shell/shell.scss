@@ -115,6 +115,7 @@
 }
 
 .nav-bar__link {
+  --app-icon-size: 24px; // pictogramme de la destination (<app-icon>, décoratif)
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -170,6 +171,7 @@
 }
 
 .announcement-banner__close {
+  --app-icon-size: 20px; // croix de fermeture (<app-icon>, décorative : le bouton porte le nom)
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;

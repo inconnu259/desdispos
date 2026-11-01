@@ -43,7 +43,7 @@
       [attr.aria-label]="bannerCloseLabel(b.partieName)"
       (click)="dismissBanner(b.announcement.id)"
     >
-      <mat-icon aria-hidden="true">close</mat-icon>
+      <app-icon name="fermer" />
     </button>
   </div>
 }
@@ -64,7 +64,7 @@
     matBadgeSize="small"
     [matBadgeDescription]="homeBadgeDescription()"
   >
-    <mat-icon aria-hidden="true">home</mat-icon>
+    <app-icon name="nav-parties" />
     <span>{{ theme.tone()['nav.my_games'] }}</span>
   </a>
   <a
@@ -73,7 +73,7 @@
     routerLinkActive="nav-bar__link--active"
     ariaCurrentWhenActive="page"
   >
-    <mat-icon aria-hidden="true">badge</mat-icon>
+    <app-icon name="nav-personnages" />
     <span>{{ theme.tone()['nav.characters'] }}</span>
   </a>
   <a
@@ -82,7 +82,7 @@
     routerLinkActive="nav-bar__link--active"
     ariaCurrentWhenActive="page"
   >
-    <mat-icon aria-hidden="true">calendar_month</mat-icon>
+    <app-icon name="nav-calendrier" />
     <span>{{ theme.tone()['nav.calendar'] }}</span>
   </a>
   <a
@@ -91,7 +91,7 @@
     routerLinkActive="nav-bar__link--active"
     ariaCurrentWhenActive="page"
   >
-    <mat-icon aria-hidden="true">person</mat-icon>
+    <app-icon name="nav-compte" />
     <span>{{ theme.tone()['nav.account'] }}</span>
   </a>
 </nav>

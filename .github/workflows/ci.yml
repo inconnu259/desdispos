@@ -67,6 +67,12 @@ jobs:
       # Angular. Sans cette étape, une erreur de typage côté web passerait la CI sans broncher.
       - run: pnpm --filter web build
 
+      # Registre d'icônes (palier 10.7) : le fichier généré committé doit correspondre aux SVG
+      # sources, et le générateur a ses propres tests. Node seul, rien à installer. Le motif de
+      # fichiers est explicite : `node --test <dossier>` ne le parcourt pas (Node 22+).
+      - run: node apps/web/scripts/generate-icons.mjs --check
+      - run: node --test 'apps/web/scripts/*.test.mjs'
+
   # ── Tests unitaires (api, web, game-rules) ─────────────────────────────────
   # Malgré son nom, ce job a besoin d'un Postgres : deux specs d'intégration vivent dans
   # `apps/api/src/` et sont donc ramassées par le testRegex de la config Jest unitaire

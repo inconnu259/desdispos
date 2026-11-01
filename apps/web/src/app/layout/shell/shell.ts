@@ -1,8 +1,8 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
+import { AppIcon } from '../../core/icons/app-icon';
 import { MyPartiesService } from '../../core/my-parties/my-parties.service';
 import { OpenPollsService } from '../../core/poll/open-polls.service';
 import { UnseenAnnouncementsService } from '../../core/announcements/unseen-announcements.service';
@@ -15,13 +15,13 @@ import { CreateIcon } from '../../shared/create-icon/create-icon';
 @Component({
   selector: 'app-shell',
   imports: [
+    AppIcon,
     BrandLogo,
     CreateIcon,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
     MatToolbarModule,
-    MatIconModule,
     MatBadgeModule,
   ],
   templateUrl: './shell.html',

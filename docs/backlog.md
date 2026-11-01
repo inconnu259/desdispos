@@ -10,6 +10,9 @@
 On avance par **incréments démontrables**. On valide l'abstraction « plugin système » tôt (palier 2),
 puis on enrichit. On garde `docker compose up` fonctionnel **à chaque palier**.
 
+Légende : `[x]` livré et clos · `[~]` implémenté, en attente des revues (stories à `review`) ou partiel · `[ ]` à faire.
+L'avancement réel fait foi dans `_bmad-output/implementation-artifacts/sprint-status.yaml`.
+
 ---
 
 ## Palier 0 — Socle technique & onboarding *(= 1re itération, « toute première version »)*
@@ -189,23 +192,34 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 
 ---
 
-## Palier 10 — Soirées entre amis (mode soirée, groupes, socle de permissions) *(PRD, UX, architecture et épics finals — prochaine étape : sprint planning, porte en premier)*
+## Palier 10 — Soirées entre amis (mode soirée, groupes, socle de permissions) *(implémenté, en revue — épics 37 à 43, 38 stories à `review` ; reste : `/code-review` et `/security-review`)*
 
 > PRD : `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-08/prd.md` (final, 2026-10-08). Issu de la forge
 > `_bmad-output/forge/soiree-jeux-de-societe/`. Palier **avant** la mise en production.
 > Épics : `_bmad-output/planning-artifacts/epics-palier10.md` (final, 2026-10-09) — épics 37 à 43, 38 stories ;
-> épic 37 = la porte (9 stories), seule à démarrer.
+> épic 37 = la porte (9 stories), livrée en premier.
+> **État (`sprint-status.yaml`)** : toutes les stories sont implémentées et à `review` (aucune `done` : revues de
+> code et de sécurité pas encore passées).
 
-- [ ] **Porte : socle de permissions à comportement constant** (point unique des règles « qui peut faire quoi »,
-      mode soirée/JDR, migration des parties existantes en mode JDR) — aucune story « soirée » avant.
-- [ ] Soirée isolée et groupe ; admins multiples ; tout membre propose et héberge un événement.
-- [ ] Participation (tous / places limitées avec places réservées), date fixée ou sondage, inscriptions tardives.
-- [ ] E-mails du mode soirée (dont une relance du vote) ; libellés propres au mode soirée.
+- [~] **Porte : socle de permissions à comportement constant** (point unique des règles « qui peut faire quoi »,
+      mode soirée/JDR, migration des parties existantes en mode JDR) — aucune story « soirée » avant. *(Épic 37.)*
+- [~] Création ouverte à tout utilisateur (bouton d'en-tête, quête ou ralliement, couverture depuis la bannière,
+      page selon la famille de partie) ; soirée isolée sur une seule page, invitation, clôture. *(Épics 38, 41.)*
+- [~] Groupe : conjonctions, invitations, admins multiples, quitter/retirer un membre ; tout membre propose et
+      héberge un événement. *(Épics 39, 40.)*
+- [~] Participation (tous / places limitées avec places réservées), date fixée ou sondage, prolongation du vote,
+      places et votes libérés au départ d'un membre. *(Épic 40.)*
+- [~] E-mails du mode soirée (gabarit commun, relance du vote la veille de l'échéance) ; libellés propres au
+      mode soirée. *(Épics 37, 39, 40.)*
+- [~] Annuler et ranger (conjonction, soirée isolée, filtres, retrait de sa liste) ; effacer son compte
+      (aperçu de ce qui disparaît). *(Épics 42, 43.)*
+- [ ] **Reste avant clôture** : `/code-review` et `/security-review` sur les épics 37 à 43, puis passage des
+      stories à `done`.
 - [ ] *Palier suivant : voir Palier 10.5 ci-dessous.*
 
 ---
 
-## Palier 10.4 — Sondage et Destinée dans le calendrier *(avant le 10.5, vaut aussi pour le JDR — PRD, UX et architecture finals, prochaine étape : épics et stories)*
+## Palier 10.4 — Sondage et Destinée dans le calendrier *(avant le 10.5, vaut aussi pour le JDR — implémenté, en revue : épics 44 à 47, 25 stories à `review`)*
 
 > PRD : `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-19-p10-4/prd.md` (final, 2026-10-20) — FR-1 à FR-16 ;
 > ajoute aux demandes ci-dessous « Créer un sondage » dans les 3 calendriers (choix d'un rendez-vous à dater) et la
@@ -220,23 +234,27 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 > Demandé pendant l'UX du Palier 10 (2026-10-08) : « j'ai galéré » à créer un sondage. Touche le calendrier **et** le
 > JDR ; lève, pour ce sujet seulement, la contrainte « le JDR ne change pas » du Palier 10. En attendant, le Palier 10
 > utilise le mode « composer » existant pour les sondages de conjonction.
+> Épics : `_bmad-output/planning-artifacts/epics-palier10-4.md` — 44 (suivre et conclure un vote), 45 (proposer des
+> dates), 46 (éphémérides au service du vote), 47 (plages longues). **État** : toutes les stories à `review`.
 
-- [ ] **Créneaux de l'automate** (« Fenêtres de la destinée ») **sélectionnables** : mise en évidence dans le
+- [~] **Créneaux de l'automate** (« Fenêtres de la destinée ») **sélectionnables** : mise en évidence dans le
       calendrier, tous les autres créneaux grisés ; actions « Ajouter au vote » / « Masquer » ; un créneau ajouté
-      quitte la liste de l'automate (il vit dans le vote, où on peut le retirer) ; liste **repliable**.
-- [ ] **Créer un vote par sélection de jours**, comme on déclare ses dispos (rendre le mode « composer » trouvable).
-- [ ] **Mode Destinée enrichi** : choisir sa destinée active parmi **toutes** celles des parties **actives** (plus
+      quitte la liste de l'automate (il vit dans le vote, où on peut le retirer) ; liste **repliable**. *(Épic 46.)*
+- [~] **Créer un vote par sélection de jours**, comme on déclare ses dispos (rendre le mode « composer » trouvable). *(Épic 45.)*
+- [~] **Mode Destinée enrichi** : choisir sa destinée active parmi **toutes** celles des parties **actives** (plus
       seulement le mois affiché) via une liste ; les flèches ‹ n/N › servent à parcourir les **moments de vote**
-      (options) du vote actif et déplacent le calendrier ; créer / éditer le sondage depuis la Destinée (MJ / hôte).
-- [ ] **Ouvrir le calendrier directement en Destinée sur un sondage précis** (paramètre d'URL) et **filtrer le
-      calendrier par partie / groupe** (aujourd'hui le panneau « Affichage » filtre par nature, pas par partie).
-- [ ] **Échéance visible** dans le composer, avec un défaut (le plus tôt entre +14 jours et la veille du premier créneau).
-- [ ] **Plages longues** : un rendez-vous peut durer plusieurs créneaux (après-midi + soir, vendredi soir → dimanche
-      après-midi), voté, fixé, affiché et occupé sur toute la plage.
+      (options) du vote actif et déplacent le calendrier ; créer / éditer le sondage depuis la Destinée (MJ / hôte). *(Épics 44, 45.)*
+- [~] **Ouvrir le calendrier directement en Destinée sur un sondage précis** (paramètre d'URL) et **filtrer le
+      calendrier par partie / groupe** (aujourd'hui le panneau « Affichage » filtre par nature, pas par partie). *(Épic 44.)*
+- [~] **Échéance visible** dans le composer, avec un défaut (le plus tôt entre +14 jours et la veille du premier créneau). *(Épic 45.)*
+- [~] **Plages longues** : un rendez-vous peut durer plusieurs créneaux (après-midi + soir, vendredi soir → dimanche
+      après-midi), voté, fixé, affiché et occupé sur toute la plage. *(Épic 47.)*
+- [ ] **Reste avant clôture** : `/code-review` et `/security-review` sur les épics 44 à 47, puis passage des
+      stories à `done`.
 
 ---
 
-## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production — PRD, UX, architecture et épics finals, prochaine étape : sprint planning)*
+## Palier 10.5 — Jeux de société : liste de jeux, « j'apporte », historique des hôtes *(avant la mise en production — implémenté, en revue : épics 48 à 50, 10 stories à `review`, rétro de l'épic 50 faite le 2026-10-31)*
 
 > PRD : `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-28-p10-5/prd.md` (final, 2026-10-29) — FR-1 à FR-10 ;
 > FR-6 amendé par l'UX (un doublon figure à chaque endroit d'une soirée, ×N).
@@ -252,14 +270,30 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 > vue agrégée des jeux des membres, historique des hôtes réduit à un **compteur** (l'historique des événements existe
 > déjà), « envie d'y jouer » minimale sur la fiche de la soirée ; tout reste facultatif ; mode soirée seulement.
 
-- [ ] Liste des jeux possédés par chaque utilisateur (profil), affichée quand il est hôte.
-- [ ] « J'apporte » : un invité coche les jeux qu'il apporte en rejoignant un événement.
-- [ ] Historique et équilibre des hôtes d'un groupe.
-- [ ] Bibliothèque de jeux commune au groupe.
+- [~] Liste des jeux possédés par chaque utilisateur (Ludothèque : ajouter, corriger, retirer, consulter celle
+      d'une autre personne), affichée quand il est hôte. *(Épics 48, 49.1.)*
+- [~] « J'apporte » : un invité coche les jeux qu'il apporte en rejoignant un événement ; doublons visibles,
+      jeux retirés si l'on ne vient plus, jeu écarté pour ce soir (hôte), « envie d'y jouer ». *(Épic 49.)*
+- [~] Équilibre des hôtes d'un groupe : section « Qui reçoit », réduite à un **compteur** par membre. *(Épic 50.2.)*
+- [~] Bibliothèque de jeux commune au groupe : vue agrégée « qui possède quel jeu ». *(Épic 50.1.)*
+- [ ] **Reste avant clôture** : `/code-review` et `/security-review` sur les épics 48 à 50, puis passage des
+      stories à `done`. Écarts relevés par la rétro de l'épic 50
+      (`_bmad-output/implementation-artifacts/epic-50-retro-2026-10-31.md`) : les quatre onglets du groupe ne
+      tiennent pas à 360 px (F2), espace avant la virgule dans « chez Alice, moi » (F3), NFR4 (20 membres × 300
+      jeux sur téléphone) jamais mesurée (F7).
 
 ---
 
-## Palier 10.6 — Découvrabilité de la déclaration des dispos *(après le 10.5, avant la mise en production)*
+## Palier 10.6 — Découvrabilité de la déclaration des dispos *(après le 10.5, avant la mise en production — planifié avec 10.7 et 10.8 : épic 52 en backlog)*
+
+> **Paliers 10.6 à 10.8 planifiés ensemble (2026-10-31 → 2026-11-01)**, tous documents finals :
+> PRD `_bmad-output/planning-artifacts/prds/prd-jdr-master-2026-10-31-p10-6-8/prd.md` (FR-1 à FR-14) ;
+> UX `_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-10-31/` (DESIGN.md, EXPERIENCE.md, jeu d'icônes
+> retenu dans `mockups/icones/`) ; architecture
+> `_bmad-output/planning-artifacts/architecture/architecture-jdr-master-2026-11-01-p10-6-8/ARCHITECTURE-SPINE.md`
+> (AD-1 à AD-8) ; épics `_bmad-output/planning-artifacts/epics-palier10-6-8.md` — épics 51 à 54, 23 stories, toutes
+> en `backlog`. **Ordre** : épic 51 (10.7, icônes) d'abord, son socle précédant toute nouvelle icône ; puis 52 (10.6),
+> 53 et 54 (10.8).
 
 > Remonté pendant l'UX du Palier 10 (2026-10-08). Aujourd'hui, déclarer ses dispos exige un **appui long** sur le
 > calendrier (Story 36.3, AC15) : rien à l'écran ne l'annonce, un nouvel utilisateur ne le trouvera pas.
@@ -269,7 +303,7 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 
 ---
 
-## Palier 10.7 — Jeu d'icônes sur mesure, par thème *(après le 10.6, avant la mise en production)*
+## Palier 10.7 — Jeu d'icônes sur mesure, par thème *(avant la mise en production — planifié : épic 51 en backlog, à faire en premier ; documents : voir Palier 10.6)*
 
 > Décidé pendant l'UX du Palier 10 (2026-10-08). Inventaire de départ :
 > `_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-10-08/.working/inventaire-icones.md`.
@@ -281,7 +315,7 @@ la dette technique et la synchro (cf. ordre ci-dessous).
 
 ---
 
-## Palier 10.8 — Reporter côté JDR les acquis UX du mode soirée *(après le 10.7, avant la mise en production)*
+## Palier 10.8 — Reporter côté JDR les acquis UX du mode soirée *(après le 10.7, avant la mise en production — planifié : épics 53 et 54 en backlog ; candidats 1 à 4 retenus, n° 5 abandonné ; documents : voir Palier 10.6)*
 
 > Décidé pendant l'UX du Palier 10 (2026-10-08) : le travail fait pour le mode soirée vaut aussi pour le JDR, qui
 > garde pour l'instant son interface inchangée (contrainte dure du Palier 10). Candidats, à trier avec l'utilisateur :

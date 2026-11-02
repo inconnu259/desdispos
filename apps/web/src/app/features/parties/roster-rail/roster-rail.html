@@ -6,7 +6,7 @@
     [attr.aria-label]="expanded() ? theme.tone()['roster.collapse_label'] : theme.tone()['roster.expand_label']"
     [attr.aria-expanded]="expanded()"
   >
-    <span aria-hidden="true">{{ expanded() ? '‹' : '›' }}</span>
+    <app-icon [name]="expanded() ? 'precedent' : 'suivant'" />
   </button>
 
   @for (row of rows(); track row.member.userId) {

@@ -13,7 +13,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
@@ -107,7 +106,6 @@ const SEARCH_DEBOUNCE_MS = 500;
     NgTemplateOutlet,
     MatCardModule,
     MatButtonModule,
-    MatIconModule,
     AppIcon,
     MatFormFieldModule,
     MatInputModule,

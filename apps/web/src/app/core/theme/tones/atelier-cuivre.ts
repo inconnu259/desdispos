@@ -748,7 +748,7 @@ export const atelierCuivre: Record<ToneKey, string> = {
   /* — détail de partie — */
   'partie.scheduling_title': 'Prochaine séance d’atelier',
   'partie.no_session': 'Aucune séance planifiée. Interrogez l’automate.',
-  'partie.members_title': '⚙ Équipage',
+  'partie.members_title': 'Équipage',
   'partie.no_members': 'Aucun mécanicien à bord.',
   'partie.remove_member_btn': 'Débarquer',
   'partie.no_description': 'Dossier technique vierge.',

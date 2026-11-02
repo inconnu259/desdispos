@@ -129,7 +129,10 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
         { provide: PartiesService, useValue: parties },
         ...(extra.dialog ? [{ provide: MatDialog, useValue: extra.dialog }] : []),
         ...(extra.boardGames ? [{ provide: BoardGamesService, useValue: extra.boardGames }] : []),
-        { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+        {
+          provide: ThemeToneService,
+          useValue: { tone: signal(TONE), activeTheme: signal('grimoire-emeraude') },
+        },
         {
           provide: BreakpointObserver,
           useValue: {
@@ -441,7 +444,9 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
       },
     ];
     const withGames = () => ({
-      boardGames: vi.fn().mockResolvedValue({ games, brings: [], participantsCount: 3, envies: [] }),
+      boardGames: vi
+        .fn()
+        .mockResolvedValue({ games, brings: [], participantsCount: 3, envies: [] }),
     });
     const tabs = () => Array.from(document.body.querySelectorAll<HTMLElement>('.ed__tab'));
     const panel = (name: 'main' | 'games') =>
@@ -519,7 +524,9 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
     it('l’hôte sans jeu : la ligne du thème et le lien vers « mon cabinet »', async () => {
       const { settle } = await mount(pollCard(), HOST, {
         api: {
-          boardGames: vi.fn().mockResolvedValue({ games: [], brings: [], participantsCount: 1, envies: [] }),
+          boardGames: vi
+            .fn()
+            .mockResolvedValue({ games: [], brings: [], participantsCount: 1, envies: [] }),
         },
       });
       tabs()[1].click();
@@ -569,7 +576,10 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
             provide: PartiesService,
             useValue: { members: vi.fn().mockResolvedValue([]), changed: signal(0) },
           },
-          { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+          {
+            provide: ThemeToneService,
+            useValue: { tone: signal(TONE), activeTheme: signal('grimoire-emeraude') },
+          },
         ],
       }).compileComponents();
       const inline = TestBed.createComponent(InlineHost);
@@ -597,7 +607,10 @@ describe('EventDialog — sondage de dates (Story 40.5)', () => {
           provideRouter([]),
           { provide: EventsApiService, useValue: { boardGames: vi.fn() } },
           { provide: PartiesService, useValue: { members: vi.fn().mockResolvedValue([]) } },
-          { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+          {
+            provide: ThemeToneService,
+            useValue: { tone: signal(TONE), activeTheme: signal('grimoire-emeraude') },
+          },
         ],
       }).compileComponents();
       const frozen = TestBed.createComponent(FrozenWindowHost);
@@ -881,7 +894,10 @@ describe('EventDialog — rendu en ligne d’une soirée isolée (Story 41.1)', 
         provideNoopAnimations(),
         { provide: EventsApiService, useValue: {} },
         { provide: PartiesService, useValue: { members: vi.fn().mockResolvedValue([]) } },
-        { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+        {
+          provide: ThemeToneService,
+          useValue: { tone: signal(TONE), activeTheme: signal('grimoire-emeraude') },
+        },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(InlineHost);
@@ -959,7 +975,10 @@ describe('EventDialog — rendu en ligne d’une soirée isolée (Story 41.1)', 
         provideNoopAnimations(),
         { provide: EventsApiService, useValue: {} },
         { provide: PartiesService, useValue: { members: vi.fn().mockResolvedValue([]) } },
-        { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
+        {
+          provide: ThemeToneService,
+          useValue: { tone: signal(TONE), activeTheme: signal('grimoire-emeraude') },
+        },
       ],
     }).compileComponents();
     const frozen = TestBed.createComponent(FrozenHost);

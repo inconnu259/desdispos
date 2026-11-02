@@ -170,6 +170,18 @@ describe('RosterRail', () => {
     expect(toggle.getAttribute('aria-label')).toBe('Replier la troupe');
   });
 
+  it('la flèche du bouton toggle est une icône décorative : « precedent » déplié, « suivant » replié', () => {
+    const fixture = setup();
+    const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('.roster-rail__toggle');
+    const icon = () => toggle.querySelector('app-icon');
+    expect(icon()?.getAttribute('data-icon')).toBe('suivant');
+    expect(icon()?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(toggle.textContent?.trim()).toBe('');
+    toggle.click();
+    fixture.detectChanges();
+    expect(icon()?.getAttribute('data-icon')).toBe('precedent');
+  });
+
   it('un item du roster a une zone de tap de 36px (desktop), pas 44px (mobile)', () => {
     const fixture = setup();
     const item: HTMLElement = fixture.nativeElement.querySelector('[data-user-id="u1"]');

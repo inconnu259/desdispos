@@ -40,8 +40,7 @@
   position: absolute;
   right: -5px;
   bottom: -5px;
-  width: 14px;
-  height: 14px;
+  --app-icon-size: 14px;
   color: var(--jdr-accent-1, var(--mat-sys-primary));
 }
 

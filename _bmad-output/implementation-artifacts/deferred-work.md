@@ -476,3 +476,7 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/spec-50-1-trouver-qui-possede-un-jeu-dans-le-groupe.md`
   summary: Measure the four group tabs (Conjonctions/Haltes/Réunions + Reliques/Trésors/Joyaux + Détails + Missives) at 360 px in each theme, and 20 members × 300 games on a phone.
   evidence: Acceptance criterion « measured and noted » could not be checked without a browser; `partie-detail.scss` is untouched, so the Material tab header may scroll. Unverified, would be medium if it overflows.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-51-4-icones-membres-invitations-et-gouvernance.md`
+  summary: Check the 14px `role-admin` badge on the participant-chip avatar in the three themes (legibility, size, corner placement).
+  evidence: The old inline shield had a surface-coloured outline that `role-admin` (stroke only) does not; unverifiable in jsdom. Unverified, would be medium if the badge blends into the avatar. Story 51.8's recette covers `role-admin` at 14px; if unreadable, report it to the user (no redraw without agreement).

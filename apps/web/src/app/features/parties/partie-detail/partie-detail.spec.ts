@@ -3986,13 +3986,8 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
       fixture.detectChanges();
     }
   };
-  /** Libellé d'une action du pied de carte. Une `<app-icon>` n'a aucun texte ; seules les actions
-   *  « Quitter » (story 51.4) portent encore une `<mat-icon>`, dont la ligature est écartée. */
-  const label = (node: Element) => {
-    const clone = node.cloneNode(true) as Element;
-    clone.querySelectorAll('mat-icon').forEach((icon) => icon.remove());
-    return (clone.textContent ?? '').trim();
-  };
+  /** Libellé d'une action du pied de carte (une `<app-icon>` n'a aucun texte). */
+  const label = (node: Element) => (node.textContent ?? '').trim();
   const footerButtons = (el: HTMLElement) =>
     Array.from(el.querySelectorAll('mat-card-actions button')).map(label);
 
@@ -4559,7 +4554,8 @@ describe('PartieDetail — admins d’un groupe : nommer et quitter l’office (
       for (const admin of [moi, seconde]) {
         const badge = admin.querySelector('.admin-badge') as HTMLElement;
         expect(badge.textContent).toContain(tone['partie.ralliement_admin_badge']);
-        expect(badge.querySelector('mat-icon')?.textContent?.trim()).toBe('shield');
+        expect(badge.querySelector('app-icon')?.getAttribute('data-icon')).toBe('role-admin');
+        expect(badge.querySelector('mat-icon')).toBeNull();
         expect(admin.textContent).not.toContain(tone['partie.remove_member_btn']);
         expect(admin.textContent).not.toContain(tone['partie.ralliement_appoint_btn']);
       }
@@ -5509,15 +5505,16 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
     ]);
     expect(chips[0].querySelector('.pc__avatar')?.textContent?.trim()).toBe('HH');
     // L'administrateur : écu de 14 px à l'angle ET le mot « Admin », jamais le pictogramme seul.
-    const shield = chips[1].querySelector('svg.pc__shield');
-    expect(shield?.getAttribute('width')).toBe('14');
-    expect(shield?.getAttribute('height')).toBe('14');
+    // Story 51.4 : l'écu dessiné à la main devient l'icône `role-admin` du jeu (14 px, décorative).
+    const shield = chips[1].querySelector('app-icon.pc__shield');
+    expect(shield?.getAttribute('data-icon')).toBe('role-admin');
+    expect(shield?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(chips[1].querySelector('.pc__tag--admin')?.textContent?.trim()).toBe(
       tone['partie.ralliement_admin_badge'],
     );
     // Les autres n'ont ni écu ni mot « Admin ».
     for (const c of [chips[0], chips[2]]) {
-      expect(c.querySelector('svg')).toBeNull();
+      expect(c.querySelector('app-icon')).toBeNull();
       expect(c.querySelector('.pc__tag--admin')).toBeNull();
     }
     // La personne connectée (Gaël) : filet d'accent ET « (vous) » écrit.
@@ -7569,9 +7566,7 @@ describe('PartieDetail — icônes du jeu : états, actions et ressources (story
     const result: Record<string, string | null> = {};
     const actions = el.querySelectorAll('mat-card-actions a, mat-card-actions button');
     for (const node of Array.from(actions)) {
-      const clone = node.cloneNode(true) as Element;
-      clone.querySelectorAll('mat-icon').forEach((icon) => icon.remove());
-      result[(clone.textContent ?? '').trim()] = iconOf(node);
+      result[(node.textContent ?? '').trim()] = iconOf(node);
     }
     return result;
   };
@@ -7616,8 +7611,8 @@ describe('PartieDetail — icônes du jeu : états, actions et ressources (story
       expect(icons[tone['partie.edit_btn']]).toBe('modifier');
       expect(icons[tone[`partie.${key}`]]).toBe(icon);
       expect(icons[tone['partie.delete_btn']]).toBe('supprimer');
-      // « Quitter l'office » reste à la story 51.4 : une <mat-icon>, pas encore une <app-icon>.
-      expect(icons[tone['partie.ralliement_step_down_btn']]).toBeNull();
+      // Story 51.4 : « Quitter l'office » a son icône propre (distincte de « Quitter le groupe »).
+      expect(icons[tone['partie.ralliement_step_down_btn']]).toBe('quitter-office');
     },
   );
 
@@ -7702,5 +7697,219 @@ describe('PartieDetail — icônes du jeu : états, actions et ressources (story
       displayName: 'Même Nom',
     });
     expect(iconOf(el.querySelector('.homonymy-warning'))).toBe('information');
+  });
+});
+
+// ─── Icônes de la page d'une partie : membres, invitations et gouvernance (story 51.4) ────────
+
+describe('PartieDetail — icônes du jeu : membres, invitations et gouvernance (story 51.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const OTHER_ID = 'member-2';
+  const THIRD_ID = 'member-3';
+  const tone = TONE_MAP['grimoire-emeraude'];
+  const groupe = (over: Partial<PartieDto> = {}) =>
+    makePartie({
+      gameSystemId: 'ralliement',
+      kind: 'CAMPAGNE_EPISODIQUE',
+      role: 'admin',
+      ...over,
+    });
+  const member = (
+    userId: string,
+    displayName: string,
+    role: 'ADMIN' | 'MEMBER',
+  ): PartieMemberDto => ({
+    userId,
+    pseudo: displayName.toLowerCase(),
+    displayName,
+    role,
+    joinedAt: '2026-10-01T00:00:00Z',
+  });
+  /** Créateur (soi) admin, un second admin, un membre ordinaire. */
+  const members = [
+    member(MJ_ID, 'Créateur', 'ADMIN'),
+    member(OTHER_ID, 'Seconde', 'ADMIN'),
+    member(THIRD_ID, 'Membre', 'MEMBER'),
+  ];
+  const links: InviteLinkDto[] = [
+    {
+      id: 'l1',
+      token: 'active-token',
+      maxUses: 1,
+      usesCount: 0,
+      expiresAt: '2099-01-01',
+      revoked: false,
+      createdAt: '',
+    },
+  ];
+  const EMOJI = /[⚔🌿⚙]/u;
+  const iconsOf = (node: Element | null | undefined) =>
+    Array.from(node?.querySelectorAll('app-icon') ?? []).map((i) => i.getAttribute('data-icon'));
+  const settle = async (fixture: ComponentFixture<PartieDetail>) => {
+    for (let i = 0; i < 6; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  };
+  const openMissives = (el: HTMLElement, fixture: ComponentFixture<PartieDetail>) => {
+    el.querySelectorAll<HTMLElement>('div[role="tab"]')[3].click();
+    fixture.detectChanges();
+  };
+  /** Onglet des invitations d'une quête (le MJ y retire un joueur et invite). */
+  const openQuestInvitations = (el: HTMLElement, fixture: ComponentFixture<PartieDetail>) => {
+    const tab = Array.from(el.querySelectorAll<HTMLElement>('div[role="tab"]')).find((t) =>
+      t.textContent?.includes(tone['partie.invitations_tab_label']),
+    );
+    tab?.click();
+    fixture.detectChanges();
+  };
+  const rows = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('.ralliement-members .result-row')) as HTMLElement[];
+
+  it.each(THEMES)(
+    'thème %s : le titre de la liste des membres porte l’icône « membres » et aucun emoji',
+    async (theme) => {
+      const { fixture, el } = await createFixture(groupe(), MJ_ID, {
+        members,
+        theme,
+        noopAnimations: true,
+      });
+      openMissives(el, fixture);
+      const titre = el.querySelector('.ralliement-members h3.members-title') as HTMLElement;
+      const mot = TONE_MAP[theme]['partie.members_title'];
+
+      expect(EMOJI.test(mot)).toBe(false);
+      expect(titre.textContent?.trim()).toBe(mot);
+      expect(iconsOf(titre)).toEqual(['membres']);
+      // Décorative : le mot est écrit à côté.
+      expect(titre.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    },
+  );
+
+  it('les titres des trois thèmes : « Compagnons », « Habitants », « Équipage »', () => {
+    expect(TONE_MAP['grimoire-emeraude']['partie.members_title']).toBe('Compagnons');
+    expect(TONE_MAP['foret-ancienne']['partie.members_title']).toBe('Habitants');
+    expect(TONE_MAP['atelier-cuivre']['partie.members_title']).toBe('Équipage');
+  });
+
+  it('quête : le titre des membres (onglet des invitations du MJ) porte aussi l’icône', async () => {
+    const { fixture, el } = await createFixture(makePartie({ ownerId: MJ_ID }), MJ_ID, {
+      members,
+      noopAnimations: true,
+    });
+    openQuestInvitations(el, fixture);
+    const titre = el.querySelector('.invite h3.members-title') as HTMLElement;
+    expect(iconsOf(titre)).toEqual(['membres']);
+  });
+
+  it('quête : « Retirer » un joueur porte l’icône « retirer-membre »', async () => {
+    const { fixture, el } = await createFixture(makePartie({ ownerId: MJ_ID }), MJ_ID, {
+      members,
+      noopAnimations: true,
+    });
+    openQuestInvitations(el, fixture);
+    const boutons = Array.from(el.querySelectorAll('.invite .result-row button'));
+    expect(boutons.length).toBeGreaterThan(0);
+    for (const bouton of boutons) expect(iconsOf(bouton)).toEqual(['retirer-membre']);
+  });
+
+  it('gouvernance : une icône par geste, le badge Admin n’est plus un bouclier', async () => {
+    const { fixture, el } = await createFixture(groupe(), MJ_ID, { members, noopAnimations: true });
+    openMissives(el, fixture);
+    const [moi, seconde, membre] = rows(el);
+
+    // Soi : badge Admin, puis « Quitter l'office ».
+    expect(iconsOf(moi.querySelector('.admin-badge'))).toEqual(['role-admin']);
+    expect(iconsOf(moi)).toEqual(['role-admin', 'quitter-office']);
+    // Le second admin : badge seul.
+    expect(iconsOf(seconde)).toEqual(['role-admin']);
+    // Le membre : « Nommer admin » puis « Retirer ».
+    expect(iconsOf(membre)).toEqual(['nommer-admin', 'retirer-membre']);
+    // Chaque bouton de gestion ne porte qu'une icône, décorative, à côté de son libellé écrit.
+    const boutons = rows(el).flatMap((row) =>
+      Array.from(row.querySelectorAll('button:not(.library-open)')),
+    );
+    expect(boutons).toHaveLength(3);
+    for (const bouton of boutons) {
+      expect(bouton.querySelectorAll('app-icon')).toHaveLength(1);
+      expect(bouton.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    }
+    expect(el.querySelector('.ralliement-members mat-icon')).toBeNull();
+  });
+
+  it('pied de carte : « Quitter l’office » (admin) et « Quitter le groupe » (membre) ont chacun leur icône', async () => {
+    const admin = await createFixture(groupe(), MJ_ID, { members });
+    const stepDown = Array.from(admin.el.querySelectorAll('mat-card-actions button')).find((b) =>
+      b.textContent?.includes(tone['partie.ralliement_step_down_btn']),
+    );
+    expect(iconsOf(stepDown)).toEqual(['quitter-office']);
+    TestBed.resetTestingModule();
+
+    const simple = await createFixture(groupe({ role: 'member' }), THIRD_ID, { members });
+    const leave = Array.from(simple.el.querySelectorAll('mat-card-actions button')).find((b) =>
+      b.textContent?.includes(tone['partie.ralliement_leave_btn']),
+    );
+    expect(iconsOf(leave)).toEqual(['quitter-groupe']);
+  });
+
+  it('panneau d’invitations : recherche, invitation, e-mail, lien, copie et révocation', async () => {
+    const { fixture, el } = await createFixture(groupe(), MJ_ID, {
+      members,
+      links,
+      noopAnimations: true,
+    });
+    openMissives(el, fixture);
+    await settle(fixture);
+    fixture.componentInstance['results'].set([{ id: 'u9', pseudo: 'Zed' }]);
+    fixture.detectChanges();
+
+    const searchButtons = Array.from(el.querySelectorAll('.search-row button'));
+    expect(searchButtons.map((b) => iconsOf(b))).toEqual([['rechercher'], ['email']]);
+    // « Inviter » sur un résultat de recherche.
+    // (la ligne du résultat suit les trois lignes de membres)
+    const resultRow = rows(el)[3];
+    expect(iconsOf(resultRow.querySelector('button'))).toEqual(['inviter']);
+    // Générer un lien.
+    const generer = Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes(tone['partie.ralliement_generate_link']),
+    );
+    expect(iconsOf(generer)).toEqual(['lien']);
+    // Copier / révoquer : icône SEULE dans un bouton qui porte l'aria-label, donc décorative.
+    const [copier, revoquer] = Array.from(el.querySelectorAll('.link-row button'));
+    expect(iconsOf(copier)).toEqual(['copier']);
+    expect(copier.getAttribute('aria-label')).toBe(tone['common.copier']);
+    expect(iconsOf(revoquer)).toEqual(['lien-revoque']);
+    expect(revoquer.getAttribute('aria-label')).toBe(tone['common.revoquer']);
+    for (const b of [copier, revoquer]) {
+      expect(b.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+      expect(b.querySelector('svg')?.hasAttribute('aria-label')).toBe(false);
+    }
+    expect(el.querySelector('.invite mat-icon')).toBeNull();
+  });
+
+  it('changer de thème : les icônes « de sens » changent sur place, les utilitaires non', async () => {
+    const { fixture, el } = await createFixture(groupe(), MJ_ID, {
+      members,
+      links,
+      noopAnimations: true,
+    });
+    openMissives(el, fixture);
+    await settle(fixture);
+    const drawing = (name: string) =>
+      el.querySelector(`.ralliement-members app-icon[data-icon="${name}"] svg`)?.innerHTML;
+    const themed = ['role-admin', 'quitter-office', 'nommer-admin', 'retirer-membre', 'membres'];
+    const utility = ['email', 'lien', 'copier', 'rechercher'];
+    const before = Object.fromEntries([...themed, ...utility].map((n) => [n, drawing(n)]));
+    for (const name of [...themed, ...utility]) expect(before[name], name).toBeTruthy();
+
+    const theme = TestBed.inject(ThemeToneService) as unknown as {
+      activeTheme: { set: (t: Theme) => void };
+    };
+    theme.activeTheme.set('foret-ancienne');
+    fixture.detectChanges();
+
+    for (const name of themed) expect(drawing(name), name).not.toBe(before[name]);
+    for (const name of utility) expect(drawing(name), name).toBe(before[name]);
   });
 });

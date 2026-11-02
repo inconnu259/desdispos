@@ -745,7 +745,7 @@ export const foretAncienne: Record<ToneKey, string> = {
   /* — détail de partie — */
   'partie.scheduling_title': 'Prochaine clairière',
   'partie.no_session': "Aucune clairière réservée. L'écureuil cherche encore.",
-  'partie.members_title': '🌿 Habitants',
+  'partie.members_title': 'Habitants',
   'partie.no_members': 'Aucun habitant de la clairière.',
   'partie.remove_member_btn': 'Renvoyer',
   'partie.no_description': 'La forêt garde ses secrets.',

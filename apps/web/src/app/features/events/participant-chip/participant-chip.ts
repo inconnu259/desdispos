@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, output } from '@angular/core';
 import type { EventParticipantDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { initialsOf, isPendingParticipant } from '../event-card.util';
@@ -23,7 +24,7 @@ import { initialsOf, isPendingParticipant } from '../event-card.util';
  */
 @Component({
   selector: 'app-participant-chip',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, AppIcon],
   templateUrl: './participant-chip.html',
   styleUrl: './participant-chip.scss',
 })

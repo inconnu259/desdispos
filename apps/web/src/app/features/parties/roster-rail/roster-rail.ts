@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import type { CharacterDto, PartieMemberDto } from '@master-jdr/shared';
 import { CharacterAvatar } from '../../characters/character-avatar/character-avatar';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { buildRosterRows, type RosterRow } from '../roster-row.util';
@@ -13,7 +14,7 @@ import { buildRosterRows, type RosterRow } from '../roster-row.util';
 @Component({
   selector: 'app-roster-rail',
   standalone: true,
-  imports: [CharacterAvatar, IdentityLabel],
+  imports: [AppIcon, CharacterAvatar, IdentityLabel],
   templateUrl: './roster-rail.html',
   styleUrl: './roster-rail.scss',
 })

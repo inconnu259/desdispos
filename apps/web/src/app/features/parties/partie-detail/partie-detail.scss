@@ -369,6 +369,30 @@ mat-tab-group {
   }
 }
 
+// Icônes du jeu (palier 10.7, story 51.4) : ~20 px dans les boutons des listes de membres et du
+// panneau d'invitations (libellé écrit à côté, ou bouton nommé par son aria-label). Posé AVANT
+// `.admin-badge` : l'icône du badge, dans une `.result-row`, doit garder sa taille de 16 px.
+.result-row,
+.search-row,
+.link-row {
+  app-icon {
+    --app-icon-size: 1.25rem;
+    vertical-align: middle;
+  }
+}
+
+// Titre de la liste des membres : pictogramme décoratif teinté de l'accent-1 du thème.
+.members-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  app-icon {
+    --app-icon-size: 1.5rem;
+    color: var(--jdr-accent-1, var(--mat-sys-primary));
+  }
+}
+
 // Story 39.4 : badge d'administrateur d'un groupe (Missives) — pictogramme ET mot, jamais la couleur
 // seule ; teinte d'accent du thème, aucune animation.
 .admin-badge {
@@ -383,10 +407,8 @@ mat-tab-group {
   font-size: 0.8rem;
   font-weight: 600;
 
-  mat-icon {
-    width: 1rem;
-    height: 1rem;
-    font-size: 1rem;
+  app-icon {
+    --app-icon-size: 1rem;
   }
 }
 

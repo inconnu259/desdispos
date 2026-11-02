@@ -753,7 +753,7 @@ export const grimoireEmeraude = {
   /* — détail de partie — */
   'partie.scheduling_title': 'Prochaine séance au grimoire',
   'partie.no_session': "Aucune séance convoquée. Consultez l'oracle des créneaux.",
-  'partie.members_title': '⚔ Compagnons',
+  'partie.members_title': 'Compagnons',
   'partie.no_members': "Nulle âme pour l'instant.",
   'partie.remove_member_btn': 'Retirer',
   'partie.no_description': 'Ce grimoire est muet.',

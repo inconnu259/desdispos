@@ -449,7 +449,10 @@
         @if (isMj()) {
           <mat-tab [label]="theme.tone()['partie.invitations_tab_label']">
             <section class="invite">
-              <h3>{{ theme.tone()['partie.members_title'] }}</h3>
+              <h3 class="members-title">
+                <app-icon name="membres" />
+                {{ theme.tone()['partie.members_title'] }}
+              </h3>
               @if (otherMembers().length === 0) {
                 <p class="muted">{{ theme.tone()['partie.no_members'] }}</p>
               } @else {
@@ -461,7 +464,7 @@
                       [ambiguous]="isMemberAmbiguous(m.userId)"
                     />
                     <button mat-button (click)="removeMember(m)">
-                      <mat-icon>person_remove</mat-icon> {{ theme.tone()['partie.remove_member_btn'] }}
+                      <app-icon name="retirer-membre" /> {{ theme.tone()['partie.remove_member_btn'] }}
                     </button>
                   </div>
                 }
@@ -483,7 +486,10 @@
                créateur redevenu simple membre se retire comme les autres. -->
           <mat-tab [label]="membersTabLabel()">
             <section class="invite ralliement-members">
-              <h3>{{ theme.tone()['partie.members_title'] }}</h3>
+              <h3 class="members-title">
+                <app-icon name="membres" />
+                {{ theme.tone()['partie.members_title'] }}
+              </h3>
               @for (m of members(); track m.userId) {
                 <div class="result-row">
                   @if (m.userId === auth.currentUser()?.id) {
@@ -512,25 +518,25 @@
                   @if (isGroup() && m.role === 'ADMIN') {
                     <!-- Story 39.4 : badge d'administrateur = pictogramme ET mot, jamais la couleur seule. -->
                     <span class="admin-badge">
-                      <mat-icon aria-hidden="true">shield</mat-icon>
+                      <app-icon name="role-admin" />
                       {{ theme.tone()['partie.ralliement_admin_badge'] }}
                     </span>
                   }
                   @if (canAppointAdmin(m)) {
                     <button mat-button (click)="appointAdmin(m)">
-                      <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
+                      <app-icon name="nommer-admin" />
                       {{ theme.tone()['partie.ralliement_appoint_btn'] }}
                     </button>
                   }
                   @if (canStepDown(m)) {
                     <button mat-button (click)="stepDownFromOffice()">
-                      <mat-icon aria-hidden="true">logout</mat-icon>
+                      <app-icon name="quitter-office" />
                       {{ theme.tone()['partie.ralliement_step_down_btn'] }}
                     </button>
                   }
                   @if (canRemoveGroupMember(m)) {
                     <button mat-button (click)="removeMember(m)">
-                      <mat-icon>person_remove</mat-icon> {{ theme.tone()['partie.remove_member_btn'] }}
+                      <app-icon name="retirer-membre" /> {{ theme.tone()['partie.remove_member_btn'] }}
                     </button>
                   }
                 </div>
@@ -697,7 +703,7 @@
             </button>
           }
           <button mat-button class="icon-bar__btn" (click)="stepDownFromOffice()">
-            <mat-icon aria-hidden="true">logout</mat-icon>
+            <app-icon name="quitter-office" />
             {{ theme.tone()['partie.ralliement_step_down_btn'] }}
           </button>
           <button mat-button class="icon-bar__btn icon-bar__btn--danger" (click)="confirmDelete(p)">
@@ -709,7 +715,7 @@
              « Quitter l'office » pour l'administrateur). PAS de teinte destructrice : une nouvelle
              invitation le ramène, le rouge reste réservé à l'irréversible. -->
         <button mat-button class="icon-bar__btn" (click)="leaveGroup()">
-          <mat-icon aria-hidden="true">exit_to_app</mat-icon>
+          <app-icon name="quitter-groupe" />
           {{ theme.tone()['partie.ralliement_leave_btn'] }}
         </button>
       }
@@ -730,14 +736,14 @@
              (keyup.enter)="runSearch()" />
     </mat-form-field>
     <button mat-flat-button (click)="runSearch()">
-      <mat-icon>search</mat-icon> {{ theme.tone()['partie.search_btn'] }}
+      <app-icon name="rechercher" /> {{ theme.tone()['partie.search_btn'] }}
     </button>
   </div>
   @for (u of results(); track u.id) {
     <div class="result-row">
       <span>{{ u.pseudo }}</span>
       <button mat-button (click)="invite(u)">
-        <mat-icon>person_add</mat-icon> {{ inviteTone('invite_btn') }}
+        <app-icon name="inviter" /> {{ inviteTone('invite_btn') }}
       </button>
     </div>
   }
@@ -749,7 +755,7 @@
              [disabled]="invitingByEmail()" (keyup.enter)="inviteByEmail()" />
     </mat-form-field>
     <button mat-flat-button [disabled]="invitingByEmail()" (click)="inviteByEmail()">
-      <mat-icon>mail</mat-icon> {{ theme.tone()['partie.invite_by_email_btn'] }}
+      <app-icon name="email" /> {{ theme.tone()['partie.invite_by_email_btn'] }}
     </button>
   </div>
   @if (inviteEmailError()) {
@@ -758,7 +764,7 @@
 
   <h3>{{ inviteTone('links_title') }}</h3>
   <button mat-stroked-button (click)="createLink()">
-    <mat-icon>link</mat-icon> {{ inviteTone('generate_link') }}
+    <app-icon name="lien" /> {{ inviteTone('generate_link') }}
   </button>
   @for (l of activeLinks(); track l.id) {
     <div class="link-row">
@@ -769,10 +775,10 @@
         {{ l.expiresAt | date: 'short' }}
       </span>
       <button mat-icon-button (click)="copyLink(l.token)" [attr.aria-label]="theme.tone()['common.copier']">
-        <mat-icon>content_copy</mat-icon>
+        <app-icon name="copier" />
       </button>
       <button mat-icon-button (click)="revokeLink(l)" [attr.aria-label]="theme.tone()['common.revoquer']">
-        <mat-icon>link_off</mat-icon>
+        <app-icon name="lien-revoque" />
       </button>
     </div>
   }

@@ -2,16 +2,8 @@
   <span class="pc__avatar" aria-hidden="true">
     {{ initials() }}
     @if (participant().isAdmin) {
-      <!-- Écu de 14 px à l'angle de l'avatar : décoratif, le mot « Admin » est écrit à côté. -->
-      <svg class="pc__shield" viewBox="0 0 14 14" width="14" height="14" focusable="false">
-        <path
-          d="M7 1 12 3v4c0 3-2.2 5-5 6-2.8-1-5-3-5-6V3z"
-          fill="currentColor"
-          stroke="var(--mat-sys-surface, #000)"
-          stroke-width="1"
-          stroke-linejoin="round"
-        />
-      </svg>
+      <!-- Pictogramme d'administrateur de 14 px à l'angle de l'avatar : décoratif, le mot « Admin » est écrit à côté. -->
+      <app-icon class="pc__shield" name="role-admin" />
     }
   </span>
   <span class="pc__name">{{ participant().displayName }}</span>

@@ -24,7 +24,12 @@ describe('ParticipantChip — nom ouvrant une Ludothèque (Story 48.3)', () => {
   ) {
     TestBed.configureTestingModule({
       imports: [ParticipantChip],
-      providers: [{ provide: ThemeToneService, useValue: { tone: signal(TONE_MAP[theme]) } }],
+      providers: [
+        {
+          provide: ThemeToneService,
+          useValue: { tone: signal(TONE_MAP[theme]), activeTheme: signal(theme) },
+        },
+      ],
     });
     const fixture = TestBed.createComponent(ParticipantChip);
     fixture.componentRef.setInput('participant', participant);
@@ -81,7 +86,9 @@ describe('ParticipantChip — nom ouvrant une Ludothèque (Story 48.3)', () => {
     const { el } = mount(person({ isAdmin: true }), { libraryEnabled: true });
 
     const button = el.querySelector('button') as HTMLButtonElement;
-    expect(button.querySelector('.pc__shield')).not.toBeNull();
+    expect(button.querySelector('app-icon.pc__shield')?.getAttribute('data-icon')).toBe(
+      'role-admin',
+    );
     expect(button.textContent).toContain(
       TONE_MAP['grimoire-emeraude']['partie.ralliement_admin_badge'],
     );

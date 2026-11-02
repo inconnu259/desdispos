@@ -480,3 +480,7 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/spec-51-4-icones-membres-invitations-et-gouvernance.md`
   summary: Check the 14px `role-admin` badge on the participant-chip avatar in the three themes (legibility, size, corner placement).
   evidence: The old inline shield had a surface-coloured outline that `role-admin` (stroke only) does not; unverifiable in jsdom. Unverified, would be medium if the badge blends into the avatar. Story 51.8's recette covers `role-admin` at 14px; if unreadable, report it to the user (no redraw without agreement).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-51-8-retirer-la-police-material-icons.md`
+  summary: Decide whether the level-up badge `▲` of `character-summary-card.html` should become an icon from the set (no meaning icon exists for it today).
+  evidence: A literal `▲` (U+25B2) remains in a template; it is outside the AC's character list (which has `▴`), so the strict guard does not flag it. Low: cosmetic and font-dependent.

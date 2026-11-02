@@ -29,7 +29,12 @@
     border: none;
     background: transparent;
     color: inherit;
-    font-size: 1rem;
+    /* Pictogramme <app-icon> seul dans un bouton nommé (aria-label) : 20px. */
+    --app-icon-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     cursor: pointer;
 
     &:disabled {
@@ -94,6 +99,12 @@
     button {
       flex: 1;
       min-height: 44px;
+      /* Pictogramme décoratif avant / après le libellé : 18px, aligné au texte. */
+      --app-icon-size: 18px;
+    }
+
+    app-icon {
+      vertical-align: middle;
     }
   }
 

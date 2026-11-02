@@ -36,7 +36,7 @@
               [attr.aria-controls]="uid + '-p-' + cat.id"
               (click)="toggle(cat)"
             >
-              <span class="rp__chevron" aria-hidden="true">{{ isOpen(cat) ? '▾' : '▸' }}</span>
+              <app-icon class="rp__chevron" [class.rp__chevron--closed]="!isOpen(cat)" name="deplier" />
               @if (cat.race) {
                 <span
                   class="rp__gem"

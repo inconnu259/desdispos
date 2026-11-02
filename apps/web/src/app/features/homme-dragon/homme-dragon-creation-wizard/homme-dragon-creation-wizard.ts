@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import type { ContentEntryDto, HommeDragonDto, HommeDragonRace } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
@@ -81,6 +82,7 @@ interface ArtefactData {
   imports: [
     FormsModule,
     MatButtonModule,
+    AppIcon,
     MatFormFieldModule,
     MatInputModule,
     ChoiceCard,

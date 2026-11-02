@@ -86,7 +86,8 @@
     margin-bottom: 0.5rem;
   }
 
-  // Titre de groupe = BOUTON de repli (44 px) : nom, nombre d'objets, chevron ▾ / ▸.
+  // Titre de groupe = BOUTON de repli (44 px) : nom, nombre d'objets, chevron (ouvert : vers le bas ;
+  // replié : le même pictogramme pivoté de −90°).
   &__group-title {
     margin: 0;
     font-size: 0.75rem;
@@ -117,10 +118,15 @@
       font-weight: 600;
     }
 
-    // Chevron ▾ / ▸ : plus lisible que le corps du titre (trouvé à l'écran).
-    span[aria-hidden='true'] {
-      font-size: 1.125rem;
+    // Chevron : plus lisible que le corps du titre (trouvé à l'écran), 20px.
+    .equipment-step__chevron {
+      --app-icon-size: 20px;
       color: var(--mat-sys-primary, #7ec8a4);
+      transition: transform 0.15s ease;
+    }
+
+    .equipment-step__chevron--closed {
+      transform: rotate(-90deg);
     }
   }
 

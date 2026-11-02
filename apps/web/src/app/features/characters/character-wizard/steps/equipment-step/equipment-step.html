@@ -114,7 +114,11 @@
               (click)="toggleGroup(group.nature)"
             >
               <span><b>{{ group.title }}</b> · {{ group.items.length }}</span>
-              <span aria-hidden="true">{{ isGroupOpen(group.nature) ? '▾' : '▸' }}</span>
+              <app-icon
+                class="equipment-step__chevron"
+                [class.equipment-step__chevron--closed]="!isGroupOpen(group.nature)"
+                name="deplier"
+              />
             </button>
           </h3>
           @if (isGroupOpen(group.nature)) {

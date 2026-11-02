@@ -15,7 +15,6 @@ import { map } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
 import {
@@ -26,6 +25,7 @@ import {
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import type { CharacterDto, GameSystemContentDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
 import { characterName, findContentEntry, isFieldHidden } from '../../../core/characters/character.util';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
@@ -172,7 +172,7 @@ interface NarrativeFields {
     CharacterAvatar,
     RouterLink,
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     MatTabsModule,
     PortraitPanel,
     LevelUpBanner,

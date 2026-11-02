@@ -21,7 +21,7 @@
       [attr.aria-label]="theme.tone()['characters_sheet.item_edit_aria']"
       (click)="edit.emit()"
     >
-      ✎
+      <app-icon name="modifier" />
     </button>
   }
   @if (removable()) {
@@ -31,7 +31,7 @@
       [attr.aria-label]="theme.tone()['characters_sheet.item_remove_aria']"
       (click)="remove.emit()"
     >
-      ✕
+      <app-icon name="supprimer" />
     </button>
   }
 </div>

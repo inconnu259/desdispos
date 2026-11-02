@@ -13,7 +13,7 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import type {
   AnnouncementDto,
   CharacterDto,
@@ -59,7 +59,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   imports: [
     DurationStepper,
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     FieldEditPencil,
     ScenarioStatusBadge,
     CharacterSummaryCard,

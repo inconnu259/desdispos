@@ -1,6 +1,6 @@
 @if (partieId) {
-  <a mat-button [routerLink]="['/parties', partieId]">
-    <mat-icon>arrow_back</mat-icon> {{ theme.tone()['common.retour_a_la_partie'] }}
+  <a mat-button class="scenario-detail__back" [routerLink]="['/parties', partieId]">
+    <app-icon name="retour" /> {{ theme.tone()['common.retour_a_la_partie'] }}
   </a>
 }
 @if (loading()) {

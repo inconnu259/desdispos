@@ -51,7 +51,7 @@
                     [attr.aria-label]="noteShareLabel(note.shared)"
                     (click)="toggleShare(note)"
                   >
-                    {{ note.shared ? '🔓' : '🔒' }}
+                    <app-icon [name]="note.shared ? 'cadenas-ouvert' : 'cadenas-ferme'" />
                   </button>
                   @if (note.scenarioId === scenario().id && !note.shared) {
                     <p class="hint">

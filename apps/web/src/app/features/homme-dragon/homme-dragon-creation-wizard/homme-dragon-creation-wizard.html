@@ -238,6 +238,7 @@
 
   <div class="hdw__nav-bottom">
     <button mat-stroked-button type="button" [disabled]="isFirstStep() || creating()" (click)="goPrev()">
+      <app-icon name="precedent" />
       {{ theme.tone()['common.precedent_2'] }}
     </button>
     @if (isLastStep()) {
@@ -259,6 +260,7 @@
         (click)="goNext()"
       >
         {{ theme.tone()['common.suivant_2'] }}
+        <app-icon name="suivant" />
       </button>
     }
   </div>

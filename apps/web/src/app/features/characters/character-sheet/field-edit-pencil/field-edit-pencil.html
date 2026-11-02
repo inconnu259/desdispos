@@ -21,7 +21,7 @@
       [attr.aria-label]="theme.tone()['common.valider']"
       (click)="submit()"
     >
-      ✓
+      <app-icon name="valider" />
     </button>
     <button
       mat-icon-button
@@ -30,7 +30,7 @@
       [attr.aria-label]="theme.tone()['common.annuler']"
       (click)="cancel()"
     >
-      ✕
+      <app-icon name="fermer" />
     </button>
   </span>
 } @else {
@@ -40,6 +40,6 @@
     [attr.aria-label]="fieldEditAria()"
     (click)="startEdit()"
   >
-    ✎
+    <app-icon name="modifier" />
   </button>
 }

@@ -18,6 +18,7 @@ import type {
   SeanceDto,
   SessionPollDto,
 } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
@@ -55,6 +56,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
 @Component({
   selector: 'app-seance-list',
   imports: [
+    AppIcon,
     DurationStepper,
     MatButtonModule,
     PollStatusPanel,

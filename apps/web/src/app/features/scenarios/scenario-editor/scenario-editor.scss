@@ -27,10 +27,9 @@ header {
   gap: 0.4rem;
   cursor: pointer;
 }
-.document-row mat-icon {
-  font-size: 1.1rem;
-  height: 1.1rem;
-  width: 1.1rem;
+.document-row {
+  /* Pictogramme <app-icon> décoratif à côté du nom du document : 18px. */
+  --app-icon-size: 18px;
 }
 .document-row.library-tag {
   color: var(--jdr-text-muted, #666);

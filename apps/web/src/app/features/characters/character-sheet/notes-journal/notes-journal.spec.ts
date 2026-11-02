@@ -157,4 +157,39 @@ describe('NotesJournal', () => {
     expect(entries.length).toBe(1);
     expect(entries[0].textContent).toContain('Nouvelle note');
   });
+
+  it('propriétaire : le bouton de partage porte cadenas-ouvert (partagée) / cadenas-ferme (privée), deux noms différents', async () => {
+    const notes = [makeNote({ id: 'n1', shared: true }), makeNote({ id: 'n2', shared: false })];
+    const fixture = await createComponent({ getNotes: vi.fn().mockResolvedValue(notes) }, true);
+
+    const toggles = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.notes-journal__share-toggle'),
+    ) as HTMLButtonElement[];
+    const names = toggles.map((t) => t.querySelector('app-icon')?.getAttribute('data-icon'));
+    expect(names).toEqual(['cadenas-ouvert', 'cadenas-ferme']);
+    expect(names[0]).not.toBe(names[1]);
+    // Le nom du bouton reste son aria-label d'état ; l'icône, à côté du texte, est décorative.
+    expect(toggles[0].getAttribute('aria-label')).toBe(GRIMOIRE_TONE['evolution.note_shared_label']);
+    expect(toggles[1].getAttribute('aria-label')).toBe(GRIMOIRE_TONE['evolution.note_private_label']);
+    expect(toggles[0].querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(toggles[0].textContent).not.toContain('🔓');
+  });
+
+  it('lecteur : l’icône seule porte le nom de l’état, pas son conteneur', async () => {
+    const notes = [makeNote({ id: 'n1', shared: true }), makeNote({ id: 'n2', shared: false })];
+    const fixture = await createComponent({ getNotes: vi.fn().mockResolvedValue(notes) }, false);
+
+    const indicators = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.notes-journal__share-indicator'),
+    ) as HTMLElement[];
+    expect(indicators.map((i) => i.querySelector('app-icon')?.getAttribute('data-icon'))).toEqual([
+      'cadenas-ouvert',
+      'cadenas-ferme',
+    ]);
+    expect(indicators.map((i) => i.querySelector('svg')?.getAttribute('aria-label'))).toEqual([
+      GRIMOIRE_TONE['evolution.note_shared_label'],
+      GRIMOIRE_TONE['evolution.note_private_label'],
+    ]);
+    expect(indicators[0].hasAttribute('aria-label')).toBe(false);
+  });
 });

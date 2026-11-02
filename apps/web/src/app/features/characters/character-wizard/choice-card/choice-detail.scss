@@ -126,5 +126,7 @@ app-choice-detail {
     font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
+    /* Pictogramme <app-icon> décoratif (replier / déplier) : 16px en ligne. */
+    --app-icon-size: 16px;
   }
 }

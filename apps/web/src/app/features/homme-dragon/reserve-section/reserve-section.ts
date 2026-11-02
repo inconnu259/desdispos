@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import type { ContentEntryDto, HommeDragonDto, HommeDragonRace } from '@master-jdr/shared';
 import { reserveCapacity } from '@master-jdr/game-rules';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
@@ -45,7 +46,7 @@ type Gesture = 'place' | 'remove' | 'undo';
  */
 @Component({
   selector: 'app-reserve-section',
-  imports: [ReservePicker],
+  imports: [AppIcon, ReservePicker],
   templateUrl: './reserve-section.html',
   styleUrl: './reserve-section.scss',
 })

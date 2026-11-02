@@ -1,13 +1,13 @@
 @if (loadError(); as error) {
   @if (partieId) {
-    <a mat-button [routerLink]="['/parties', partieId]">
-      <mat-icon>arrow_back</mat-icon> {{ theme.tone()['character.back_to_partie_cta'] }}
+    <a mat-button class="sheet__back" [routerLink]="['/parties', partieId]">
+      <app-icon name="retour" /> {{ theme.tone()['character.back_to_partie_cta'] }}
     </a>
   }
   <p class="sheet__load-error">{{ error }}</p>
 } @else if (character(); as c) {
-  <a mat-button [routerLink]="['/parties', c.partieId]">
-    <mat-icon>arrow_back</mat-icon> {{ theme.tone()['character.back_to_partie_cta'] }}
+  <a mat-button class="sheet__back" [routerLink]="['/parties', c.partieId]">
+    <app-icon name="retour" /> {{ theme.tone()['character.back_to_partie_cta'] }}
   </a>
   <article class="sheet">
     <header class="sheet__header">
@@ -58,7 +58,7 @@
         [attr.aria-label]="theme.tone()['character.sheet_menu_trigger_aria']"
         (click)="toggleSheetMenu()"
       >
-        <span aria-hidden="true">&#8942;</span>
+        <app-icon name="menu-actions" />
       </button>
     </header>
 

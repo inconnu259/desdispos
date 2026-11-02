@@ -46,4 +46,19 @@ describe('EncumbranceBar', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.encumbrance-bar--over')).toBeNull();
   });
+
+  it('surcharge → pictogramme avertissement avant le texte, sans caractère ⚠', async () => {
+    TestBed.configureTestingModule({ imports: [EncumbranceBar] });
+    const fixture = TestBed.createComponent(EncumbranceBar);
+    fixture.componentRef.setInput('totalWeight', 12);
+    fixture.componentRef.setInput('limit', 9);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const flag = (fixture.nativeElement as HTMLElement).querySelector(
+      '.encumbrance-bar__over-flag',
+    ) as HTMLElement;
+    expect(flag.querySelector('app-icon')?.getAttribute('data-icon')).toBe('avertissement');
+    expect(flag.textContent).not.toContain('⚠');
+  });
 });

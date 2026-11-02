@@ -125,8 +125,8 @@ async function createComponent(
             'common.reduire': 'Réduire',
             'common.lire_la_suite': 'Lire la suite',
             'common.en_savoir_plus': 'En savoir plus',
-            'common.precedent_2': '❮ Précédent',
-            'common.suivant_2': 'Suivant ❯',
+            'common.precedent_2': 'Précédent',
+            'common.suivant_2': 'Suivant',
             'hd.wizard_step_progress': 'Étape {n}/{total} · {etape}',
             'hd.wizard_more_aria': 'En savoir plus sur {nom}',
             'hd.wizard_artefact_empty': "Aucun artefact n'est disponible pour cette race.",
@@ -192,6 +192,23 @@ async function next(f: ComponentFixture<HommeDragonCreationWizard>): Promise<voi
 
 describe('HommeDragonCreationWizard', () => {
   afterEach(() => TestBed.resetTestingModule());
+
+  it('Précédent / Suivant : pictogrammes precedent avant et suivant après le libellé, sans caractère ❮ ❯', async () => {
+    const { fixture } = await createComponent();
+    const { prev, next } = navButtons(fixture);
+
+    expect(prev.querySelector('app-icon')?.getAttribute('data-icon')).toBe('precedent');
+    expect(prev.textContent).toContain('Précédent');
+    expect(next.querySelector('app-icon')?.getAttribute('data-icon')).toBe('suivant');
+    expect(next.textContent).toContain('Suivant');
+    // Ordre : l'icône précède « Précédent » et suit « Suivant ».
+    expect(prev.innerHTML.indexOf('<app-icon')).toBeLessThan(prev.innerHTML.indexOf('Précédent'));
+    expect(next.innerHTML.indexOf('<app-icon')).toBeGreaterThan(next.innerHTML.indexOf('Suivant'));
+    expect(prev.textContent! + next.textContent!).not.toMatch(/[❮❯]/);
+    // Étape 1 : « Précédent » désactivé, « Suivant » bloqué sans race, comme avant.
+    expect(prev.disabled).toBe(true);
+    expect(next.disabled).toBe(true);
+  });
 
   it('étape 1/5 : 4 cartes de race avec nom, étiquette et description du catalogue', async () => {
     const { fixture } = await createComponent();

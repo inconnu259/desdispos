@@ -19,18 +19,20 @@
             "
             (click)="toggleShare(note)"
           >
-            {{ note.shared ? '🔓' : '🔒' }} {{ theme.tone()['evolution.note_share_toggle'] }}
+            <app-icon [name]="note.shared ? 'cadenas-ouvert' : 'cadenas-ferme'" />
+            {{ theme.tone()['evolution.note_share_toggle'] }}
           </button>
         } @else {
-          <span
-            class="notes-journal__share-indicator"
-            [attr.aria-label]="
-              note.shared
-                ? theme.tone()['evolution.note_shared_label']
-                : theme.tone()['evolution.note_private_label']
-            "
-          >
-            {{ note.shared ? '🔓' : '🔒' }}
+          <span class="notes-journal__share-indicator">
+            <!-- Icône seule : elle porte le nom (état de la note), le conteneur n'en donne pas un second. -->
+            <app-icon
+              [name]="note.shared ? 'cadenas-ouvert' : 'cadenas-ferme'"
+              [label]="
+                note.shared
+                  ? theme.tone()['evolution.note_shared_label']
+                  : theme.tone()['evolution.note_private_label']
+              "
+            />
           </span>
         }
       </li>

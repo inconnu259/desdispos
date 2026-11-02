@@ -10,6 +10,7 @@ import type {
   PartieKind,
   ScenarioDto,
 } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { CharacterService } from '../../../core/characters/character.service';
@@ -52,6 +53,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   imports: [
     MatDialogModule,
     MatButtonModule,
+    AppIcon,
     ScenarioStatusBadge,
     CharacterSummaryCard,
     SeanceList,

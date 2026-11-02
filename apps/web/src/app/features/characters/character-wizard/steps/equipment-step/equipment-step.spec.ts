@@ -450,6 +450,18 @@ describe('EquipmentStep — repli, compteur et filtre', () => {
     expect(objets.getAttribute('aria-label')).toBe('Objets, 2 objets');
   });
 
+  it('le chevron d’un groupe est toujours deplier ; replié, il est pivoté de −90° par une classe', () => {
+    const fixture = mount();
+    const chevron = () => toggle(fixture, 'Objets').querySelector('app-icon') as HTMLElement;
+    expect(chevron().getAttribute('data-icon')).toBe('deplier');
+    expect(chevron().classList.contains('equipment-step__chevron--closed')).toBe(false);
+    toggle(fixture, 'Objets').click();
+    fixture.detectChanges();
+    expect(chevron().getAttribute('data-icon')).toBe('deplier');
+    expect(chevron().classList.contains('equipment-step__chevron--closed')).toBe(true);
+    expect(toggle(fixture, 'Objets').textContent).not.toMatch(/[▾▸]/);
+  });
+
   it('replier un groupe masque ses objets, le redéployer les rend', () => {
     const fixture = mount();
     expect(el(fixture).textContent).toContain('Corde');

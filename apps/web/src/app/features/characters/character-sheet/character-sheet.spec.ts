@@ -333,6 +333,7 @@ describe('CharacterSheet', () => {
     expect(link).toBeTruthy();
     expect(link!.textContent).toContain(GRIMOIRE_TONE['character.back_to_partie_cta']);
     expect(link!.getAttribute('href')).toBe('/parties/p1');
+    expect(link!.querySelector('app-icon')?.getAttribute('data-icon')).toBe('retour');
   });
 
   it('erreur réseau générique → message affiché, pas de plantage', async () => {
@@ -809,6 +810,21 @@ describe('CharacterSheet', () => {
     expect(menuText).not.toContain(
       (fixture.componentInstance as any).theme.tone()['character.portrait_edit_cta'],
     );
+  });
+
+  it('51.6 — le lien de retour porte le pictogramme retour et le déclencheur du menu le pictogramme menu-actions', async () => {
+    const { fixture } = await createComponent(makeCharacterService(), 'char1', null, 'u1', 'p1');
+    const el = fixture.nativeElement as HTMLElement;
+
+    const link = el.querySelector('a[mat-button]') as HTMLAnchorElement;
+    expect(link.querySelector('app-icon')?.getAttribute('data-icon')).toBe('retour');
+    // Icône à côté du texte : décorative.
+    expect(link.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+
+    const trigger = el.querySelector('.sheet__menu-trigger') as HTMLButtonElement;
+    expect(trigger.querySelector('app-icon')?.getAttribute('data-icon')).toBe('menu-actions');
+    expect(trigger.textContent?.trim()).toBe('');
+    expect(trigger.getAttribute('aria-label')).toBeTruthy();
   });
 
   it('AC7 — le déclencheur porte un nom accessible et aria-haspopup', async () => {

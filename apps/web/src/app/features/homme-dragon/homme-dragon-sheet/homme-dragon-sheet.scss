@@ -46,6 +46,12 @@
 
   &__export-trigger {
     min-height: 44px;
+    /* Pictogramme <app-icon> décoratif après le libellé : 18px, aligné au texte. */
+    --app-icon-size: 18px;
+
+    app-icon {
+      vertical-align: middle;
+    }
   }
 
   &__export-backdrop {

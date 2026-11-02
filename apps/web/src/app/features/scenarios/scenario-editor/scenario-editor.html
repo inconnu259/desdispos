@@ -177,7 +177,7 @@
             (keydown.enter)="downloadDocument(doc)"
             (keydown.space)="$event.preventDefault(); downloadDocument(doc)"
           >
-            <mat-icon>description</mat-icon>
+            <app-icon name="document" />
             {{ doc.originalName }} ({{ doc.sizeBytes }} o)
           </li>
         }
@@ -203,7 +203,7 @@
             (keydown.enter)="downloadDocument(doc)"
             (keydown.space)="$event.preventDefault(); downloadDocument(doc)"
           >
-            <mat-icon>description</mat-icon>
+            <app-icon name="document" />
             {{ doc.originalName }} ({{ doc.sizeBytes }} o)
             {{ theme.tone()['scenarios.editor_library_doc_suffix'] }}
           </li>

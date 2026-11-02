@@ -84,6 +84,9 @@
 
   &__chevron {
     flex: none;
+    display: inline-flex;
+    /* Pictogramme <app-icon> décoratif (ouvrir) : 20px. */
+    --app-icon-size: 20px;
     color: var(--mat-sys-on-surface-variant, #555);
   }
 

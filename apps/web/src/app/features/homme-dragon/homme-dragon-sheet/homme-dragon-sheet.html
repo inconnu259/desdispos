@@ -27,7 +27,7 @@
             [disabled]="exporting()"
             (click)="toggleExportMenu()"
           >
-            {{ theme.tone()['hd.sheet_export_pdf'] }} <span aria-hidden="true">&#9662;</span>
+            {{ theme.tone()['hd.sheet_export_pdf'] }} <app-icon name="deplier" />
           </button>
           @if (exportMenuOpen()) {
             <div class="homme-dragon-sheet__export-backdrop" aria-hidden="true" (click)="closeExportMenu()"></div>

@@ -264,6 +264,7 @@
               <input #heureInput type="time" [value]="infoDraft(seance.id, 'heureRdv')" />
               @if (malformedHeureRdv(seance); as raw) {
                 <span class="infos-pratiques__warning">
+                  <app-icon name="avertissement" />
                   {{ heureMalformedWarning(raw) }}
                 </span>
               }

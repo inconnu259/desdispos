@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { computeDerived, type DerivedStats, type RyuutamaSheetData } from '@master-jdr/game-rules';
 import type { ContentEntryDto, GameSystemContentDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
@@ -106,6 +107,7 @@ interface ServerValidationError {
   standalone: true,
   imports: [
     MatButtonModule,
+    AppIcon,
     ClassStep,
     TypeStep,
     MagicStep,

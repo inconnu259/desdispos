@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AppIcon } from '../../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 import { NatureMarker } from '../../../../shared/nature-marker/nature-marker';
 
@@ -26,7 +27,7 @@ const VISIBLE_COUNT = 3;
  */
 @Component({
   selector: 'app-character-creation-entries',
-  imports: [RouterLink, NatureMarker],
+  imports: [RouterLink, AppIcon, NatureMarker],
   templateUrl: './character-creation-entries.html',
   styleUrl: './character-creation-entries.scss',
 })

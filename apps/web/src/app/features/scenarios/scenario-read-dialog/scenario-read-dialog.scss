@@ -12,3 +12,9 @@
   border-left: 2px solid var(--color-border-subtle, #444);
   padding-left: 0.75rem;
 }
+.note-share-toggle {
+  display: inline-flex;
+  align-items: center;
+  /* Pictogramme <app-icon> seul dans un bouton nommé (aria-label) : 18px. */
+  --app-icon-size: 18px;
+}

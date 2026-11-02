@@ -109,6 +109,11 @@
 }
 
 .infos-pratiques__warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  /* Pictogramme décoratif avant le texte : 14px, calé sur la petite taille du message. */
+  --app-icon-size: 14px;
   font-size: 0.72rem;
   color: var(--color-mixed, #b45309);
 }

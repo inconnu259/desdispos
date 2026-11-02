@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { AppIcon } from '../../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../../core/theme/tone-format';
 
@@ -13,7 +14,7 @@ let nextDatalistId = 0;
 @Component({
   selector: 'app-field-edit-pencil',
   standalone: true,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, AppIcon],
   templateUrl: './field-edit-pencil.html',
   styleUrl: './field-edit-pencil.scss',
 })

@@ -275,6 +275,13 @@ describe('ReserveSection (Story 33.6)', () => {
       );
     });
 
+    it('Story 51.6 : la mention d’enregistrement porte le pictogramme valider, sans caractère ✓', async () => {
+      const { fixture } = await setup(3);
+      const hint = q(fixture, '.reserve__hint')!;
+      expect(hint.querySelector('app-icon')?.getAttribute('data-icon')).toBe('valider');
+      expect(hint.textContent).not.toContain('✓');
+    });
+
     it('aucun compteur « utilisé » / « restant » ni « Vider la réserve »', async () => {
       const { fixture } = await setup(4, ['courage', 'chance', null]);
       const text = el(fixture).textContent!.toLowerCase();
@@ -384,6 +391,8 @@ describe('ReserveSection (Story 33.6)', () => {
 
       const alert = q(fixture, '[role="alert"]')!;
       expect(alert.textContent).toContain("Impossible d'enregistrer la réserve. Réessayez.");
+      expect(alert.querySelector('app-icon')?.getAttribute('data-icon')).toBe('avertissement');
+      expect(alert.textContent).not.toContain('⚠');
       expect(qa(fixture, '.reserve__slot')[2].classList).toContain('reserve__slot--empty');
       expect(qa(fixture, '.reserve__slot')[2].textContent).not.toContain('Défi');
       expect(q(fixture, '.reserve__hint')).toBeNull();

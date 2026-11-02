@@ -943,6 +943,34 @@ describe('SeanceList', () => {
       expect(values).toEqual(['20:30', 'chez Marc', 'pensez aux dés']);
     });
 
+    it('Story 51.6 : heure illisible → pictogramme avertissement AVANT le texte du thème, sans caractère ⚠', async () => {
+      const { fixture } = await createComponent(
+        { ...SCENARIO, seances: [{ ...SEANCE_NO_POLL, heureRdv: '8h30' }] },
+        { isMj: true },
+      );
+      const warning = (fixture.nativeElement as HTMLElement).querySelector(
+        '.infos-pratiques__warning',
+      ) as HTMLElement;
+
+      expect(warning).not.toBeNull();
+      expect(warning.firstElementChild?.getAttribute('data-icon')).toBe('avertissement');
+      expect(warning.firstElementChild?.querySelector('svg')?.getAttribute('aria-hidden')).toBe(
+        'true',
+      );
+      expect(warning.textContent).toContain('8h30');
+      expect(warning.textContent).not.toContain('⚠');
+    });
+
+    it('Story 51.6 : heure bien formée ou absente → aucun avertissement', async () => {
+      const { fixture } = await createComponent(
+        { ...SCENARIO, seances: [SEANCE_AVEC_INFOS] },
+        { isMj: true },
+      );
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('.infos-pratiques__warning'),
+      ).toBeNull();
+    });
+
     it('AC5 : un joueur ne voit AUCUN champ de saisie', async () => {
       const { fixture } = await createComponent(
         { ...SCENARIO, seances: [SEANCE_AVEC_INFOS] },

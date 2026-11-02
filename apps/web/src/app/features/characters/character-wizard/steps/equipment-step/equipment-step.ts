@@ -9,6 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import type { ContentEntryDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../../../core/theme/theme-tone.service';
 import { DetailSurface } from '../../../../../shared/detail-surface/detail-surface';
 import {
@@ -52,7 +53,7 @@ function normalizeForSearch(text: string): string {
 @Component({
   selector: 'app-equipment-step',
   standalone: true,
-  imports: [DetailSurface],
+  imports: [AppIcon, DetailSurface],
   templateUrl: './equipment-step.html',
   styleUrl: './equipment-step.scss',
 })

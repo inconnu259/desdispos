@@ -37,6 +37,20 @@ async function createFixture(entries: CharacterCreationEntry[]) {
 describe('CharacterCreationEntries (Story 29.16)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('chaque ligne se termine par le pictogramme ouvrir, décoratif, sans caractère ›', async () => {
+    const { fixture } = await createFixture([makeEntry({ partieId: 'p1' }), makeEntry({ partieId: 'p2' })]);
+
+    const chevrons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.character-creation-entries__chevron'),
+    ) as HTMLElement[];
+    expect(chevrons.length).toBe(2);
+    for (const chevron of chevrons) {
+      expect(chevron.getAttribute('aria-hidden')).toBe('true');
+      expect(chevron.querySelector('app-icon')?.getAttribute('data-icon')).toBe('ouvrir');
+      expect(chevron.textContent?.trim()).toBe('');
+    }
+  });
+
   it('aucune entrée → rien n’est rendu, ni titre ni cadre', async () => {
     const { fixture } = await createFixture([]);
 

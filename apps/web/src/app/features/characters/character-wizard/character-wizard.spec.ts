@@ -1009,4 +1009,33 @@ describe('CharacterWizard — récapitulatif et désélection (Story 31.4)', () 
     expect(comp.sheetData().classChoices).toBeUndefined();
     expect(comp.canGoNext()).toBe(false);
   });
+
+  it('la navigation porte les pictogrammes precedent / suivant, en haut (boutons nommés) et en bas (avant / après le libellé)', async () => {
+    const { fixture } = await createComponent();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const top = Array.from(el.querySelectorAll('.wizard__nav-btn')) as HTMLButtonElement[];
+    expect(top.map((b) => b.querySelector('app-icon')?.getAttribute('data-icon'))).toEqual([
+      'precedent',
+      'suivant',
+    ]);
+    // Icône seule : le nom du bouton reste son aria-label, l'icône est décorative.
+    expect(top.every((b) => b.hasAttribute('aria-label'))).toBe(true);
+    expect(top[0].querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(top.map((b) => b.textContent?.trim())).toEqual(['', '']);
+
+    const bottom = el.querySelector('.wizard__nav-bottom') as HTMLElement;
+    const prev = bottom.querySelectorAll('button')[0] as HTMLButtonElement;
+    const next = bottom.querySelectorAll('button')[1] as HTMLButtonElement;
+    expect(prev.querySelector('app-icon')?.getAttribute('data-icon')).toBe('precedent');
+    expect(next.querySelector('app-icon')?.getAttribute('data-icon')).toBe('suivant');
+    // Ordre : l'icône précède le libellé de « précédent », le suit pour « suivant ».
+    const prevLabel = prev.textContent!.trim();
+    const nextLabel = next.textContent!.trim();
+    expect(prev.innerHTML.indexOf('<app-icon')).toBeLessThan(prev.innerHTML.indexOf(prevLabel));
+    expect(next.innerHTML.indexOf('<app-icon')).toBeGreaterThan(next.innerHTML.indexOf(nextLabel));
+    expect(bottom.textContent).not.toMatch(/[❮❯]/);
+    // Étape 1 : « précédent » reste désactivé comme avant.
+    expect(prev.disabled).toBe(true);
+  });
 });

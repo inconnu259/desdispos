@@ -1,5 +1,6 @@
 import { Component, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { AppIcon } from '../../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 
 export interface InventoryItemView {
@@ -15,7 +16,7 @@ export interface InventoryItemView {
 @Component({
   selector: 'app-inventory-item-row',
   standalone: true,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, AppIcon],
   templateUrl: './inventory-item-row.html',
   styleUrl: './inventory-item-row.scss',
 })

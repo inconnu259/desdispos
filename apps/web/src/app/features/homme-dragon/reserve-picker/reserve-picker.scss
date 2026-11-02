@@ -114,11 +114,16 @@ button:focus-visible,
     cursor: pointer;
   }
 
+  // Chevron de repli : ouvert, `deplier` vers le bas ; fermé, le même pictogramme pivoté de −90°.
   &__chevron {
     flex: 0 0 auto;
-    width: 1rem;
+    --app-icon-size: 16px;
     color: var(--mat-sys-on-surface-variant);
-    font-weight: 400;
+    transition: transform 0.15s ease;
+  }
+
+  &__chevron--closed {
+    transform: rotate(-90deg);
   }
 
   &__cat-btn[aria-expanded='false'] &__cat-name {

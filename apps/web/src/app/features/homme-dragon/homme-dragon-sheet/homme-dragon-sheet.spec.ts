@@ -885,6 +885,18 @@ describe('HommeDragonSheet', () => {
       expect(component['exporting']()).toBe(false);
     });
 
+    it('le déclencheur de l’export porte le pictogramme deplier après son libellé, sans entité &#9662;', async () => {
+      const { fixture } = await createComponent(makeHommeDragonService(makeDto()));
+      const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+        '.homme-dragon-sheet__export-trigger',
+      )!;
+      expect(trigger.querySelector('app-icon')?.getAttribute('data-icon')).toBe('deplier');
+      expect(trigger.innerHTML.indexOf('<app-icon')).toBeGreaterThan(
+        trigger.innerHTML.indexOf('Exporter en PDF'),
+      );
+      expect(trigger.textContent).not.toContain('▾');
+    });
+
     it('le déclencheur ouvre un menu à deux entrées (éditable / 2 pages), accessible', async () => {
       const { fixture } = await createComponent(makeHommeDragonService(makeDto()));
       const el = fixture.nativeElement as HTMLElement;

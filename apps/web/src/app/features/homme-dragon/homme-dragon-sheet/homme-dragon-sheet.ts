@@ -32,6 +32,7 @@ import {
   type ChoiceCardOption,
 } from '../../characters/character-wizard/choice-card/choice-card';
 import { RadioGroupNavDirective } from '../../characters/character-wizard/choice-card/radio-group-nav.directive';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { hommeDragonName } from '../../../core/homme-dragon/homme-dragon.util';
 import { CharacterService } from '../../../core/characters/character.service';
@@ -106,6 +107,7 @@ const artefactData = (entry: ContentEntryDto): ArtefactCatalogData =>
   imports: [
     FormsModule,
     MatButtonModule,
+    AppIcon,
     DatePipe,
     NgTemplateOutlet,
     DetailSurface,

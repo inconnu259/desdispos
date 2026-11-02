@@ -167,6 +167,23 @@ describe('ReservePicker (Story 33.6)', () => {
       expect(text(cat(fixture, 'Autres races'))).toContain('0 / 1 souffle autorisé');
     });
 
+    it('chevron : toujours deplier, pivoté de −90° (classe) quand la catégorie est repliée', async () => {
+      const { fixture } = await setup({ level: 4, reserve: ['courage', 'chance', null] });
+      const chevron = (title: string) => cat(fixture, title).querySelector('app-icon') as HTMLElement;
+
+      // Ouvert : pas de rotation.
+      expect(chevron('Destin').getAttribute('data-icon')).toBe('deplier');
+      expect(chevron('Destin').classList.contains('rp__chevron--closed')).toBe(false);
+      // Replié d'office : même pictogramme, pivoté.
+      expect(chevron('Rituels').getAttribute('data-icon')).toBe('deplier');
+      expect(chevron('Rituels').classList.contains('rp__chevron--closed')).toBe(true);
+      // Un clic le déplie : la rotation disparaît.
+      cat(fixture, 'Rituels').click();
+      fixture.detectChanges();
+      expect(chevron('Rituels').classList.contains('rp__chevron--closed')).toBe(false);
+      expect(text(cat(fixture, 'Destin'))).not.toMatch(/[▾▸]/);
+    });
+
     it('chaque en-tête (h3 > button) porte aria-expanded et aria-controls vers un panneau existant', async () => {
       const { fixture } = await setup();
       for (const b of qa(fixture, '.rp__cat-btn')) {

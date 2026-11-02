@@ -197,6 +197,12 @@
     button {
       flex: 1;
       min-height: 44px;
+      /* Pictogramme décoratif avant / après le libellé : 18px, aligné au texte. */
+      --app-icon-size: 18px;
+    }
+
+    app-icon {
+      vertical-align: middle;
     }
 
     @media (max-width: 767px) {

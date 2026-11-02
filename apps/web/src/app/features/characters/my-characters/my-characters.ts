@@ -1,6 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
 import type {
   CharacterSort,
   ListViewMode,
@@ -36,7 +35,7 @@ import {
 
 @Component({
   selector: 'app-my-characters',
-  imports: [MatIconModule, CharacterSummaryCard, ListControlBar, CharacterCreationEntries],
+  imports: [CharacterSummaryCard, ListControlBar, CharacterCreationEntries],
   templateUrl: './my-characters.html',
   styleUrl: './my-characters.scss',
 })

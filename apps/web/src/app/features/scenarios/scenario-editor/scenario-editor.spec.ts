@@ -456,6 +456,18 @@ describe('ScenarioEditor', () => {
     expect(comp.downloadError()).toBeNull();
   });
 
+  it('chaque ligne de document porte le pictogramme document, décoratif', async () => {
+    const { fixture } = await createComponent();
+    const rows = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.document-row'),
+    ) as HTMLElement[];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.querySelector('app-icon')?.getAttribute('data-icon')).toBe('document');
+      expect(row.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
   it('document-row : classe "disabled" pendant le téléchargement (Story 13.1, AC1)', async () => {
     const { fixture, scenariosSvc } = await createComponent();
     let resolveCall: (v: unknown) => void;

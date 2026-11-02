@@ -100,7 +100,7 @@
               (click)="toggleReference()"
             >
               <span>{{ theme.tone()['character.choice_reference_toggle'] }}</span>
-              <span aria-hidden="true">{{ referenceOpen() ? '▴' : '▾' }}</span>
+              <app-icon [name]="referenceOpen() ? 'replier' : 'deplier'" />
             </button>
             @if (referenceOpen()) {
               <div class="class-step__reference">

@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ContentEntryDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../../../core/theme/theme-tone.service';
 import { DetailSurface } from '../../../../../shared/detail-surface/detail-surface';
 import {
@@ -61,7 +62,7 @@ export interface ClassCapabilityPatch {
 @Component({
   selector: 'app-class-step',
   standalone: true,
-  imports: [FormsModule, ChoiceCard, ChoiceDetail, RadioGroupNavDirective, DetailSurface],
+  imports: [FormsModule, AppIcon, ChoiceCard, ChoiceDetail, RadioGroupNavDirective, DetailSurface],
   templateUrl: './class-step.html',
   styleUrl: './class-step.scss',
 })

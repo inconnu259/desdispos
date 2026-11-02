@@ -6,7 +6,8 @@
     <span>{{ totalWeight() }} / {{ limit() }}</span>
     @if (overLimit()) {
       <span class="encumbrance-bar__over-flag">
-        ⚠ {{ theme.tone()['evolution.inventory_overweight_label'] }}
+        <app-icon name="avertissement" />
+        {{ theme.tone()['evolution.inventory_overweight_label'] }}
       </span>
     }
   </div>

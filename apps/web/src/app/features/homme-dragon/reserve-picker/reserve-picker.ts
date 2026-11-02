@@ -18,6 +18,7 @@ import {
   type ReserveCatalogs,
   type ReservePlacement,
 } from '@master-jdr/game-rules';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { DetailSurface } from '../../../shared/detail-surface/detail-surface';
@@ -86,7 +87,7 @@ const data = (e: ContentEntryDto) => (e.data ?? {}) as { race?: string; famille?
  */
 @Component({
   selector: 'app-reserve-picker',
-  imports: [DetailSurface],
+  imports: [AppIcon, DetailSurface],
   templateUrl: './reserve-picker.html',
   styleUrl: './reserve-picker.scss',
 })

@@ -199,4 +199,25 @@ describe('FieldEditPencil', () => {
     ) as HTMLInputElement;
     expect(reopenedInput.value).toBe('Lanterne');
   });
+
+  it('lecture : pictogramme modifier ; édition : valider puis fermer, noms des boutons inchangés', async () => {
+    const fixture = await createComponent();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const pencil = el.querySelector('.field-edit-pencil__button') as HTMLButtonElement;
+    expect(pencil.querySelector('app-icon')?.getAttribute('data-icon')).toBe('modifier');
+    expect(pencil.getAttribute('aria-label')).toBe(
+      fillTone(GRIMOIRE_TONE['characters_sheet.field_edit_aria'], { label: "l'objet fétiche" }),
+    );
+
+    pencil.click();
+    fixture.detectChanges();
+
+    const confirm = el.querySelector('.field-edit-pencil__confirm') as HTMLButtonElement;
+    const cancel = el.querySelector('.field-edit-pencil__cancel') as HTMLButtonElement;
+    expect(confirm.querySelector('app-icon')?.getAttribute('data-icon')).toBe('valider');
+    expect(cancel.querySelector('app-icon')?.getAttribute('data-icon')).toBe('fermer');
+    expect(confirm.getAttribute('aria-label')).toBe(GRIMOIRE_TONE['common.valider']);
+    expect(cancel.getAttribute('aria-label')).toBe(GRIMOIRE_TONE['common.annuler']);
+  });
 });

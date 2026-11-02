@@ -10,14 +10,14 @@ import { fileURLToPath } from 'node:url';
  * Cliquet de la migration vers `<app-icon>` (palier 10.7, épic 51).
  *
  * Compte les `<mat-icon` des gabarits (`.html` et gabarits en ligne des `.ts`, specs exclues) et
- * échoue au-delà du plafond (9 après la story 51.5). Chaque story de zone BAISSE le plafond après
+ * échoue au-delà du plafond (4 après la story 51.6). Chaque story de zone BAISSE le plafond après
  * avoir migré sa zone ; aucune ne peut l'élever : à partir de la story 51.1, plus aucun nouveau
  * `<mat-icon>`.
  * La dernière story (51.8) fixe le plafond à zéro et durcit ce test.
  */
 
-/** Plafond mesuré après la story 51.5. À ABAISSER, jamais à relever. */
-const MAT_ICON_CEILING = 9;
+/** Plafond mesuré après la story 51.6. À ABAISSER, jamais à relever. */
+const MAT_ICON_CEILING = 4;
 
 const APP_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 

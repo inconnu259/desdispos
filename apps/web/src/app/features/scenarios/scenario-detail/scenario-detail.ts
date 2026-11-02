@@ -1,15 +1,15 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import type { ScenarioDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ScenarioEditor } from '../scenario-editor/scenario-editor';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 @Component({
   selector: 'app-scenario-detail',
-  imports: [ScenarioEditor, RouterLink, MatButtonModule, MatIconModule],
+  imports: [ScenarioEditor, RouterLink, MatButtonModule, AppIcon],
   templateUrl: './scenario-detail.html',
   styleUrl: './scenario-detail.scss',
 })

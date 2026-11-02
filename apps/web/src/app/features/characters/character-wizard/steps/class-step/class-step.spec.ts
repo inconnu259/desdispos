@@ -275,6 +275,27 @@ describe('ClassStep', () => {
     );
   });
 
+  it('la divulgation de référence affiche déplier replié, puis replier ouvert', async () => {
+    TestBed.configureTestingModule({ imports: [ClassStep] });
+    const fixture = TestBed.createComponent(ClassStep);
+    fixture.componentRef.setInput('classes', CLASSES);
+    fixture.componentRef.setInput('classId', 'chasseur');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const disclosure = () =>
+      fixture.nativeElement.querySelector('.choice-detail__disclosure') as HTMLButtonElement;
+    const icon = () => disclosure().querySelector('app-icon')?.getAttribute('data-icon');
+    expect(icon()).toBe('deplier');
+    disclosure().click();
+    fixture.detectChanges();
+    expect(icon()).toBe('replier');
+    expect(disclosure().textContent).not.toMatch(/[▴▾]/);
+    disclosure().click();
+    fixture.detectChanges();
+    expect(icon()).toBe('deplier');
+  });
+
   it("sélection d'une classe → affiche les occupations et actions en texte de référence pur", async () => {
     TestBed.configureTestingModule({ imports: [ClassStep] });
     const fixture = TestBed.createComponent(ClassStep);

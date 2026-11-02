@@ -173,6 +173,13 @@ describe('ScenarioDetail', () => {
     );
   });
 
+  it('le lien de retour porte le pictogramme retour, décoratif', async () => {
+    const { fixture } = await createComponent(SCENARIO);
+    const link = fixture.nativeElement.querySelector('a') as HTMLAnchorElement;
+    expect(link.querySelector('app-icon')?.getAttribute('data-icon')).toBe('retour');
+    expect(link.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('lien "Retour à la partie" présent quand le scénario a chargé', async () => {
     const { fixture } = await createComponent(SCENARIO);
     expect(fixture.nativeElement.querySelector('a')?.textContent).toContain(

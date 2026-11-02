@@ -5,6 +5,8 @@
   background: var(--mat-sys-surface-container, transparent);
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
+  /* Boutons modifier / supprimer : pictogramme de bouton nommé (20px). */
+  --app-icon-size: 20px;
 }
 
 .inventory-item-row__name {

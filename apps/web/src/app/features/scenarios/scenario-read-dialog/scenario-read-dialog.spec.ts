@@ -456,6 +456,29 @@ describe('ScenarioReadDialog', () => {
       );
     });
 
+    it('Story 51.6 : cadenas-ouvert pour une note partagée, cadenas-ferme pour une privée (deux noms différents)', async () => {
+      const owner = makeCharacterDto({ id: 'char1', userId: 'viewer1' });
+      const notes = [true, false].map((shared, i) => ({
+        id: `n${i}`,
+        characterId: 'char1',
+        text: `Note ${i}`,
+        shared,
+        scenarioId: null,
+        createdAt: '2026-07-01T00:00:00.000Z',
+      }));
+      const { fixture } = await createComponent(
+        { ...BASE, status: 'PASSE' },
+        { characters: [owner], currentUserId: 'viewer1', ownNotes: notes },
+      );
+      const toggles = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('.note-share-toggle'),
+      ) as HTMLButtonElement[];
+      const names = toggles.map((t) => t.querySelector('app-icon')?.getAttribute('data-icon'));
+      expect(names).toEqual(['cadenas-ouvert', 'cadenas-ferme']);
+      expect(toggles.every((t) => t.hasAttribute('aria-label'))).toBe(true);
+      expect(toggles[0].textContent).not.toMatch(/[🔒🔓]/u);
+    });
+
     it('clic sur le cadenas → appelle toggleNoteShare et bascule shared', async () => {
       const owner = makeCharacterDto({ id: 'char1', userId: 'viewer1' });
       const notes = [

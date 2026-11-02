@@ -155,7 +155,8 @@ function makePartie(overrides: Partial<PartieDto> = {}): PartieDto {
 }
 
 function makeToneService(theme: Theme = 'grimoire-emeraude') {
-  return { tone: signal(TONE_MAP[theme]) };
+  // `activeTheme` : `<app-icon>` (icônes « de sens », story 51.3) lit le thème actif.
+  return { tone: signal(TONE_MAP[theme]), activeTheme: signal<Theme>(theme) };
 }
 
 function makeAuthService(userId: string, displayName = 'Test') {
@@ -3985,8 +3986,13 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
       fixture.detectChanges();
     }
   };
-  /** Libellé d'une action du pied de carte, sans la ligature de son icône (`<mat-icon>` en tête). */
-  const label = (node: Element) => (node.textContent ?? '').trim().replace(/^\S+\s+/, '');
+  /** Libellé d'une action du pied de carte. Une `<app-icon>` n'a aucun texte ; seules les actions
+   *  « Quitter » (story 51.4) portent encore une `<mat-icon>`, dont la ligature est écartée. */
+  const label = (node: Element) => {
+    const clone = node.cloneNode(true) as Element;
+    clone.querySelectorAll('mat-icon').forEach((icon) => icon.remove());
+    return (clone.textContent ?? '').trim();
+  };
   const footerButtons = (el: HTMLElement) =>
     Array.from(el.querySelectorAll('mat-card-actions button')).map(label);
 
@@ -7547,5 +7553,154 @@ describe('PartieDetail — annuler une conjonction (Story 42.1)', () => {
     });
     await open(admin.fixture, admin.el, 'a');
     expect(labels()).toEqual([tone['partie.ralliement_event_close_btn']]);
+  });
+});
+
+// ─── Icônes de la page d'une partie : états, actions, ressources (story 51.3) ─────────────────
+
+describe('PartieDetail — icônes du jeu : états, actions et ressources (story 51.3)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const tone = TONE_MAP['grimoire-emeraude'];
+  const iconOf = (node: Element | null | undefined) =>
+    node?.querySelector('app-icon')?.getAttribute('data-icon') ?? null;
+  /** Nom d'icône de chaque action du pied de carte, par libellé (liens « Modifier »/« Visibilité » compris). */
+  const footerIcons = (el: HTMLElement) => {
+    const result: Record<string, string | null> = {};
+    const actions = el.querySelectorAll('mat-card-actions a, mat-card-actions button');
+    for (const node of Array.from(actions)) {
+      const clone = node.cloneNode(true) as Element;
+      clone.querySelectorAll('mat-icon').forEach((icon) => icon.remove());
+      result[(clone.textContent ?? '').trim()] = iconOf(node);
+    }
+    return result;
+  };
+  const groupe = (over: Partial<PartieDto> = {}) =>
+    makePartie({
+      gameSystemId: 'ralliement',
+      kind: 'CAMPAGNE_EPISODIQUE',
+      role: 'admin',
+      ownerId: MJ_ID,
+      ...over,
+    });
+  const soiree = (over: Partial<PartieDto> = {}) => groupe({ kind: 'ONE_SHOT', ...over });
+
+  it('pied de carte du MJ : Modifier, Visibilité, Clore, Supprimer', async () => {
+    const { el } = await createFixture(makePartie({ ownerId: MJ_ID, status: 'EN_COURS' }), MJ_ID);
+    expect(footerIcons(el)).toEqual({
+      [tone['partie.edit_btn']]: 'modifier',
+      [tone['partie.visibility_btn']]: 'cadenas-ferme',
+      [tone['partie.close_btn']]: 'etat-terminee',
+      [tone['partie.delete_btn']]: 'supprimer',
+    });
+  });
+
+  it('pied de carte du MJ, partie terminée : Rouvrir remplace Clore', async () => {
+    const { el } = await createFixture(makePartie({ ownerId: MJ_ID, status: 'TERMINEE' }), MJ_ID);
+    expect(footerIcons(el)).toEqual({
+      [tone['partie.edit_btn']]: 'modifier',
+      [tone['partie.visibility_btn']]: 'cadenas-ferme',
+      [tone['partie.reopen_btn']]: 'rouvrir',
+      [tone['partie.delete_btn']]: 'supprimer',
+    });
+  });
+
+  it.each([
+    ['EN_COURS', 'close_btn', 'etat-terminee'],
+    ['TERMINEE', 'reopen_btn', 'rouvrir'],
+  ] as const)(
+    'pied de carte de l’admin d’un groupe (%s) : Modifier, %s, Supprimer',
+    async (status, key, icon) => {
+      const { el } = await createFixture(groupe({ status }), MJ_ID);
+      const icons = footerIcons(el);
+      expect(icons[tone['partie.edit_btn']]).toBe('modifier');
+      expect(icons[tone[`partie.${key}`]]).toBe(icon);
+      expect(icons[tone['partie.delete_btn']]).toBe('supprimer');
+      // « Quitter l'office » reste à la story 51.4 : une <mat-icon>, pas encore une <app-icon>.
+      expect(icons[tone['partie.ralliement_step_down_btn']]).toBeNull();
+    },
+  );
+
+  it.each([
+    ['EN_COURS', 'close_btn', 'etat-terminee'],
+    ['TERMINEE', 'reopen_btn', 'rouvrir'],
+  ] as const)(
+    'pied de carte de l’hôte d’une soirée (%s) : %s, jamais Supprimer',
+    async (status, key, icon) => {
+      const { el } = await createFixture(soiree({ status }), MJ_ID);
+      const icons = footerIcons(el);
+      expect(icons[tone[`partie.${key}`]]).toBe(icon);
+      expect(icons[tone['partie.delete_btn']]).toBeUndefined();
+      if (status === 'EN_COURS') expect(icons[tone['partie.edit_btn']]).toBe('modifier');
+    },
+  );
+
+  it('bandeaux : « terminée » et « annulée » ont chacune leur icône, à côté du mot', async () => {
+    const closed = await createFixture(makePartie({ ownerId: MJ_ID, status: 'TERMINEE' }), MJ_ID);
+    expect(iconOf(closed.el.querySelector('.closed-banner'))).toBe('etat-terminee');
+    expect(closed.el.querySelector('.closed-banner')?.textContent?.trim()).toBe(
+      tone['partie.status_closed_label'],
+    );
+    TestBed.resetTestingModule();
+
+    const cancelled = await createFixture(soiree({ status: 'ANNULEE' }), MJ_ID);
+    const banner = cancelled.el.querySelector('.closed-banner--cancelled');
+    expect(iconOf(banner)).toBe('etat-annulee');
+    expect(banner?.textContent?.trim()).toBe(
+      tone['partie.ralliement_soiree_status_cancelled_label'],
+    );
+  });
+
+  it('actions du MJ : « Distribuer l’XP » et « Proclamer une annonce »', async () => {
+    const { el } = await createFixture(makePartie({ ownerId: MJ_ID }), MJ_ID);
+    expect(iconOf(el.querySelector('.xp-section button'))).toBe('distribuer-xp');
+    expect(iconOf(el.querySelector('.announcement-section button'))).toBe('proclamer');
+  });
+
+  it('les dix boutons de téléchargement portent la même icône « telecharger »', async () => {
+    const { el } = await createFixture(
+      makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' }),
+      MJ_ID,
+    );
+    const buttons = Array.from(
+      el.querySelectorAll('.reference-sheets__links button, .prep-sheets__links button'),
+    );
+    expect(buttons).toHaveLength(10);
+    expect(buttons.map((b) => iconOf(b))).toEqual(Array(10).fill('telecharger'));
+  });
+
+  it('les deux feuilles repliables ont le chevron « deplier »', async () => {
+    const { el } = await createFixture(
+      makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' }),
+      MJ_ID,
+    );
+    const chevrons = Array.from(el.querySelectorAll('summary app-icon.download-sheet__chevron'));
+    expect(chevrons.map((c) => c.getAttribute('data-icon'))).toEqual(['deplier', 'deplier']);
+  });
+
+  it('avertissement d’homonymie : icône « information »', async () => {
+    const members: PartieMemberDto[] = [
+      {
+        role: 'MEMBER',
+        userId: PLAYER_ID,
+        pseudo: 'Alice',
+        displayName: 'Même Nom',
+        email: 'a@test.com',
+        joinedAt: '',
+      },
+      {
+        role: 'MEMBER',
+        userId: 'other',
+        pseudo: 'Bob',
+        displayName: 'Même Nom',
+        email: 'b@test.com',
+        joinedAt: '',
+      },
+    ];
+    const { el } = await createFixture(makePartie(), PLAYER_ID, {
+      members,
+      displayName: 'Même Nom',
+    });
+    expect(iconOf(el.querySelector('.homonymy-warning'))).toBe('information');
   });
 });

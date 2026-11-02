@@ -17,7 +17,13 @@ describe('ConfirmDialog — variante irréversible (Story 39.4)', () => {
       imports: [ConfirmDialog],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: ThemeToneService, useValue: { tone: signal(TONE_MAP['grimoire-emeraude']) } },
+        {
+          provide: ThemeToneService,
+          useValue: {
+            tone: signal(TONE_MAP['grimoire-emeraude']),
+            activeTheme: signal('grimoire-emeraude'),
+          },
+        },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(ConfirmDialog);
@@ -31,7 +37,7 @@ describe('ConfirmDialog — variante irréversible (Story 39.4)', () => {
     const el = await render({ message: 'Retirer ?', confirmLabel: 'Retirer' });
     const [renoncer, confirmer] = buttons(el);
     expect(confirmer.classList.contains('confirm-destructive')).toBe(false);
-    expect(confirmer.querySelector('mat-icon')).toBeNull();
+    expect(confirmer.querySelector('app-icon')).toBeNull();
     expect(confirmer.textContent).toContain('Retirer');
     expect(renoncer.classList.contains('confirm-destructive')).toBe(false);
   });
@@ -44,11 +50,11 @@ describe('ConfirmDialog — variante irréversible (Story 39.4)', () => {
     });
     const [renoncer, confirmer] = buttons(el);
     expect(confirmer.classList.contains('confirm-destructive')).toBe(true);
-    expect(confirmer.querySelector('mat-icon')?.textContent?.trim()).toBe('warning');
+    expect(confirmer.querySelector('app-icon')?.getAttribute('data-icon')).toBe('avertissement');
     expect(confirmer.textContent).toContain('Quitter et supprimer');
     // « Renoncer » est inchangé : ni rouge, ni pictogramme.
     expect(renoncer.classList.contains('confirm-destructive')).toBe(false);
-    expect(renoncer.querySelector('mat-icon')).toBeNull();
+    expect(renoncer.querySelector('app-icon')).toBeNull();
     expect(renoncer.textContent).toContain(TONE_MAP['grimoire-emeraude']['common.annuler']);
   });
 

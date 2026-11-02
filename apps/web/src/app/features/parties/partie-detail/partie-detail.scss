@@ -51,7 +51,7 @@ mat-tab-group {
   background: var(--mat-sys-surface-variant, #f0f0f0);
   font-size: 0.9rem;
 
-  mat-icon {
+  app-icon {
     flex-shrink: 0;
   }
 }
@@ -68,8 +68,9 @@ mat-tab-group {
   color: var(--mat-sys-on-surface-variant, #666);
   font-size: 0.9rem;
 
-  mat-icon {
+  app-icon {
     flex-shrink: 0;
+    --app-icon-size: 1rem;
   }
 }
 
@@ -179,6 +180,12 @@ mat-tab-group {
   &__btn {
     // Cible tactile ≥ 44px effective même en version compacte (EXPERIENCE.md, Accessibility Floor).
     min-height: 44px;
+
+    // Icônes du jeu (palier 10.7) : 20 px dans un bouton portant un libellé.
+    app-icon {
+      --app-icon-size: 1.25rem;
+      vertical-align: middle;
+    }
   }
 
   // Vérification visuelle réelle (bmad-build, 2026-09-23) : `color="warn"` sur `mat-button` n'a
@@ -272,7 +279,7 @@ mat-tab-group {
     color: var(--mat-sys-on-surface-variant, #666);
     padding: 0.35rem 0;
 
-    // Repli du triangle natif du navigateur -- le chevron (mat-icon ci-dessous) le remplace, tourné
+    // Repli du triangle natif du navigateur -- le chevron (app-icon ci-dessous) le remplace, tourné
     // au clic, cf. .download-sheet[open] plus bas.
     &::-webkit-details-marker {
       display: none;
@@ -283,10 +290,10 @@ mat-tab-group {
   }
 
   &__chevron {
-    font-size: 1rem;
-    width: 1rem;
-    height: 1rem;
-    line-height: 1rem;
+    --app-icon-size: 1rem;
+    // `deplier` pointe vers le bas : refermée la feuille le tourne de -90° (il pointe à droite, comme
+    // avant), ouverte il reprend sa position.
+    transform: rotate(-90deg);
     transition: transform 0.15s ease;
   }
 
@@ -305,7 +312,7 @@ mat-tab-group {
   }
 
   &[open] .download-sheet__chevron {
-    transform: rotate(90deg);
+    transform: none;
   }
 }
 
@@ -324,10 +331,9 @@ mat-tab-group {
   // Cible tactile ≥ 44×44px effective même compacte (EXPERIENCE.md, Accessibility Floor).
   min-height: 44px;
 
-  mat-icon {
-    font-size: 1.1rem;
-    width: 1.1rem;
-    height: 1.1rem;
+  app-icon {
+    --app-icon-size: 1.1rem;
+    vertical-align: middle;
   }
 }
 
@@ -389,7 +395,7 @@ mat-tab-group {
 .closed-banner--cancelled {
   border-left-color: var(--color-unavailable, #e74c3c);
 
-  mat-icon {
+  app-icon {
     color: var(--color-cancelled-text, #f26a5c);
   }
 }

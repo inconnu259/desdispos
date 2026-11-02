@@ -7,7 +7,7 @@
     <div class="detail-body">
       @if (p.status === 'TERMINEE') {
         <p class="closed-banner">
-          <mat-icon aria-hidden="true">flag</mat-icon>
+          <app-icon name="etat-terminee" />
           {{
             theme.tone()[
               isSoiree()
@@ -22,7 +22,7 @@
       @if (p.status === 'ANNULEE') {
         <!-- Story 42.2 : la soirée annulée le dit en toutes lettres, avec un pictogramme (jamais la couleur seule). -->
         <p class="closed-banner closed-banner--cancelled" role="status">
-          <mat-icon aria-hidden="true">event_busy</mat-icon>
+          <app-icon name="etat-annulee" />
           {{ theme.tone()['partie.ralliement_soiree_status_cancelled_label'] }}
         </p>
       }
@@ -154,7 +154,7 @@
                       class="icon-bar__btn"
                       (click)="showXpPanel.set(!showXpPanel())"
                     >
-                      <mat-icon aria-hidden="true">auto_awesome</mat-icon>
+                      <app-icon name="distribuer-xp" />
                       {{ theme.tone()['evolution.xp_distribute_cta'] }}
                     </button>
                   </section>
@@ -169,7 +169,7 @@
                       class="icon-bar__btn"
                       (click)="showAnnouncementForm.set(!showAnnouncementForm())"
                     >
-                      <mat-icon aria-hidden="true">campaign</mat-icon>
+                      <app-icon name="proclamer" />
                       {{ theme.tone()['announcement.publish_cta'] }}
                     </button>
                   </section>
@@ -271,7 +271,7 @@
                 <section class="reference-sheets">
                   <details class="download-sheet">
                     <summary>
-                      <mat-icon aria-hidden="true" class="download-sheet__chevron">chevron_right</mat-icon>
+                      <app-icon name="deplier" class="download-sheet__chevron" />
                       <h4 class="download-sheet__title">{{ theme.tone()['partie.reference_sheets_title'] }}</h4>
                     </summary>
                     <div class="reference-sheets__links">
@@ -282,7 +282,7 @@
                         [disabled]="downloadingReferenceAsset()"
                         (click)="downloadAsset('journal', 'reference')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_journal_cta'] }}
                       </button>
                       <button
@@ -292,7 +292,7 @@
                         [disabled]="downloadingReferenceAsset()"
                         (click)="downloadAsset('carte', 'reference')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_carte_cta'] }}
                       </button>
                     </div>
@@ -310,7 +310,7 @@
                 <section class="prep-sheets">
                   <details class="download-sheet">
                     <summary>
-                      <mat-icon aria-hidden="true" class="download-sheet__chevron">chevron_right</mat-icon>
+                      <app-icon name="deplier" class="download-sheet__chevron" />
                       <h4 class="download-sheet__title">{{ theme.tone()['partie.prep_sheets_title'] }}</h4>
                     </summary>
                     <div class="prep-sheets__links">
@@ -321,7 +321,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('monde', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_monde_cta'] }}
                       </button>
                       <button
@@ -331,7 +331,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('monstre', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_monstre_cta'] }}
                       </button>
                       <button
@@ -341,7 +341,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('ville', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_ville_cta'] }}
                       </button>
                       <button
@@ -351,7 +351,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('objectif-chasse', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_objectif_chasse_cta'] }}
                       </button>
                       <button
@@ -361,7 +361,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('objectif-quete', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_objectif_quete_cta'] }}
                       </button>
                       <button
@@ -371,7 +371,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('objectif-voyage', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_objectif_voyage_cta'] }}
                       </button>
                       <button
@@ -381,7 +381,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('oeuf-de-bataille', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_oeuf_de_bataille_cta'] }}
                       </button>
                       <button
@@ -391,7 +391,7 @@
                         [disabled]="downloadingPrepAsset()"
                         (click)="downloadAsset('structure', 'prep')"
                       >
-                        <mat-icon aria-hidden="true">download</mat-icon>
+                        <app-icon name="telecharger" />
                         {{ theme.tone()['partie.asset_structure_cta'] }}
                       </button>
                     </div>
@@ -606,7 +606,7 @@
 
     @if (homonymousWith() && !homonymyDismissed()) {
       <div class="homonymy-warning" role="alert" aria-live="polite">
-        <mat-icon aria-hidden="true">info</mat-icon>
+        <app-icon name="information" />
         <span>{{
           theme.tone()[isRalliement() ? 'identity.ralliement_homonymy_warning' : 'identity.homonymy_warning']
         }}</span>
@@ -646,22 +646,22 @@
     <mat-card-actions class="icon-bar">
       @if (isMj()) {
         <a mat-button class="icon-bar__btn" [routerLink]="['/parties', p.id, 'edit']">
-          <mat-icon aria-hidden="true">edit</mat-icon> {{ theme.tone()['partie.edit_btn'] }}
+          <app-icon name="modifier" /> {{ theme.tone()['partie.edit_btn'] }}
         </a>
         <a mat-button class="icon-bar__btn" [routerLink]="['/parties', p.id, 'visibility']">
-          <mat-icon aria-hidden="true">lock</mat-icon> {{ theme.tone()['partie.visibility_btn'] }}
+          <app-icon name="cadenas-ferme" /> {{ theme.tone()['partie.visibility_btn'] }}
         </a>
         @if (p.status !== 'TERMINEE') {
           <button mat-button class="icon-bar__btn" (click)="closeGame(p)">
-            <mat-icon aria-hidden="true">flag</mat-icon> {{ theme.tone()['partie.close_btn'] }}
+            <app-icon name="etat-terminee" /> {{ theme.tone()['partie.close_btn'] }}
           </button>
         } @else {
           <button mat-button class="icon-bar__btn" (click)="reopenGame(p)">
-            <mat-icon aria-hidden="true">replay</mat-icon> {{ theme.tone()['partie.reopen_btn'] }}
+            <app-icon name="rouvrir" /> {{ theme.tone()['partie.reopen_btn'] }}
           </button>
         }
         <button mat-button class="icon-bar__btn icon-bar__btn--danger" (click)="confirmDelete(p)">
-          <mat-icon aria-hidden="true">delete</mat-icon> {{ theme.tone()['partie.delete_btn'] }}
+          <app-icon name="supprimer" /> {{ theme.tone()['partie.delete_btn'] }}
         </button>
       } @else if (isRalliement() && p.role === 'admin') {
         <!-- Story 38.2 : l'admin d'un ralliement modifie sa partie (PARTIE_UPDATE) ; la visibilité
@@ -670,7 +670,7 @@
              DELETE, admin seul côté serveur) ; la rencontre unique n'a pas ces actions avant l'epic 41. -->
         @if (!isSoireeCancelled()) {
           <a mat-button class="icon-bar__btn" [routerLink]="['/parties', p.id, 'edit']">
-            <mat-icon aria-hidden="true">edit</mat-icon> {{ theme.tone()['partie.edit_btn'] }}
+            <app-icon name="modifier" /> {{ theme.tone()['partie.edit_btn'] }}
           </a>
         }
         @if (isSoiree() && !isSoireeCancelled()) {
@@ -678,22 +678,22 @@
                « Brûler » : annuler une soirée est l'objet de l'epic 42. -->
           @if (p.status !== 'TERMINEE') {
             <button mat-button class="icon-bar__btn" (click)="closeGame(p)">
-              <mat-icon aria-hidden="true">flag</mat-icon> {{ theme.tone()['partie.close_btn'] }}
+              <app-icon name="etat-terminee" /> {{ theme.tone()['partie.close_btn'] }}
             </button>
           } @else {
             <button mat-button class="icon-bar__btn" (click)="reopenGame(p)">
-              <mat-icon aria-hidden="true">replay</mat-icon> {{ theme.tone()['partie.reopen_btn'] }}
+              <app-icon name="rouvrir" /> {{ theme.tone()['partie.reopen_btn'] }}
             </button>
           }
         }
         @if (isGroup()) {
           @if (p.status !== 'TERMINEE') {
             <button mat-button class="icon-bar__btn" (click)="closeGame(p)">
-              <mat-icon aria-hidden="true">flag</mat-icon> {{ theme.tone()['partie.close_btn'] }}
+              <app-icon name="etat-terminee" /> {{ theme.tone()['partie.close_btn'] }}
             </button>
           } @else {
             <button mat-button class="icon-bar__btn" (click)="reopenGame(p)">
-              <mat-icon aria-hidden="true">replay</mat-icon> {{ theme.tone()['partie.reopen_btn'] }}
+              <app-icon name="rouvrir" /> {{ theme.tone()['partie.reopen_btn'] }}
             </button>
           }
           <button mat-button class="icon-bar__btn" (click)="stepDownFromOffice()">
@@ -701,7 +701,7 @@
             {{ theme.tone()['partie.ralliement_step_down_btn'] }}
           </button>
           <button mat-button class="icon-bar__btn icon-bar__btn--danger" (click)="confirmDelete(p)">
-            <mat-icon aria-hidden="true">delete</mat-icon> {{ theme.tone()['partie.delete_btn'] }}
+            <app-icon name="supprimer" /> {{ theme.tone()['partie.delete_btn'] }}
           </button>
         }
       } @else if (canLeaveGroup()) {

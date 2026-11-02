@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
@@ -15,7 +15,7 @@ export interface ConfirmData {
 
 @Component({
   selector: 'app-confirm-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule],
+  imports: [MatDialogModule, MatButtonModule, AppIcon],
   template: `
     <h2 mat-dialog-title>{{ theme.tone()['parties.confirm_title'] }}</h2>
     <mat-dialog-content>{{ data.message }}</mat-dialog-content>
@@ -27,7 +27,7 @@ export interface ConfirmData {
         [class.confirm-destructive]="data.destructive === true"
       >
         @if (data.destructive) {
-          <mat-icon aria-hidden="true">warning</mat-icon>
+          <app-icon name="avertissement" />
         }
         {{ data.confirmLabel ?? theme.tone()['common.supprimer'] }}
       </button>

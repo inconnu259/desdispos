@@ -46,6 +46,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
   FULL_DAY: 'Journée',
 };
 import { AuthService } from '../../../core/auth/auth.service';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
 import { characterName, findContentEntry } from '../../../core/characters/character.util';
 import { PartiesService } from '../../../core/parties/parties.service';
@@ -107,6 +108,7 @@ const SEARCH_DEBOUNCE_MS = 500;
     MatCardModule,
     MatButtonModule,
     MatIconModule,
+    AppIcon,
     MatFormFieldModule,
     MatInputModule,
     MatListModule,

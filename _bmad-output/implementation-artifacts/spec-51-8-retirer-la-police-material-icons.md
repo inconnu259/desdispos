@@ -79,7 +79,10 @@ Conclusion : aucun module utilisé ne dépend de la police ; le lien `Material+I
 
 **Vérifications** : réintroduction temporaire (lien `Material+Icons` dans `index.html`, `<mat-icon>` et `✓` dans des `.html` isolés, import `MatIconModule` dans un `.ts` isolé) : le garde a échoué en nommant chaque fichier ; tout a été remis en l'état. `ng test --watch=false` : 4677 passent, 2 échecs `calendar-view` (date figée, connus). `pnpm build` : succès, aucune mention de Material Icons dans `dist`, Roboto toujours inliné.
 
-**Recette visuelle** (paires à 16 px, `role-admin` à 14 px) : non faite, réservée à la session ou à l'utilisateur.
+**Recette visuelle du 2026-11-02** (navigateur, 1264 px, fond sombre des trois thèmes ; planche temporaire servie par le serveur de dev, supprimée et `favicon.svg` restauré à l'identique, thème du compte remis sur Atelier). Le jeu de données n'a aucune partie terminée ni annulée : `etat-terminee`, `etat-annulee`, `masquer` et `distribuer-xp` ont été jugés sur une planche à 16 px agrandie 4×, les autres à l'écran (tableau de bord et page Compte en Atelier, tableau de bord en Grimoire). Pas de test à 360 px.
+
+- Lisibles : navigation (3 thèmes), cartes (favori, rôle, signal), barre des listes (`filtres`, `rechercher`, `vue-*`), page Compte en Atelier (`actif`, `jeux`, `ouvrir`, `quitter`, `supprimer`), `menu-affichage`, `vue-compacte`, `actif` / `dispo-partiel` / `dispo-non` / `effacer` (formes distinctes), `quitter-groupe` (3 thèmes), `role-admin` à 14 px (Grimoire clé, Atelier chevrons), Atelier `etat-terminee` (levier) / `etat-annulee` (chaîne rompue), Forêt `etat-terminee` (cairn) / `etat-annulee` (cairn renversé), Atelier `distribuer-xp`.
+- **À signaler à l'utilisateur (dessins non retouchés)** : (1) Grimoire `etat-terminee` / `etat-annulee` : deux livres au cachet, la différence (cachet fêlé) est à peine visible à 16 px, le mot écrit à côté les distingue ; (2) Forêt `masquer` (œil clos sous un rameau) se lit comme un griffonnage et Atelier `masquer` (iris) comme une spirale ; (3) Forêt `role-admin` (couronne de bois) à 14 px est à la limite ; (4) l'icône `quitter` de « Couper la vapeur » (Atelier) est un peu plus haute que la ligne de texte.
 
 ## Spec Change Log
 

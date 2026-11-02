@@ -111,7 +111,9 @@ describe('DeleteAccountDialog (Stories 43.1 et 43.2)', () => {
     const [renoncer, effacer] = buttons(el) as HTMLButtonElement[];
     expect(renoncer.textContent).toContain('Renoncer');
     expect(effacer.classList.contains('confirm-destructive')).toBe(true);
-    expect(effacer.querySelector('mat-icon')?.textContent?.trim()).toBe('warning');
+    expect(effacer.querySelector('app-icon')?.getAttribute('data-icon')).toBe('avertissement');
+    expect(effacer.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(effacer.querySelector('mat-icon')).toBeNull();
     expect(effacer.textContent).toContain('Effacer mon compte');
     expect(effacer.disabled).toBe(true);
   });

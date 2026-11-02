@@ -6,10 +6,10 @@ import { map } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import type { AccountDeletionImpactDto } from '@master-jdr/shared';
 import { AccountService } from '../../../core/account/account.service';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { PasswordReveal } from '../../../shared/password-reveal/password-reveal';
@@ -34,7 +34,7 @@ export interface DeleteAccountDialogData {
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
-    MatIconModule,
+    AppIcon,
     MatInputModule,
     PasswordReveal,
     PasswordToggle,
@@ -92,7 +92,7 @@ export interface DeleteAccountDialogData {
         [disabled]="!hasPassword() || busy()"
         (click)="confirm()"
       >
-        <mat-icon aria-hidden="true">warning</mat-icon>
+        <app-icon name="avertissement" />
         {{ tone()['account.delete_confirm_btn'] }}
       </button>
     </mat-dialog-actions>
@@ -127,6 +127,11 @@ export interface DeleteAccountDialogData {
       --mat-button-filled-hover-state-layer-color: #fff;
       --mat-button-filled-ripple-color: #fff;
       font-weight: 600;
+      /* Pictogramme <app-icon> décoratif avant le texte. */
+      --app-icon-size: 18px;
+    }
+    .confirm-destructive app-icon {
+      margin-right: 0.4rem;
     }
   `,
 })

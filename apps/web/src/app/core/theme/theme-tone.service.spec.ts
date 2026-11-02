@@ -1208,7 +1208,7 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'event_games.playable_many',
     'event_games.announce',
     // Story 49.2 : doublons et provenance — « ×{n} », « aussi chez {noms} », « aussi apporté par {noms} »,
-    // « ⚠ déjà chez {nom} », « par {nom} », « par moi », « moi » (nom du détenteur qui est la personne connectée) :
+    // « déjà chez {nom} » (⚠ rendu par app-icon), « par {nom} », « par moi », « moi » (nom du détenteur qui est la personne connectée) :
     // provenance et mesure, volontairement hors thème ; le message de retrait d'un jeu apporté à des soirées à
     // venir (« Ce jeu est apporté à {n} soirées à venir : il en sera retiré. ») est un texte fonctionnel, neutre.
     // Seuls les deux titres de section, « J'apporte », « Je ne l'apporte plus » et « Votre cabinet est vide » ont une voix
@@ -2573,7 +2573,7 @@ describe('Tones — ce que j’apporte à une soirée (Story 49.2)', () => {
       'event_games.dup_pill': '×{n}',
       'event_games.also_at': 'aussi chez {noms}',
       'event_games.also_brought_by': 'aussi apporté par {noms}',
-      'event_games.already_at': '⚠ déjà chez {nom}',
+      'event_games.already_at': 'déjà chez {nom}',
       'event_games.by_other': 'par {nom}',
       'event_games.by_me': 'par moi',
       'event_games.holder_me': 'moi',

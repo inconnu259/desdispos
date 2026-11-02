@@ -281,7 +281,9 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
 
       await click('.ec__chip');
       expect(chipOf('Zoé').getAttribute('aria-pressed')).toBe('true');
-      expect(chipOf('Zoé').textContent).toContain('✓');
+      expect(chipOf('Zoé').querySelector('app-icon')?.getAttribute('data-icon')).toBe('valider');
+      expect(chipOf('Zoé').textContent).not.toContain('✓');
+      expect(chipOf('Sam').querySelector('app-icon')).toBeNull();
       expect(chipOf('Sam').getAttribute('aria-pressed')).toBe('false');
       chipOf('Max').click();
       await click('.ec__submit');

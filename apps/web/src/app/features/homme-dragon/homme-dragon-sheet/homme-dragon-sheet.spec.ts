@@ -227,6 +227,8 @@ function makeCharacterService(catalog: GameSystemContentDto = CATALOG) {
 
 function makeThemeService() {
   return {
+    // `activeTheme` : `<app-icon>` (icônes « de sens », story 51.7) lit le thème actif.
+    activeTheme: signal('grimoire-emeraude'),
     tone: () => ({
       'homme-dragon.create_cta': 'Créer mon Homme Dragon',
       'homme-dragon.race_label': 'Race',

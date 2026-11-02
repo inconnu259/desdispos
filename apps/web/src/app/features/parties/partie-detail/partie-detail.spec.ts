@@ -7821,11 +7821,12 @@ describe('PartieDetail — icônes du jeu : membres, invitations et gouvernance 
 
     // Soi : badge Admin, puis « Quitter l'office ».
     expect(iconsOf(moi.querySelector('.admin-badge'))).toEqual(['role-admin']);
-    expect(iconsOf(moi)).toEqual(['role-admin', 'quitter-office']);
+    // Story 51.7 : chaque ligne porte en tête l'icône de l'identité du joueur (silhouette, via roleIconName).
+    expect(iconsOf(moi)).toEqual(['role-joueur', 'role-admin', 'quitter-office']);
     // Le second admin : badge seul.
-    expect(iconsOf(seconde)).toEqual(['role-admin']);
+    expect(iconsOf(seconde)).toEqual(['role-joueur', 'role-admin']);
     // Le membre : « Nommer admin » puis « Retirer ».
-    expect(iconsOf(membre)).toEqual(['nommer-admin', 'retirer-membre']);
+    expect(iconsOf(membre)).toEqual(['role-joueur', 'nommer-admin', 'retirer-membre']);
     // Chaque bouton de gestion ne porte qu'une icône, décorative, à côté de son libellé écrit.
     const boutons = rows(el).flatMap((row) =>
       Array.from(row.querySelectorAll('button:not(.library-open)')),

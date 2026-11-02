@@ -1,4 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { AppIcon } from '../../core/icons/app-icon';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { PasswordReveal } from './password-reveal';
 
@@ -11,6 +12,7 @@ import { PasswordReveal } from './password-reveal';
  */
 @Component({
   selector: 'app-password-toggle',
+  imports: [AppIcon],
   templateUrl: './password-toggle.html',
   styleUrl: './password-toggle.scss',
 })

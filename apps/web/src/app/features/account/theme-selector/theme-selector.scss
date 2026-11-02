@@ -53,8 +53,7 @@
   font-weight: 500;
 }
 
+/* « actif » : décoratif, l'état est porté par le bouton (classe .active). */
 .check {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
+  --app-icon-size: 16px;
 }

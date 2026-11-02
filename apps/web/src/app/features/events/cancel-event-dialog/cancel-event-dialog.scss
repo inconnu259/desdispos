@@ -22,6 +22,8 @@
    texte sur le fond primaire du thème (jamais du blanc), cible de 44 px. */
 .ced__confirm {
   min-height: 44px;
+  /* Pictogramme <app-icon> décoratif avant le texte. */
+  --app-icon-size: 18px;
   --mat-button-filled-container-color: var(--color-unavailable, #e74c3c);
   --mat-button-filled-label-text-color: var(--jdr-bg, #0d0a14);
   --mat-button-filled-disabled-container-color: color-mix(
@@ -29,4 +31,8 @@
     var(--color-unavailable, #e74c3c) 40%,
     transparent
   );
+
+  app-icon {
+    margin-right: 0.4rem;
+  }
 }

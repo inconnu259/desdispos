@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { AccountService } from '../../../core/account/account.service';
 import type { Theme } from '../../../core/theme/tones';
 
 @Component({
   selector: 'app-theme-selector',
-  imports: [MatIconModule],
+  imports: [AppIcon],
   templateUrl: './theme-selector.html',
   styleUrl: './theme-selector.scss',
 })

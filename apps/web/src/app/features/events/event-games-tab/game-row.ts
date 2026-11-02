@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import type { BoardGameDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { fitsHeadcount, formatBoardGameMeasures } from '../../board-games/board-game-measures';
@@ -22,7 +23,7 @@ import { EnvyToggle, type EnvyView } from './envy-toggle';
  */
 @Component({
   selector: 'app-game-row',
-  imports: [EnvyToggle],
+  imports: [AppIcon, EnvyToggle],
   template: `
     <div class="gr">
       @if (menuLabel() || envy()) {
@@ -48,7 +49,7 @@ import { EnvyToggle, type EnvyView } from './envy-toggle';
                 [attr.aria-label]="label"
                 (click)="onMenu($event)"
               >
-                <span aria-hidden="true">&#8942;</span>
+                <app-icon name="menu-actions" />
               </button>
             }
           </span>
@@ -80,7 +81,9 @@ import { EnvyToggle, type EnvyView } from './envy-toggle';
                 <span class="gr__todo">{{ text }}</span>
               }
               @if (warnText(); as text) {
-                <span class="gr__todo gr__warn">{{ text }}</span>
+                <span class="gr__todo gr__warn">
+                  <app-icon class="gr__warn-icon" name="avertissement" />{{ text }}
+                </span>
               }
             </span>
           }
@@ -150,7 +153,11 @@ import { EnvyToggle, type EnvyView } from './envy-toggle';
       background: transparent;
       color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
       font: inherit;
-      font-size: 1.25rem;
+      /* Pictogramme <app-icon> « menu-actions » : la cible reste de 44 px, l'icône de 20 px. */
+      --app-icon-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       line-height: 1;
       cursor: pointer;
 
@@ -215,6 +222,17 @@ import { EnvyToggle, type EnvyView } from './envy-toggle';
     .gr__todo {
       color: var(--jdr-status-todo, #f0a030);
       font-weight: 600;
+    }
+
+    /* Avertissement : pictogramme <app-icon> décoratif (14 px) avant le texte. */
+    .gr__warn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .gr__warn-icon {
+      --app-icon-size: 14px;
     }
 
     .gr__action {

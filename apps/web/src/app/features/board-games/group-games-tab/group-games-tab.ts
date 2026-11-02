@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { GroupBoardGameDto, UserLibraryOwnerDto } from '@master-jdr/shared';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { formatBoardGameCount, formatBoardGameMeasures } from '../board-game-measures';
@@ -41,7 +42,7 @@ interface RowView {
  */
 @Component({
   selector: 'app-group-games-tab',
-  imports: [LibrarySheet],
+  imports: [AppIcon, LibrarySheet],
   templateUrl: './group-games-tab.html',
   styleUrl: './group-games-tab.scss',
 })

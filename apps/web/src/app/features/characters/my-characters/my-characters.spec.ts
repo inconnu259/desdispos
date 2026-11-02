@@ -128,7 +128,13 @@ async function createFixture(
       provideAnimationsAsync(),
       { provide: CharacterService, useValue: characterService },
       { provide: HommeDragonService, useValue: hommeDragonSvc },
-      { provide: ThemeToneService, useValue: { tone: signal(TONE_MAP['grimoire-emeraude']) } },
+      {
+        provide: ThemeToneService,
+        useValue: {
+          tone: signal(TONE_MAP['grimoire-emeraude']),
+          activeTheme: signal('grimoire-emeraude'),
+        },
+      },
       { provide: AuthService, useValue: authSvc },
       { provide: AccountService, useValue: accountSvc },
       { provide: PartySignalsService, useValue: partySignalsSvc },

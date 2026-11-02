@@ -122,8 +122,13 @@
 }
 
 .ec__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 44px;
   padding: 6px 14px;
+  /* Pictogramme <app-icon> « valider » de la puce réservée (décoratif). */
+  --app-icon-size: 16px;
   border: 1px solid var(--mat-sys-outline);
   border-radius: 999px;
   background: transparent;

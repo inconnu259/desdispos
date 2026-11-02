@@ -44,6 +44,21 @@ describe('ThemeSelector', () => {
     expect(active?.querySelector('.check')).not.toBeNull();
   });
 
+  it('story 51.7 : « actif » sur le seul thème actif (jamais « valider »), décoratif, état porté par le bouton', async () => {
+    const { el } = await createFixture(makeThemeSvc('foret-ancienne'));
+    const options = Array.from(el.querySelectorAll('.theme-option'));
+    const icons = options.map(
+      (o) => o.querySelector('app-icon')?.getAttribute('data-icon') ?? null,
+    );
+    expect(icons.filter((i) => i !== null)).toEqual(['actif']);
+    expect(options.filter((o) => o.querySelector('app-icon'))).toEqual([
+      options.find((o) => o.classList.contains('active')),
+    ]);
+    expect(el.querySelector('[data-icon="valider"]')).toBeNull();
+    expect(el.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(el.querySelector('mat-icon')).toBeNull();
+  });
+
   it('sélectionner un thème appelle themeSvc.setTheme() ET accountSvc.setTheme() avec la même valeur', async () => {
     const themeSvc = makeThemeSvc('grimoire-emeraude');
     const accountSvc = { setTheme: vi.fn().mockResolvedValue({}) };

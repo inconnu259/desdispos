@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MatDialog } from '@angular/material/dialog';
@@ -68,6 +69,8 @@ const fakePoll: SessionPollDto = {
 
 function makeThemeService() {
   return {
+    // `activeTheme` : `<app-icon>` (icônes « de sens », story 51.7) lit le thème actif.
+    activeTheme: signal('grimoire-emeraude'),
     tone: () => ({
       'poll.status_title': 'Vote en cours',
       'cta.choose_date': 'Sceller ce créneau',

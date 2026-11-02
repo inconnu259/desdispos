@@ -9,8 +9,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
-import { MatIconModule } from '@angular/material/icon';
 import { CALENDAR_LAYER_KEYS, type CalendarLayerKey } from '@master-jdr/shared';
+import { AppIcon } from '../../core/icons/app-icon';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountService } from '../../core/account/account.service';
 import { BoardGamesService } from '../../core/board-games/board-games.service';
@@ -65,7 +65,7 @@ const CALENDAR_INTENTS: readonly CalendarIntent[] = [
     MatInputModule,
     MatButtonModule,
     MatCheckboxModule,
-    MatIconModule,
+    AppIcon,
     ThemeSelector,
     FieldEditPencil,
     PasswordReveal,

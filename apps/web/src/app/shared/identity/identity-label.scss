@@ -27,10 +27,9 @@
   gap: 0.3em;
 }
 
+/* Pictogramme <app-icon> de rôle, décoratif (le nom accessible est l'aria-label du conteneur). */
 .identity-label__icon {
-  width: 1em;
-  height: 1em;
-  flex: none;
+  --app-icon-size: 16px;
 }
 
 .identity-label__pseudo {

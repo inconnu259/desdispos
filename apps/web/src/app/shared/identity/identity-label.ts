@@ -1,4 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { AppIcon } from '../../core/icons/app-icon';
+import { roleIconName } from '../../core/icons/role-icon-name';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 
 type IdentityLabelMode = 'joint' | 'single-character' | 'single-player' | 'empty';
@@ -6,11 +8,16 @@ type IdentityLabelMode = 'joint' | 'single-character' | 'single-player' | 'empty
 @Component({
   selector: 'app-identity-label',
   standalone: true,
-  imports: [],
+  imports: [AppIcon],
   templateUrl: './identity-label.html',
   styleUrl: './identity-label.scss',
 })
 export class IdentityLabel {
+  /** Écu (personnage seul) et silhouette (joueur seul) : les icônes de rôle `mj` / `player`, via
+   *  la seule correspondance rôle -> icône de l'application. */
+  protected readonly characterIcon = roleIconName('mj');
+  protected readonly playerIcon = roleIconName('player');
+
   readonly characterName = input<string | null>(null);
   readonly playerName = input<string | null>(null);
   /** Pseudo affiché en complément du nom affiché en cas d'homonymie (AC3) — mode `single-player`

@@ -587,6 +587,25 @@ describe('PartieForm', () => {
         expect(chipTexts(fixture.nativeElement)).toEqual(['Retirer', 'Changer']);
       });
 
+      it('story 51.7 : « Changer » porte l’icône « modifier » (décorative), « Retirer » aucune, plus de <svg> dans les puces', async () => {
+        const { fixture } = await createComponent(null);
+        const root = fixture.nativeElement as HTMLElement;
+        pickOnInput(root, validFile());
+        await vi.waitFor(() => expect(chipTexts(root)).toEqual(['Retirer', 'Changer']));
+        fixture.detectChanges();
+
+        const changer = root.querySelector('label.cover-chip')!;
+        expect(changer.querySelector('app-icon')?.getAttribute('data-icon')).toBe('modifier');
+        expect(changer.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(root.querySelector('button.cover-chip app-icon')).toBeNull();
+        // Les seuls <svg> des puces sont ceux d'<app-icon> : plus de dessin en ligne.
+        const chips = root.querySelector('.cover-chips')!;
+        expect(chips.querySelectorAll('svg')).toHaveLength(
+          chips.querySelectorAll('app-icon').length,
+        );
+        expect(chips.querySelector('svg.cover-chip__icon')).toBeNull();
+      });
+
       it('câblage (change) — édition : le champ fichier appelle setCoverImage avec l’id de la partie', async () => {
         const { fixture, partiesSvc } = await createComponent('p1');
         const file = validFile();

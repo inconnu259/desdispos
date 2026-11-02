@@ -15,6 +15,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
+import { AppIcon } from '../../core/icons/app-icon';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import type { DetailRow } from './detail-surface-host';
 
@@ -47,7 +48,7 @@ import type { DetailRow } from './detail-surface-host';
 @Component({
   selector: 'app-detail-surface',
   standalone: true,
-  imports: [CdkTrapFocus],
+  imports: [CdkTrapFocus, AppIcon],
   templateUrl: './detail-surface.html',
   styleUrl: './detail-surface.scss',
 })

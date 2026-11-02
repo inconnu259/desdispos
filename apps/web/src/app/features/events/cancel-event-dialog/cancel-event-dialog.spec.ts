@@ -50,7 +50,10 @@ describe('CancelEventDialog — confirmation « Votre accord » rouge (Story 42.
     expect(text('.ced__cancel')).toBe('Renoncer');
     // Le mot accompagne la couleur et le pictogramme (jamais la couleur seule).
     expect(text('.ced__confirm')).toContain('Annuler la conjonction');
-    expect(el.querySelector('.ced__confirm mat-icon')?.getAttribute('aria-hidden')).toBe('true');
+    const icon = el.querySelector('.ced__confirm app-icon');
+    expect(icon?.getAttribute('data-icon')).toBe('avertissement');
+    expect(icon?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(el.querySelector('.ced__confirm mat-icon')).toBeNull();
     expect(el.querySelector('.ced__error')).toBeNull();
   });
 

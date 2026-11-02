@@ -219,10 +219,9 @@ mat-form-field {
   }
 }
 
+// Pictogramme <app-icon> « modifier », décoratif (la puce est nommée par son texte).
 .cover-chip__icon {
-  width: 16px;
-  height: 16px;
-  flex: none;
+  --app-icon-size: 16px;
 }
 
 // Champ fichier natif masqué SOUS la puce, mais jamais retiré de l'arbre : Tab l'atteint.

@@ -407,6 +407,7 @@ describe('BoardGamesPage (Story 48.1)', () => {
       await setup([AZUL, SKULL]);
 
       expect(editButton('Azul')?.getAttribute('type')).toBe('button');
+      expect(editButton('Azul')?.querySelector('app-icon[data-icon="modifier"]')).not.toBeNull();
       expect(editButton('Skull')).not.toBeNull();
       await openEdit('Azul');
 

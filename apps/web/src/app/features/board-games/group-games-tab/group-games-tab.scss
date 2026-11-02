@@ -68,6 +68,8 @@
   color: inherit;
   font: inherit;
   font-size: 0.8125rem;
+  /* Pictogramme <app-icon> « effacer » de la puce active (décoratif). */
+  --app-icon-size: 14px;
   cursor: pointer;
 
   &:focus-visible {
@@ -76,7 +78,7 @@
   }
 }
 
-/* Puce active : fond accent-1 à 18 % et ✕ — l'état est aussi dit par `aria-pressed` et le pictogramme. */
+/* Puce active : fond accent-1 à 18 % et pictogramme « effacer » — l'état est aussi dit par `aria-pressed`. */
 .ggt__chip--on {
   border-color: var(--jdr-accent-1, var(--mat-sys-primary));
   background: color-mix(in srgb, var(--jdr-accent-1, var(--mat-sys-primary)) 18%, transparent);

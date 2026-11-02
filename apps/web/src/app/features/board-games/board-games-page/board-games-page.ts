@@ -18,6 +18,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import type { BoardGameDto, CreateBoardGameInput } from '@master-jdr/shared';
 import { AuthService } from '../../../core/auth/auth.service';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';
 import { RealtimeService, userTopic } from '../../../core/realtime/realtime.service';
@@ -139,7 +140,7 @@ class EntryFields {
  */
 @Component({
   selector: 'app-board-games-page',
-  imports: [NgTemplateOutlet],
+  imports: [AppIcon, NgTemplateOutlet],
   templateUrl: './board-games-page.html',
   styleUrl: './board-games-page.scss',
 })

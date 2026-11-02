@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, model } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 
@@ -15,6 +16,7 @@ import { fillTone } from '../../../core/theme/tone-format';
  */
 @Component({
   selector: 'app-games-summary',
+  imports: [AppIcon],
   template: `
     <div class="gsum">
       <p class="gsum__line">{{ line() }}</p>
@@ -29,7 +31,7 @@ import { fillTone } from '../../../core/theme/tone-format';
           >
             {{ filterLabel() }}
             @if (fitOnly()) {
-              <span aria-hidden="true">✕</span>
+              <app-icon name="effacer" />
             }
           </button>
           <button
@@ -41,7 +43,7 @@ import { fillTone } from '../../../core/theme/tone-format';
           >
             {{ sortLabel() }}
             @if (sortEnvy()) {
-              <span aria-hidden="true">✕</span>
+              <app-icon name="effacer" />
             }
           </button>
         </div>
@@ -88,6 +90,8 @@ import { fillTone } from '../../../core/theme/tone-format';
       color: inherit;
       font: inherit;
       font-size: 0.8125rem;
+      /* Pictogramme <app-icon> « effacer » de la puce active (décoratif). */
+      --app-icon-size: 14px;
       cursor: pointer;
 
       &:focus-visible {

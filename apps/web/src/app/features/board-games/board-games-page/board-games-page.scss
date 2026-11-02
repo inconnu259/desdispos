@@ -235,9 +235,12 @@
     min-width: 0;
   }
 
-  /* ✎ : cible de 44 px. */
+  /* Crayon (<app-icon> « modifier », décoratif) : cible de 44 px. */
   &__edit {
     flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 44px;
     height: 44px;
     border: 0;
@@ -245,7 +248,7 @@
     background: transparent;
     color: var(--mat-sys-on-surface-variant, #666);
     font: inherit;
-    font-size: 1.1rem;
+    --app-icon-size: 20px;
     cursor: pointer;
 
     &:hover {

@@ -395,7 +395,7 @@ export const grimoireEmeraude = {
   'event_games.dup_pill': '×{n}',
   'event_games.also_at': 'aussi chez {noms}',
   'event_games.also_brought_by': 'aussi apporté par {noms}',
-  'event_games.already_at': '⚠ déjà chez {nom}',
+  'event_games.already_at': 'déjà chez {nom}',
   'event_games.by_other': 'par {nom}',
   'event_games.by_me': 'par moi',
   'event_games.holder_me': 'moi',

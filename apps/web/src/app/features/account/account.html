@@ -38,7 +38,7 @@
           "
           (click)="startEmailEdit()"
         >
-          ✎
+          <app-icon name="modifier" />
         </button>
       </span>
     } @else {
@@ -105,11 +105,12 @@
        calendrier » (ordre de la planche), donc avant la zone sensible. Le décompte n'apparaît qu'une
        fois lu ; aucun texte n'incite à la remplir. -->
   <a class="board-games-row" routerLink="/profile/board-games">
+    <app-icon class="board-games-row__icon" name="jeux" />
     <span class="board-games-row__text">
       <span class="board-games-row__title">{{ boardGamesRowTitle() }}</span>
       <span class="board-games-row__visibility">{{ theme.tone()['board_games.visibility'] }}</span>
     </span>
-    <span class="board-games-row__chevron" aria-hidden="true">›</span>
+    <app-icon class="board-games-row__chevron" name="ouvrir" />
   </a>
 
   <div class="readonly-field">
@@ -169,7 +170,8 @@
   </div>
 
   <div class="actions actions--start logout-row">
-    <button mat-stroked-button type="button" (click)="logout()">
+    <button mat-stroked-button type="button" class="logout-btn" (click)="logout()">
+      <app-icon name="quitter" />
       {{ theme.tone()['nav.logout'] }}
     </button>
   </div>
@@ -188,7 +190,7 @@
         [disabled]="deleteLoading()"
         (click)="openDeleteAccount()"
       >
-        <mat-icon aria-hidden="true">delete</mat-icon>
+        <app-icon name="supprimer" />
         {{ theme.tone()['account.delete_pill'] }}
       </button>
     </div>

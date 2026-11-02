@@ -1009,7 +1009,8 @@ describe('Account — zone sensible (Story 43.1)', () => {
     expect(zone.textContent).toContain('Zone sensible');
     expect(zone.textContent).toContain(TONE_MAP['grimoire-emeraude']['account.danger_explain']);
     expect(pill(el).textContent).toContain('Effacer mon compte');
-    expect(pill(el).querySelector('mat-icon')?.textContent?.trim()).toBe('delete');
+    expect(pill(el).querySelector('app-icon')?.getAttribute('data-icon')).toBe('supprimer');
+    expect(pill(el).querySelector('mat-icon')).toBeNull();
     const logout = el.querySelector('.logout-row')!;
     expect(logout.compareDocumentPosition(zone) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -1105,7 +1106,10 @@ describe('Account — ligne de la Ludothèque (Story 48.1)', () => {
     expect(row(el).querySelector('.board-games-row__visibility')?.textContent?.trim()).toBe(
       'Visible par les membres de vos groupes et les invités de vos conjonctions.',
     );
-    expect(row(el).querySelector('.board-games-row__chevron')?.textContent?.trim()).toBe('›');
+    expect(row(el).querySelector('.board-games-row__chevron')?.getAttribute('data-icon')).toBe(
+      'ouvrir',
+    );
+    expect(row(el).textContent).not.toContain('›');
     expect(row(el).getAttribute('href')).toBe('/profile/board-games');
   });
 
@@ -1141,5 +1145,53 @@ describe('Account — ligne de la Ludothèque (Story 48.1)', () => {
       'Mon cabinet de reliques',
     );
     expect(row(el).getAttribute('href')).toBe('/profile/board-games');
+  });
+
+  it('story 51.7 : « jeux » en premier (suit le thème), « ouvrir » en dernier, tous deux décoratifs', async () => {
+    const { fixture } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+    const icons = Array.from(row(el).querySelectorAll('app-icon'));
+
+    expect(icons.map((icon) => icon.getAttribute('data-icon'))).toEqual(['jeux', 'ouvrir']);
+    expect(row(el).firstElementChild).toBe(icons[0]);
+    expect(row(el).lastElementChild).toBe(icons[1]);
+    for (const icon of icons) {
+      expect(icon.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    }
+
+    // « jeux » est une icône de sens : son dessin change avec le thème, « ouvrir » (utilitaire) non.
+    const drawing = (icon: Element) => icon.querySelector('svg')?.innerHTML;
+    const jeuxGrimoire = drawing(icons[0]);
+    const ouvrirGrimoire = drawing(icons[1]);
+    (
+      TestBed.inject(ThemeToneService) as unknown as { activeTheme: { set(t: string): void } }
+    ).activeTheme.set('foret-ancienne');
+    fixture.detectChanges();
+    expect(drawing(icons[0])).not.toBe(jeuxGrimoire);
+    expect(drawing(icons[1])).toBe(ouvrirGrimoire);
+  });
+});
+
+describe('Account — pictogrammes (story 51.7)', () => {
+  it('crayon de l’e-mail : « modifier », nom accessible conservé ; « Fermer le grimoire » porte « quitter » avant son texte', async () => {
+    const { fixture } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const pencil = Array.from(
+      el.querySelectorAll<HTMLButtonElement>('.field-edit-pencil__button'),
+    ).find((b) => b.getAttribute('aria-label')?.includes('Sceau de correspondance'))!;
+    expect(pencil.querySelector('app-icon')?.getAttribute('data-icon')).toBe('modifier');
+    expect(pencil.textContent).not.toContain('✎');
+    expect(pencil.getAttribute('aria-label')).toContain('Sceau de correspondance');
+
+    const logout = el.querySelector<HTMLButtonElement>('.logout-btn')!;
+    expect(logout.querySelector('app-icon')?.getAttribute('data-icon')).toBe('quitter');
+    // L'icône précède le texte du bouton.
+    expect(logout.querySelector('app-icon')!.nextSibling?.textContent?.trim()).toBe(
+      'Fermer le grimoire',
+    );
+    expect(logout.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(logout.textContent).toContain('Fermer le grimoire');
+    expect(el.querySelector('mat-icon')).toBeNull();
   });
 });

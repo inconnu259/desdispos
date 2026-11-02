@@ -197,9 +197,13 @@
   // Cible tactile de 44px (Story 33.6), pour toutes les surfaces.
   min-width: 44px;
   min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
-  font-size: 1.1rem;
+  // Pictogramme <app-icon> « fermer » : bouton nommé (aria-label), icône décorative de 20 px.
+  --app-icon-size: 20px;
   line-height: 1;
   cursor: pointer;
   color: var(--mat-sys-on-surface);
@@ -270,4 +274,22 @@
   color: var(--mat-sys-primary);
   cursor: pointer;
   text-align: left;
+  gap: 0.35rem;
+  // Pictogramme <app-icon> « déplier » : décoratif, avant le texte.
+  --app-icon-size: 16px;
+}
+
+// « déplier » pointe vers le bas (ouvert) ; replié, il est tourné de −90° (vers la droite).
+.detail-surface-disclosure__icon {
+  transition: rotate 0.15s ease;
+}
+
+.detail-surface-disclosure__icon--closed {
+  rotate: -90deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-surface-disclosure__icon {
+    transition: none;
+  }
 }

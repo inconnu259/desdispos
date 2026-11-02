@@ -48,7 +48,7 @@ describe('GroupGamesTab (Story 50.1)', () => {
     Array.from(el().querySelectorAll('.ggt__name')).map((n) => n.textContent?.trim() ?? '');
   const chip = (label: string): HTMLButtonElement =>
     Array.from(el().querySelectorAll<HTMLButtonElement>('.ggt__chip')).find(
-      (b) => b.textContent?.replace('✕', '').trim() === label,
+      (b) => b.textContent?.trim() === label,
     ) as HTMLButtonElement;
 
   async function settle(): Promise<void> {
@@ -225,6 +225,9 @@ describe('GroupGamesTab (Story 50.1)', () => {
     chip('4').click();
     await settle();
     expect(chip('4').getAttribute('aria-pressed')).toBe('true');
+    // Story 51.7 : seule la puce active porte l'icône « effacer ».
+    expect(chip('4').querySelector('app-icon[data-icon="effacer"]')).not.toBeNull();
+    for (const other of ['2', '6', '8+']) expect(chip(other).querySelector('app-icon')).toBeNull();
     expect(rowNames()).toEqual(['Azul', 'Skull']);
 
     chip('8+').click();

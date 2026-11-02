@@ -10,6 +10,7 @@ import type {
   EventSlot,
   PartieMemberDto,
 } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { SLOT_LABELS } from '../../calendar/agenda-badge.utils';
@@ -66,7 +67,14 @@ let nextUid = 0;
  */
 @Component({
   selector: 'app-event-form',
-  imports: [DurationStepper, FormsModule, MatButtonToggleModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    AppIcon,
+    DurationStepper,
+    FormsModule,
+    MatButtonToggleModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
   templateUrl: './event-form.html',
   styleUrl: './event-form.scss',
 })

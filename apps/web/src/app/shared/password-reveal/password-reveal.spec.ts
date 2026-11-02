@@ -136,6 +136,19 @@ describe('PasswordReveal + PasswordToggle (Story 34.2)', () => {
     expect(el.querySelector('app-password-toggle svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('story 51.7 : masqué = « oeil », révélé = « oeil-barre », aria-pressed suit l’état', () => {
+    const { fixture, el, toggles } = setup();
+    const iconName = () => toggles()[0].querySelector('app-icon')?.getAttribute('data-icon');
+    expect(iconName()).toBe('oeil');
+    expect(toggles()[0].getAttribute('aria-pressed')).toBe('false');
+
+    toggles()[0].click();
+    fixture.detectChanges();
+    expect(iconName()).toBe('oeil-barre');
+    expect(toggles()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(el.querySelector('app-password-toggle .ic')).toBeNull();
+  });
+
   it('le bouton est de type button et ne soumet jamais le formulaire', () => {
     const { fixture, toggles } = setup();
     expect(toggles()[0].type).toBe('button');

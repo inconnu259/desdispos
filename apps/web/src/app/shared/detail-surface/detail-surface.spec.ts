@@ -125,6 +125,26 @@ describe('DetailSurface (Story 31.2)', () => {
       expect(el.querySelector('.detail-surface-narrative')).toBeNull();
     });
 
+    it('story 51.7 : divulgation = icône « déplier » (tournée −90° repliée), bouton de fermeture = « fermer »', async () => {
+      const { fixture } = await createHost(false, structured);
+      const el: HTMLElement = fixture.nativeElement;
+      const btn = el.querySelector<HTMLButtonElement>('.detail-surface-disclosure')!;
+      const icon = () => btn.querySelector('app-icon')!;
+
+      expect(icon().getAttribute('data-icon')).toBe('deplier');
+      expect(icon().classList.contains('detail-surface-disclosure__icon--closed')).toBe(true);
+      expect(btn.textContent).not.toMatch(/[▾▸]/);
+      btn.click();
+      fixture.detectChanges();
+      expect(icon().getAttribute('data-icon')).toBe('deplier');
+      expect(icon().classList.contains('detail-surface-disclosure__icon--closed')).toBe(false);
+
+      const close = el.querySelector('.detail-surface-close')!;
+      expect(close.querySelector('app-icon')?.getAttribute('data-icon')).toBe('fermer');
+      expect(close.textContent).not.toContain('✕');
+      expect(close.getAttribute('aria-label')).toBeTruthy();
+    });
+
     it('AC9 — DESKTOP : le récit est déployé, sans divulgation', async () => {
       const { fixture } = await createHost(true, structured);
       const el: HTMLElement = fixture.nativeElement;

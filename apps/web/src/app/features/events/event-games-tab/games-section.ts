@@ -1,4 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { formatBoardGameCount } from '../../board-games/board-game-measures';
@@ -15,6 +16,7 @@ let nextUid = 0;
  */
 @Component({
   selector: 'app-games-section',
+  imports: [AppIcon],
   template: `
     <section class="gs">
       <h3 class="gs__heading">
@@ -28,7 +30,7 @@ let nextUid = 0;
         >
           <span class="gs__title">{{ title() }}</span>
           <span class="gs__count">{{ countText() }}</span>
-          <span class="gs__chevron" aria-hidden="true">{{ collapsed() ? '▸' : '▾' }}</span>
+          <app-icon class="gs__chevron" [class.gs__chevron--closed]="collapsed()" name="deplier" />
         </button>
       </h3>
       @if (note(); as text) {
@@ -80,9 +82,22 @@ let nextUid = 0;
       color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
     }
 
+    /* Pictogramme <app-icon> « déplier » (16 px) : vers le bas déplié, tourné de −90° replié. */
     .gs__chevron {
+      --app-icon-size: 16px;
       margin-left: auto;
       color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+      transition: rotate 0.15s ease;
+    }
+
+    .gs__chevron--closed {
+      rotate: -90deg;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gs__chevron {
+        transition: none;
+      }
     }
 
     .gs__note {

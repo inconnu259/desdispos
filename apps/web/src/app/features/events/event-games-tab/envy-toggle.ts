@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 
@@ -25,6 +26,7 @@ export interface EnvyView {
  */
 @Component({
   selector: 'app-envy-toggle',
+  imports: [AppIcon],
   template: `
     <span class="et">
       @if (envy().canToggle) {
@@ -35,9 +37,9 @@ export interface EnvyView {
           [attr.aria-label]="heartLabel()"
           (click)="heartTouch.emit()"
         >
-          <span class="et__pill" [class.et__pill--on]="envy().mine" aria-hidden="true"
-            >&#9829;</span
-          >
+          <span class="et__pill" [class.et__pill--on]="envy().mine" aria-hidden="true">
+            <app-icon name="envie" />
+          </span>
         </button>
         @if (envy().count > 0) {
           <button
@@ -62,7 +64,7 @@ export interface EnvyView {
           [attr.aria-label]="countLabel()"
           (click)="onNames($event)"
         >
-          <span aria-hidden="true">&#9829;</span> {{ envy().count }}
+          <app-icon class="et__solo-icon" name="envie" /> {{ envy().count }}
         </button>
       }
     </span>
@@ -109,7 +111,8 @@ export interface EnvyView {
       height: 28px;
       border: 1px solid var(--mat-sys-outline, currentColor);
       border-radius: 999px;
-      font-size: 14px;
+      /* Pictogramme <app-icon> « envie » : sa taille passe par la variable, plus par font-size. */
+      --app-icon-size: 16px;
       line-height: 1;
     }
 
@@ -138,6 +141,10 @@ export interface EnvyView {
     .et__count--solo {
       gap: 3px;
       padding: 0 6px;
+    }
+
+    .et__solo-icon {
+      --app-icon-size: 16px;
     }
 
     .et__count--on {

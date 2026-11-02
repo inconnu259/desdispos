@@ -312,7 +312,7 @@
                 (click)="toggleReserved(m.userId)"
               >
                 @if (isReserved(m.userId)) {
-                  <span aria-hidden="true">✓ </span>
+                  <app-icon name="valider" />
                 }{{ m.displayName }}
               </button>
             </li>

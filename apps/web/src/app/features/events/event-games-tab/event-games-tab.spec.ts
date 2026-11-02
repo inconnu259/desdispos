@@ -151,7 +151,10 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
         { provide: EventsApiService, useValue: api },
         { provide: PartiesService, useValue: { changed } },
         { provide: BoardGamesService, useValue: { list: library } },
-        { provide: ThemeToneService, useValue: { tone: () => TONE_MAP[activeTheme()] } },
+        {
+          provide: ThemeToneService,
+          useValue: { tone: () => TONE_MAP[activeTheme()], activeTheme },
+        },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Host);
@@ -257,12 +260,14 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
       );
       await settle();
       expect(chip().textContent).toContain('Jouables à 4');
+      expect(chip().querySelector('app-icon')).toBeNull();
       expect(chip().getAttribute('aria-pressed')).toBe('false');
       expect(rowNames()).toHaveLength(3);
 
       chip().click();
       await settle();
       expect(chip().getAttribute('aria-pressed')).toBe('true');
+      expect(chip().querySelector('app-icon[data-icon="effacer"]')).not.toBeNull();
       expect(rowNames()).toEqual(['Azul']);
 
       chip().click();
@@ -294,6 +299,21 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
       expect(header().textContent).toContain('· 2');
       expect(el().querySelector<HTMLElement>('.gs__body')!.hidden).toBe(true);
       expect(JSON.parse(localStorage.getItem(LS_KEY) ?? 'null')).toEqual(['host']);
+    });
+
+    it('story 51.7 : le chevron est l’icône « déplier », tournée de −90° (classe) une fois la section repliée', async () => {
+      await setup(served([game('Azul', 2, 4)], 3));
+      await settle();
+      const chevron = () => header().querySelector('app-icon')!;
+
+      expect(chevron().getAttribute('data-icon')).toBe('deplier');
+      expect(chevron().classList.contains('gs__chevron--closed')).toBe(false);
+      expect(header().textContent).not.toMatch(/[▾▸]/);
+
+      header().click();
+      await settle();
+      expect(chevron().getAttribute('data-icon')).toBe('deplier');
+      expect(chevron().classList.contains('gs__chevron--closed')).toBe(true);
     });
 
     it('un état retenu est relu à l’ouverture suivante (rechargement de la page)', async () => {
@@ -634,10 +654,15 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
       await settle();
 
       const [azul, dixit, skull] = sectionRows('Dans mon cabinet');
-      expect(rowText(azul)).toContain('⚠ déjà chez Léa');
+      expect(rowText(azul)).toContain('déjà chez Léa');
       expect(rowAction(azul).textContent!.trim()).toBe("J'apporte");
       expect(rowText(dixit)).not.toContain('déjà chez');
-      expect(rowText(skull)).toContain('⚠ déjà chez ZOE et YAN');
+      expect(rowText(skull)).toContain('déjà chez ZOE et YAN');
+      // Story 51.7 : le ⚠ du texte est devenu un pictogramme décoratif placé avant le texte.
+      const warn = azul.querySelector('.gr__warn')!;
+      expect(warn.firstElementChild?.getAttribute('data-icon')).toBe('avertissement');
+      expect(warn.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+      expect(warn.textContent).not.toContain('⚠');
       // Pas de « ×N » dans cette section : le jeu n'est pas encore sur place.
       expect(azul.querySelector('.gr__dup')).toBeNull();
     });
@@ -998,6 +1023,18 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
         expect(kebab('Azul')!.getAttribute('aria-haspopup')).toBe('menu');
         expect(kebab('Azul')!.getAttribute('type')).toBe('button');
         expect(kebab('Skull')).toBeNull();
+      });
+
+      it('story 51.7 : le ⋮ est l’icône « menu-actions », nom accessible conservé', async () => {
+        await setup(served494([azul], [], []));
+        asHost();
+        await settle();
+
+        const button = kebab('Azul')!;
+        expect(button.querySelector('app-icon')?.getAttribute('data-icon')).toBe('menu-actions');
+        expect(button.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
+        expect(button.textContent).not.toContain('⋮');
+        expect(button.getAttribute('aria-label')).toBe('Actions pour Azul');
       });
 
       it('un participant, un membre en lecture seule : aucun ⋮, aucune section du bas', async () => {
@@ -1447,6 +1484,23 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
         expect(count(rowOf('Brass'))).toBeNull();
       });
 
+      it('story 51.7 : le ♥ est l’icône « envie » (pastille active = mes Envies), le compte seul reste un texte', async () => {
+        await setup(
+          served([azul, brass], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'], [ME, 'Moi-même'])]),
+        );
+        asParticipant();
+        await settle();
+
+        const iconOf = (row: HTMLElement) => heart(row)!.querySelector('app-icon');
+        expect(iconOf(rowOf('Azul'))?.getAttribute('data-icon')).toBe('envie');
+        expect(iconOf(rowOf('Brass'))?.getAttribute('data-icon')).toBe('envie');
+        expect(heart(rowOf('Azul'))!.textContent).not.toContain('♥');
+        const pill = (row: HTMLElement) => heart(row)!.querySelector('.et__pill')!;
+        expect(pill(rowOf('Azul')).classList.contains('et__pill--on')).toBe(true);
+        expect(pill(rowOf('Brass')).classList.contains('et__pill--on')).toBe(false);
+        expect(count(rowOf('Azul'))!.querySelector('app-icon')).toBeNull();
+      });
+
       it('une seule Envie : l’unité reste au singulier', async () => {
         await setup(served([azul], 3, [], [envyOf('azul', ['u-zoe', 'Zoé'])]));
         asParticipant();
@@ -1529,7 +1583,10 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
 
         expect(heart(rowOf('Azul'))).toBeNull();
         expect(heart(rowOf('Brass'))).toBeNull();
-        expect(count(rowOf('Azul'))!.textContent!.replace(/\s+/g, ' ').trim()).toBe('♥ 1');
+        expect(count(rowOf('Azul'))!.textContent!.replace(/\s+/g, ' ').trim()).toBe('1');
+        expect(count(rowOf('Azul'))!.querySelector('app-icon')?.getAttribute('data-icon')).toBe(
+          'envie',
+        );
         expect(count(rowOf('Brass'))).toBeNull();
 
         count(rowOf('Azul'))!.click();
@@ -1801,7 +1858,7 @@ describe('EventGamesTab (Stories 49.1, 49.2, 49.4 et 49.5)', () => {
         await settle();
 
         expect(sortChip().getAttribute('aria-pressed')).toBe('true');
-        expect(sortChip().textContent).toContain('✕');
+        expect(sortChip().querySelector('app-icon')?.getAttribute('data-icon')).toBe('effacer');
         // « Chez Léa » : Brass (2), Codenames (1), Azul (0) ; « Apportées » : Skull (3), Dixit (0).
         expect(rowNames()).toEqual(['Brass', 'Codenames', 'Azul', 'Skull', 'Dixit']);
 

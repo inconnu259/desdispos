@@ -17,6 +17,7 @@ import {
   kindsOf,
 } from '@master-jdr/shared';
 import type { PartieKind, PartieKindTransitionRefusal, ScenarioDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
@@ -102,6 +103,7 @@ interface CourantChoice {
     MatButtonToggleModule,
     MatProgressBarModule,
     MatRadioModule,
+    AppIcon,
     PartyBanner,
   ],
   templateUrl: './partie-form.html',

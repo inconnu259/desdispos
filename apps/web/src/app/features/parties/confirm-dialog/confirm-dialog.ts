@@ -11,6 +11,9 @@ export interface ConfirmData {
    *  confirmation prend le fond `--color-unavailable`, avec un pictogramme ET le mot — jamais la
    *  couleur seule. « Renoncer » reste inchangé. */
   destructive?: true;
+  /** Avertissement affiché SOUS le message, précédé d'un pictogramme décoratif (ex. « aucun vote sur cette
+   *  date »). Reste hors du message : la question demeure une phrase simple. */
+  warning?: string;
 }
 
 @Component({
@@ -18,7 +21,12 @@ export interface ConfirmData {
   imports: [MatDialogModule, MatButtonModule, AppIcon],
   template: `
     <h2 mat-dialog-title>{{ theme.tone()['parties.confirm_title'] }}</h2>
-    <mat-dialog-content>{{ data.message }}</mat-dialog-content>
+    <mat-dialog-content>
+      {{ data.message }}
+      @if (data.warning) {
+        <p class="confirm-warning"><app-icon name="avertissement" /> {{ data.warning }}</p>
+      }
+    </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button [mat-dialog-close]="false">{{ theme.tone()['common.annuler'] }}</button>
       <button
@@ -34,6 +42,13 @@ export interface ConfirmData {
     </mat-dialog-actions>
   `,
   styles: `
+    .confirm-warning {
+      --app-icon-size: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin: 0.75rem 0 0;
+    }
     .confirm-destructive {
       --mat-button-filled-container-color: var(--color-unavailable);
       --mat-button-filled-label-text-color: #fff;

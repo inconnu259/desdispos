@@ -156,6 +156,14 @@ describe('ConflictDialog (Story 36.4)', () => {
     expect(exception!.querySelector('button')).toBeNull();
   });
 
+  it('AC11 : la ligne d’exception est précédée du pictogramme destinee, décoratif', async () => {
+    const { el } = await createComponent(makeData({ seanceExceptions: ['Sam 8 août · Soir'] }));
+    const icon = el.querySelector('.exception app-icon')!;
+    expect(icon.getAttribute('data-icon')).toBe('destinee');
+    expect(icon.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
+    expect(el.querySelector('.exception')!.textContent).not.toContain('✦');
+  });
+
   it('AC11 : sans créneau couvert par une séance, aucune ligne d’exception n’est réservée', async () => {
     const { el } = await createComponent(makeData());
     expect(el.querySelector('.exception')).toBeNull();

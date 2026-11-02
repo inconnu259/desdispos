@@ -63,7 +63,7 @@
          dérivée d'une séance n'est jamais persistée : il n'y a structurellement rien à écraser. -->
     @if (data.seanceExceptions.length > 0) {
       <p class="exception">
-        <span class="exception__mark" aria-hidden="true">✦</span>
+        <app-icon class="exception__mark" name="destinee" />
         <span>
           <b>{{ data.seanceExceptions.join(' · ') }} {{ exceptionVerb() }}</b>
           <span class="exception__detail">{{ exceptionDetail() }}</span>

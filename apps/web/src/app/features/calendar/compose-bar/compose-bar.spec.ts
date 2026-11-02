@@ -159,6 +159,13 @@ describe('ComposeBar — fin du vote (Story 45.4)', () => {
     );
   });
 
+  it('le bouton de la date de fin porte le pictogramme modifier, sans caractère', async () => {
+    const f = await render({ deadlineDay: '2026-11-06', deadlineMin: '2026-11-02' });
+    const btn = el(f).querySelector('.compose-bar__deadline-btn')!;
+    expect(btn.querySelector('app-icon')!.getAttribute('data-icon')).toBe('modifier');
+    expect(btn.textContent).not.toContain('✎');
+  });
+
   it('le crayon ouvre la date native (min = aujourd’hui, valeur = le jour) ; choisir un jour l’émet et referme', async () => {
     const f = await render({ deadlineDay: '2026-11-06', deadlineMin: '2026-11-02' });
     const changed = vi.fn();

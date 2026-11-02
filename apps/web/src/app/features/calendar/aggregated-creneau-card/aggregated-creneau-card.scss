@@ -45,6 +45,13 @@
   gap: 10px;
   font-size: 0.8rem;
   align-items: center;
+  --app-icon-size: 1rem; // pictogrammes des compteurs (dispo oui / partiel / non)
+
+  > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
 }
 
 .agg-card__total {

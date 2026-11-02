@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type {
   AvailKind,
@@ -275,7 +275,7 @@ import {
   standalone: true,
   imports: [
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     MatProgressSpinnerModule,
     SelectionBar,
     PollTrack,

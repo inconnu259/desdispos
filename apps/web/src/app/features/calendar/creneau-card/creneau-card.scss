@@ -57,6 +57,13 @@
   font-size: 0.875rem;
 }
 
+/* Pictogramme de disponibilité (oui / partiel / non), lisible à 1rem ; l'état est dit par la forme. */
+.creneau-card__status {
+  --app-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+}
+
 .creneau-card__icon {
   font-size: 0.75rem;
   color: var(--mat-sys-on-surface-variant, #49454f);

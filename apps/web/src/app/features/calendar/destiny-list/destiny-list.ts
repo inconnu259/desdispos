@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { shortDayLabel } from '../../events/event-card.util';
@@ -48,6 +49,7 @@ interface DestinyRow {
 @Component({
   selector: 'app-destiny-list',
   standalone: true,
+  imports: [AppIcon],
   templateUrl: './destiny-list.html',
   styleUrl: './destiny-list.scss',
 })

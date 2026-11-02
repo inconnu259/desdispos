@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import type {
@@ -51,13 +51,7 @@ const RECUR_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-constraint-panel',
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatButtonToggleModule,
-    MatIconModule,
-    MatRadioModule,
-  ],
+  imports: [ReactiveFormsModule, MatButtonModule, MatButtonToggleModule, AppIcon, MatRadioModule],
   templateUrl: './constraint-panel.html',
   styleUrl: './constraint-panel.scss',
 })

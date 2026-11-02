@@ -12,7 +12,9 @@
         <div class="poll-status__option-header">
           <span class="poll-status__date">{{ optionLabel(opt) }}</span>
           <span class="poll-status__breakdown">
-            ✅ {{ countByAnswer(opt, 'YES') }} · ❌ {{ countByAnswer(opt, 'NO') }} · ❔ {{ countByAnswer(opt, 'MAYBE') }}
+            <app-icon name="dispo-oui" [label]="theme.tone()['calendar.util_answer_yes']" /> {{ countByAnswer(opt, 'YES') }} ·
+            <app-icon name="dispo-non" [label]="theme.tone()['calendar.util_answer_no']" /> {{ countByAnswer(opt, 'NO') }} ·
+            <app-icon name="dispo-partiel" [label]="theme.tone()['calendar.util_answer_maybe']" /> {{ countByAnswer(opt, 'MAYBE') }}
           </span>
         </div>
         @if (opt.votes.length > 0) {
@@ -20,7 +22,7 @@
             @for (vote of opt.votes; track vote.userId) {
               <li class="poll-status__voter">
                 <app-identity-label [playerName]="vote.displayName" />
-                <span class="poll-status__answer">{{ ANSWER_ICONS[vote.answer] }} {{ theme.tone()[ANSWER_LABEL_KEYS[vote.answer]] }}</span>
+                <span class="poll-status__answer"><app-icon [name]="ANSWER_ICONS[vote.answer]" /> {{ theme.tone()[ANSWER_LABEL_KEYS[vote.answer]] }}</span>
               </li>
             }
           </ul>

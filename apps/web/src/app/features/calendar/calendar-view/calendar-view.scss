@@ -69,6 +69,10 @@
    trois contrôles voisins ne peuvent pas se ressembler « presque ». Teinte neutre — le contrat le
    dessine en `mat-stroked mut`, atténué, parce qu'il n'annonce aucun état actif à lui seul. */
 .display-trigger {
+  --app-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border: 1px solid var(--mat-sys-outline, #999);
   border-radius: 999px;
   background: transparent;

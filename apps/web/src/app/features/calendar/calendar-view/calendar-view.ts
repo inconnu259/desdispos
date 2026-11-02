@@ -67,6 +67,7 @@ import {
   AvailabilityService,
   ConflictError,
 } from '../../../core/availability/availability.service';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
@@ -332,6 +333,7 @@ function optionSpanEnd(
     CdkTrapFocus,
     CalendarDisplayPanel,
     CalendarLegend,
+    AppIcon,
   ],
   templateUrl: './calendar-view.html',
   styleUrl: './calendar-view.scss',
@@ -1543,8 +1545,8 @@ export class CalendarView implements OnInit {
       `${this.theme.tone()['partie.ralliement_calendar_polls_heading']} · ${this.groupPollRows().length}`,
   );
 
-  /** Story 46.1 — le dock du plateau : « ✦ Chapitre 4 ». */
-  protected readonly boardDockLabel = computed(() => `✦ ${this.destinyBoard()?.title ?? ''}`);
+  /** Story 46.1 — le dock du plateau : le titre seul (« Chapitre 4 ») ; le pictogramme `destinee` passe par l'entrée `icon` du dock. */
+  protected readonly boardDockLabel = computed(() => this.destinyBoard()?.title ?? '');
 
   protected readonly destinyBoardShown = computed(() => this.isWide() && this.destinyPresentable());
 

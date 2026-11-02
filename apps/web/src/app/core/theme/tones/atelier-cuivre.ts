@@ -1283,7 +1283,7 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'pollui.status_voters_aria': 'Votants du scrutin',
   'pollui.status_missing_aria': 'N’ont pas encore alimenté le registre pour cette date',
   'pollui.status_choose_confirm': 'Verrouiller {date} — {slot} comme date de la prochaine séance ?',
-  'pollui.status_choose_no_vote_warning': "⚠️ Aucun membre n'a voté pour cette date.",
+  'pollui.status_choose_no_vote_warning': "Aucun membre n'a voté pour cette date.",
 
   /* ═══ Annonces ═══ */
   /* — annonces — */

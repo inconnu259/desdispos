@@ -55,7 +55,7 @@
         [attr.aria-label]="theme.tone()['calendar.display.trigger_aria']"
         (click)="toggleDisplayPanel()"
       >
-        <span aria-hidden="true">&#9776;</span> {{ theme.tone()['calendar.display.trigger'] }}
+        <app-icon name="menu-affichage" /> {{ theme.tone()['calendar.display.trigger'] }}
       </button>
 
       <!-- AC3/AC4 — n'apparaît QUE si l'affichage s'écarte du défaut, et EST l'action de
@@ -442,6 +442,7 @@
       [class.destiny-board-col--partie]="isMjMode()"
       [docked]="dock.closed()"
       [label]="boardDockLabel()"
+      icon="destinee"
       (toggled)="dock.toggle()"
     >
       <app-destiny-board

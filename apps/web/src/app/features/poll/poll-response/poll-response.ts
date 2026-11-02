@@ -17,6 +17,7 @@ import type {
   SessionPollDto,
   VoteAnswer,
 } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
@@ -33,7 +34,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
 @Component({
   selector: 'app-poll-response',
   standalone: true,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, AppIcon],
   templateUrl: './poll-response.html',
   styleUrl: './poll-response.scss',
 })

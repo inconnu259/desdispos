@@ -1285,7 +1285,7 @@ export const grimoireEmeraude = {
   'pollui.status_voters_aria': 'Votants du conseil',
   'pollui.status_missing_aria': 'N’ont pas encore consulté l’oracle pour cette date',
   'pollui.status_choose_confirm': 'Sceller {date} — {slot} comme date de la prochaine séance ?',
-  'pollui.status_choose_no_vote_warning': '⚠️ Aucun compagnon n’a voté pour cette date.',
+  'pollui.status_choose_no_vote_warning': 'Aucun compagnon n’a voté pour cette date.',
 
   /* ═══ Annonces ═══ */
   /* — annonces — */

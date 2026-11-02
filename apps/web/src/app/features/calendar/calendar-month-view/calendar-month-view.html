@@ -5,7 +5,7 @@
       (click)="prevMonth()"
       [attr.aria-label]="theme.tone()['calendar.month_prev_aria']"
     >
-      <mat-icon>chevron_left</mat-icon>
+      <app-icon name="precedent" />
     </button>
     <h2 class="month-title">{{ monthLabel() }}</h2>
     <button
@@ -13,7 +13,7 @@
       (click)="nextMonth()"
       [attr.aria-label]="theme.tone()['calendar.month_next_aria']"
     >
-      <mat-icon>chevron_right</mat-icon>
+      <app-icon name="suivant" />
     </button>
     <button
       mat-icon-button
@@ -22,7 +22,7 @@
       class="today-btn"
       [style.visibility]="isCurrentMonth() ? 'hidden' : 'visible'"
     >
-      <mat-icon>today</mat-icon>
+      <app-icon name="aujourdhui" />
     </button>
   </div>
 

@@ -78,6 +78,8 @@
 }
 
 .destiny-list__glyph {
+  --app-icon-size: 1rem;
+  vertical-align: middle;
   color: var(--jdr-status-todo, inherit);
 }
 

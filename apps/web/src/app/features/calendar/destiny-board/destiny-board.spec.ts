@@ -62,6 +62,14 @@ describe('DestinyBoard (Story 44.4)', () => {
     expect(rows[0].getAttribute('aria-current')).toBeNull();
   });
 
+  it('le titre est précédé du pictogramme destinee, décoratif', async () => {
+    const root: HTMLElement = (await createBoard()).nativeElement;
+    const icon = root.querySelector('.destiny-board__title app-icon')!;
+    expect(icon.getAttribute('data-icon')).toBe('destinee');
+    expect(icon.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
+    expect(root.querySelector('.destiny-board__title')!.textContent).not.toContain('✦');
+  });
+
   it('la barre des oui est proportionnelle', async () => {
     const root: HTMLElement = (await createBoard()).nativeElement;
     const fills = root.querySelectorAll<HTMLElement>('.destiny-board__bar-fill');

@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import type { IconName } from '../../../core/icons/icon-registry.generated';
 import { SideDock } from './side-dock';
 
 @Component({
@@ -10,6 +11,7 @@ import { SideDock } from './side-dock';
       [enabled]="enabled()"
       [docked]="docked()"
       [label]="'Éphémérides · 18'"
+      [icon]="icon()"
       (toggled)="docked.set(!docked()); toggles = toggles + 1"
     >
       <p class="contenu">Le contenu de la colonne</p>
@@ -19,6 +21,7 @@ import { SideDock } from './side-dock';
 class Host {
   readonly enabled = signal(true);
   readonly docked = signal(false);
+  readonly icon = signal<IconName | undefined>(undefined);
   toggles = 0;
 }
 
@@ -37,7 +40,8 @@ describe('SideDock (Story 46.1)', () => {
     const button = el.querySelector<HTMLButtonElement>('.side-dock__bar button')!;
     expect(button.getAttribute('aria-label')).toBe('Ranger la colonne');
     expect(button.getAttribute('aria-expanded')).toBe('true');
-    expect(button.textContent!.trim()).toBe('›');
+    expect(button.textContent!.trim()).toBe('');
+    expect(button.querySelector('app-icon')!.getAttribute('data-icon')).toBe('suivant');
     expect(el.querySelector('.contenu')).not.toBeNull();
     expect(el.querySelector('.side-dock')).toBeNull();
   });
@@ -52,10 +56,26 @@ describe('SideDock (Story 46.1)', () => {
     const button = dock.querySelector<HTMLButtonElement>('button')!;
     expect(button.getAttribute('aria-label')).toBe('Rouvrir la colonne');
     expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(button.textContent!.trim()).toBe('‹');
+    expect(button.textContent!.trim()).toBe('');
+    expect(button.querySelector('app-icon')!.getAttribute('data-icon')).toBe('precedent');
     expect(dock.querySelector('.side-dock__label')!.textContent!.trim()).toBe('Éphémérides · 18');
+    // Sans entrée `icon`, le libellé vertical n'a pas de pictogramme.
+    expect(dock.querySelector('.side-dock__label app-icon')).toBeNull();
     expect(el.querySelector('.contenu')).toBeNull();
     expect(el.querySelector('app-side-dock')!.classList).toContain('side-dock--docked');
+  });
+
+  it('rangé avec une icône : le pictogramme précède le libellé, qui reste le titre seul', () => {
+    const { fixture, el, host } = create();
+    host.icon.set('destinee');
+    host.docked.set(true);
+    fixture.detectChanges();
+
+    const label = el.querySelector('.side-dock__label')!;
+    expect(label.querySelector('app-icon')!.getAttribute('data-icon')).toBe('destinee');
+    expect(label.textContent!.trim()).toBe('Éphémérides · 18');
+    // Le pictogramme est décoratif : le nom du dock vient du libellé.
+    expect(label.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('activer le bouton demande de basculer et rend le focus au bouton qui le remplace', async () => {

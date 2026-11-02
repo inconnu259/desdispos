@@ -63,3 +63,51 @@ describe('ConfirmDialog — variante irréversible (Story 39.4)', () => {
     expect(buttons(el)[1].textContent).toContain(TONE_MAP['grimoire-emeraude']['common.supprimer']);
   });
 });
+
+describe('ConfirmDialog — champ warning (story 51.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function render(data: ConfirmData): Promise<HTMLElement> {
+    await TestBed.configureTestingModule({
+      imports: [ConfirmDialog],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        {
+          provide: ThemeToneService,
+          useValue: {
+            tone: signal(TONE_MAP['grimoire-emeraude']),
+            activeTheme: signal('grimoire-emeraude'),
+          },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ConfirmDialog);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('avec warning : l’avertissement suit le message, précédé d’un pictogramme décoratif', async () => {
+    const el = await render({ message: 'Confirmer cette date ?', warning: 'Personne n’a voté.' });
+    const content = el.querySelector('mat-dialog-content')!;
+    const warning = content.querySelector('.confirm-warning')!;
+    expect(warning).not.toBeNull();
+    expect(warning.textContent).toContain('Personne n’a voté.');
+    const icon = warning.querySelector('app-icon')!;
+    expect(icon.getAttribute('data-icon')).toBe('avertissement');
+    // Décorative : l'avertissement est écrit juste à côté.
+    expect(icon.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
+    expect(icon.querySelector('svg')!.getAttribute('aria-label')).toBeNull();
+    // La question reste avant l'avertissement.
+    expect(content.textContent!.indexOf('Confirmer cette date ?')).toBeLessThan(
+      content.textContent!.indexOf('Personne n’a voté.'),
+    );
+  });
+
+  it('sans warning : ni bloc d’avertissement, ni pictogramme dans le contenu', async () => {
+    const el = await render({ message: 'Confirmer cette date ?' });
+    const content = el.querySelector('mat-dialog-content')!;
+    expect(content.querySelector('.confirm-warning')).toBeNull();
+    expect(content.querySelector('app-icon')).toBeNull();
+    expect(content.textContent!.trim()).toBe('Confirmer cette date ?');
+  });
+});

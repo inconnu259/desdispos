@@ -1280,7 +1280,7 @@ export const foretAncienne: Record<ToneKey, string> = {
   'pollui.status_voters_aria': 'Voix du cercle',
   'pollui.status_missing_aria': 'N’ont pas encore répondu à l’appel pour cette date',
   'pollui.status_choose_confirm': 'Planter {date} — {slot} comme date de la prochaine séance ?',
-  'pollui.status_choose_no_vote_warning': '⚠️ Aucun habitant n’a voté pour cette date.',
+  'pollui.status_choose_no_vote_warning': 'Aucun habitant n’a voté pour cette date.',
 
   /* ═══ Annonces ═══ */
   /* — annonces — */

@@ -1,4 +1,5 @@
 import { Component, computed, ElementRef, inject, input, output, viewChild } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 /** Un vote ouvert, tel que le contrôle a besoin de le connaître : son identité et son nom.
@@ -28,6 +29,7 @@ export interface DestinyPollRef {
 @Component({
   selector: 'app-destiny-control',
   standalone: true,
+  imports: [AppIcon],
   templateUrl: './destiny-control.html',
   styleUrl: './destiny-control.scss',
 })

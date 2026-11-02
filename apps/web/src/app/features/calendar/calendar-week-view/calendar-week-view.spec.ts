@@ -608,14 +608,24 @@ describe('CalendarWeekView — densité variable (Story 36.13)', () => {
     }
   });
 
+  it('la navigation porte les pictogrammes precedent, suivant puis aujourdhui, dans cet ordre', () => {
+    create();
+    const names = Array.from(el.querySelectorAll('.week-nav button app-icon')).map((i) =>
+      i.getAttribute('data-icon'),
+    );
+    expect(names).toEqual(['precedent', 'suivant', 'aujourdhui']);
+  });
+
   // AC1 + AC2 — la gouttière porte une icône par créneau, et chacune est nommée. L'icône y
   // REMPLACE le mot (contrairement au rail, où elle l'accompagne et reste aria-hidden).
   it('AC1/AC2 — la gouttière porte trois icônes de créneau, chacune avec un libellé accessible', () => {
     create();
     const icons = Array.from(el.querySelectorAll('.row-label .slot-icon'));
     expect(icons).toHaveLength(3);
-    expect(icons.map((i) => i.getAttribute('aria-label'))).toEqual(['Matin', 'Après-midi', 'Soir']);
-    expect(icons.some((i) => i.getAttribute('aria-hidden') === 'true')).toBe(false);
+    expect(icons.map((i) => i.getAttribute('data-icon'))).toEqual(['matin', 'apres-midi', 'soir']);
+    const svgs = icons.map((i) => i.querySelector('svg')!);
+    expect(svgs.map((s) => s.getAttribute('aria-label'))).toEqual(['Matin', 'Après-midi', 'Soir']);
+    expect(svgs.some((s) => s.getAttribute('aria-hidden') === 'true')).toBe(false);
   });
 
   // AC6 — la case du Mois n'en porte pas : la position y dit déjà le créneau. Vérifié ici par

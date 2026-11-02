@@ -9,7 +9,7 @@
     (click)="cancelled.emit()"
     [attr.aria-label]="theme.tone()['calendar.constraint_close_aria']"
   >
-    <mat-icon>close</mat-icon>
+    <app-icon name="fermer" />
   </button>
 </div>
 
@@ -104,7 +104,7 @@
     <!-- Supprimer (visible uniquement en dehors des dialogs) -->
     @if (existingDeclaration() && splitDialogAction() === null && conflictData() === null) {
       <button mat-stroked-button type="button" color="warn" (click)="onDeleteClick()" [disabled]="saving()">
-        <mat-icon>delete</mat-icon>
+        <app-icon name="supprimer" />
         {{ theme.tone()['common.supprimer'] }}
       </button>
     }
@@ -113,7 +113,7 @@
     @if (splitDialogAction() === 'modify') {
       <div class="inline-confirm">
         <p class="confirm-warn">
-          ⚠ {{ theme.tone()['calendar.constraint_recurring_modify_prompt'] }}
+          <app-icon name="avertissement" /> {{ theme.tone()['calendar.constraint_recurring_modify_prompt'] }}
         </p>
         <div class="confirm-actions">
           <button mat-button type="button" (click)="splitDialogAction.set(null)" [disabled]="saving()">
@@ -133,7 +133,7 @@
     @if (splitDialogAction() === 'delete') {
       <div class="inline-confirm">
         <p class="confirm-warn">
-          ⚠ {{ theme.tone()['calendar.constraint_recurring_delete_prompt'] }}
+          <app-icon name="avertissement" /> {{ theme.tone()['calendar.constraint_recurring_delete_prompt'] }}
         </p>
         <div class="confirm-actions">
           <button mat-button type="button" (click)="splitDialogAction.set(null)" [disabled]="saving()">
@@ -155,7 +155,7 @@
     <!-- Dialog CONFLIT lors de la création -->
     @if (conflictData() !== null) {
       <div class="inline-confirm">
-        <p class="confirm-warn">⚠ {{ theme.tone()['calendar.constraint_conflict_prompt'] }}</p>
+        <p class="confirm-warn"><app-icon name="avertissement" /> {{ theme.tone()['calendar.constraint_conflict_prompt'] }}</p>
         <div class="confirm-actions">
           <button mat-button type="button" (click)="onConflictCancel()" [disabled]="saving()">
             {{ theme.tone()['common.annuler'] }}

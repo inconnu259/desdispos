@@ -1,4 +1,5 @@
 import { Component, input, output } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { DestinyBoard, type DestinyBoardModel } from '../destiny-board/destiny-board';
 import type { DestinyState } from '../destiny-list/destiny-list';
 
@@ -36,7 +37,7 @@ export interface DestinySheetModel {
 @Component({
   selector: 'app-destiny-sheet',
   standalone: true,
-  imports: [DestinyBoard],
+  imports: [DestinyBoard, AppIcon],
   templateUrl: './destiny-sheet.html',
   styleUrl: './destiny-sheet.scss',
 })

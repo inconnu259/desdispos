@@ -2086,6 +2086,14 @@ describe('CalendarView — barre repliée et panneau « Affichage » (Story 36.1
     expect(fixture.nativeElement.querySelector('.display-trigger')).toBeTruthy();
   });
 
+  it('story 51.5 — le déclencheur « Affichage » porte le pictogramme menu-affichage, sans caractère', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal' });
+    const trigger = fixture.nativeElement.querySelector('.display-trigger');
+
+    expect(trigger.querySelector('app-icon').getAttribute('data-icon')).toBe('menu-affichage');
+    expect(trigger.textContent).not.toContain('☰');
+  });
+
   it('AC2 — sur ordinateur, activer le bouton ouvre un menu ancré', async () => {
     const { fixture } = await createCalendarView({ mode: 'personal', desktop: true });
     expect(menuSurface()).toBeNull();
@@ -8135,7 +8143,7 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
     expect(dockLabel(fixture)).toBe(`${GRIMOIRE_TONE['partie.ralliement_calendar_polls_heading']} · 0`);
   });
 
-  it('plateau de la destinée : « ✦ titre », et entrer en Destinée rouvre la colonne rangée', async () => {
+  it('plateau de la destinée : titre seul + pictogramme destinee, et entrer en Destinée rouvre la colonne rangée', async () => {
     const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [poll()] });
     const comp = fixture.componentInstance as any;
     comp.chooseDestiny('poll-a');
@@ -8146,7 +8154,10 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
     expect(root(fixture).querySelector('app-side-dock.destiny-board-col')!.classList).toContain(
       'side-dock--docked',
     );
-    expect(dockLabel(fixture)).toBe('✦ Chapitre 4');
+    expect(dockLabel(fixture)).toBe('Chapitre 4');
+    expect(
+      root(fixture).querySelector('.side-dock__label app-icon')?.getAttribute('data-icon'),
+    ).toBe('destinee');
 
     // Quitter puis entrer de nouveau : la colonne revient ouverte.
     comp.quitDestiny();

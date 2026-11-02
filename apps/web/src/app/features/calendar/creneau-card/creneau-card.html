@@ -44,8 +44,8 @@
           [pseudo]="member.pseudo"
           [ambiguous]="isAmbiguous(member.userId)"
         />
-        <span class="creneau-card__status" [attr.aria-label]="member.status">
-          {{ statusIcon(member.status) }}
+        <span class="creneau-card__status" role="img" [attr.aria-label]="member.status">
+          <app-icon [name]="statusIcon(member.status)" />
         </span>
       </li>
     }

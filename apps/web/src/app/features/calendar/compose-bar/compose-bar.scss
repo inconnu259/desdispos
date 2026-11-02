@@ -51,6 +51,10 @@
 }
 
 .compose-bar__deadline-btn {
+  --app-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   min-height: 44px;
   padding: 0 10px;
   border: 1px solid var(--mat-sys-outline-variant, rgba(127, 127, 127, 0.4));

@@ -12,6 +12,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import type { SpanStart } from '../../../shared/duration-stepper/duration-labels';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { fillTone } from '../../../core/theme/tone-format';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { shortDayLabel } from '../../events/event-card.util';
@@ -36,7 +37,7 @@ import { shortDayLabel } from '../../events/event-card.util';
 @Component({
   selector: 'app-compose-bar',
   standalone: true,
-  imports: [MatButtonModule, DurationStepper],
+  imports: [MatButtonModule, DurationStepper, AppIcon],
   templateUrl: './compose-bar.html',
   styleUrl: './compose-bar.scss',
 })

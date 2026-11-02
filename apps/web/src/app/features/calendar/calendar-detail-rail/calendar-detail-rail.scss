@@ -51,14 +51,7 @@
 }
 
 .ic {
-  flex: 0 0 13px;
-  width: 13px;
-  height: 13px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  --app-icon-size: 13px;
   color: var(--jdr-text-muted);
 }
 

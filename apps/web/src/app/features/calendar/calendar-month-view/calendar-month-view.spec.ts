@@ -85,6 +85,14 @@ describe('CalendarMonthView — navigation UTC-midnight (Q8)', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it('la navigation porte les pictogrammes precedent, suivant puis aujourdhui, dans cet ordre', async () => {
+    const fixture = await createMonthView();
+    const names = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.month-nav button app-icon'),
+    ).map((i) => i.getAttribute('data-icon'));
+    expect(names).toEqual(['precedent', 'suivant', 'aujourdhui']);
+  });
+
   it('goToToday() émet un Date UTC-midnight', async () => {
     const fixture = await createMonthView();
     const emitted: Date[] = [];

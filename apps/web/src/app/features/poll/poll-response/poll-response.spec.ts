@@ -178,6 +178,18 @@ describe('PollResponseComponent', () => {
     expect(comp.error()).toContain('1/2');
     expect(comp.failedOptionIds().has('opt2')).toBe(true);
     expect(comp.failedOptionIds().has('opt1')).toBe(false);
+
+    // Story 51.5 — la marque « non enregistré » est une icône nommée, et le nom n'est porté qu'une fois.
+    fixture.detectChanges();
+    const marks = fixture.nativeElement.querySelectorAll('.poll-response__option-error');
+    expect(marks).toHaveLength(1);
+    const mark = marks[0] as HTMLElement;
+    expect(mark.tagName.toLowerCase()).toBe('app-icon');
+    expect(mark.getAttribute('data-icon')).toBe('avertissement');
+    expect(mark.getAttribute('aria-label')).toBeNull();
+    expect(mark.querySelector('svg')!.getAttribute('role')).toBe('img');
+    expect(mark.querySelector('svg')!.getAttribute('aria-label')).toBe('Non enregistré');
+    expect(mark.textContent!.trim()).toBe('');
   });
 
   it('poll CLOSED → isClosed vrai, setAnswer sans effet', async () => {

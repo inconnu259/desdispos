@@ -1,6 +1,8 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, output } from '@angular/core';
 import type { AvailableSlotDto, DaySlot, SlotStatus } from '@master-jdr/shared';
+import type { IconName } from '../../../core/icons/icon-registry.generated';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { ambiguousUserIds } from '../../../shared/identity/identity-ambiguity.util';
@@ -12,16 +14,17 @@ const SLOT_LABELS: Record<string, string> = {
   EVENING: 'Soir',
 };
 
-const STATUS_ICONS: Record<SlotStatus, string> = {
-  AVAILABLE: '✅',
-  UNKNOWN: '⚠️',
-  UNAVAILABLE: '❌',
+// Les trois états se distinguent par la FORME du dessin, pas par la couleur d'un emoji.
+const STATUS_ICONS: Record<SlotStatus, IconName> = {
+  AVAILABLE: 'dispo-oui',
+  UNKNOWN: 'dispo-partiel',
+  UNAVAILABLE: 'dispo-non',
 };
 
 @Component({
   selector: 'app-creneau-card',
   standalone: true,
-  imports: [IdentityLabel, NgTemplateOutlet],
+  imports: [IdentityLabel, NgTemplateOutlet, AppIcon],
   templateUrl: './creneau-card.html',
   styleUrl: './creneau-card.scss',
 })
@@ -79,8 +82,8 @@ export class CreneauCard {
     return SLOT_LABELS[slot] ?? slot;
   }
 
-  protected statusIcon(status: SlotStatus): string {
-    return STATUS_ICONS[status] ?? '❓';
+  protected statusIcon(status: SlotStatus): IconName {
+    return STATUS_ICONS[status];
   }
 
   protected formatDate(iso: string): string {

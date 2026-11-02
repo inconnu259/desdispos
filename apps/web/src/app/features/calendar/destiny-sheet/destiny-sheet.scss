@@ -126,6 +126,11 @@
 }
 
 .destiny-sheet__toggle {
+  --app-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   flex: 1;
   min-height: 44px;
   padding: 0.5rem 0.75rem;

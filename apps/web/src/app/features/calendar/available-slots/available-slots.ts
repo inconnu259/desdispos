@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import type { AggregatedSlotDto, AvailableSlotDto, DaySlot } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { AggregatedCreneauCard } from '../aggregated-creneau-card/aggregated-creneau-card';
 import { CreneauCard } from '../creneau-card/creneau-card';
@@ -50,7 +51,7 @@ function availableCount(s: AnySlotDto): number {
 @Component({
   selector: 'app-available-slots',
   standalone: true,
-  imports: [CreneauCard, AggregatedCreneauCard],
+  imports: [CreneauCard, AggregatedCreneauCard, AppIcon],
   templateUrl: './available-slots.html',
   styleUrl: './available-slots.scss',
 })

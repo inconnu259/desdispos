@@ -8,7 +8,7 @@
         (click)="foldToggled.emit()"
       >
         <span>{{ title() }}</span>
-        <span class="available-slots__chevron" aria-hidden="true">{{ folded() ? '▾' : '▴' }}</span>
+        <app-icon [name]="folded() ? 'deplier' : 'replier'" />
       </button>
     } @else {
       {{ title() }}

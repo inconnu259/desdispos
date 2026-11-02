@@ -9,6 +9,8 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import type { IconName } from '../../../core/icons/icon-registry.generated';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 /**
@@ -16,8 +18,8 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
  * peut se ranger sur le bord, puis se rouvrir.
  *
  * Le composant EST la colonne : l'hôte reçoit les classes de la colonne (largeur, sticky, défilement vivent dans
- * `calendar-view.scss`) et enveloppe son contenu. Colonne ouverte : une barre mince avec « › » (Ranger la colonne) au-dessus
- * du contenu. Colonne rangée : une bande de 44 px avec « ‹ » (Rouvrir la colonne) et le libellé en vertical.
+ * `calendar-view.scss`) et enveloppe son contenu. Colonne ouverte : une barre mince avec un chevron « suivant » (Ranger la colonne) au-dessus
+ * du contenu. Colonne rangée : une bande de 44 px avec un chevron « précédent » (Rouvrir la colonne) et le libellé en vertical.
  * `enabled` faux (sous 768 px, où il n'y a pas de dock) : le contenu seul, sans barre.
  *
  * Rendu pur : l'état « rangé » est tenu par `ColumnDockService`, ici on ne fait que demander (`toggled`) et rendre le
@@ -26,7 +28,7 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 @Component({
   selector: 'app-side-dock',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, AppIcon],
   templateUrl: './side-dock.html',
   styleUrl: './side-dock.scss',
   host: { '[class.side-dock--docked]': 'enabled() && docked()' },
@@ -36,8 +38,10 @@ export class SideDock {
   readonly enabled = input(true);
   /** La colonne est-elle rangée ? */
   readonly docked = input(false);
-  /** Ce que contient la colonne, lu en vertical dans le dock : « Éphémérides · 18 », « ✦ Chapitre 4 ». */
+  /** Ce que contient la colonne, lu en vertical dans le dock : « Éphémérides · 18 », « Chapitre 4 ». */
   readonly label = input('');
+  /** Pictogramme placé devant le libellé vertical (décoratif : le libellé porte le nom), ex. « destinee » pour le plateau. */
+  readonly icon = input<IconName>();
 
   readonly toggled = output<void>();
 
@@ -50,7 +54,7 @@ export class SideDock {
   protected onToggle(): void {
     const docking = !this.docked();
     this.toggled.emit();
-    // Le bouton activé disparaît avec son état : le focus passe à celui qui le remplace (‹ en rangeant, › en rouvrant).
+    // Le bouton activé disparaît avec son état : le focus passe à celui qui le remplace (précédent en rangeant, suivant en rouvrant).
     afterNextRender(
       () => (docking ? this.reopenButton() : this.dockButton())?.nativeElement.focus(),
       { injector: this.injector },

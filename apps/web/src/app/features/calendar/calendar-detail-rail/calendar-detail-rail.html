@@ -16,20 +16,13 @@
         <span class="w">
           @switch (s.slot) {
             @case ('MORNING') {
-              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 5v3M5.6 9.6l2 2M18.4 9.6l-2 2M3 18h18M7 18a5 5 0 0 1 10 0" />
-              </svg>
+              <app-icon class="ic" name="matin" />
             }
             @case ('AFTERNOON') {
-              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="4.2" />
-                <path d="M12 3v2M12 19v2M3 12h2M19 12h2" />
-              </svg>
+              <app-icon class="ic" name="apres-midi" />
             }
             @case ('EVENING') {
-              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 14.5A7.5 7.5 0 0 1 9.5 4a7.5 7.5 0 1 0 10.5 10.5z" />
-              </svg>
+              <app-icon class="ic" name="soir" />
             }
           }
           <span class="w-label">{{ s.label }}</span>

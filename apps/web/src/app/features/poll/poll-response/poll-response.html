@@ -28,7 +28,11 @@
         }
       </div>
       @if (failedOptionIds().has(opt.id)) {
-        <span class="poll-response__option-error" [attr.aria-label]="theme.tone()['pollui.response_not_saved_aria']">⚠</span>
+        <app-icon
+          class="poll-response__option-error"
+          name="avertissement"
+          [label]="theme.tone()['pollui.response_not_saved_aria']"
+        />
       }
     </div>
   }

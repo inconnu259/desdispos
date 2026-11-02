@@ -12,9 +12,14 @@
       [attr.aria-label]="theme.tone()['calendar.column_reopen']"
       (click)="onToggle()"
     >
-      <span aria-hidden="true">‹</span>
+      <app-icon name="precedent" />
     </button>
-    <span class="side-dock__label" aria-hidden="true">{{ label() }}</span>
+    <span class="side-dock__label" aria-hidden="true">
+      @if (icon(); as iconName) {
+        <app-icon class="side-dock__icon" [name]="iconName" />
+      }
+      {{ label() }}
+    </span>
   </div>
 } @else {
   <div class="side-dock__bar">
@@ -26,7 +31,7 @@
       [attr.aria-label]="theme.tone()['calendar.column_dock']"
       (click)="onToggle()"
     >
-      <span aria-hidden="true">›</span>
+      <app-icon name="suivant" />
     </button>
   </div>
   <ng-container [ngTemplateOutlet]="content" />

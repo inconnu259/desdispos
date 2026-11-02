@@ -9,6 +9,8 @@ import type {
   SessionPollDto,
   VoteAnswer,
 } from '@master-jdr/shared';
+import type { IconName } from '../../../core/icons/icon-registry.generated';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { getMissingVoters, getMissingVotersForOption } from '../../../core/poll/poll.util';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
@@ -30,16 +32,17 @@ const ANSWER_LABEL_KEYS: Record<VoteAnswer, string> = {
   MAYBE: 'common.peut_etre',
 };
 
-const ANSWER_ICONS: Record<VoteAnswer, string> = {
-  YES: '✅',
-  NO: '❌',
-  MAYBE: '❔',
+// Les trois réponses se distinguent par la FORME du dessin (mêmes pictogrammes que les compteurs de dispos).
+const ANSWER_ICONS: Record<VoteAnswer, IconName> = {
+  YES: 'dispo-oui',
+  NO: 'dispo-non',
+  MAYBE: 'dispo-partiel',
 };
 
 @Component({
   selector: 'app-poll-status',
   standalone: true,
-  imports: [MatButtonModule, IdentityLabel],
+  imports: [MatButtonModule, IdentityLabel, AppIcon],
   templateUrl: './poll-status.html',
   styleUrl: './poll-status.scss',
 })
@@ -112,7 +115,9 @@ export class PollStatusPanel {
     try {
       const tone = this.theme.tone();
       const noVoteWarning = tone['pollui.status_choose_no_vote_warning'];
-      const warning = opt.votes.length === 0 ? ` ${noVoteWarning}` : '';
+      // L'avertissement « aucun vote » n'est plus collé à la question : le dialogue le montre sous
+      // le message, précédé de son pictogramme.
+      const warning = opt.votes.length === 0 ? noVoteWarning : undefined;
       // Story 47.5 : une plage se scelle écrite de son début à sa fin (pas de « — créneau » en plus).
       const span = candidateSpanShort(opt, this.poll().durationSlots);
       const question = span
@@ -126,7 +131,8 @@ export class PollStatusPanel {
           });
       const ref = this.dialog.open(ConfirmDialog, {
         data: {
-          message: question + warning,
+          message: question,
+          warning,
           confirmLabel: tone['cta.choose_date'],
         },
       });

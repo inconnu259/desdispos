@@ -1,5 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import type { AggregatedSlotDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 const SLOT_LABELS: Record<string, string> = {
@@ -11,6 +12,7 @@ const SLOT_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-aggregated-creneau-card',
   standalone: true,
+  imports: [AppIcon],
   templateUrl: './aggregated-creneau-card.html',
   styleUrl: './aggregated-creneau-card.scss',
 })

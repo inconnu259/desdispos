@@ -1,4 +1,5 @@
 import { Component, input, output } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 
 /** Un créneau candidat, tel que le plateau le montre. */
 export interface DestinyBoardSlot {
@@ -66,6 +67,7 @@ export interface DestinyBoardModel {
 @Component({
   selector: 'app-destiny-board',
   standalone: true,
+  imports: [AppIcon],
   templateUrl: './destiny-board.html',
   styleUrl: './destiny-board.scss',
 })

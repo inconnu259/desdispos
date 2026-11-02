@@ -132,9 +132,17 @@ describe('CalendarDetailRail — accessibilité', () => {
     const detail = buildDayDetail('2026-08-20', [], ALL_LAYERS, [], NOW);
     const fixture = await createRail(detail);
 
-    const icons = fixture.nativeElement.querySelectorAll('svg.ic');
+    const icons = fixture.nativeElement.querySelectorAll('app-icon.ic');
     expect(icons.length).toBeGreaterThan(0);
-    for (const icon of icons) expect(icon.getAttribute('aria-hidden')).toBe('true');
+    for (const icon of icons) {
+      expect(icon.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
+      expect(icon.querySelector('svg')!.getAttribute('aria-label')).toBeNull();
+    }
+    expect(Array.from(icons).map((i: any) => i.getAttribute('data-icon'))).toEqual([
+      'matin',
+      'apres-midi',
+      'soir',
+    ]);
   });
 
   it('écrit l’état en toutes lettres, jamais par la seule couleur (AC8)', async () => {

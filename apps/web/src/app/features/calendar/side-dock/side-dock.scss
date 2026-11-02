@@ -25,7 +25,7 @@
   background: none;
   color: var(--mat-sys-primary, inherit);
   font-family: inherit;
-  font-size: 1.5rem;
+  --app-icon-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -52,6 +52,12 @@
   border-right: none;
   border-radius: 12px 0 0 12px;
   background: var(--mat-sys-surface-container, transparent);
+}
+
+.side-dock__icon {
+  --app-icon-size: 1rem;
+  vertical-align: middle;
+  margin-block-end: 0.35rem;
 }
 
 .side-dock__label {

@@ -10,7 +10,7 @@
       [attr.aria-expanded]="listOpen()"
       (click)="listRequested.emit()"
     >
-      <span class="destiny__glyph" aria-hidden="true">✦</span>{{ chipLabel() }}
+      <app-icon class="destiny__glyph" name="destinee" />{{ chipLabel() }}
     </button>
 
     <!-- ⚠️ Story 44.4 — les chevrons parcourent les CRÉNEAUX du vote actif, plus les votes (on change de vote par
@@ -24,7 +24,7 @@
           [attr.aria-label]="theme.tone()['calendar.destiny_prev_aria']"
           (click)="prevRequested.emit()"
         >
-          ‹
+          <app-icon name="precedent" />
         </button>
         <span class="destiny__pos">{{ slotPosition() }} / {{ slotCount() }}</span>
         <button
@@ -33,7 +33,7 @@
           [attr.aria-label]="theme.tone()['calendar.destiny_next_aria']"
           (click)="nextRequested.emit()"
         >
-          ›
+          <app-icon name="suivant" />
         </button>
       </span>
     }

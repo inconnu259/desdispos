@@ -219,3 +219,35 @@ describe('CreneauCard — sélection (Story 46.2)', () => {
     expect(el.querySelector('.creneau-card__actions')).toBeNull();
   });
 });
+
+describe('CreneauCard — pictogrammes de disponibilité (story 51.5)', () => {
+  it('les trois statuts ont trois dessins distincts (oui / partiel / non), le nom accessible reste le statut', () => {
+    TestBed.configureTestingModule({ imports: [CreneauCard] });
+    const fixture = TestBed.createComponent(CreneauCard);
+    fixture.componentRef.setInput(
+      'slot',
+      makeSlot({
+        members: [
+          { userId: 'u1', pseudo: 'Alice', displayName: 'Alice', status: 'AVAILABLE' },
+          { userId: 'u2', pseudo: 'Bob', displayName: 'Bob', status: 'UNKNOWN' },
+          { userId: 'u3', pseudo: 'Carl', displayName: 'Carl', status: 'UNAVAILABLE' },
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    const statuses = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.creneau-card__status'),
+    );
+    expect(statuses.map((s) => s.getAttribute('aria-label'))).toEqual([
+      'AVAILABLE',
+      'UNKNOWN',
+      'UNAVAILABLE',
+    ]);
+    expect(statuses.map((s) => s.querySelector('app-icon')!.getAttribute('data-icon'))).toEqual([
+      'dispo-oui',
+      'dispo-partiel',
+      'dispo-non',
+    ]);
+    expect(statuses.map((s) => s.textContent!.trim())).toEqual(['', '', '']);
+  });
+});

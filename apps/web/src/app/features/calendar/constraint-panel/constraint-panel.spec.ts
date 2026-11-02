@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { AvailabilityDeclarationDto } from '@master-jdr/shared';
+import { AvailabilityService } from '../../../core/availability/availability.service';
+import { ConstraintPanel } from './constraint-panel';
 import { buildConstraintDto } from './constraint-panel.utils';
 import type { ConstraintFormValue } from './constraint-panel.utils';
 
@@ -71,5 +75,65 @@ describe('buildConstraintDto', () => {
     const SUN = new Date(2026, 6, 5); // 5 juillet 2026 = dimanche
     const dto = buildConstraintDto(makeForm({ type: 'RECURRENT', expiresAt: '2027-01-01' }), SUN);
     expect(dto.dayOfWeek).toBe(0);
+  });
+});
+
+describe('ConstraintPanel — pictogrammes (story 51.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const EXISTING: AvailabilityDeclarationDto = {
+    id: 'd1',
+    userId: 'u1',
+    kind: 'UNAVAILABLE',
+    recurKind: 'PUNCTUAL',
+    dayOfWeek: null,
+    slot: 'MORNING',
+    startDate: '2026-07-01T00:00:00.000Z',
+    endDate: '2026-07-01T00:00:00.000Z',
+    expiresAt: '2026-12-31T00:00:00.000Z',
+    createdAt: '2026-06-01T00:00:00.000Z',
+  };
+
+  function create() {
+    TestBed.configureTestingModule({
+      imports: [ConstraintPanel],
+      providers: [{ provide: AvailabilityService, useValue: {} }],
+    });
+    const fixture = TestBed.createComponent(ConstraintPanel);
+    fixture.componentRef.setInput('date', WED);
+    fixture.componentRef.setInput('slot', 'MORNING');
+    fixture.componentRef.setInput('existingDeclaration', EXISTING);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const names = (root: Element) =>
+    Array.from(root.querySelectorAll('app-icon')).map((i) => i.getAttribute('data-icon'));
+
+  it('fermer dans l’en-tête, supprimer dans les actions', () => {
+    const el = create().nativeElement as HTMLElement;
+    expect(names(el.querySelector('.panel-header')!)).toEqual(['fermer']);
+    expect(names(el.querySelector('.panel-actions')!)).toEqual(['supprimer']);
+  });
+
+  it('chacune des trois invites de confirmation est précédée d’un avertissement', () => {
+    const fixture = create();
+    const comp = fixture.componentInstance as any;
+    const el = fixture.nativeElement as HTMLElement;
+
+    for (const open of [
+      () => comp.splitDialogAction.set('modify'),
+      () => comp.splitDialogAction.set('delete'),
+      () => {
+        comp.splitDialogAction.set(null);
+        comp.conflictData.set([]);
+      },
+    ]) {
+      open();
+      fixture.detectChanges();
+      const warn = el.querySelector('.confirm-warn')!;
+      expect(names(warn)).toEqual(['avertissement']);
+      expect(warn.textContent).not.toContain('⚠');
+    }
   });
 });

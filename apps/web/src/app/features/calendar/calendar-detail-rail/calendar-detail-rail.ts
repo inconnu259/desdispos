@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import type { DaySlot, SlotStatus } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import {
@@ -55,7 +56,7 @@ const DAY_FORMAT = new Intl.DateTimeFormat('fr-FR', {
 @Component({
   selector: 'app-calendar-detail-rail',
   standalone: true,
-  imports: [PollTrack, GroupGauge],
+  imports: [PollTrack, GroupGauge, AppIcon],
   templateUrl: './calendar-detail-rail.html',
   styleUrl: './calendar-detail-rail.scss',
 })

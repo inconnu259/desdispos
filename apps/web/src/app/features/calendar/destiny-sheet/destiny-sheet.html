@@ -53,7 +53,7 @@
       (click)="toggled.emit()"
     >
       {{ expanded() ? model().hideLabel : model().datesLabel }}
-      <span aria-hidden="true">{{ expanded() ? '⌄' : '⌃' }}</span>
+      <app-icon [name]="expanded() ? 'deplier' : 'replier'" />
     </button>
     <!-- Story 44.6 — replié, l'organisateur fixe la date sans déplier ; déplié, le bouton est celui du plateau. -->
     @if (!expanded() && model().fixLabel) {

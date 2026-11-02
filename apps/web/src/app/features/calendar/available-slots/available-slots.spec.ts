@@ -160,6 +160,7 @@ describe('AvailableSlotsPanel — titre et repli (Story 46.1)', () => {
     expect(fold.getAttribute('aria-expanded')).toBe('true');
     expect(fold.textContent).toContain('Éphémérides · 2');
     expect(el.querySelectorAll('app-creneau-card')).toHaveLength(2);
+    expect(fold.querySelector('app-icon')!.getAttribute('data-icon')).toBe('replier');
   });
 
   it('repliée : seul le titre reste, aria-expanded=false, et le clic demande de basculer', () => {
@@ -167,6 +168,7 @@ describe('AvailableSlotsPanel — titre et repli (Story 46.1)', () => {
     const fold = el.querySelector<HTMLButtonElement>('.available-slots__fold')!;
     expect(fold.getAttribute('aria-expanded')).toBe('false');
     expect(el.querySelector('.available-slots__list')).toBeNull();
+    expect(fold.querySelector('app-icon')!.getAttribute('data-icon')).toBe('deplier');
     expect(el.querySelector('.available-slots__empty')).toBeNull();
 
     let toggled = 0;

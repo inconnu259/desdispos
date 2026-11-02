@@ -94,16 +94,9 @@
 }
 
 /* ── Icône de créneau (Story 36.13, DESIGN.md §7.10) ──────────────────────── */
-/* Mêmes réglages de trait que le rail — un seul dessin par objet dans le projet. */
+/* Taille posée par `--app-icon-size` ; le trait vient de `<app-icon>`. */
 .slot-icon {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  --app-icon-size: 15px;
   color: var(--mat-sys-on-surface-variant);
 }
 

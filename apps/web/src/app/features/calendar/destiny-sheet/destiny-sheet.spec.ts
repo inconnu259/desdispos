@@ -110,6 +110,18 @@ describe('DestinySheet (Story 44.5)', () => {
     expect(root.querySelector('.destiny-sheet__summary')).toBeNull();
   });
 
+  it('le bouton de bascule porte un pictogramme : deplier une fois déplié, replier une fois replié', async () => {
+    const open: HTMLElement = (await createSheet(true)).nativeElement;
+    expect(open.querySelector('.destiny-sheet__toggle app-icon')!.getAttribute('data-icon')).toBe(
+      'deplier',
+    );
+    TestBed.resetTestingModule();
+    const closed: HTMLElement = (await createSheet(false)).nativeElement;
+    expect(closed.querySelector('.destiny-sheet__toggle app-icon')!.getAttribute('data-icon')).toBe(
+      'replier',
+    );
+  });
+
   it('une seule région aria-live, déplié ou non', async () => {
     for (const expanded of [false, true]) {
       const root: HTMLElement = (await createSheet(expanded)).nativeElement;

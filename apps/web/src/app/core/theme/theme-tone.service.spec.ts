@@ -864,6 +864,9 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.rendezvous_nature_seance',
     'calendar.rendezvous_nature_soiree',
     'calendar.rendezvous_nature_seance_poll',
+    // Story 52.2 — mode déclaration : libellés du bouton, identiques dans les trois thèmes (UX-DR106)
+    'calendar.declare_btn',
+    'calendar.declare_done',
     // Story 46.1 — boutons de la colonne de droite : noms accessibles identiques dans les trois thèmes
     'calendar.column_dock',
     'calendar.column_reopen',

@@ -1035,6 +1035,10 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.view_back': '← Retour',
   // Story 45.1 — « Proposer / Modifier les dates » remplace l'armement du composer et les boutons de l'hôte.
   'calendar.view_propose_dates': 'Soumettre des dates',
+  // Story 52.2 — le mode déclaration : bouton et bandeau d'aide (libellés du bouton identiques dans les trois thèmes).
+  'calendar.declare_btn': 'Déclarer mes dispos',
+  'calendar.declare_done': 'Terminer',
+  'calendar.declare_banner': 'Sélectionnez les créneaux où vous êtes disponible ou non, puis validez.',
   'calendar.view_modify_dates': 'Réviser les dates',
   // Story 45.2 — lien vers un rendez-vous qui n'est plus à dater (ou plus modifiable) : écrit une fois, sans rien dire de la séance.
   'calendar.compose_link_stale': 'Ce rendez-vous n’est plus à planifier.',

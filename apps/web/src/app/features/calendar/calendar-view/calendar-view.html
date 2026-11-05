@@ -90,6 +90,25 @@
         />
       }
 
+      <!-- Story 52.2 — ⚠️ « Déclarer mes dispos » : toujours visible, Agenda compris (d'où sa place HORS du `@if` de la
+           Destinée). Au repos un bouton à contour ; allumé, il est plein et devient « Terminer ». -->
+      <button
+        type="button"
+        mat-stroked-button
+        #declareBtn
+        class="declare-arm"
+        [class.declare-arm--on]="interaction() === 'declaration'"
+        [attr.aria-pressed]="interaction() === 'declaration'"
+        (click)="toggleDeclaration()"
+      >
+        <app-icon name="declarer-dispos" />
+        {{
+          interaction() === 'declaration'
+            ? theme.tone()['calendar.declare_done']
+            : theme.tone()['calendar.declare_btn']
+        }}
+      </button>
+
       <!-- Story 45.1 — ⚠️ UN bouton écrit remplace « Inscrire des dates » (MJ) et « Composer les créneaux :
            {titre} » (hôte) : « Proposer des dates », ou « Modifier les dates » quand la destinée active est un
            vote que l'organisateur modifie ici. Absent quand il n'y a rien à proposer ni à modifier. Frère de la
@@ -142,6 +161,20 @@
           </mat-button-toggle>
         </mat-button-toggle-group>
       </div>
+    </div>
+
+    <!-- Story 52.2 — le bandeau d'aide du mode déclaration, sous la ligne de contrôles et au-dessus de la grille. La
+         région `role="status"` existe toujours (même vide) : un texte qui apparaît dans une région déjà présente est
+         annoncé. Jamais affiché en lecture. -->
+    <div class="declare-banner-slot" role="status">
+      @if (interaction() === 'declaration') {
+        <div class="declare-banner">
+          <span>{{ theme.tone()['calendar.declare_banner'] }}</span>
+          <button type="button" class="declare-banner__done" (click)="endDeclaration()">
+            {{ theme.tone()['calendar.declare_done'] }}
+          </button>
+        </div>
+      }
     </div>
 
     <!-- AC2 — LE MÊME contenu de panneau, deux enveloppes : menu ancré sur ordinateur, feuille
@@ -309,6 +342,7 @@
            plus bas (le calendrier personnel agrège plusieurs parties et ne sait d'aucune si j'en
            suis le MJ — `isMjMode()` seul y laisserait passer un bouton qui échouerait en 403). -->
       <app-calendar-month-view
+        [class.declare-grid]="interaction() === 'declaration'"
         [declarations]="visibleDeclarations()"
         [loading]="loading()"
         [pendingDto]="pendingDto()"
@@ -338,6 +372,7 @@
     } @else if (view() === 'week') {
       <!-- Story 36.15 — même garde `canSeal` que la vue Mois ci-dessus. -->
       <app-calendar-week-view
+        [class.declare-grid]="interaction() === 'declaration'"
         [declarations]="visibleDeclarations()"
         [loading]="loading()"
         [pendingDto]="pendingDto()"

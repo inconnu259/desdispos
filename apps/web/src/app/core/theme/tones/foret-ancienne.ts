@@ -1032,6 +1032,10 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.view_back': '← Retour',
   // Story 45.1 — « Proposer / Modifier les dates » remplace l'armement du composer et les boutons de l'hôte.
   'calendar.view_propose_dates': 'Propose des dates',
+  // Story 52.2 — le mode déclaration : bouton et bandeau d'aide (libellés du bouton identiques dans les trois thèmes).
+  'calendar.declare_btn': 'Déclarer mes dispos',
+  'calendar.declare_done': 'Terminer',
+  'calendar.declare_banner': 'Touche les créneaux où tu es disponible ou non, puis valide.',
   'calendar.view_modify_dates': 'Modifie les dates',
   // Story 45.2 — lien vers un rendez-vous qui n'est plus à dater (ou plus modifiable) : écrit une fois, sans rien dire de la séance.
   'calendar.compose_link_stale': 'Ce moment n’est plus à dater.',

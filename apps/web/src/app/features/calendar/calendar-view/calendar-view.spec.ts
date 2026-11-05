@@ -30,6 +30,7 @@ import { RealtimeService, partieTopic, userTopic } from '../../../core/realtime/
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';
 import { TONE_MAP } from '../../../core/theme/tones';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { CalendarSessionLayersService } from '../calendar-session-layers.service';
 import { ConjonctionDraftService } from '../../events/conjonction-draft.service';
 import { EventsApiService } from '../../events/events-api.service';
@@ -9482,5 +9483,225 @@ describe('CalendarView — une seule interaction à la fois (Story 52.1)', () =>
     comp.setInteraction('declaration');
     await tick(fixture);
     expect(cancelled).toHaveBeenCalled();
+  });
+});
+
+describe('CalendarView — le bouton « Déclarer mes dispos » et le mode déclaration (Story 52.2)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function personalView() {
+    const { fixture, ...rest } = await createCalendarView('personal');
+    return { fixture, comp: fixture.componentInstance as any, ...rest };
+  }
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  const root = (fixture: any): HTMLElement => fixture.nativeElement;
+  const armBtn = (fixture: any): HTMLButtonElement => root(fixture).querySelector('.declare-arm')!;
+  const banner = (fixture: any) => root(fixture).querySelector('.declare-banner');
+  const monthHost = (fixture: any) => root(fixture).querySelector('app-calendar-month-view');
+
+  it('le bouton suit la puce Destinée ; au repos : libellé, icône décorative, aria-pressed faux', async () => {
+    const { fixture } = await personalView();
+    const btn = armBtn(fixture);
+    expect(btn.textContent!.trim()).toBe(GRIMOIRE_TONE['calendar.declare_btn']);
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    expect(btn.querySelector('app-icon[data-icon="declarer-dispos"]')).not.toBeNull();
+    const destiny = root(fixture).querySelector('app-destiny-control')!;
+    expect(destiny.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(banner(fixture)).toBeNull();
+    expect(monthHost(fixture)!.classList).not.toContain('declare-grid');
+  });
+
+  it('le toucher allume le mode : bouton plein « Terminer », bandeau, contour de grille', async () => {
+    const { fixture, comp } = await personalView();
+    armBtn(fixture).click();
+    await tick(fixture);
+
+    expect(comp.interaction()).toBe('declaration');
+    expect(armBtn(fixture).textContent!.trim()).toBe(GRIMOIRE_TONE['calendar.declare_done']);
+    expect(armBtn(fixture).getAttribute('aria-pressed')).toBe('true');
+    expect(armBtn(fixture).classList).toContain('declare-arm--on');
+    expect(banner(fixture)!.textContent).toContain(GRIMOIRE_TONE['calendar.declare_banner']);
+    expect(root(fixture).querySelector('.declare-banner-slot')!.getAttribute('role')).toBe('status');
+    expect(monthHost(fixture)!.classList).toContain('declare-grid');
+  });
+
+  it('le texte du bandeau suit le thème, « Terminer » reste identique', async () => {
+    const { fixture, comp } = await personalView();
+    armBtn(fixture).click();
+    await tick(fixture);
+    const theme = TestBed.inject(ThemeToneService);
+    for (const id of ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const) {
+      theme.setTheme(id);
+      await tick(fixture);
+      expect(banner(fixture)!.textContent).toContain(TONE_MAP[id]['calendar.declare_banner']);
+      expect(banner(fixture)!.querySelector('button')!.textContent!.trim()).toBe('Terminer');
+      expect(armBtn(fixture).textContent!.trim()).toBe('Terminer');
+    }
+    theme.setTheme('grimoire-emeraude');
+    expect(comp.interaction()).toBe('declaration');
+  });
+
+  it('« Terminer » du bouton comme du bandeau éteint le mode', async () => {
+    const { fixture, comp } = await personalView();
+    armBtn(fixture).click();
+    await tick(fixture);
+    armBtn(fixture).click();
+    await tick(fixture);
+    expect(comp.interaction()).toBe('lecture');
+    expect(banner(fixture)).toBeNull();
+    expect(monthHost(fixture)!.classList).not.toContain('declare-grid');
+
+    armBtn(fixture).click();
+    await tick(fixture);
+    (banner(fixture)!.querySelector('button') as HTMLButtonElement).click();
+    await tick(fixture);
+    expect(comp.interaction()).toBe('lecture');
+    expect(armBtn(fixture).getAttribute('aria-pressed')).toBe('false');
+    // Le bandeau a disparu avec le mode : le focus clavier revient au bouton de la ligne de contrôles.
+    expect(document.activeElement).toBe(armBtn(fixture));
+  });
+
+  it('en Agenda le bouton reste visible : le toucher bascule en Mois et allume le mode', async () => {
+    const { fixture, comp } = await personalView();
+    comp.onViewChange('agenda');
+    await tick(fixture);
+    expect(armBtn(fixture)).not.toBeNull();
+
+    armBtn(fixture).click();
+    await tick(fixture);
+    expect(comp.view()).toBe('month');
+    expect(comp.interaction()).toBe('declaration');
+  });
+
+  it('Mois ⇄ Semaine garde le mode, l’Agenda l’éteint', async () => {
+    const { fixture, comp } = await personalView();
+    armBtn(fixture).click();
+    await tick(fixture);
+
+    comp.onViewChange('week');
+    await tick(fixture);
+    expect(comp.interaction()).toBe('declaration');
+    expect(root(fixture).querySelector('app-calendar-week-view')!.classList).toContain('declare-grid');
+
+    comp.onViewChange('agenda');
+    await tick(fixture);
+    expect(comp.interaction()).toBe('lecture');
+    expect(banner(fixture)).toBeNull();
+  });
+
+  it('la puce Destinée éteint le mode puis ouvre la liste', async () => {
+    const { comp } = await personalView();
+    comp.setInteraction('declaration');
+
+    comp.toggleDestinyList();
+
+    expect(comp.interaction()).toBe('lecture');
+    expect(comp.destinyListOpen()).toBe(true);
+  });
+
+  it('« Proposer des dates » éteint le mode avant d’ouvrir son outil', async () => {
+    const { comp } = await personalView();
+    comp.setInteraction('declaration');
+    const propose = vi.spyOn(comp, 'proposeOther').mockImplementation(() => {});
+    vi.spyOn(comp, 'proposeButton').mockReturnValue('propose');
+
+    comp.onProposeClicked();
+
+    expect(comp.interaction()).toBe('lecture');
+    expect(propose).toHaveBeenCalled();
+  });
+
+  it('allumer le mode éteint la Destinée, le composer et les listes ouvertes', async () => {
+    const { comp } = await personalView();
+    comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
+    comp.destinyListOpen.set(true);
+    comp.rendezvousPickerOpen.set(true);
+
+    comp.toggleDeclaration();
+
+    expect(comp.interaction()).toBe('declaration');
+    expect(comp.destinyPollId()).toBeNull();
+    expect(comp.destinyListOpen()).toBe(false);
+    expect(comp.rendezvousPickerOpen()).toBe(false);
+
+    comp.setInteraction('lecture');
+    comp.composeTarget.set({ kind: 'new', seanceId: 'seanceX' });
+    comp.setInteraction('composer');
+    comp.toggleDeclaration();
+    expect(comp.interaction()).toBe('declaration');
+    expect(comp.composeTarget()).toBeNull();
+  });
+
+  it('une conjonction group-new en cours rend son brouillon, sans navigation', async () => {
+    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1' });
+    const comp = fixture.componentInstance as any;
+    const drafts = TestBed.inject(ConjonctionDraftService);
+    const finish = vi.spyOn(drafts, 'finishCompose');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    comp.composeTarget.set({ kind: 'group-new' });
+    comp.setInteraction('composer');
+
+    comp.toggleDeclaration();
+
+    expect(finish).toHaveBeenCalledWith('partie-1');
+    expect(navigate).not.toHaveBeenCalled();
+    expect(comp.interaction()).toBe('declaration');
+  });
+
+  it('les autres ouvertures du choix de rendez-vous (« autre rendez-vous », « Ajouter au vote ») éteignent aussi le mode', async () => {
+    const { comp } = await personalView();
+    const rows = [{ eventId: 'e1' }, { eventId: 'e2' }];
+    vi.spyOn(comp, 'rendezvousRows').mockReturnValue(rows);
+    vi.spyOn(comp, 'composableRows').mockReturnValue(rows);
+
+    comp.setInteraction('declaration');
+    comp.proposeOther();
+    expect(comp.interaction()).toBe('lecture');
+    expect(comp.rendezvousPickerOpen()).toBe(true);
+
+    comp.setInteraction('declaration');
+    comp.addSelectedWindow({ date: '2026-09-04', slot: 'EVENING', durationSlots: 1 });
+    expect(comp.interaction()).toBe('lecture');
+    expect(comp.rendezvousPickerOpen()).toBe(true);
+  });
+
+  it('un lien ?pollList résolu après l’allumage éteint le mode avant d’ouvrir la liste', async () => {
+    const { comp } = await personalView();
+    vi.spyOn(comp, 'destinyListItems').mockReturnValue([{ pollId: 'p1' }]);
+    comp.setInteraction('declaration');
+
+    comp.applyLink({ poll: null, list: true });
+
+    expect(comp.interaction()).toBe('lecture');
+    expect(comp.destinyListOpen()).toBe(true);
+  });
+
+  it('allumer le mode depuis un composer armé par ?seanceId retire ce paramètre de l’adresse', async () => {
+    const { fixture, location } = await createCalendarView({ mode: 'mj', partieId: 'partie-1' });
+    const comp = fixture.componentInstance as any;
+    location.replaceState('/parties/partie-1/calendar', 'seanceId=seanceX');
+    comp.composeTarget.set({ kind: 'new', seanceId: 'seanceX' });
+    comp.setInteraction('composer');
+
+    comp.toggleDeclaration();
+
+    expect(comp.interaction()).toBe('declaration');
+    expect(location.path()).not.toContain('seanceId');
+  });
+
+  it('le mode ne survit pas à un changement de :id de partie', async () => {
+    const { fixture, comp } = await personalView();
+    comp.setInteraction('declaration');
+    await comp.loadForPartieId('partie-2');
+    await tick(fixture);
+    expect(comp.interaction()).toBe('lecture');
   });
 });

@@ -1344,6 +1344,8 @@ export class CalendarView implements OnInit {
   );
 
   protected toggleDestinyList(): void {
+    // Story 52.2 — la puce Destinée éteint le mode déclaration (sélection abandonnée) puis ouvre la liste.
+    this.leaveDeclaration();
     this.destinyListOpen.update((open) => !open);
   }
 
@@ -1844,7 +1846,10 @@ export class CalendarView implements OnInit {
       });
       return;
     }
-    if (pending.list && this.destinyListItems().length > 0) this.destinyListOpen.set(true);
+    if (pending.list && this.destinyListItems().length > 0) {
+      this.leaveDeclaration();
+      this.destinyListOpen.set(true);
+    }
     this.writeQuery((params) => params.delete('pollList'));
   }
 
@@ -2030,6 +2035,45 @@ export class CalendarView implements OnInit {
   private dropDestiny(): void {
     if (this.interactionState() === 'destinee') this.setInteraction('lecture');
     else this.exitDestiny();
+  }
+
+  // ─── Story 52.2 — le mode déclaration ──────────────────────────────────────────────────────────────────────
+  //
+  // Un bouton toujours visible l'allume et l'éteint. L'état est `interaction() === 'declaration'` (Story 52.1) :
+  // rien ici ne l'écrit autrement que par `setInteraction()`. La sélection vit dans les vues, qui l'abandonnent d'elles-
+  // mêmes quand `interaction` change (sans confirmation).
+
+  /** Éteint le mode déclaration s'il est allumé, sans rien d'autre (le mode ne survit pas à une autre action). */
+  private leaveDeclaration(): void {
+    if (this.interactionState() === 'declaration') this.setInteraction('lecture');
+  }
+
+  /** Le bouton « Déclarer mes dispos » / « Terminer » et l'action « Terminer » du bandeau. */
+  protected toggleDeclaration(): void {
+    if (this.interactionState() === 'declaration') {
+      this.setInteraction('lecture');
+      return;
+    }
+    // L'Agenda n'a pas de grille où déclarer : le toucher bascule en vue Mois, puis allume le mode.
+    if (this.view() === 'agenda') this.onViewChange('month');
+    // Une conjonction `group-new` en cours de composition rend son brouillon, comme une sortie de page (40.5b) : la
+    // fenêtre de création le retrouvera, sans écriture ni navigation.
+    const id = this.partieId();
+    if (id && this.composeTarget()?.kind === 'group-new') this.drafts.finishCompose(id);
+    // Quitter le composer armé par `?seanceId` retire le paramètre, comme toute sortie (sinon un rechargement le réarme).
+    if (this.interactionState() === 'composer') this.clearArmParam();
+    this.setInteraction('declaration');
+  }
+
+  private readonly declareButtonRef = viewChild('declareBtn', {
+    read: ElementRef<HTMLButtonElement>,
+  });
+
+  /** « Terminer » du bandeau : il disparaît avec le mode, le focus clavier revient donc au bouton de la ligne de
+   *  contrôles (sans quoi il retomberait en haut du document). */
+  protected endDeclaration(): void {
+    this.toggleDeclaration();
+    this.declareButtonRef()?.nativeElement.focus();
   }
 
   /** Ce que la composition vise : un vote ouvert à modifier, ou un vote à créer. */
@@ -2381,6 +2425,8 @@ export class CalendarView implements OnInit {
   );
 
   protected onProposeClicked(): void {
+    // Story 52.2 — un seul outil à la fois : « Proposer des dates » éteint d'abord le mode déclaration.
+    this.leaveDeclaration();
     const mode = this.proposeButton();
     if (mode === 'modify') {
       this.openDestinyModify();
@@ -2420,6 +2466,7 @@ export class CalendarView implements OnInit {
     if (this.interaction() === 'composer') return;
     const rows = this.rendezvousRows();
     if (rows.length === 0) return;
+    this.leaveDeclaration();
     this.pendingWindow.set(null);
     this.rendezvousPickerMode.set('propose');
     if (rows.length === 1) this.pickRendezvous(rows[0]);
@@ -2486,6 +2533,7 @@ export class CalendarView implements OnInit {
     }
     const rows = this.composableRows();
     if (rows.length === 0) return;
+    this.leaveDeclaration();
     this.pendingWindow.set(window);
     this.rendezvousPickerMode.set('window');
     if (rows.length === 1) this.pickRendezvous(rows[0]);
@@ -3828,6 +3876,8 @@ export class CalendarView implements OnInit {
     // Story 36.7 — changer de vue démonte la grille qui ancre le sélecteur ouvert.
     this.closePicker();
     this.view.set(value as 'month' | 'week' | 'agenda');
+    // Story 52.2 — l'Agenda n'a pas de grille où déclarer : y aller éteint le mode (Mois ⇄ Semaine le garde).
+    if (value === 'agenda') this.leaveDeclaration();
   }
 
   protected async onMonthDateChange(d: Date): Promise<void> {

@@ -1847,7 +1847,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   it('AC2/AC12 — en composition, un tap émet composeToggled ET slotSelected, mais n’arme AUCUNE sélection', async () => {
     const f = await createWith({
       entries: [VOTE_ENTRY],
-      composing: true,
+      interaction: 'composer',
       composedKeys: new Set<string>(),
     });
     const composed = vi.fn();
@@ -1869,7 +1869,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   it('🚨 AC12 — en composition, une bande portant un VOTE n’ouvre pas le sélecteur de réponse', async () => {
     const f = await createWith({
       entries: [VOTE_ENTRY],
-      composing: true,
+      interaction: 'composer',
       composedKeys: new Set<string>(),
     });
     const voteActivated = vi.fn();
@@ -1915,7 +1915,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   }
 
   it('Story 45.3 — en composition, l’appui maintenu arme une sélection de jours ET ouvre la barre en version composition', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const toggled = vi.fn();
     f.componentInstance.composeToggled.subscribe(toggled);
 
@@ -1935,7 +1935,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('Story 45.3 — un glissement sélectionne plusieurs jours ; choisir « Soir » puis « Ajouter au vote » émet CES créneaux, sans rien composer par la vue', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const added = vi.fn();
     const toggled = vi.fn();
     f.componentInstance.composeAdded.subscribe(added);
@@ -1962,7 +1962,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('Story 45.3 — « Retirer » émet composeRemoved avec la sélection', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const removed = vi.fn();
     f.componentInstance.composeRemoved.subscribe(removed);
 
@@ -1977,7 +1977,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('Story 45.3 — barre ouverte, un tap bascule la case dans la SÉLECTION (jamais dans la composition)', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const toggled = vi.fn();
     f.componentInstance.composeToggled.subscribe(toggled);
 
@@ -1996,7 +1996,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('Story 45.3 — `Échap` ferme d’abord la barre de sélection, puis (sans barre) quitte le composer', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const cancelled = vi.fn();
     f.componentInstance.composeCancelled.subscribe(cancelled);
     const escape = () =>
@@ -2014,12 +2014,25 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('Story 45.3 — quitter le composer efface la sélection : une barre de composition ne devient pas une barre de déclaration', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     dragDays(20, 21);
     f.detectChanges();
     expect(barEl()).not.toBeNull();
 
-    f.componentRef.setInput('composing', false);
+    f.componentRef.setInput('interaction', 'lecture');
+    f.detectChanges();
+
+    expect(f.componentInstance['selectedDays']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('Story 52.1 — passer à la déclaration efface aussi la sélection', async () => {
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
+    dragDays(20, 21);
+    f.detectChanges();
+    expect(barEl()).not.toBeNull();
+
+    f.componentRef.setInput('interaction', 'declaration');
     f.detectChanges();
 
     expect(f.componentInstance['selectedDays']()).toHaveLength(0);
@@ -2028,7 +2041,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
 
   it('Story 45.3 — sans journée entière (groupe), la barre ne propose pas « Journée »', async () => {
     const f = await createWith({
-      composing: true,
+      interaction: 'composer',
       composedKeys: new Set<string>(),
       composeFullDay: false,
     });
@@ -2044,7 +2057,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC12/AC16 — au clavier aussi : `1` compose au lieu d’armer une sélection', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const composed = vi.fn();
     f.componentInstance.composeToggled.subscribe(composed);
 
@@ -2057,7 +2070,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC17 — une date PASSÉE ne compose rien', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const composed = vi.fn();
     const selected = vi.fn();
     f.componentInstance.composeToggled.subscribe(composed);
@@ -2073,7 +2086,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC3 — `Échap` en composition remonte composeCancelled, et pas l’annulation de sélection', async () => {
-    const f = await createWith({ composing: true, composedKeys: new Set<string>() });
+    const f = await createWith({ interaction: 'composer', composedKeys: new Set<string>() });
     const cancelled = vi.fn();
     f.componentInstance.composeCancelled.subscribe(cancelled);
 
@@ -2088,7 +2101,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   it('AC13/AC16 — un créneau composé porte sa classe ET son état en toutes lettres', async () => {
     await createWith({
       entries: [VOTE_ENTRY],
-      composing: true,
+      interaction: 'composer',
       composedKeys: new Set(['2026-08-20|EVENING']),
     });
 
@@ -2105,7 +2118,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
   it('AC13 — composé et sélectionné sont DEUX traitements distincts', async () => {
     await createWith({
       entries: [VOTE_ENTRY],
-      composing: true,
+      interaction: 'composer',
       composedKeys: new Set(['2026-08-20|EVENING']),
     });
     const band = bandOf(20, 2);
@@ -2120,7 +2133,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
     it('le départ garde son tireté ; les autres bandes de sa plage prennent l’aperçu, un jour vide se déplie', async () => {
       await createWith({
         entries: [VOTE_ENTRY],
-        composing: true,
+        interaction: 'composer',
         composedKeys: new Set(['2026-08-20|EVENING']),
         composeCoverKeys: COVER,
         composeDuration: 3,
@@ -2139,7 +2152,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
     it('au survol d’une bande, la plage qu’elle ouvrirait s’allume ; la quitter l’éteint', async () => {
       const f = await createWith({
         entries: [VOTE_ENTRY],
-        composing: true,
+        interaction: 'composer',
         composedKeys: new Set<string>(),
         composeCoverKeys: new Set<string>(),
         composeDuration: 2,
@@ -2160,7 +2173,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
     it('au doigt (entrée émulée sans sortie), ou sur un jour passé, le survol n’allume rien', async () => {
       const f = await createWith({
         entries: [VOTE_ENTRY, { ...VOTE_ENTRY, key: 'vote-past', date: '2026-08-05' }],
-        composing: true,
+        interaction: 'composer',
         composedKeys: new Set<string>(),
         composeCoverKeys: new Set<string>(),
         composeDuration: 2,
@@ -2178,7 +2191,7 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
     it('à 1 créneau, rien ne change : pas d’aperçu, un jour vide reste une seule bande', async () => {
       const f = await createWith({
         entries: [VOTE_ENTRY],
-        composing: true,
+        interaction: 'composer',
         composedKeys: new Set(['2026-08-20|EVENING']),
         composeCoverKeys: new Set<string>(),
         composeDuration: 1,

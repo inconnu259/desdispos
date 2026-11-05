@@ -1074,7 +1074,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC2/AC12 — un tap émet composeToggled ET slotSelected, mais n’arme aucune sélection', () => {
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     const composed = vi.fn();
     const selected = vi.fn();
     fixture.componentInstance.composeToggled.subscribe(composed);
@@ -1108,7 +1108,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
 
   it('Story 45.3 — en composition, l’appui maintenu arme une sélection ET ouvre la barre en version composition', () => {
     vi.useFakeTimers();
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     const toggled = vi.fn();
     fixture.componentInstance.composeToggled.subscribe(toggled);
 
@@ -1123,7 +1123,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
 
   it('Story 45.3 — « Ajouter au vote » émet la sélection et ferme la barre ; « Retirer » émet composeRemoved', () => {
     vi.useFakeTimers();
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     const added = vi.fn();
     const removed = vi.fn();
     fixture.componentInstance.composeAdded.subscribe(added);
@@ -1144,7 +1144,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
 
   it('Story 45.3 — barre ouverte, un tap bascule la cellule dans la SÉLECTION, jamais dans la composition', () => {
     vi.useFakeTimers();
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     const toggled = vi.fn();
     fixture.componentInstance.composeToggled.subscribe(toggled);
 
@@ -1157,7 +1157,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
 
   it('Story 45.3 — `Échap` ferme d’abord la barre, puis quitte le composer', () => {
     vi.useFakeTimers();
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     const cancelled = vi.fn();
     fixture.componentInstance.composeCancelled.subscribe(cancelled);
     const escape = () =>
@@ -1175,11 +1175,24 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
 
   it('Story 45.3 — quitter le composer efface la sélection', () => {
     vi.useFakeTimers();
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     longPressCell(cellAt('EVENING', 2));
     expect(barEl()).not.toBeNull();
 
-    fixture.componentRef.setInput('composing', false);
+    fixture.componentRef.setInput('interaction', 'lecture');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('Story 52.1 — passer à la déclaration efface aussi la sélection', () => {
+    vi.useFakeTimers();
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
+    longPressCell(cellAt('EVENING', 2));
+    expect(barEl()).not.toBeNull();
+
+    fixture.componentRef.setInput('interaction', 'declaration');
     fixture.detectChanges();
 
     expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
@@ -1188,7 +1201,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
 
   it('Story 45.3 — sans journée entière (groupe), la barre ne propose pas « Journée »', () => {
     vi.useFakeTimers();
-    create({ composing: true, composedKeys: new Set<string>(), composeFullDay: false });
+    create({ interaction: 'composer', composedKeys: new Set<string>(), composeFullDay: false });
     longPressCell(cellAt('EVENING', 2));
 
     const labels = Array.from(el.querySelectorAll('app-selection-bar .scope-seg')).map((b) =>
@@ -1201,7 +1214,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
     create({
       entries: [voteEntry(2)],
       activeLayers: ['votes-en-cours'],
-      composing: true,
+      interaction: 'composer',
       composedKeys: new Set<string>(),
     });
     const voteActivated = vi.fn();
@@ -1223,7 +1236,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC12/AC16 — au clavier, `Espace` compose au lieu d’armer une sélection', () => {
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     const composed = vi.fn();
     fixture.componentInstance.composeToggled.subscribe(composed);
 
@@ -1235,7 +1248,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC3 — `Échap` en composition remonte composeCancelled', () => {
-    create({ composing: true, composedKeys: new Set<string>() });
+    create({ interaction: 'composer', composedKeys: new Set<string>() });
     const cancelled = vi.fn();
     fixture.componentInstance.composeCancelled.subscribe(cancelled);
 
@@ -1248,7 +1261,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC13/AC16 — une cellule composée porte sa classe ET son état en toutes lettres', () => {
-    create({ composing: true, composedKeys: new Set([`${dayKey(2)}|EVENING`]) });
+    create({ interaction: 'composer', composedKeys: new Set([`${dayKey(2)}|EVENING`]) });
 
     const cell = cellAt('EVENING', 2);
     expect(cell.classList.contains('slot-cell--composed')).toBe(true);
@@ -1260,7 +1273,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
   });
 
   it('AC13 — composé et sélectionné sont DEUX traitements distincts', () => {
-    create({ composing: true, composedKeys: new Set([`${dayKey(2)}|EVENING`]) });
+    create({ interaction: 'composer', composedKeys: new Set([`${dayKey(2)}|EVENING`]) });
     const cell = cellAt('EVENING', 2);
     expect(cell.classList.contains('slot-cell--composed')).toBe(true);
     expect(cell.classList.contains('selected')).toBe(false);
@@ -1269,7 +1282,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
   // ⚠️ Story 47.4 — bloc JUMEAU de la vue Mois : l'aperçu des plages.
   it('Story 47.4 — le départ garde son tireté, les créneaux couverts prennent l’aperçu', () => {
     create({
-      composing: true,
+      interaction: 'composer',
       composedKeys: new Set([`${dayKey(2)}|EVENING`]),
       composeCoverKeys: new Set([`${dayKey(3)}|MORNING`, `${dayKey(3)}|AFTERNOON`]),
       composeDuration: 3,
@@ -1282,7 +1295,7 @@ describe('CalendarWeekView — mode de composition (Story 36.10)', () => {
   });
 
   it('Story 47.4 — au survol, la plage qu’ouvrirait la cellule s’allume ; à 1 créneau, rien', () => {
-    create({ composing: true, composedKeys: new Set<string>(), composeDuration: 2 });
+    create({ interaction: 'composer', composedKeys: new Set<string>(), composeDuration: 2 });
 
     cellAt('EVENING', 2).dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
     fixture.detectChanges();

@@ -132,6 +132,7 @@ import {
   type ConflictResolutionByIndex,
 } from '../conflict-dialog/conflict-dialog';
 import { type SelectedCell, buildBatchItems, composeCellKey } from '../selection.utils';
+import type { CalendarInteraction } from '../calendar-interaction';
 import { ComposeBar } from '../compose-bar/compose-bar';
 import {
   ComposeConfirmDialog,
@@ -1233,10 +1234,11 @@ export class CalendarView implements OnInit {
     // ⚠️ Story 45.2 (AR16) — armer le composer SUSPEND la Destinée : plus d'estompe (le plateau est déjà masqué par
     // `destinyPresentable`). `destinyPollId` n'est pas touché : annuler rend l'état exact d'avant, valider
     // réactive la Destinée sur le vote créé ou modifié.
-    if (this.composing()) return null;
+    if (this.interaction() === 'composer') return null;
     // Story 46.2 — une fenêtre de l'automate sélectionnée passe avant la Destinée : seul son jour reste net.
     const window = this.selectedWindow();
     if (window) return new Set([window.date]);
+    if (this.interaction() !== 'destinee') return null;
     const current = this.destinyPoll();
     if (!current) return null;
     const dates = new Set<string>();
@@ -1258,6 +1260,9 @@ export class CalendarView implements OnInit {
    */
   protected enterDestiny(pollId: string): void {
     this.destinyPollId.set(pollId);
+    // Composer armé : le vote choisi devient la destinée SUSPENDUE (annuler la rend, valider la remplace) ; la
+    // composition n'est jamais abandonnée en silence par un clic dans la liste (comportement d'avant 52.1).
+    if (this.interactionState() !== 'composer') this.setInteraction('destinee');
     // Story 46.1 — entrer en Destinée rouvre la colonne : le vote ne se suit pas derrière un dock.
     this.dock.open();
     // Le créneau courant appartenait au vote précédent ; `chooseDestiny` pose celui du nouveau.
@@ -1422,7 +1427,7 @@ export class CalendarView implements OnInit {
   private readonly destinyPresentable = computed(
     () =>
       this.view() !== 'agenda' &&
-      !this.composing() &&
+      this.interaction() === 'destinee' &&
       // Story 46.2 — sélectionner une fenêtre SUSPEND la Destinée (`destinyPollId` intact : désélectionner la rétablit).
       !this.selectedWindow() &&
       this.destinyPoll() !== null &&
@@ -1457,7 +1462,10 @@ export class CalendarView implements OnInit {
   /** Story 46.3 — « Ajouter au vote » a-t-il quelque part où verser la fenêtre ? Composer ouvert, vote de la Destinée
    *  modifiable, ou au moins un rendez-vous composable. Sinon le bouton est désactivé : jamais un clic muet. */
   protected readonly windowAddable = computed(
-    () => this.composing() || this.modifiablePoll() !== null || this.composableRows().length > 0,
+    () =>
+      this.interaction() === 'composer' ||
+      this.modifiablePoll() !== null ||
+      this.composableRows().length > 0,
   );
 
   protected onWindowSelected(slot: AvailableSlotDto | null): void {
@@ -1958,7 +1966,7 @@ export class CalendarView implements OnInit {
 
   /** « Quitter la Destinée » : le mode s'arrête, la liste se referme. */
   protected quitDestiny(): void {
-    this.exitDestiny();
+    this.dropDestiny();
     this.closeDestinyList();
   }
 
@@ -1988,7 +1996,42 @@ export class CalendarView implements OnInit {
   //
   // 🚨 MJ ET CONTEXTE DE PARTIE UNIQUEMENT (AC10). L'écriture exige `getOwned` et un `partieId` ;
   // le calendrier personnel agrège des votes de PLUSIEURS parties et n'a pas de cible.
-  protected readonly composing = signal(false);
+  //
+  // ⚠️ Story 52.1 (AD-7) — UN SEUL signal dit quel outil est allumé. Il remplace le booléen `composing` ; il n'est écrit
+  // que par `setInteraction()`. `destinyPollId` ne dit plus que QUEL vote ; `interaction() === 'destinee'` dit si la
+  // Destinée est active, `=== 'composer'` si la composition l'est.
+  private readonly interactionState = signal<CalendarInteraction>('lecture');
+  protected readonly interaction = this.interactionState.asReadonly();
+
+  /**
+   * Allume un outil et éteint l'autre : la sortie de l'outil quitté est appelée, les listes ouvertes se referment, et
+   * les vues vident leur sélection (elles la réinitialisent à chaque changement d'`interaction`).
+   *
+   * 🚨 Armer le composer depuis la Destinée GARDE le vote désigné (`destinyPollId`) : annuler rend la Destinée sur le
+   * même vote, valider la rend sur le vote créé ou modifié (Story 45.2, AR16). Toute autre cible quitte la Destinée.
+   */
+  protected setInteraction(next: CalendarInteraction): void {
+    const previous = this.interactionState();
+    if (previous === next) return;
+    this.interactionState.set(next);
+    if (previous === 'composer') this.exitCompose();
+    if (next !== 'destinee' && next !== 'composer') this.exitDestiny();
+    this.destinyListOpen.set(false);
+    this.rendezvousPickerOpen.set(false);
+  }
+
+  /** Sortie du composer sans rien écrire : la Destinée reprend sur le vote désigné, sinon retour à la lecture. */
+  private leaveCompose(): void {
+    this.setInteraction(this.destinyPollId() !== null ? 'destinee' : 'lecture');
+  }
+
+  /** Fin de la Destinée : la lecture, sauf si le composer est armé — le composer reste alors allumé, et seul le vote
+   *  désigné est lâché (annuler rend alors la lecture, pas une Destinée sur un vote disparu). */
+  private dropDestiny(): void {
+    if (this.interactionState() === 'destinee') this.setInteraction('lecture');
+    else this.exitDestiny();
+  }
+
   /** Ce que la composition vise : un vote ouvert à modifier, ou un vote à créer. */
   protected readonly composeTarget = signal<ComposeTarget | null>(null);
   /** Les créneaux composés, dans la forme que `SelectedCell` porte déjà partout ailleurs. */
@@ -1997,7 +2040,7 @@ export class CalendarView implements OnInit {
   /** Ce qui descend dans les deux grilles — un ensemble de clés, jamais la liste : les vues n'ont
    *  qu'un test d'appartenance à faire, et la dérivation reste unique (doctrine `destinyDates()`). */
   protected readonly composedKeys = computed<ReadonlySet<string> | null>(() => {
-    if (!this.composing()) return null;
+    if (this.interaction() !== 'composer') return null;
     return new Set(this.composedCells().map((c) => composeCellKey(c.date, c.slot)));
   });
 
@@ -2012,11 +2055,15 @@ export class CalendarView implements OnInit {
 
   /** ⚠️ Story 47.6 — la durée que la liste de l'automate demande au serveur : celle du composer pendant la composition,
    *  1 sinon. Le serveur est seul à classer les fenêtres (pire statut sur la plage) : aucune règle ici. */
-  protected readonly slotsSpan = computed(() => (this.composing() ? this.composeDuration() : 1));
+  protected readonly slotsSpan = computed(() =>
+    this.interaction() === 'composer' ? this.composeDuration() : 1,
+  );
 
   /** Les créneaux qu'allument les plages des départs désignés (départs exclus) — vide à 1 créneau. */
   protected readonly composeCoverKeys = computed<ReadonlySet<string> | null>(() =>
-    this.composing() ? composeSpanKeys(this.composedCells(), this.composeDuration()) : null,
+    this.interaction() === 'composer'
+      ? composeSpanKeys(this.composedCells(), this.composeDuration())
+      : null,
   );
 
   /** Le premier départ désigné : la plage s'écrit depuis lui, en clair, sous le compteur. Une journée entière n'en est
@@ -2065,7 +2112,7 @@ export class CalendarView implements OnInit {
   /** Une nouvelle durée choisie au compteur. Au-delà d'un créneau, une journée entière déjà désignée quitte la
    *  composition, et le message l'écrit (jamais un retrait muet). Rien n'est écrit au serveur. */
   protected onComposeDurationChanged(durationSlots: number): void {
-    if (!this.composing()) return;
+    if (this.interaction() !== 'composer') return;
     this.composeDuration.set(durationSlots);
     if (durationSlots <= 1) {
       // Revenu à 1 créneau : les messages propres à la durée n'ont plus d'objet.
@@ -2321,7 +2368,7 @@ export class CalendarView implements OnInit {
   /** Le bouton de la ligne de contrôles : « Proposer des dates », « Modifier les dates », ou rien — jamais
    *  pendant une composition (le mode se voit tant qu'il dure). */
   protected readonly proposeButton = computed<'propose' | 'modify' | null>(() => {
-    if (this.composing()) return null;
+    if (this.interaction() === 'composer') return null;
     if (this.modifiablePoll()) return 'modify';
     // Story 45.6 — dans la vitrine, la destinée active dont j'ai `can.edit` : « Modifier les dates » ouvre son atelier.
     if (this.partieId() === null && this.destinyEntry()?.can.edit) return 'modify';
@@ -2349,7 +2396,7 @@ export class CalendarView implements OnInit {
    * n'arme jamais de composer.
    */
   protected openDestinyModify(): void {
-    if (this.composing()) return;
+    if (this.interaction() === 'composer') return;
     if (this.partieId() !== null) {
       const target = this.modifiablePoll();
       if (target) this.armTarget(target);
@@ -2370,7 +2417,7 @@ export class CalendarView implements OnInit {
   /** Proposer des dates pour un rendez-vous À DATER (le bouton, ou le lien « autre rendez-vous » du plateau) : un seul
    *  rendez-vous saute l'étape du choix ; le nouveau vote deviendra la destinée active (45.2). */
   protected proposeOther(): void {
-    if (this.composing()) return;
+    if (this.interaction() === 'composer') return;
     const rows = this.rendezvousRows();
     if (rows.length === 0) return;
     this.pendingWindow.set(null);
@@ -2413,7 +2460,7 @@ export class CalendarView implements OnInit {
     }
     this.startCompose(row.seanceId);
     // Story 46.3 — le composer est armé : la fenêtre qui a lancé le choix y entre.
-    if (pending && this.composing()) this.addWindowCell(pending);
+    if (pending && this.interaction() === 'composer') this.addWindowCell(pending);
   }
 
   /**
@@ -2427,7 +2474,7 @@ export class CalendarView implements OnInit {
       ? { date: slot.date, slot: slot.slot, durationSlots: slot.durationSlots }
       : this.selectedWindow();
     if (!window) return;
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       this.addWindowCell(window);
       return;
     }
@@ -2542,7 +2589,7 @@ export class CalendarView implements OnInit {
     this.composeDeadlineFixed.set(!!existingEnd);
     // ⚠️ Story 47.4 — la ligne « Durée » part TOUJOURS de la durée du rendez-vous visé.
     this.armDuration(this.targetDurationOf(target));
-    this.composing.set(true);
+    this.setInteraction('composer');
     // Un groupe se compose en vue Semaine (règle 40.5b) ; la vue Agenda n'a ni grille ni barre de composition.
     if (target.kind === 'group-poll' || target.kind === 'evening-poll') this.showGridForCompose();
     else if (this.view() === 'agenda') this.onViewChange('month');
@@ -2558,7 +2605,7 @@ export class CalendarView implements OnInit {
   protected startCompose(seanceId?: string): void {
     if (!this.canCompose()) return;
     if (seanceId) {
-      if (this.composing() && this.composedCells().length > 0) return;
+      if (this.interaction() === 'composer' && this.composedCells().length > 0) return;
       const target = this.composeTargetFor(seanceId);
       if (target) this.armTarget(target);
       return;
@@ -2598,7 +2645,7 @@ export class CalendarView implements OnInit {
 
   /** AC2 — bascule pure. Aucun appel réseau : rien n'est enregistré avant validation. */
   protected onComposeToggled(event: SlotSelectedEvent): void {
-    if (!this.composing()) return;
+    if (this.interaction() !== 'composer') return;
     // ⚠️ Story 47.4 — au-delà d'un créneau, une journée entière n'est pas un départ : en Mois, toucher une case
     // entière ouvre la Semaine sur ce jour (où l'on choisit matin, après-midi ou soir) sans rien désigner.
     if (event.slot === 'FULL_DAY' && this.composeDuration() > 1) {
@@ -2640,7 +2687,7 @@ export class CalendarView implements OnInit {
    *  créneaux déjà désignés. CUMUL : l'union, sans doublon, l'ordre existant gardé — jamais un remplacement.
    *  Une journée entière refusée l'est avec sa raison écrite (comme pour un tap), jamais en silence. */
   protected onComposeAdded(cells: SelectedCell[]): void {
-    if (!this.composing()) return;
+    if (this.interaction() !== 'composer') return;
     let toAdd = cells;
     if (this.isGroupTarget()) {
       const kept = cells.filter((c) => c.slot !== 'FULL_DAY');
@@ -2673,7 +2720,7 @@ export class CalendarView implements OnInit {
 
   /** Story 45.3 — « Retirer » : ces créneaux quittent la composition (ceux qui n'y étaient pas ne changent rien). */
   protected onComposeRemoved(cells: SelectedCell[]): void {
-    if (!this.composing()) return;
+    if (this.interaction() !== 'composer') return;
     const drop = new Set(cells.map((c) => composeCellKey(c.date, c.slot)));
     this.composeRefusal.set(null);
     this.composedCells.update((current) =>
@@ -2684,7 +2731,7 @@ export class CalendarView implements OnInit {
   /** AC3 — `Échap` et « Annuler » font la MÊME chose : sortir sans rien écrire. */
   protected cancelCompose(): void {
     const target = this.composeTarget();
-    this.exitCompose();
+    this.leaveCompose();
     this.clearArmParam();
     // Story 40.5b — renoncer à composer les créneaux d'une conjonction à créer ramène à la fenêtre de
     // création, brouillon intact (le brouillon n'est jamais perdu pour avoir hésité).
@@ -2699,7 +2746,6 @@ export class CalendarView implements OnInit {
 
   /** Sortie du mode, sans rien écrire ni naviguer. */
   private exitCompose(): void {
-    this.composing.set(false);
     this.composeTarget.set(null);
     this.composedCells.set([]);
     this.composeRefusal.set(null);
@@ -2834,7 +2880,7 @@ export class CalendarView implements OnInit {
         pollId = scenario.seances.find((s) => s.id === target.seanceId)?.poll?.id;
       }
       await this.loadScenarios(partieId);
-      this.exitCompose();
+      this.leaveCompose();
       this.clearArmParam();
       if (pollId) await this.reactivateDestiny(pollId);
     } catch {
@@ -2876,7 +2922,7 @@ export class CalendarView implements OnInit {
   /** L'hôte arme la composition sur le sondage ouvert de SA conjonction : les créneaux actuels sont
    *  déjà composés (sans quoi « retiré s'il y était déjà » n'aurait aucun référent). */
   protected startGroupCompose(eventId: string): void {
-    if (!this.isGroup() || this.composing()) return;
+    if (!this.isGroup() || this.interaction() === 'composer') return;
     const entry = this.groupPolls().find((e) => e.card.id === eventId);
     if (!entry?.card.can.edit) return;
     // Un seul chemin d'armement : créneaux actuels, fin du vote actuelle, vue Semaine (Story 45.4).
@@ -2896,7 +2942,7 @@ export class CalendarView implements OnInit {
     this.composeRefusal.set(null);
     // ⚠️ Story 47.4 — la durée du brouillon (celle de la fenêtre de création), dans les deux sens.
     this.armDuration(draft.durationSlots ?? 1);
-    this.composing.set(true);
+    this.setInteraction('composer');
     this.showGridForCompose();
   }
 
@@ -2917,7 +2963,7 @@ export class CalendarView implements OnInit {
     const options = this.composedSlots();
     // Story 47.4 — la durée composée rejoint le brouillon avec les créneaux (la fenêtre de création la reprend).
     const durationSlots = this.composeDuration();
-    this.exitCompose();
+    this.leaveCompose();
     this.drafts.finishCompose(partieId, options, durationSlots);
     void this.returnToGroupPage(partieId);
   }
@@ -2952,7 +2998,7 @@ export class CalendarView implements OnInit {
       await this.injector.get(EventsApiService).update(partieId, card.id, dto);
       await this.loadGroupEvents(partieId);
       const pollId = this.groupEvents().find((c) => c.id === eventId)?.poll?.id;
-      this.exitCompose();
+      this.leaveCompose();
       this.clearArmParam();
       if (pollId) await this.reactivateDestiny(pollId);
     } catch (err) {
@@ -3032,7 +3078,7 @@ export class CalendarView implements OnInit {
     try {
       await this.injector.get(EventsApiService).update(partieId, card.id, dto);
       await this.loadGroupEvents(partieId);
-      this.exitCompose();
+      this.leaveCompose();
       this.clearArmParam();
       await this.reactivateDestiny(current.poll.id);
     } catch (err) {
@@ -3167,7 +3213,7 @@ export class CalendarView implements OnInit {
       if (this.partieId()) {
         untracked(() => {
           this.destinyNotice.set(this.destinyCloseReason(id));
-          this.exitDestiny();
+          this.dropDestiny();
         });
         return;
       }
@@ -3179,7 +3225,7 @@ export class CalendarView implements OnInit {
       if (!this.openPollsSvc.loaded()) return;
       untracked(() => {
         this.destinyNotice.set(this.theme.tone()['calendar.destiny_closed_gone']);
-        this.exitDestiny();
+        this.dropDestiny();
       });
     });
 
@@ -3290,7 +3336,7 @@ export class CalendarView implements OnInit {
       const target = this.composeTarget();
       if (target?.kind !== 'group-poll') return;
       const stillOpen = this.groupPolls().some((e) => e.card.id === target.eventId);
-      if (!stillOpen) untracked(() => this.exitCompose());
+      if (!stillOpen) untracked(() => this.leaveCompose());
     });
 
     let firstRun = true;
@@ -3371,6 +3417,7 @@ export class CalendarView implements OnInit {
     this.groupEvents.set([]);
     this.groupEventsError.set(null);
     this.membersRequestedFor = null;
+    this.setInteraction('lecture');
     this.exitCompose();
     // Story 44.6 — la Destinée d'une partie précédente ne survit pas à ce changement : elle n'a pas à se fermer
     // plus tard sur un « Ce vote est clos. » qui ne concerne pas la partie affichée.

@@ -488,7 +488,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     const comp = fixture.componentInstance as any;
     await tick(fixture);
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
     expect(comp.composedCells()).toEqual([]);
     expect(comp.composeTargetLabel()).toContain('Chapitre sc1');
@@ -523,7 +523,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     });
     await tick(fixture);
 
-    expect((fixture.componentInstance as any).composing()).toBe(true);
+    expect((fixture.componentInstance as any).interaction()).toBe('composer');
   });
 
   it.each([
@@ -543,7 +543,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     });
     await tick(fixture);
 
-    expect((fixture.componentInstance as any).composing()).toBe(false);
+    expect((fixture.componentInstance as any).interaction()).not.toBe('composer');
     expect(notice(fixture)).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
     expect(location.path()).not.toContain('seanceId');
   });
@@ -555,7 +555,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     });
     await tick(fixture);
 
-    expect((fixture.componentInstance as any).composing()).toBe(false);
+    expect((fixture.componentInstance as any).interaction()).not.toBe('composer');
     expect(notice(fixture)).toBeNull();
   });
 
@@ -624,7 +624,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       const { fixture } = await armed();
       const comp = fixture.componentInstance as any;
       const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
-      expect(month.composing()).toBe(true);
+      expect(month.interaction()).toBe('composer');
       expect(month.composeFullDay()).toBe(comp.composeAllowsFullDay());
     });
   });
@@ -819,6 +819,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       });
       const comp = r.fixture.componentInstance as any;
       comp.destinyPollId.set('poll1');
+      comp.setInteraction('destinee');
       await tick(r.fixture);
       return { ...r, comp };
     };
@@ -839,7 +840,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       const several = await atelierWith(2);
       several.comp.proposeOther();
       expect(several.comp.rendezvousPickerOpen()).toBe(true);
-      expect(several.comp.composing()).toBe(false);
+      expect(several.comp.interaction()).not.toBe('composer');
       TestBed.resetTestingModule();
 
       const one = await atelierWith(1);
@@ -858,7 +859,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       expect(comp.destinyBoard().actions?.modifyLabel ?? null).toBeNull();
       expect(comp.destinyBoard().actions?.otherLabel ?? null).toBeNull();
       comp.openDestinyModify();
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).not.toBe('composer');
     });
 
     it('le bouton de la ligne de contrôles et l’action du plateau sont UN comportement', async () => {
@@ -893,6 +894,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       });
       const comp = r.fixture.componentInstance as any;
       comp.destinyPollId.set('poll-j');
+      comp.setInteraction('destinee');
       r.fixture.detectChanges();
       const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
       return { ...r, comp, navigate };
@@ -920,7 +922,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       expect(navigate).toHaveBeenLastCalledWith('/parties/partie-J/calendar?poll=poll-j&seanceId=seance-j');
       button.click();
       expect(navigate).toHaveBeenCalledTimes(2);
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).not.toBe('composer');
     });
 
     it('vitrine, vote de groupe : l’atelier du groupe (`/guild-calendar`)', async () => {
@@ -961,6 +963,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       const { fixture, location } = await withDestiny();
       const comp = fixture.componentInstance as any;
       comp.destinyPollId.set('pollX');
+      comp.setInteraction('destinee');
       await tick(fixture);
       expect(comp.destinyDates()).not.toBeNull();
 
@@ -968,7 +971,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       comp.startCompose('sc2-s1');
       await tick(fixture);
 
-      expect(comp.composing()).toBe(true);
+      expect(comp.interaction()).toBe('composer');
       expect(comp.destinyDates()).toBeNull();
       expect(comp.destinyBoardShown()).toBe(false);
       expect(comp.destinyPollId()).toBe('pollX');
@@ -977,7 +980,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       comp.cancelCompose();
       await tick(fixture);
 
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).not.toBe('composer');
       expect(comp.destinyPollId()).toBe('pollX');
       expect(comp.destinyDates()).not.toBeNull();
       expect(location.path()).not.toContain('seanceId');
@@ -988,6 +991,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       const { fixture, location, scenariosSvc, dialog, openPollsSvc } = await withDestiny();
       const comp = fixture.componentInstance as any;
       comp.destinyPollId.set('pollX');
+      comp.setInteraction('destinee');
       location.replaceState('/parties/partie-1/calendar', 'poll=pollX&seanceId=sc2-s1');
       comp.startCompose('sc2-s1');
       comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
@@ -1020,7 +1024,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
         undefined,
       );
       expect(openPollsSvc.refresh).toHaveBeenCalled();
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).toBe('destinee');
       expect(comp.destinyPollId()).toBe('pollNew');
       expect(location.path()).toContain('poll=pollNew');
       expect(location.path()).not.toContain('seanceId');
@@ -1039,7 +1043,7 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       await tick(fixture);
 
       expect(scenariosSvc.createSeancePoll).not.toHaveBeenCalled();
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).not.toBe('composer');
       expect(notice(fixture)).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
     });
   });
@@ -3988,7 +3992,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     const { fixture } = await createCalendarView({ scenarios: [FREE_SEANCE_SCENARIO] });
     const comp = fixture.componentInstance as any;
     comp.startCompose();
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     expect(comp.composeTarget()).toBeNull();
   });
 
@@ -4013,9 +4017,10 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     });
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll1' });
     expect([...comp.composedKeys()].sort()).toEqual(['2026-08-01|EVENING', '2026-08-02|MORNING']);
   });
@@ -4074,12 +4079,13 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     });
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
     comp.onComposeToggled(cell('2026-09-04', 'EVENING'));
 
     comp.cancelCompose();
 
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     expect(comp.composedCells()).toEqual([]);
     expect(comp.composedKeys()).toBeNull();
     expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
@@ -4114,6 +4120,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     });
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
     comp.onComposeToggled(cell('2026-08-03', 'EVENING'));
 
@@ -4138,6 +4145,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     });
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
     // optA porte une réponse ; on la retire et on ajoute un créneau pour rester dans les bornes.
     comp.onComposeToggled(cell('2026-08-01', 'EVENING'));
@@ -4163,6 +4171,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     });
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
     comp.onComposeToggled(cell('2026-08-01', 'EVENING'));
     comp.onComposeToggled(cell('2026-08-03', 'EVENING'));
@@ -4170,7 +4179,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     await comp.confirmCompose();
 
     expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect([...comp.composedKeys()].sort()).toEqual(['2026-08-02|MORNING', '2026-08-03|EVENING']);
   });
 
@@ -4183,6 +4192,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     const comp = fixture.componentInstance as any;
     dialog.__result = true;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
     comp.onComposeToggled(cell('2026-08-01', 'EVENING'));
     comp.onComposeToggled(cell('2026-08-03', 'EVENING'));
@@ -4196,7 +4206,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
       ],
       expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
   });
 
   // ── AC4 / AC11 : la création passe TOUJOURS par une séance ──
@@ -4238,13 +4248,16 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     });
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
 
     comp.scenarios.set([]); // le vote n'est plus ouvert
     fixture.detectChanges();
 
-    expect(comp.composing()).toBe(false);
+    // Le vote désigné disparu, le composer visé aussi : tout retombe en lecture (jamais une Destinée sur un vote mort).
+    expect(comp.interaction()).toBe('lecture');
+    expect(comp.destinyPollId()).toBeNull();
     expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
     expect(scenariosSvc.createSeancePoll).not.toHaveBeenCalled();
   });
@@ -4258,12 +4271,13 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
     const comp = fixture.componentInstance as any;
     pollSvc.setPollOptions.mockRejectedValueOnce(new Error('boom'));
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.startCompose();
     comp.onComposeToggled(cell('2026-08-03', 'EVENING'));
 
     await comp.confirmCompose();
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composedCells()).toHaveLength(3);
     expect(comp.error()).toBe(GRIMOIRE_TONE['calendar.view_compose_save_error']);
   });
@@ -4329,6 +4343,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
       });
       const comp = view.fixture.componentInstance as any;
       comp.destinyPollId.set('poll1');
+      comp.setInteraction('destinee');
       comp.startCompose();
       return { ...view, comp };
     }
@@ -4433,7 +4448,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
 
       expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
       expect(comp.error()).toBe(GRIMOIRE_TONE['calendar.view_compose_stale_voters']);
-      expect(comp.composing()).toBe(true);
+      expect(comp.interaction()).toBe('composer');
     });
 
     it('aperçu : durée 6, vendredi soir désigné → samedi entier et dimanche matin + après-midi', async () => {
@@ -4776,6 +4791,7 @@ describe('CalendarView — ce que l’Agenda reçoit (Story 36.11, AC14, D-3)', 
     expect(fixture.nativeElement.querySelector('app-destiny-control')).not.toBeNull();
 
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     comp.onViewChange('agenda');
     fixture.detectChanges();
 
@@ -5196,7 +5212,7 @@ describe('CalendarView — « Lancer un vote » depuis l’Agenda (Story 36.12, 
     fixture.detectChanges();
 
     expect(comp.view()).toBe('month');
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'seanceLibre' });
     expect(comp.composedCells()).toEqual([]);
     expect(fixture.nativeElement.querySelector('app-compose-bar')).not.toBeNull();
@@ -5639,16 +5655,18 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
   it('seul l’hôte d’un sondage ouvert a « Modifier les dates », et seulement quand ce vote est la destinée active (Story 45.1)', async () => {
     const member = await createGroupView();
     member.comp.destinyPollId.set('p1');
+    member.comp.setInteraction('destinee');
     member.fixture.detectChanges();
     expect(member.fixture.nativeElement.querySelector('.compose-arm')).toBeNull();
     member.comp.startGroupCompose('e1');
-    expect(member.comp.composing()).toBe(false);
+    expect(member.comp.interaction()).not.toBe('composer');
     TestBed.resetTestingModule();
 
     const host = await createGroupView({ userId: HOST });
     // Sans destinée active ni rendez-vous à dater : plus de bouton « Composer les créneaux : {titre} ».
     expect(host.fixture.nativeElement.querySelector('.compose-arm')).toBeNull();
     host.comp.destinyPollId.set('p1');
+    host.comp.setInteraction('destinee');
     host.fixture.detectChanges();
     const btn = host.fixture.nativeElement.querySelector('.compose-arm');
     expect(btn?.textContent?.trim()).toBe(GRIMOIRE_TONE['calendar.view_modify_dates']);
@@ -5660,20 +5678,22 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       events: [groupCard({ can: { ...HOST_CAN, edit: false } })],
     });
     comp.destinyPollId.set('p1');
+    comp.setInteraction('destinee');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.compose-arm')).toBeNull();
     comp.startGroupCompose('e1');
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
   });
 
   it('armer la composition part des créneaux actuels et passe en vue Semaine', async () => {
     const { comp, fixture } = await createGroupView({ userId: HOST });
     comp.destinyPollId.set('p1');
+    comp.setInteraction('destinee');
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.compose-arm').click();
     fixture.detectChanges();
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeTarget()).toEqual({ kind: 'group-poll', eventId: 'e1' });
     expect(comp.composedCells().map((c: any) => `${c.slot}`)).toEqual([
       'EVENING',
@@ -5797,7 +5817,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
         ],
         pollDeadline: dayIn(9),
       });
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).not.toBe('composer');
       expect(comp.destinyPollId()).toBe('p1');
     });
 
@@ -5860,7 +5880,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       fixture.detectChanges();
 
       expect(eventsApi.update).not.toHaveBeenCalled();
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).not.toBe('composer');
       expect(
         fixture.nativeElement.querySelector('.calendar-notice span')?.textContent?.trim(),
       ).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
@@ -5875,7 +5895,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
       await comp.confirmCompose();
 
-      expect(comp.composing()).toBe(true);
+      expect(comp.interaction()).toBe('composer');
       expect(comp.error()).toBe('Soirée terminée.');
     });
 
@@ -5887,7 +5907,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       });
       expect(comp.rendezvousRows()).toEqual([]);
       comp.startCompose('s1');
-      expect(comp.composing()).toBe(false);
+      expect(comp.interaction()).not.toBe('composer');
     });
   });
 
@@ -5987,7 +6007,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     expect('date' in dto).toBe(false);
     expect('slot' in dto).toBe(false);
     await tick();
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
   });
 
   it('retirer un créneau déjà voté avertit du nombre de réponses perdues avant d’écrire', async () => {
@@ -6034,7 +6054,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
     expect(eventsApi.update).not.toHaveBeenCalled();
     expect(comp.error()).toBe(GRIMOIRE_TONE['partie.ralliement_calendar_compose_stale_voters']);
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
   });
 
   it('une modification de la carte arrivée pendant l’avertissement n’est pas écrasée : le PATCH part de la carte relue', async () => {
@@ -6071,7 +6091,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     await comp.confirmCompose();
 
     expect(eventsApi.update).not.toHaveBeenCalled();
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composedCells()).toHaveLength(2);
   });
 
@@ -6088,7 +6108,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     await comp.confirmCompose();
     await tick();
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(fixture.nativeElement.querySelector('.calendar-error')?.textContent?.trim()).toBe(
       'Un sondage de dates demande au moins deux créneaux.',
     );
@@ -6097,7 +6117,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
   it('le sondage devient une date fixée en cours de composition : le mode se ferme', async () => {
     const { comp, eventsApi, scenariosSvc, tick } = await createGroupView({ userId: HOST });
     comp.startGroupCompose('e1');
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
 
     const base = groupCard();
     eventsApi.list.mockResolvedValueOnce([
@@ -6106,7 +6126,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     scenariosSvc.changed.set({ partieId: 'g1' });
     await tick();
 
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     expect(comp.composeTarget()).toBeNull();
   });
 
@@ -6115,7 +6135,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
   it('un autre :id (quête) pendant une composition : le groupe est oublié, la composition fermée', async () => {
     const { comp, partiesSvc, eventsApi, tick } = await createGroupView({ userId: HOST });
     comp.startGroupCompose('e1');
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.groupPolls()).toHaveLength(1);
 
     partiesSvc.get.mockResolvedValue(JDR_PARTY);
@@ -6123,7 +6143,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     await tick();
 
     expect(comp.isGroup()).toBe(false);
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     expect(comp.groupPolls()).toEqual([]);
     expect(eventsApi.list).toHaveBeenCalledTimes(1);
   });
@@ -6147,7 +6167,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
     expect(eventsApi.list).toHaveBeenLastCalledWith('g2');
     expect(comp.isGroup()).toBe(true);
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     expect(comp.groupPolls().map((e: any) => e.card.id)).toEqual(['e2']);
   });
 
@@ -6173,7 +6193,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
   it('la fenêtre de création envoie son brouillon : composition d’une nouvelle conjonction, sans appel au serveur', async () => {
     const { comp, eventsApi, fixture } = await createGroupView({ beforeCreate: sendDraft });
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeTarget()).toEqual({ kind: 'group-new' });
     expect(comp.composedCells()).toHaveLength(2);
     // Vue Mois par défaut sur ordinateur : armer passe en Semaine, sur le premier créneau du brouillon.
@@ -6196,7 +6216,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     expect(eventsApi.update).not.toHaveBeenCalled();
     expect(dialog.open).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenLastCalledWith(['/parties', 'g1'], { replaceUrl: true });
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     const back = drafts.takeReopen('g1');
     expect(back?.title).toBe('Brunch du dimanche');
     expect(back?.pollOptions).toEqual([
@@ -6231,7 +6251,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
   it('sans brouillon en attente, la page ne compose rien d’elle-même', async () => {
     const { comp } = await createGroupView();
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
   });
 
   // ── ⚠️ Story 47.4 — la durée dans le composer d'un groupe ──
@@ -6483,6 +6503,7 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
     comp.quitDestiny();
     await tick();
+    expect(comp.interaction()).toBe('lecture');
     expect(root.querySelector('.group-polls')).not.toBeNull();
     expect(root.querySelector('app-destiny-board')).toBeNull();
   });
@@ -6646,11 +6667,11 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
     expect(board(fixture)).not.toBeNull();
     expect(root(fixture).querySelector('.mj-results-panel')).toBeNull();
 
-    comp.composing.set(true);
+    comp.setInteraction('composer');
     await tick(fixture);
     expect(board(fixture)).toBeNull();
     expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
-    comp.composing.set(false);
+    comp.setInteraction('destinee');
 
     comp.onViewChange('agenda');
     await tick(fixture);
@@ -7109,10 +7130,10 @@ describe('CalendarView — le tiroir de la destinée (Story 44.5)', () => {
 
     const { fixture } = await narrow();
     const comp = fixture.componentInstance as any;
-    comp.composing.set(true);
+    comp.setInteraction('composer');
     await tick(fixture);
     expect(sheet(fixture)).toBeNull();
-    comp.composing.set(false);
+    comp.setInteraction('destinee');
 
     comp.onViewChange('agenda');
     await tick(fixture);
@@ -7796,7 +7817,7 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
     fixture.detectChanges();
 
     expect(comp.rendezvousPickerOpen()).toBe(false);
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
   });
 
@@ -7811,7 +7832,7 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
     await tick(fixture);
 
     expect(comp.rendezvousPickerShown()).toBe(true);
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     const picker = document.body.querySelector('app-rendezvous-picker');
     expect(picker).not.toBeNull();
     expect(picker!.querySelector('.rendezvous-picker__group-name')?.textContent?.trim()).toBe(
@@ -7870,6 +7891,7 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
     const { fixture } = await atelier([withOptions]);
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll1');
+    comp.setInteraction('destinee');
     fixture.detectChanges();
 
     expect(button(fixture)?.textContent?.trim()).toBe(GRIMOIRE_TONE['calendar.view_modify_dates']);
@@ -7936,7 +7958,7 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
       fixture.detectChanges();
 
       expect(navigate).toHaveBeenCalledWith('/parties/pT/calendar?seanceId=s1');
-      expect((fixture.componentInstance as any).composing()).toBe(false);
+      expect((fixture.componentInstance as any).interaction()).not.toBe('composer');
     });
 
     it('plusieurs rendez-vous de deux parties : le choix les groupe par nom ; « Titre — Séance 2 » seulement s’il y en a plusieurs', async () => {
@@ -7992,7 +8014,7 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
       fixture.detectChanges();
 
       expect(navigate).toHaveBeenCalledWith('/parties/pS/guild-calendar?seanceId=s1');
-      expect((fixture.componentInstance as any).composing()).toBe(false);
+      expect((fixture.componentInstance as any).interaction()).not.toBe('composer');
     });
   });
 });
@@ -8019,6 +8041,7 @@ describe('CalendarView — plateau d’un vote de JDR terminé (Story 45.4)', ()
     const { fixture } = await createCalendarView({ mode: 'personal', openPolls: [e] });
     const comp = fixture.componentInstance as any;
     comp.destinyPollId.set('poll-j');
+    comp.setInteraction('destinee');
     fixture.detectChanges();
     const hint = comp.destinyBoard()?.reopenHint ?? null;
     TestBed.resetTestingModule();
@@ -8321,7 +8344,7 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
 
   it('composer ouvert : la carte reste sélectionnée mais rien n’est estompé', async () => {
     const { fixture, comp } = await atelier();
-    comp.composing.set(true);
+    comp.setInteraction('composer');
     headers(fixture)[0].click();
     await tick(fixture);
 
@@ -8508,7 +8531,7 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
     expect(comp.selectedWindow()).toBeNull();
     expect(comp.displayedSlots().map((s: any) => s.date)).toEqual(['2030-03-09']);
     // Aucune écriture : seul le composer a bougé.
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
   });
 
   it('le bouton « Ajouter au vote » de la carte sélectionnée fait la même chose', async () => {
@@ -8520,7 +8543,7 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
       .click();
     await tick(fixture);
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeTarget()).toEqual({ kind: 'new', seanceId: 'sc1-s1' });
     expect(keys(comp)).toEqual(['2030-03-06|EVENING']);
   });
@@ -8577,7 +8600,7 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
     await tick(fixture);
 
     expect(comp.rendezvousPickerShown()).toBe(true);
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     const rows = [...document.body.querySelectorAll('.rendezvous-picker__row')];
     expect(rows.map((r) => r.querySelector('.rendezvous-picker__meta')!.textContent!.trim())).toEqual([
       GRIMOIRE_TONE['calendar.rendezvous_nature_seance'],
@@ -8618,7 +8641,7 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
 
     comp.closeRendezvousPicker();
     await tick(fixture);
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     expect(comp.selectedWindowKey()).toBe('2030-03-06|EVENING');
     expect(comp.pendingWindow()).toBeNull();
   });
@@ -8633,7 +8656,7 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
     comp.cancelCompose();
     await tick(fixture);
     expect(comp.displayedSlots()).toHaveLength(2);
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
   });
 
   it('retirer la fenêtre du composer la rend à la liste', async () => {
@@ -8657,7 +8680,7 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
     comp.addSelectedWindow();
     await tick(fixture);
 
-    expect(comp.composing()).toBe(false);
+    expect(comp.interaction()).not.toBe('composer');
     expect(comp.rendezvousPickerOpen()).toBe(false);
     expect(comp.selectedWindowKey()).toBe('2030-03-06|EVENING');
     expect(pollSvc.setPollOptions).not.toHaveBeenCalled();
@@ -9285,7 +9308,7 @@ describe('CalendarView — fenêtres de la bonne durée (Story 47.6)', () => {
     comp.addSelectedWindow();
     await tick(fixture);
 
-    expect(comp.composing()).toBe(true);
+    expect(comp.interaction()).toBe('composer');
     expect(comp.composeDuration()).toBe(3);
     expect(keys(comp)).toEqual([]);
     expect(comp.composeRefusal()).toBe(
@@ -9322,5 +9345,142 @@ describe('CalendarView — fenêtres de la bonne durée (Story 47.6)', () => {
     expect(comp.composeRefusal()).toBe(
       'Cette fenêtre ne dure pas 1 créneau : elle n’a pas été ajoutée.',
     );
+  });
+});
+
+describe('CalendarView — une seule interaction à la fois (Story 52.1)', () => {
+  type Tool = 'lecture' | 'declaration' | 'composer' | 'destinee';
+  const TOOLS: Tool[] = ['lecture', 'declaration', 'composer', 'destinee'];
+
+  /** Allume l'outil `tool` comme le font les écrans : la Destinée désigne son vote, le composer vise un vote neuf. */
+  function turnOn(comp: any, tool: Tool): void {
+    if (tool === 'destinee') comp.destinyPollId.set('poll1');
+    if (tool === 'composer') comp.composeTarget.set({ kind: 'new', seanceId: 'seanceX' });
+    comp.setInteraction(tool);
+  }
+
+  async function tick(fixture: any) {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+  }
+
+  async function mjView() {
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [ACTIVE_POLL_SCENARIO],
+    });
+    return { fixture, comp: fixture.componentInstance as any };
+  }
+
+  it('part en lecture, et seul setInteraction() écrit le signal', async () => {
+    const { comp } = await mjView();
+    expect(comp.interaction()).toBe('lecture');
+    expect(typeof comp.interaction.set).toBe('undefined');
+  });
+
+  for (const from of TOOLS) {
+    for (const to of TOOLS) {
+      if (from === to) continue;
+      it(`${from} → ${to} : un seul outil allumé, la sortie de l’outil quitté est appelée`, async () => {
+        const { comp } = await mjView();
+        turnOn(comp, from);
+        comp.destinyListOpen.set(true);
+        comp.rendezvousPickerOpen.set(true);
+        const exitCompose = vi.spyOn(comp, 'exitCompose');
+        const exitDestiny = vi.spyOn(comp, 'exitDestiny');
+
+        comp.setInteraction(to);
+
+        expect(comp.interaction()).toBe(to);
+        expect(exitCompose).toHaveBeenCalledTimes(from === 'composer' ? 1 : 0);
+        // Le vote désigné survit seulement à la Destinée → composer (annuler le rend) ; partout ailleurs il est lâché.
+        const keepsPoll = to === 'destinee' || to === 'composer';
+        expect(comp.destinyPollId()).toBe(keepsPoll && from === 'destinee' ? 'poll1' : null);
+        expect(exitDestiny).toHaveBeenCalledTimes(keepsPoll ? 0 : 1);
+        if (from === 'composer') expect(comp.composeTarget()).toBeNull();
+        expect(comp.destinyListOpen()).toBe(false);
+        expect(comp.rendezvousPickerOpen()).toBe(false);
+      });
+    }
+  }
+
+  it('la vue Mois reçoit l’interaction à la place du booléen', async () => {
+    const { fixture, comp } = await mjView();
+    comp.setInteraction('composer');
+    await tick(fixture);
+    const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+    expect(month.interaction()).toBe('composer');
+    comp.setInteraction('declaration');
+    await tick(fixture);
+    expect(month.interaction()).toBe('declaration');
+  });
+
+  it('Destinée → composer : le vote reste désigné ; annuler rend la Destinée sur le même vote', async () => {
+    const { comp } = await mjView();
+    turnOn(comp, 'destinee');
+    comp.startCompose();
+    expect(comp.interaction()).toBe('composer');
+    expect(comp.destinyPollId()).toBe('poll1');
+
+    comp.cancelCompose();
+    expect(comp.interaction()).toBe('destinee');
+    expect(comp.destinyPollId()).toBe('poll1');
+  });
+
+  it('composer sans vote désigné : annuler rend la lecture', async () => {
+    const { comp } = await mjView();
+    turnOn(comp, 'composer');
+    expect(comp.interaction()).toBe('composer');
+
+    comp.cancelCompose();
+    expect(comp.interaction()).toBe('lecture');
+    expect(comp.composeTarget()).toBeNull();
+  });
+
+  it('choisir un vote dans la liste de la Destinée pendant le composer ne l’abandonne pas : le vote est suspendu', async () => {
+    const { comp } = await mjView();
+    turnOn(comp, 'destinee');
+    comp.startCompose();
+    const target = comp.composeTarget();
+
+    comp.enterDestiny('poll1');
+
+    expect(comp.interaction()).toBe('composer');
+    expect(comp.composeTarget()).toEqual(target);
+    expect(comp.destinyPollId()).toBe('poll1');
+  });
+
+  it('la Destinée finie (quitter) rend la lecture, et un second vote choisi ensuite la rallume', async () => {
+    const { comp } = await mjView();
+    turnOn(comp, 'destinee');
+
+    comp.quitDestiny();
+    expect(comp.interaction()).toBe('lecture');
+    expect(comp.destinyPollId()).toBeNull();
+
+    comp.enterDestiny('poll1');
+    expect(comp.interaction()).toBe('destinee');
+  });
+
+  it('lecture ⇄ Destinée ne touche pas à la sélection des vues, composer et déclaration, si', async () => {
+    const { fixture, comp } = await mjView();
+    await tick(fixture);
+    const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+    const cancelled = vi.spyOn(month, 'onSelectionCancelled');
+    await tick(fixture);
+    cancelled.mockClear();
+
+    turnOn(comp, 'destinee');
+    await tick(fixture);
+    comp.quitDestiny();
+    await tick(fixture);
+    expect(cancelled).not.toHaveBeenCalled();
+
+    comp.setInteraction('declaration');
+    await tick(fixture);
+    expect(cancelled).toHaveBeenCalled();
   });
 });

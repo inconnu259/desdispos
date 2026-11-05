@@ -35,6 +35,7 @@ import {
   type SlotPollVote,
 } from '../day-detail.utils';
 import { SlotSelectedEvent } from '../calendar-month-view/calendar-month-view';
+import type { CalendarInteraction } from '../calendar-interaction';
 import { SelectionBar } from '../selection-bar/selection-bar';
 import { composeSpanKeys } from '../compose-span.utils';
 import {
@@ -307,11 +308,19 @@ export class CalendarWeekView {
   readonly destinyDates = input<ReadonlySet<string> | null>(null);
 
   /**
-   * Story 36.10 — le mode de composition d'un vote (MJ). Mêmes entrées, même sémantique et même
+   * Story 52.1 (AD-7) — l'outil allumé, UN seul à la fois ; `composer` (Story 36.10, MJ) est le mode de composition d'un vote. Mêmes entrées, même sémantique et même
    * point d'étranglement qu'en vue Mois : les deux grilles doivent se comporter à l'identique,
    * sans quoi le mode changerait de sens en changeant d'onglet.
    */
-  readonly composing = input(false);
+  readonly interaction = input<CalendarInteraction>('lecture');
+
+  /** Ce qui vide la sélection : lecture et Destinée ne la touchent pas (elles n'ont pas de barre à elles), le composer
+   *  et la déclaration, si. Un computed : l'effet ne se rejoue qu'au changement de portée, pas à chaque interaction. */
+  private readonly selectionScope = computed<CalendarInteraction>(() => {
+    const current = this.interaction();
+    return current === 'destinee' ? 'lecture' : current;
+  });
+
   /** Créneaux composés, en clés `YYYY-MM-DD|SLOT` (`composeCellKey`). `null` hors mode. */
   readonly composedKeys = input<ReadonlySet<string> | null>(null);
   /** Story 46.2 — la clé (`AAAA-MM-JJ|créneau`) de la fenêtre de l'automate sélectionnée (reçue, jamais dérivée ici). */
@@ -345,7 +354,7 @@ export class CalendarWeekView {
   private readonly hoverStart = signal<{ date: Date; slot: DaySlot } | null>(null);
   private readonly hoverKeys = computed<ReadonlySet<string>>(() => {
     const start = this.hoverStart();
-    if (!start || !this.composing()) return new Set();
+    if (!start || this.interaction() !== 'composer') return new Set();
     return new Set([
       composeCellKey(start.date, start.slot),
       ...composeSpanKeys([start], this.composeDuration()),
@@ -586,7 +595,7 @@ export class CalendarWeekView {
   constructor() {
     // Story 45.3 — bloc JUMEAU de la vue Mois : la sélection ne survit pas à l'entrée ni à la sortie du composer.
     effect(() => {
-      this.composing();
+      this.selectionScope();
       untracked(() => this.onSelectionCancelled());
     });
     effect(() => {
@@ -644,7 +653,7 @@ export class CalendarWeekView {
       this.suppressNextClick = false;
       return;
     }
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       if (this.selectedCells().length > 0) this.toggleCell(date, slot);
       else this.composeToggled.emit({ date, slot });
       return;
@@ -686,7 +695,7 @@ export class CalendarWeekView {
     if (cell.isPast) return;
     this.slotSelected.emit({ date: cell.date, slot });
     // Story 36.10, AC2/AC16 — parité clavier : en composition, désigner ajoute ou retire.
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       this.composeToggled.emit({ date: cell.date, slot });
       return;
     }
@@ -878,7 +887,13 @@ export class CalendarWeekView {
    *  doigt, l'entrée émulée après un tap n'a pas de sortie et laisserait une plage allumée. */
   protected onCellHover(event: PointerEvent, cell: WeekCell | null, slot?: DaySlot): void {
     if (event.pointerType !== 'mouse') return;
-    if (!cell || !slot || cell.isPast || !this.composing() || this.composeDuration() <= 1) {
+    if (
+      !cell ||
+      !slot ||
+      cell.isPast ||
+      this.interaction() !== 'composer' ||
+      this.composeDuration() <= 1
+    ) {
       if (this.hoverStart() !== null) this.hoverStart.set(null);
       return;
     }
@@ -1043,7 +1058,7 @@ export class CalendarWeekView {
 
   protected onShiftArrow(cell: WeekCell, slot: DaySlot, direction: -1 | 1): void {
     // AC12 — ce chemin pose l'ancre lui-même, il lui faut donc sa propre garde.
-    if (cell.isPast || this.composing()) return;
+    if (cell.isPast || this.interaction() === 'composer') return;
     const anchor = this.selectionAnchor() ?? { date: cell.date, slot };
     if (!this.selectionAnchor()) this.selectionAnchor.set(anchor);
     const cellsArr = this.cells();
@@ -1057,7 +1072,7 @@ export class CalendarWeekView {
 
   /** Story 36.10, AC3 — `Échap` : une seule signification à un instant donné. */
   protected onEscape(): void {
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       // Story 45.3 — une barre de sélection ouverte se ferme d'abord : `Échap` n'a qu'UN sens à la fois, celui de la
       // couche la plus proche. Sans barre, il quitte le composer.
       if (this.selectedCells().length > 0) {

@@ -21,6 +21,7 @@ import type {
 } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
+import type { CalendarInteraction } from '../calendar-interaction';
 import { SelectionBar } from '../selection-bar/selection-bar';
 import { composeSpanKeys } from '../compose-span.utils';
 import { SLOT_LABELS } from '../agenda-badge.utils';
@@ -334,14 +335,21 @@ export class CalendarMonthView {
   readonly destinyDates = input<ReadonlySet<string> | null>(null);
 
   /**
-   * Story 36.10 — le mode de composition d'un vote (MJ).
+   * Story 52.1 (AD-7) — l'outil allumé, UN seul à la fois. `composer` (Story 36.10, MJ) est le mode de composition d'un vote.
    *
    * 🚨 **C'est le SEUL mode qui réassigne le tap** (`EXPERIENCE.md:538`, principe 4 ; collision 5).
    * Tant qu'il est actif, un tap ne sélectionne plus, n'ouvre plus le sélecteur de réponse et
    * n'ouvre plus de scénario : il ajoute ou retire un créneau des options. Le rail, lui, continue
    * de suivre — « le rail suit, il ne se commande pas » (principe 2).
    */
-  readonly composing = input(false);
+  readonly interaction = input<CalendarInteraction>('lecture');
+
+  /** Ce qui vide la sélection : lecture et Destinée ne la touchent pas (elles n'ont pas de barre à elles), le composer
+   *  et la déclaration, si. Un computed : l'effet ne se rejoue qu'au changement de portée, pas à chaque interaction. */
+  private readonly selectionScope = computed<CalendarInteraction>(() => {
+    const current = this.interaction();
+    return current === 'destinee' ? 'lecture' : current;
+  });
   /** Les créneaux composés, en clés `YYYY-MM-DD|SLOT` (`composeCellKey`). `null` hors mode.
    *  🚨 Comme `destinyDates`, cette vue ne CALCULE rien : elle reçoit l'ensemble dérivé une fois
    *  par `CalendarView`, et la vue Semaine reçoit exactement le même. */
@@ -395,7 +403,7 @@ export class CalendarMonthView {
   private readonly hoverStart = signal<{ date: Date; slot: DaySlot } | null>(null);
   private readonly hoverKeys = computed<ReadonlySet<string>>(() => {
     const start = this.hoverStart();
-    if (!start || !this.composing()) return new Set();
+    if (!start || this.interaction() !== 'composer') return new Set();
     return new Set([
       composeCellKey(start.date, start.slot),
       ...composeSpanKeys([start], this.composeDuration()),
@@ -573,10 +581,10 @@ export class CalendarMonthView {
   });
 
   constructor() {
-    // Story 45.3 — la sélection ne survit pas à l'entrée ni à la sortie du composer : une barre de déclaration
+    // Story 45.3 — la sélection ne survit pas à l'entrée ni à la sortie du composer (ni à celles de la déclaration, 52.2) : une barre de déclaration
     // ne devient pas une barre de composition (ni l'inverse) sous les doigts.
     effect(() => {
-      this.composing();
+      this.selectionScope();
       untracked(() => this.onSelectionCancelled());
     });
     const init = this.initialDate();
@@ -674,7 +682,7 @@ export class CalendarMonthView {
       this.suppressNextClick = false;
       return;
     }
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       // Story 45.3 — barre ouverte : le tap bascule la case dans la SÉLECTION (règle des disponibilités) ; sinon il
       // ajoute ou retire UNE bande de la composition (36.10, inchangé).
       if (this.selectedCells().length > 0) this.toggleCell(date, slot);
@@ -734,7 +742,7 @@ export class CalendarMonthView {
     this.slotSelected.emit({ date: cell.date, slot });
     // Story 36.10, AC2/AC16 — au clavier comme au doigt : en composition, désigner un créneau
     // l'ajoute ou le retire. Sans cette parité, le mode serait inaccessible sans pointeur.
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       this.composeToggled.emit({ date: cell.date, slot });
       return;
     }
@@ -833,7 +841,7 @@ export class CalendarMonthView {
    *  bandes. À 1 créneau, la grille reste celle d'avant. */
   protected showsSlotBands(cell: DayCell): boolean {
     if (!cell.uniform) return true;
-    if (!this.composing() || this.composeDuration() <= 1) return false;
+    if (this.interaction() !== 'composer' || this.composeDuration() <= 1) return false;
     const marks = [this.composedKeys(), this.composeCoverKeys(), this.hoverKeys()];
     return (['MORNING', 'AFTERNOON', 'EVENING'] as const).some((slot) => {
       const key = composeCellKey(cell.date, slot);
@@ -845,7 +853,13 @@ export class CalendarMonthView {
    *  doigt, l'entrée émulée après un tap n'a pas de sortie et laisserait une plage allumée. Un jour passé n'en ouvre pas. */
   protected onBandHover(event: PointerEvent, cell: DayCell | null, slot?: DaySlot): void {
     if (event.pointerType !== 'mouse') return;
-    if (!cell || !slot || cell.isPast || !this.composing() || this.composeDuration() <= 1) {
+    if (
+      !cell ||
+      !slot ||
+      cell.isPast ||
+      this.interaction() !== 'composer' ||
+      this.composeDuration() <= 1
+    ) {
       if (this.hoverStart() !== null) this.hoverStart.set(null);
       return;
     }
@@ -1064,7 +1078,7 @@ export class CalendarMonthView {
   protected onShiftArrow(cell: DayCell, direction: -1 | 1): void {
     // AC12 — `Maj` + flèches étend une SÉLECTION ; il n'y en a pas pendant la composition. Cette
     // garde est distincte de celle d'`armSelection()` : ce chemin pose l'ancre lui-même.
-    if (cell.isPast || this.composing()) return;
+    if (cell.isPast || this.interaction() === 'composer') return;
     // Ancre posée sans `current` : tant qu'aucune extension n'a abouti, aucune sélection ne
     // s'affiche. C'est ce qui fait qu'un Maj+flèche buttant sur le bord du mois ne sélectionne
     // rien du tout (garde issue de la revue de code de la story 30.3) — ne pas passer par
@@ -1082,7 +1096,7 @@ export class CalendarMonthView {
   /** Story 36.10, AC3 — `Échap` a UNE signification à un instant donné, jamais deux : en
    *  composition il quitte le mode sans rien écrire, sinon il annule la sélection comme avant. */
   protected onEscape(): void {
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       // Story 45.3 — une barre de sélection ouverte se ferme d'abord : `Échap` n'a qu'UN sens à la fois, celui de la
       // couche la plus proche. Sans barre, il quitte le composer.
       if (this.selectedCells().length > 0) {

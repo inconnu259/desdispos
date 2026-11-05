@@ -317,7 +317,7 @@
         [activeLayers]="activeLayers()"
         [hiddenPartieIds]="hiddenForViews()"
         [destinyDates]="destinyDates()"
-        [composing]="composing()"
+        [interaction]="interaction()"
         [composeFullDay]="composeAllowsFullDay()"
         [composedKeys]="composedKeys()"
         [composeCoverKeys]="composeCoverKeys()"
@@ -345,7 +345,7 @@
         [entries]="calendarEntries()"
         [activeLayers]="activeLayers()"
         [destinyDates]="destinyDates()"
-        [composing]="composing()"
+        [interaction]="interaction()"
         [composeFullDay]="composeAllowsFullDay()"
         [composedKeys]="composedKeys()"
         [composeCoverKeys]="composeCoverKeys()"
@@ -388,7 +388,7 @@
          grille comme la barre de sélection. Elle reste rendue tant que le mode dure, y compris à
          zéro créneau composé : c'est la seule sortie visible du mode avec `Échap`. Absente de la
          vue Agenda, qui ne compose pas (« depuis la grille »). -->
-    @if (composing() && view() !== 'agenda') {
+    @if (interaction() === 'composer' && view() !== 'agenda') {
       <app-compose-bar
         [count]="composedCells().length"
         [targetLabel]="composeTargetLabel()"

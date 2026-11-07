@@ -5,7 +5,7 @@
   [class.event-card--cancelled]="cancelled()"
 >
   <!-- Bouton natif (nom accessible = titre) étiré sur toute la carte par son ::after : Entrée à
-       l'appui, Espace au relâchement, et le reste de la carte (date, badge, chip) reste lu. -->
+       l'appui, Espace au relâchement, et le reste de la carte (date, badge, pastille) reste lu. -->
   <h4 class="event-card__title">
     <button
       type="button"
@@ -24,12 +24,8 @@
   }
   @if (!cancelled()) {
     <p class="event-card__line event-card__situation">
-      <span class="event-card__situation-label">{{
-        theme.tone()['partie.ralliement_event_situation']
-      }}</span>
-      <span class="event-card__chip" [class.event-card__chip--dotted]="situation().dotted">{{
-        theme.tone()[situation().labelKey]
-      }}</span>
+      <span class="event-card__situation-label">{{ theme.tone()['situation.ma_situation'] }}</span>
+      <app-situation-pill [value]="situation()" />
     </p>
   }
 </article>

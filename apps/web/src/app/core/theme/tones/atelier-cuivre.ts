@@ -573,10 +573,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'partie.ralliement_soiree_participation_form':
     'Sur invitation · pas de limite — vous invitez ensuite depuis l’onglet Invitations',
   'partie.ralliement_event_host': 'Hôte : {name}',
-  'partie.ralliement_event_situation': 'Ma situation',
-  'partie.ralliement_event_chip_participating': 'Je participe',
-  'partie.ralliement_event_chip_was_there': 'J’y étais',
-  'partie.ralliement_event_chip_not_registered': 'Pas inscrit·e',
   'partie.ralliement_event_badge_in_days': 'Dans {n} jours',
   'partie.ralliement_event_badge_today': 'Aujourd’hui',
   'partie.ralliement_event_badge_tomorrow': 'Demain',
@@ -618,7 +614,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'partie.ralliement_event_unsubscribe_error':
     'Votre désinscription de cette réunion n’a pu être enregistrée. Réessayez.',
   /* — réserver une place à des membres (Story 40.4) : mots du contrat identiques, situations et replis d’erreur selon le thème — */
-  'partie.ralliement_event_chip_reserved': 'Place réservée',
   'partie.ralliement_event_accept_btn': 'Accepter',
   'partie.ralliement_event_decline_btn': 'Décliner',
   'partie.ralliement_event_reserve_label': 'Réserver une place à des membres',
@@ -653,7 +648,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'partie.ralliement_event_unit_available': 'inscrit disponible|inscrits disponibles',
   'partie.ralliement_event_poll_date_line': 'Date à voter · jusqu’au {date}',
   'partie.ralliement_event_badge_poll': 'Vote en cours',
-  'partie.ralliement_event_chip_vote_todo': 'Vote à faire',
   'partie.ralliement_event_poll_best': 'Meilleur créneau pour l’instant : {date} — {n} oui',
   'partie.ralliement_event_poll_host_answers': 'Réponses : {x} sur {n}',
   'partie.ralliement_event_poll_host_waiting': 'N’ont pas encore répondu : {names}',
@@ -832,6 +826,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'situation.je_participe': 'Je participe',
   'situation.pas_inscrit': 'Pas inscrit·e',
   'situation.j_y_etais': 'J’y étais',
+  'situation.place_reservee': 'Place réservée',
+  'situation.ma_situation': 'Ma situation',
   'status.seance_poll_open': 'Vote en cours',
   'status.seance_inscriptions_ouvertes': 'Inscriptions ouvertes',
   'status.seance_programmee': 'Programmée',

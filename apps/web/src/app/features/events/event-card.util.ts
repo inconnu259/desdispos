@@ -5,7 +5,7 @@ import type {
   EventParticipantDto,
   OpenPollOption,
 } from '@master-jdr/shared';
-import type { StatusBadgeState } from '../../core/status/status-derivation';
+import type { SituationValue, StatusBadgeState } from '../../core/status/status-derivation';
 import { daysBetweenKeys, imminenceIntensity } from '../../core/status/status-badge.model';
 import { fillTone } from '../../core/theme/tone-format';
 import { SLOT_LABELS } from '../calendar/agenda-badge.utils';
@@ -270,39 +270,22 @@ export function isPendingParticipant(participant: EventParticipantDto): boolean 
 }
 
 /** Ligne « Ma situation » : l'hôte et les inscrits participent (« J'y étais » une fois passée) ; tout
- *  autre membre n'est pas inscrit (chip pointillée). */
-export interface EventSituation {
-  labelKey:
-    | 'partie.ralliement_event_chip_participating'
-    | 'partie.ralliement_event_chip_vote_todo'
-    | 'partie.ralliement_event_chip_reserved'
-    | 'partie.ralliement_event_chip_was_there'
-    | 'partie.ralliement_event_chip_not_registered';
-  dotted: boolean;
-}
-
+ *  autre membre n'est pas inscrit. Story 53.2 : renvoie une valeur de situation, rendue par la
+ *  pastille partagée `<app-situation-pill>` (plus de chip propre aux cartes). */
 export function eventSituation(
   card: EventCardDto,
   currentUserId: string | null | undefined,
   todayKey: string,
   membersParticipate = false,
-): EventSituation {
+): SituationValue {
   // Story 40.5 : « Vote à faire » l'emporte sur toute autre ligne tant que le vote attend la personne.
-  if (needsVote(card, currentUserId, todayKey)) {
-    return { labelKey: 'partie.ralliement_event_chip_vote_todo', dotted: false };
-  }
+  if (needsVote(card, currentUserId, todayKey)) return 'vote_a_faire';
   // Story 40.4 : « Place réservée » tant que la conjonction est à venir ; une fois passée, une place
   // jamais acceptée n'a pas été une participation.
-  if (hasReservedPlace(card) && !isPastEvent(card, todayKey)) {
-    return { labelKey: 'partie.ralliement_event_chip_reserved', dotted: false };
-  }
+  if (hasReservedPlace(card) && !isPastEvent(card, todayKey)) return 'place_reservee';
   // Story 41.4 : dans une soirée isolée, tout membre participe (« J'y étais » une fois passée).
-  if (!membersParticipate && !isParticipantOf(card, currentUserId)) {
-    return { labelKey: 'partie.ralliement_event_chip_not_registered', dotted: true };
-  }
-  return isPastEvent(card, todayKey)
-    ? { labelKey: 'partie.ralliement_event_chip_was_there', dotted: false }
-    : { labelKey: 'partie.ralliement_event_chip_participating', dotted: false };
+  if (!membersParticipate && !isParticipantOf(card, currentUserId)) return 'pas_inscrit';
+  return isPastEvent(card, todayKey) ? 'j_y_etais' : 'je_participe';
 }
 
 /** Texte du panneau de situation de la fenêtre de détail (Story 40.2) : la situation de la personne,

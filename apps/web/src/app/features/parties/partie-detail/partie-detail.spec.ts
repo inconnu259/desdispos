@@ -5120,10 +5120,13 @@ describe('PartieDetail — les conjonctions d’un groupe (Story 40.1)', () => {
     expect(proche.querySelector('.event-card__host')?.textContent?.trim()).toBe('Hôte : Léa');
     expect(proche.querySelector('.event-card__place')?.textContent?.trim()).toBe('Lyon 3e');
     expect(proche.querySelector('.event-card__date')?.textContent).toMatch(/ · soir$/);
-    expect(proche.querySelector('.event-card__chip')?.textContent?.trim()).toBe(
-      tone['partie.ralliement_event_chip_not_registered'],
+    expect(proche.querySelector('.event-card__situation-label')?.textContent?.trim()).toBe(
+      tone['situation.ma_situation'],
     );
-    expect(proche.querySelector('.event-card__chip--dotted')).not.toBeNull();
+    expect(proche.querySelector('app-situation-pill')?.textContent?.trim()).toBe(
+      tone['situation.pas_inscrit'],
+    );
+    expect(proche.querySelector('.situation-pill--pas_inscrit')).not.toBeNull();
     expect(loin.querySelector('.status-badge')?.textContent?.trim()).toBe(
       tone['status.scenario_a_venir'],
     );
@@ -5141,13 +5144,12 @@ describe('PartieDetail — les conjonctions d’un groupe (Story 40.1)', () => {
       members,
       events: [card('futur', 2), card('passe', -2)],
     });
-    const chips = Array.from(el.querySelectorAll('.event-card__chip')).map((c) =>
-      (c.textContent ?? '').trim(),
+    const chips = Array.from(el.querySelectorAll('.event-card__situation app-situation-pill')).map(
+      (c) => (c.textContent ?? '').trim(),
     );
-    expect(chips).toEqual([
-      tone['partie.ralliement_event_chip_participating'],
-      tone['partie.ralliement_event_chip_was_there'],
-    ]);
+    expect(chips).toEqual([tone['situation.je_participe'], tone['situation.j_y_etais']]);
+    expect(el.querySelector('.situation-pill--je_participe')).not.toBeNull();
+    expect(el.querySelector('.situation-pill--j_y_etais')).not.toBeNull();
   });
 
   it('temps réel : un signal de la partie recharge la liste, la nouvelle carte apparaît sans rechargement', async () => {
@@ -5391,7 +5393,8 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
     expect(article.getAttribute('aria-label')).toBeNull();
     expect(article.querySelector('.event-card__date')).not.toBeNull();
     expect(article.querySelector('.status-badge')).not.toBeNull();
-    expect(article.querySelector('.event-card__chip')).not.toBeNull();
+    expect(article.querySelector('app-situation-pill')).not.toBeNull();
+    expect(article.querySelector('.event-card__chip')).toBeNull();
 
     // Entrée (à l'appui) et Espace (au relâchement) sont l'activation NATIVE du bouton : un « clic »
     // ouvre la fenêtre ; aucune touche n'est interceptée par la carte.
@@ -5857,7 +5860,7 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
       expect(q('.ed__situation-text')?.textContent?.trim()).toBe(
         tone['partie.ralliement_event_situation_none'],
       );
-      expect(q('.event-card__chip--dotted')).not.toBeNull();
+      expect(q('.situation-pill--pas_inscrit')).not.toBeNull();
 
       const updated = withNewcomer('a', 3);
       api().inscrire.mockResolvedValue(updated);
@@ -5881,9 +5884,9 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
         tone['partie.ralliement_event_close_btn'],
       ]);
       expect(
-        cardEl(el, 'a').closest('article')!.querySelector('.event-card__chip')?.textContent?.trim(),
-      ).toBe(tone['partie.ralliement_event_chip_participating']);
-      expect(q('.event-card__chip--dotted')).toBeNull();
+        cardEl(el, 'a').closest('article')!.querySelector('app-situation-pill')?.textContent?.trim(),
+      ).toBe(tone['situation.je_participe']);
+      expect(q('.situation-pill--pas_inscrit')).toBeNull();
     });
 
     it('« Me désinscrire » : un appel, le participant disparaît, « S’inscrire » revient', async () => {
@@ -6203,9 +6206,10 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
           }),
         ],
       });
-      const chip = cardEl(el, 'a').closest('article')!.querySelector('.event-card__chip')!;
-      expect(chip.textContent?.trim()).toBe(tone['partie.ralliement_event_chip_reserved']);
-      expect(chip.classList).not.toContain('event-card__chip--dotted');
+      const chip = cardEl(el, 'a').closest('article')!.querySelector('.situation-pill')!;
+      expect(chip.textContent?.trim()).toBe(tone['situation.place_reservee']);
+      expect(chip.classList).toContain('situation-pill--place_reservee');
+      expect(chip.classList).not.toContain('situation-pill--pas_inscrit');
       // La conjonction est pleine, mais cette place est la sienne : ni badge « Complet » ni bouton.
       expect(
         cardEl(el, 'a').closest('article')!.querySelector('.status-badge')?.textContent?.trim(),
@@ -6265,8 +6269,8 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
       );
       expect(document.body.querySelectorAll('app-participant-chip').length).toBe(4);
       expect(
-        cardEl(el, 'a').closest('article')!.querySelector('.event-card__chip')?.textContent?.trim(),
-      ).toBe(tone['partie.ralliement_event_chip_participating']);
+        cardEl(el, 'a').closest('article')!.querySelector('app-situation-pill')?.textContent?.trim(),
+      ).toBe(tone['situation.je_participe']);
       // Il peut désormais se désinscrire.
       expect(q('.ed__unsubscribe')).not.toBeNull();
     });
@@ -6291,7 +6295,7 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
       expect(q('.ed__situation-text')?.textContent?.trim()).toBe(
         tone['partie.ralliement_event_situation_none'],
       );
-      expect(q('.event-card__chip--dotted')).not.toBeNull();
+      expect(q('.situation-pill--pas_inscrit')).not.toBeNull();
     });
 
     it('double clic sur « Accepter » : un seul appel (garde en vol) ; le refus du serveur s’affiche dans la fenêtre et les boutons redeviennent actifs', async () => {
@@ -6324,14 +6328,14 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
       expect(q<HTMLButtonElement>(ACCEPT)!.disabled).toBe(false);
     });
 
-    it('une conjonction passée : la place réservée n’offre plus de réponse, la chip dit « Pas inscrit·e »', async () => {
+    it('une conjonction passée : la place réservée n’offre plus de réponse, la pastille dit « Pas inscrit·e »', async () => {
       const { fixture, el } = await createFixture(groupe(), RESA_ID, {
         members: [],
         events: [reservedView('a', -2)],
       });
       expect(
-        cardEl(el, 'a').closest('article')!.querySelector('.event-card__chip')?.textContent?.trim(),
-      ).toBe(tone['partie.ralliement_event_chip_not_registered']);
+        cardEl(el, 'a').closest('article')!.querySelector('app-situation-pill')?.textContent?.trim(),
+      ).toBe(tone['situation.pas_inscrit']);
       await open(fixture, el, 'a');
       expect(q(ACCEPT)).toBeNull();
       expect(q('.ed__situation-text')?.textContent?.trim()).toBe(
@@ -6596,6 +6600,13 @@ describe('PartieDetail — du groupe vers son calendrier (Story 40.5b)', () => {
     expect(link.tabIndex).toBeGreaterThanOrEqual(0);
     link.focus();
     expect(document.activeElement).toBe(link);
+  });
+
+  it('Story 53.2 : un vote qui m’attend → la carte porte la pastille « Vote à faire » (ton vote_a_faire, plus status-live)', async () => {
+    const { el } = await createFixture(groupe(), GUEST_ID, { members: [], events: [pollCard()] });
+    const pill = el.querySelector('app-event-card app-situation-pill .situation-pill')!;
+    expect(pill.textContent?.trim()).toBe(TONE_MAP['grimoire-emeraude']['situation.vote_a_faire']);
+    expect(pill.classList).toContain('situation-pill--vote_a_faire');
   });
 
   it('« Voter dans le calendrier » : la fenêtre remplace son entrée d’historique par la page du groupe', async () => {
@@ -7250,9 +7261,10 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       });
       await settle(old.fixture);
       const tone = TONE_MAP['grimoire-emeraude'];
-      expect(old.el.querySelector('.ed__chip')?.textContent?.trim()).toBe(
-        tone['partie.ralliement_event_chip_was_there'],
+      expect(old.el.querySelector('.ed__chip-row app-situation-pill')?.textContent?.trim()).toBe(
+        tone['situation.j_y_etais'],
       );
+      expect(old.el.querySelector('.ed__chip')).toBeNull();
       TestBed.resetTestingModule();
 
       const upcoming = await createFixture(soiree({ role: 'member' }), OTHER_ID, {
@@ -7260,9 +7272,9 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
         events: [event({ participants: [] })],
       });
       await settle(upcoming.fixture);
-      expect(upcoming.el.querySelector('.ed__chip')?.textContent?.trim()).toBe(
-        tone['partie.ralliement_event_chip_participating'],
-      );
+      expect(
+        upcoming.el.querySelector('.ed__chip-row app-situation-pill')?.textContent?.trim(),
+      ).toBe(tone['situation.je_participe']);
     });
 
     it('une soirée à venir offre « Clore » à l’hôte, rien à un invité', async () => {

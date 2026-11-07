@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
-import type { SeanceSituation } from '../../core/status/status-derivation';
+import type { SituationValue } from '../../core/status/status-derivation';
 
 /**
  * Story 53.1 — la pastille « Ma situation » : ce que la séance est POUR le lecteur.
@@ -21,7 +21,7 @@ import type { SeanceSituation } from '../../core/status/status-derivation';
 export class SituationPill {
   private readonly theme = inject(ThemeToneService);
 
-  readonly value = input.required<SeanceSituation>();
+  readonly value = input.required<SituationValue>();
 
   protected readonly label = computed(() => this.theme.tone()[`situation.${this.value()}`]);
 

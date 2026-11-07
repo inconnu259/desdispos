@@ -67,22 +67,9 @@
   }
 }
 
-/* Story 41.4 — pastille « Ma situation » d'une soirée (texte écrit, jamais la couleur seule). */
+/* Story 41.4 — rangée de la pastille « Ma situation » d'une soirée (la pastille est partagée, 53.2). */
 .ed__chip-row {
   margin: 0 0 8px;
-}
-
-.ed__chip {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--jdr-accent-1, var(--mat-sys-primary));
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.ed__chip--dotted {
-  border-style: dotted;
 }
 
 .ed__big {

@@ -17,6 +17,7 @@ import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { DetailSurface } from '../../../shared/detail-surface/detail-surface';
+import { SituationPill } from '../../../shared/situation-pill/situation-pill';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 import {
   CancelEventDialog,
@@ -111,6 +112,7 @@ let nextUid = 0;
     MatButtonModule,
     NgTemplateOutlet,
     DetailSurface,
+    SituationPill,
     StatusBadge,
     ParticipantChip,
     EventForm,
@@ -248,7 +250,7 @@ export class EventDialog {
       canCancelEvent(this.card(), this.currentUserId(), this.viewerIsAdmin(), this.todayKey()),
   );
   /** Story 41.4 : « Ma situation » d'une soirée en pastille écrite (« Je participe », « J'y étais »…). */
-  protected readonly situationChip = computed(() =>
+  protected readonly situation = computed(() =>
     this.inline() ? eventSituation(this.card(), this.currentUserId(), this.todayKey(), true) : null,
   );
   /** Story 41.2 : événement sans date ni sondage (une soirée fraîchement créée). */

@@ -3,10 +3,10 @@ import { TestBed } from '@angular/core/testing';
 import { THEMES } from '@master-jdr/shared';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../core/theme/tones';
-import type { SeanceSituation } from '../../core/status/status-derivation';
+import type { SituationValue } from '../../core/status/status-derivation';
 import { SituationPill } from './situation-pill';
 
-async function createPill(value: SeanceSituation, theme: (typeof THEMES)[number]) {
+async function createPill(value: SituationValue, theme: (typeof THEMES)[number]) {
   await TestBed.configureTestingModule({
     imports: [SituationPill],
     providers: [{ provide: ThemeToneService, useValue: { tone: signal(TONE_MAP[theme]) } }],
@@ -19,20 +19,21 @@ async function createPill(value: SeanceSituation, theme: (typeof THEMES)[number]
 
 // Story 53.1 — le RENDU de la pastille : un mot (jamais la couleur seule) et une classe de teinte
 // par valeur. Les libellés sont identiques dans les trois thèmes : on le vérifie thème par thème.
-const LABELS: Record<SeanceSituation, string> = {
+const LABELS: Record<SituationValue, string> = {
   je_mene: 'Je mène',
   vote_a_faire: 'Vote à faire',
   j_ai_vote: 'J’ai voté',
   je_participe: 'Je participe',
   pas_inscrit: 'Pas inscrit·e',
   j_y_etais: 'J’y étais',
+  place_reservee: 'Place réservée',
 };
 
 describe('SituationPill — rendu', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   for (const theme of THEMES) {
-    for (const value of Object.keys(LABELS) as SeanceSituation[]) {
+    for (const value of Object.keys(LABELS) as SituationValue[]) {
       it(`${theme} / ${value} → « ${LABELS[value]} » et classe de teinte dédiée`, async () => {
         const el = await createPill(value, theme);
         expect(el.textContent?.trim()).toBe(LABELS[value]);

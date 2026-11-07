@@ -924,6 +924,12 @@ describe('EventDialog — rendu en ligne d’une soirée isolée (Story 41.1)', 
     );
     expect(q('.ed__big--date')?.textContent?.trim()).toBe(TONE['partie.ralliement_event_no_date']);
     expect(q('.ed__row--host')?.textContent).toContain('Léa');
+    // Story 53.2 : la rangée « Ma situation » porte la pastille partagée, plus de chip propre.
+    expect(q('.ed__situation-label')?.textContent?.trim()).toBe(TONE['situation.ma_situation']);
+    expect(q('.ed__chip-row app-situation-pill .situation-pill')?.textContent?.trim()).toBe(
+      TONE['situation.je_participe'],
+    );
+    expect(q('.ed__chip')).toBeNull();
   });
 
   it('la participation dit « Sur invitation · pas de limite », même avec une capacité sur la carte', async () => {
@@ -1022,6 +1028,9 @@ describe('EventDialog — rendu en ligne d’une soirée isolée (Story 41.1)', 
     expect(q('.ed__badge')?.textContent?.trim()).toBe('Passé');
     expect(q('.ed__situation-text')?.textContent?.trim()).toBe(
       TONE['partie.ralliement_event_situation_registered_past'],
+    );
+    expect(q('app-situation-pill .situation-pill')?.textContent?.trim()).toBe(
+      TONE['situation.j_y_etais'],
     );
   });
 });

@@ -206,6 +206,13 @@ export type SeanceSituation =
   'je_mene' | 'vote_a_faire' | 'j_ai_vote' | 'je_participe' | 'pas_inscrit' | 'j_y_etais';
 
 /**
+ * Story 53.2 — ce que la pastille « Ma situation » sait rendre : les six situations de séance, plus
+ * `place_reservee`, propre aux soirées/conjonctions (une place réservée en attente de réponse).
+ * `seanceSituation()` ne la produit jamais ; `eventSituation()` (`event-card.util.ts`) la produit.
+ */
+export type SituationValue = SeanceSituation | 'place_reservee';
+
+/**
  * La situation d'UN lecteur face à UNE séance, à UN jour donné. Pure : ni horloge, ni Angular.
  *
  * 🚨 **L'ordre des branches EST la règle** (matrice d'E/S de la story 53.1) :

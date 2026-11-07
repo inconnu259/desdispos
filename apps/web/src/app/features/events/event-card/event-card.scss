@@ -99,25 +99,6 @@
   color: var(--jdr-text-muted, #9b8fb0);
 }
 
-.event-card__chip {
-  flex: 0 0 auto;
-  padding: 1px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--jdr-status-live, #3fd4ff);
-  color: var(--jdr-status-live, #3fd4ff);
-  background: color-mix(in srgb, var(--jdr-status-live, #3fd4ff) 12%, transparent);
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-/* « Pas inscrit·e » : contour pointillé, texte à pleine lecture — identifiable sans la couleur. */
-.event-card__chip--dotted {
-  border-style: dotted;
-  border-color: var(--jdr-text-muted, #9b8fb0);
-  color: var(--mat-sys-on-surface);
-  background: transparent;
-}
-
 /* Story 42.1 (⚠️ contrat UI, UX-DR16) — la carte annulée : contenu estompé à 50 % (titre, date, hôte, lieu),
    trait diagonal rouge semi-transparent sur toute la carte (`pointer-events: none` : elle reste cliquable),
    filet rouge. Le badge « Annulée » reste à pleine opacité : le mot porte le sens, le trait ne le porte

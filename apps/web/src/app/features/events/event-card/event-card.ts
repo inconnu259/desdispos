@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import type { EventCardDto } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
+import { SituationPill } from '../../../shared/situation-pill/situation-pill';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 import {
   eventBadge,
@@ -14,8 +15,8 @@ import {
 
 /**
  * Carte d'une conjonction (Story 40.1, UX-DR7) : titre, badge d'état, date en gras, hôte, lieu (ligne
- * omise s'il est vide), « Ma situation » + chip. Rien de plus sur la carte ; l'état est TOUJOURS
- * écrit (badge, chip), jamais porté par la seule couleur ou la seule épaisseur du filet.
+ * omise s'il est vide), « Ma situation » + pastille (`app-situation-pill`, Story 53.2). Rien de plus sur la carte ; l'état est TOUJOURS
+ * écrit (badge, pastille), jamais porté par la seule couleur ou la seule épaisseur du filet.
  *
  * Story 42.1 (⚠️ contrat UI, UX-DR16) : une conjonction annulée reste dans sa section et reste cliquable ;
  * son contenu est estompé à 50 %, un trait diagonal rouge semi-transparent la barre, son badge dit « Annulée »
@@ -30,7 +31,7 @@ import {
  */
 @Component({
   selector: 'app-event-card',
-  imports: [StatusBadge],
+  imports: [SituationPill, StatusBadge],
   templateUrl: './event-card.html',
   styleUrl: './event-card.scss',
 })

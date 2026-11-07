@@ -477,6 +477,7 @@ describe('Tones — états de scénario et de séance (Story 32.3)', () => {
   }
 
   // Story 53.1 — les six libellés de « Ma situation » : présents, non vides, mêmes dans les 3 thèmes.
+  // Story 53.2 — plus « Place réservée » (soirées) et « Ma situation » (libellé de rangée).
   const SITUATION_KEYS = [
     'situation.je_mene',
     'situation.vote_a_faire',
@@ -484,12 +485,32 @@ describe('Tones — états de scénario et de séance (Story 32.3)', () => {
     'situation.je_participe',
     'situation.pas_inscrit',
     'situation.j_y_etais',
+    'situation.place_reservee',
+    'situation.ma_situation',
   ];
   for (const key of SITUATION_KEYS) {
     it(`${key} est présent et identique dans les trois thèmes`, () => {
       const values = THEMES.map((t) => TONE_MAP[t][key]);
       for (const v of values) expect(v, key).toBeTruthy();
       expect(new Set(values).size, `${key} → ${values.join(' / ')}`).toBe(1);
+    });
+  }
+
+  // Story 53.2 — les clés de l'ancienne chip des cartes ont migré vers `situation.*` : elles ne
+  // doivent plus exister dans aucun des trois thèmes.
+  const REMOVED_CHIP_KEYS = [
+    'partie.ralliement_event_situation',
+    'partie.ralliement_event_chip_participating',
+    'partie.ralliement_event_chip_was_there',
+    'partie.ralliement_event_chip_not_registered',
+    'partie.ralliement_event_chip_reserved',
+    'partie.ralliement_event_chip_vote_todo',
+  ];
+  for (const key of REMOVED_CHIP_KEYS) {
+    it(`${key} a disparu des trois thèmes`, () => {
+      for (const theme of THEMES) {
+        expect(Object.keys(TONE_MAP[theme]), `${theme} / ${key}`).not.toContain(key);
+      }
     });
   }
 
@@ -813,12 +834,15 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'status.seance_a_debriefer',
     'status.seance_jouee',
     // Story 53.1 : les six libellés de la pastille « Ma situation » (noms d’état contractuels)
+    // Story 53.2 : « Place réservée » (soirées) et le libellé de la rangée « Ma situation »
     'situation.je_mene',
     'situation.vote_a_faire',
     'situation.j_ai_vote',
     'situation.je_participe',
     'situation.pas_inscrit',
     'situation.j_y_etais',
+    'situation.place_reservee',
+    'situation.ma_situation',
     'calendar.agenda.badge_answer_poll',
     'calendar.agenda.badge_poll_open',
     'calendar.agenda.badge_signup',
@@ -1034,10 +1058,6 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'partie.ralliement_event_places_more',
     'partie.ralliement_event_cancel_btn',
     'partie.ralliement_event_host',
-    'partie.ralliement_event_situation',
-    'partie.ralliement_event_chip_participating',
-    'partie.ralliement_event_chip_was_there',
-    'partie.ralliement_event_chip_not_registered',
     'partie.ralliement_event_badge_in_days',
     'partie.ralliement_event_badge_today',
     'partie.ralliement_event_badge_tomorrow',
@@ -1067,7 +1087,6 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     // Story 40.4 : « Place réservée », « Accepter », « Décliner », « Réserver une place à des membres »,
     // son aide, la pastille « invité·e » de l’hôte et les actions de retrait sont des mots du contrat
     // d’UI ; les situations de la personne réservée et les replis d’erreur ont une voix
-    'partie.ralliement_event_chip_reserved',
     'partie.ralliement_event_accept_btn',
     'partie.ralliement_event_decline_btn',
     'partie.ralliement_event_reserve_label',
@@ -1091,7 +1110,6 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'partie.ralliement_event_unit_available',
     'partie.ralliement_event_poll_date_line',
     'partie.ralliement_event_badge_poll',
-    'partie.ralliement_event_chip_vote_todo',
     'partie.ralliement_event_poll_best',
     'partie.ralliement_event_poll_host_answers',
     'partie.ralliement_event_poll_host_waiting',
@@ -1790,7 +1808,7 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
   // thèmes ; la situation de la personne réservée, le signal d'accueil et les replis d'erreur ont une voix.
   it('Story 40.4 : la réservation de place garde les mots du contrat et prend la voix du thème, sans mot de JDR', () => {
     const neutres: Record<string, string> = {
-      'partie.ralliement_event_chip_reserved': 'Place réservée',
+      'situation.place_reservee': 'Place réservée',
       'partie.ralliement_event_accept_btn': 'Accepter',
       'partie.ralliement_event_decline_btn': 'Décliner',
       'partie.ralliement_event_reserve_label': 'Réserver une place à des membres',
@@ -1839,7 +1857,7 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
   it('Story 40.5 : le sondage de dates garde les mots du contrat et prend la voix du thème, sans mot de JDR', () => {
     const neutres: Record<string, string> = {
       'partie.ralliement_event_badge_poll': 'Vote en cours',
-      'partie.ralliement_event_chip_vote_todo': 'Vote à faire',
+      'situation.vote_a_faire': 'Vote à faire',
       'partie.ralliement_event_poll_date_line': 'Date à voter · jusqu’au {date}',
       'partie.ralliement_event_poll_deadline_label': 'Le vote se termine le',
       'partie.ralliement_event_poll_add_btn': 'Ajouter',

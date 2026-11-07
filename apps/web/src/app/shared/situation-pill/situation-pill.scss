@@ -21,10 +21,12 @@
   background: transparent;
 }
 
-/* Vote à faire : l'appel à l'action — fond status-todo à 16 % + contour. */
-.situation-pill--vote_a_faire {
+/* Vote à faire et Place réservée : l'appel à l'action — fond status-todo à 16 % + contour plein
+   (Story 53.2 : le contour passe de 45 % à la couleur pleine, comme l'ancienne chip des cartes). */
+.situation-pill--vote_a_faire,
+.situation-pill--place_reservee {
   color: var(--jdr-status-todo, #f0a030);
-  border-color: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 45%, transparent);
+  border-color: var(--jdr-status-todo, #f0a030);
   background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 16%, transparent);
 }
 
@@ -38,7 +40,7 @@
 /* Je participe : status-live, fond à 12 % + contour. */
 .situation-pill--je_participe {
   color: var(--jdr-status-live, #3fd4ff);
-  border-color: color-mix(in srgb, var(--jdr-status-live, #3fd4ff) 45%, transparent);
+  border-color: var(--jdr-status-live, #3fd4ff);
   background: color-mix(in srgb, var(--jdr-status-live, #3fd4ff) 12%, transparent);
 }
 

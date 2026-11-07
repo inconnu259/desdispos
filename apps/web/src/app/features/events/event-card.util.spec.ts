@@ -128,20 +128,11 @@ describe('event-card.util (Story 40.1)', () => {
     expect(eventDateLabel(card('c', null), TONE)).toBe(TONE['partie.ralliement_event_no_date']);
   });
 
-  it('situation : l’hôte participe (« J’y étais » une fois passée), les autres ne sont pas inscrits (pointillés)', () => {
-    expect(eventSituation(card('f', '2026-10-20'), 'hote', TODAY)).toEqual({
-      labelKey: 'partie.ralliement_event_chip_participating',
-      dotted: false,
-    });
-    expect(eventSituation(card('p', '2026-10-01'), 'hote', TODAY)).toEqual({
-      labelKey: 'partie.ralliement_event_chip_was_there',
-      dotted: false,
-    });
-    expect(eventSituation(card('f', '2026-10-20'), 'autre', TODAY)).toEqual({
-      labelKey: 'partie.ralliement_event_chip_not_registered',
-      dotted: true,
-    });
-    expect(eventSituation(card('f', '2026-10-20'), null, TODAY).dotted).toBe(true);
+  it('situation : l’hôte participe (« J’y étais » une fois passée), les autres ne sont pas inscrits', () => {
+    expect(eventSituation(card('f', '2026-10-20'), 'hote', TODAY)).toBe('je_participe');
+    expect(eventSituation(card('p', '2026-10-01'), 'hote', TODAY)).toBe('j_y_etais');
+    expect(eventSituation(card('f', '2026-10-20'), 'autre', TODAY)).toBe('pas_inscrit');
+    expect(eventSituation(card('f', '2026-10-20'), null, TODAY)).toBe('pas_inscrit');
   });
 
   it('sections : à venir par date croissante (sans date en dernier), passées de la plus récente à la plus ancienne', () => {
@@ -196,10 +187,7 @@ describe('event-card.util (Story 40.1)', () => {
       expect(isParticipantOf(c, 'u1')).toBe(true);
       expect(isParticipantOf(c, 'étranger')).toBe(false);
       expect(isParticipantOf(c, null)).toBe(false);
-      expect(eventSituation(c, 'u1', TODAY)).toEqual({
-        labelKey: 'partie.ralliement_event_chip_participating',
-        dotted: false,
-      });
+      expect(eventSituation(c, 'u1', TODAY)).toBe('je_participe');
     });
 
     it('texte du panneau de situation : hôte / inscrit / non inscrit, au présent ou à l’imparfait', () => {
@@ -228,16 +216,9 @@ describe('event-card.util (Story 40.1)', () => {
     it('soirée isolée (Story 41.4) : la pastille d’un membre est « Je participe », puis « J’y étais » une fois passée', () => {
       const futur = withPeople(8, 2);
       const passe = card('p', '2026-10-01', { participants: futur.participants });
-      expect(eventSituation(futur, 'x', TODAY).labelKey).toBe(
-        'partie.ralliement_event_chip_not_registered',
-      );
-      expect(eventSituation(futur, 'x', TODAY, true)).toEqual({
-        labelKey: 'partie.ralliement_event_chip_participating',
-        dotted: false,
-      });
-      expect(eventSituation(passe, 'x', TODAY, true).labelKey).toBe(
-        'partie.ralliement_event_chip_was_there',
-      );
+      expect(eventSituation(futur, 'x', TODAY)).toBe('pas_inscrit');
+      expect(eventSituation(futur, 'x', TODAY, true)).toBe('je_participe');
+      expect(eventSituation(passe, 'x', TODAY, true)).toBe('j_y_etais');
     });
 
     it('soirée isolée (Story 41.1) : tout membre non hôte « participe », sans ligne d’inscription', () => {
@@ -410,17 +391,11 @@ describe('event-card.util (Story 40.1)', () => {
       expect(participationLine(heldForHost(), TONE)).toBe('4 places · 2 inscrits · 1 libre');
     });
 
-    it('puce de situation : « Place réservée » (pleine) pour qui tient une place ; « Pas inscrit·e » (pointillée) une fois la conjonction passée', () => {
+    it('situation : « place_reservee » pour qui tient une place à venir ; « pas_inscrit » une fois la conjonction passée', () => {
       const mine = held({ myInscription: 'RESERVED' });
-      expect(eventSituation(mine, 'resa', TODAY)).toEqual({
-        labelKey: 'partie.ralliement_event_chip_reserved',
-        dotted: false,
-      });
+      expect(eventSituation(mine, 'resa', TODAY)).toBe('place_reservee');
       const past = held({ myInscription: 'RESERVED' }, '2026-10-01');
-      expect(eventSituation(past, 'resa', TODAY)).toEqual({
-        labelKey: 'partie.ralliement_event_chip_not_registered',
-        dotted: true,
-      });
+      expect(eventSituation(past, 'resa', TODAY)).toBe('pas_inscrit');
     });
 
     it('texte du panneau : « réservée » (au présent), « réservée_past » à l’imparfait', () => {
@@ -541,16 +516,11 @@ describe('event-card.util (Story 40.1)', () => {
       expect(eventBadge(pollCard(), '2026-10-21', TONE, 'a').text).toBeUndefined();
     });
 
-    it('ligne de date « Date à voter · jusqu’au … » ; puce « Vote à faire » qui l’emporte sur la situation', () => {
+    it('ligne de date « Date à voter · jusqu’au … » ; « vote_a_faire » qui l’emporte sur l’inscription et la participation', () => {
       expect(eventDateLabel(pollCard(), TONE)).toBe('Date à voter · jusqu’au mar. 20 oct.');
-      expect(eventSituation(pollCard(), 'a', TODAY)).toEqual({
-        labelKey: 'partie.ralliement_event_chip_vote_todo',
-        dotted: false,
-      });
+      expect(eventSituation(pollCard(), 'a', TODAY)).toBe('vote_a_faire');
       const voted = pollCard({ votes: [{ optionId: 'o1', userId: HOST, answer: 'YES' }] });
-      expect(eventSituation(voted, HOST, TODAY).labelKey).toBe(
-        'partie.ralliement_event_chip_participating',
-      );
+      expect(eventSituation(voted, HOST, TODAY)).toBe('je_participe');
     });
 
     it('tri : une conjonction à sondage (sans date) vient après les conjonctions datées', () => {

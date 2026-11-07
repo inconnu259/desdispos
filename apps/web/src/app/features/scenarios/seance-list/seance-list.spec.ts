@@ -179,12 +179,12 @@ describe('SeanceList', () => {
     expect(fixture.nativeElement.querySelector('app-poll-creation')).toBeNull();
   });
 
-  it('joueur, séance avec poll → app-poll-response visible', async () => {
+  it('joueur, séance avec poll → app-seance-poll-summary visible (Story 54.2)', async () => {
     const { fixture } = await createComponent(
       { ...SCENARIO, seances: [SEANCE_WITH_POLL] },
       { isMj: false },
     );
-    expect(fixture.nativeElement.querySelector('app-poll-response')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeTruthy();
   });
 
   it('joueur, séance sans poll → rien affiché pour cette séance', async () => {
@@ -194,7 +194,7 @@ describe('SeanceList', () => {
     );
     expect(fixture.nativeElement.querySelector('app-poll-creation')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-poll-status')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-poll-response')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeNull();
   });
 
   describe('onChoose()/onClosePoll() rafraîchissent l’affichage (bug-fix : « rien ne se passe » après avoir scellé un créneau)', () => {
@@ -290,7 +290,7 @@ describe('SeanceList', () => {
       expect(fixture.nativeElement.querySelector('app-poll-status')).toBeNull();
     });
 
-    it('joueur, poll CLOSED avec chosenDate → affiche "Date retenue", plus de app-poll-response', async () => {
+    it('joueur, poll CLOSED avec chosenDate → affiche "Date retenue", plus de résumé', async () => {
       const { fixture } = await createComponent(
         { ...SCENARIO, seances: [CLOSED_WITH_DATE] },
         { isMj: false },
@@ -298,7 +298,7 @@ describe('SeanceList', () => {
       expect(fixture.nativeElement.textContent).toContain(
         GRIMOIRE_TONE['common.date_retenue_date'].split(' :')[0],
       );
-      expect(fixture.nativeElement.querySelector('app-poll-response')).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeNull();
     });
 
     it('MJ, poll CLOSED avec chosenDate → bouton "Réinitialiser la date" visible (Story 8.8, AC4)', async () => {
@@ -690,13 +690,13 @@ describe('SeanceList', () => {
       expect(fixture.nativeElement.querySelector('.situation-line')).not.toBeNull();
     });
 
-    it('joueur, capacité définie + vote OPEN → FillIndicator/inscrire ET app-poll-response, tous deux visibles (Story 8.8, AC2)', async () => {
+    it('joueur, capacité définie + vote OPEN → FillIndicator/inscrire ET résumé du vote, tous deux visibles (Story 8.8, AC2)', async () => {
       const { fixture } = await createComponent(
         { ...SCENARIO, seances: [SEANCE_WITH_CAPACITY_AND_OPEN_POLL] },
         { isMj: false, isEpisodique: true, currentUserId: 'u1' },
       );
       expect(fixture.nativeElement.querySelector('app-fill-indicator')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-poll-response')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeTruthy();
     });
 
     it('joueur, date validée via poll.chosenDate → texte "Date retenue", plus de FillIndicator ni bouton', async () => {
@@ -1768,5 +1768,122 @@ describe('SeanceList — encadré de situation, cas limites (Story 54.1, revue)'
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.capacity-form')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+  });
+});
+
+// Story 54.2 ⚠️ — le vote en résumé côté joueur ; le vote se fait dans la Destinée seulement.
+describe('SeanceList — résumé du vote (Story 54.2)', () => {
+  const OPEN: SessionPollDto = {
+    ...POLL,
+    options: [
+      { id: 'o1', date: isoInDays(10), slot: 'EVENING', votes: [] },
+      { id: 'o2', date: isoInDays(12), slot: 'EVENING', votes: [] },
+    ],
+  };
+  const lines = (root: HTMLElement) =>
+    Array.from(root.querySelectorAll('.seance-poll-summary__line')).map((l) =>
+      (l.textContent ?? '').trim(),
+    );
+
+  it('joueur, vote ouvert : le résumé vient sous l’encadré, plus aucun app-poll-response', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    const row = fixture.nativeElement.querySelector('.seance-row') as HTMLElement;
+    const tags = Array.from(row.children).map((c) => c.tagName.toLowerCase());
+    expect(tags.indexOf('app-seance-poll-summary')).toBe(tags.indexOf('app-seance-situation') + 1);
+    expect(row.querySelector('app-poll-response')).toBeNull();
+    expect(lines(row)[0]).toBe('Vos réponses : 0 créneau sur 2');
+  });
+
+  it('joueur, épisodique avec inscription et vote ouvert : encadré puis résumé', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      poll: OPEN,
+      inscription: { min: 2, max: 6, inscrits: [], dateValidee: null },
+    };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [seance] },
+      { isEpisodique: true, currentUserId: 'u1' },
+    );
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).not.toBeNull();
+  });
+
+  it('séance sans sondage : aucun résumé', async () => {
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [SEANCE_NO_POLL] });
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeNull();
+  });
+
+  it('date fixée : la date en grand à la place du résumé', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      dateValidee: isoInDays(10),
+      poll: { ...OPEN, status: 'CLOSED', chosenDate: isoInDays(10), chosenSlot: 'EVENING' },
+    };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeNull();
+    const date = fixture.nativeElement.querySelector('.seance-row__chosen-date--big');
+    expect(date?.textContent).toContain('Date scellée');
+  });
+
+  it('vote clos sans date : le message, ni résumé ni date en grand', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: { ...OPEN, status: 'CLOSED' } };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.seance-row__chosen-date--big')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(
+      GRIMOIRE_TONE['common.vote_cloture_sans_date_retenue'],
+    );
+  });
+
+  it('temps réel : une réponse reçue après un changed() met le résumé à jour', async () => {
+    const pending: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN };
+    const answered: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      poll: {
+        ...OPEN,
+        options: OPEN.options.map((o, i) => ({
+          ...o,
+          votes: i === 0 ? [{ userId: 'u1', pseudo: 'u1', displayName: 'u1', answer: 'YES' }] : [],
+        })),
+      },
+    };
+    const { fixture, scenariosSvc } = await createComponent({ ...SCENARIO, seances: [pending] });
+    expect(lines(fixture.nativeElement)[0]).toBe('Vos réponses : 0 créneau sur 2');
+
+    scenariosSvc.listAll.mockResolvedValue([{ ...SCENARIO, seances: [answered] }]);
+    fixture.componentInstance.seanceLinked.subscribe((s) => {
+      fixture.componentRef.setInput('scenario', s);
+    });
+    scenariosSvc.changed.set({ partieId: 'p1' });
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+    expect(lines(fixture.nativeElement)[0]).toBe('Vos réponses : 1 créneau sur 2');
+  });
+});
+
+// Story 54.2 (revue) — la date en grand sur les trois sites joueur.
+describe('SeanceList — date en grand côté joueur (Story 54.2, revue)', () => {
+  it('séance linéaire datée par héritage, sans vote : date en grand', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, dateValidee: isoInDays(10) };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    const date = fixture.nativeElement.querySelector('.seance-row__chosen-date--big');
+    expect(date?.textContent).toContain('Date scellée');
+  });
+
+  it('séance à inscription datée : date en grand', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      dateValidee: isoInDays(10),
+      inscription: { min: 2, max: 6, inscrits: [], dateValidee: isoInDays(10) },
+    };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [seance] },
+      { isEpisodique: true, currentUserId: 'u1' },
+    );
+    const date = fixture.nativeElement.querySelector('.seance-row__chosen-date--big');
+    expect(date?.textContent).toContain('Date scellée');
   });
 });

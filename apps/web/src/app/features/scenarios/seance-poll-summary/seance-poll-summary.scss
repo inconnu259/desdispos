@@ -1,0 +1,18 @@
+/* Story 54.2 — lignes de texte du résumé du vote : texte seul, elles passent à la ligne plutôt que de
+   déborder. Aucun token nouveau. */
+:host {
+  display: block;
+}
+
+.seance-poll-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.seance-poll-summary__line {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+  overflow-wrap: anywhere;
+}

@@ -733,7 +733,7 @@ describe('ScenarioReadDialog', () => {
 
       // Description/durées masquées (anti-spoil), mais le vote reste dans le DOM.
       expect(fixture.nativeElement.textContent).not.toContain('Une enquête discrète.');
-      expect(fixture.nativeElement.querySelector('app-poll-response')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeTruthy();
     });
   });
 

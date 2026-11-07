@@ -123,3 +123,10 @@
   font-size: 0.85rem;
   color: var(--jdr-text-muted);
 }
+
+/* Story 54.2 ⚠️ — côté joueur, une fois la date fixée, elle prend la place du résumé du vote, en grand. */
+.seance-row__chosen-date--big {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--jdr-text-primary, inherit);
+}

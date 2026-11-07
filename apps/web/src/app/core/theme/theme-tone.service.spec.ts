@@ -849,6 +849,13 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'scenarios.seance_situation_vote_in_calendar',
     'scenarios.seance_situation_not_registered',
     'scenarios.seance_situation_no_date',
+    // Story 54.2 : le résumé du vote (identique dans les trois thèmes, sauf « Tes réponses » en Forêt)
+    'scenarios.seance_summary_best',
+    'scenarios.seance_summary_best_none',
+    'scenarios.seance_summary_missing_many',
+    'scenarios.seance_summary_missing_one',
+    'scenarios.seance_summary_deadline',
+    'scenarios.seance_summary_ended',
     'calendar.agenda.badge_answer_poll',
     'calendar.agenda.badge_poll_open',
     'calendar.agenda.badge_signup',
@@ -1406,7 +1413,6 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.conflict_overwrite_available_many',
     'calendar.compose_count_many',
     'calendar.selbar_count_many',
-    'cta.withdraw_vote',
     'poll.status_title',
     'announcement.publish_cta',
     'my_characters.title',
@@ -1639,6 +1645,44 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     expect(TONE_MAP['grimoire-emeraude'][registered]).toBe('Vous participez.');
     expect(TONE_MAP['atelier-cuivre'][registered]).toBe('Vous participez.');
     expect(TONE_MAP['foret-ancienne'][registered]).toBe('Tu participes.');
+  });
+
+  // Story 54.2 : le résumé du vote — six textes neutres ; « Vos / Tes réponses » (Forêt tutoyée) à voix propre ;
+  // les clés que seule l'ancienne réponse créneau par créneau lisait ont quitté les trois fichiers.
+  it('Story 54.2 : textes du résumé du vote ; clés de l’ancien sélecteur de réponse retirées', () => {
+    for (const key of [
+      'scenarios.seance_summary_best',
+      'scenarios.seance_summary_best_none',
+      'scenarios.seance_summary_missing_many',
+      'scenarios.seance_summary_missing_one',
+      'scenarios.seance_summary_deadline',
+      'scenarios.seance_summary_ended',
+    ]) {
+      const valeurs = THEMES.map((theme) => TONE_MAP[theme][key]);
+      for (const [i, valeur] of valeurs.entries()) {
+        expect(valeur, `${THEMES[i]} / ${key}`).toBeTruthy();
+      }
+      expect(new Set(valeurs).size, key).toBe(1);
+      expect(NEUTRAL_KEYS.has(key), key).toBe(true);
+    }
+    for (const key of [
+      'scenarios.seance_summary_my_answers',
+      'scenarios.seance_summary_my_answers_one',
+    ]) {
+      expect(TONE_MAP['grimoire-emeraude'][key]).toBe(TONE_MAP['atelier-cuivre'][key]);
+      expect(TONE_MAP['foret-ancienne'][key]).toMatch(/^Tes réponses/);
+      expect(NEUTRAL_KEYS.has(key), key).toBe(false);
+    }
+    for (const key of [
+      'cta.confirm_votes',
+      'cta.withdraw_vote',
+      'pollui.response_not_saved_aria',
+      'pollui.response_partial_error',
+      'poll.vote_closed',
+      'common.envoi',
+    ]) {
+      for (const theme of THEMES) expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBeUndefined();
+    }
   });
 
   // Story 53.6 : avis et confirmation de la bannière de couverture — une voix par thème, jamais en NEUTRAL_KEYS.

@@ -140,7 +140,7 @@
           }
           <!-- Story 54.1 : vote clos sans date → message et « Effacer la date » vivent dans l'encadré. -->
         } @else if (seance.inscription && resolvedDate(seance)) {
-          <p class="seance-row__chosen-date">{{ dateRetenue(formatSeanceDate(seance)) }}</p>
+          <p class="seance-row__chosen-date seance-row__chosen-date--big">{{ dateRetenue(formatSeanceDate(seance)) }}</p>
         } @else if (seance.inscription) {
           <app-fill-indicator
             [count]="seance.inscription.inscrits.length"
@@ -149,11 +149,8 @@
           />
           <!-- Story 54.1 : « s'inscrire » / « se désinscrire » vivent dans l'encadré de situation. -->
           @if (seance.poll?.status === 'OPEN') {
-            <app-poll-response
-              [partieId]="partieId()"
-              [poll]="seance.poll!"
-              (responded)="onPollResponded($event)"
-            />
+            <!-- Story 54.2 ⚠️ : le vote se fait dans la Destinée ; la fiche en résume l'état. -->
+            <app-seance-poll-summary [poll]="seance.poll!" [todayKey]="todayKey" />
           } @else if (seance.poll) {
             <p class="seance-row__chosen-date">{{ theme.tone()['common.vote_cloture_sans_date_retenue'] }}</p>
           }
@@ -208,13 +205,9 @@
           }
         } @else if (seance.poll) {
           @if (seance.poll.status === 'OPEN') {
-            <app-poll-response
-              [partieId]="partieId()"
-              [poll]="seance.poll"
-              (responded)="onPollResponded($event)"
-            />
+            <app-seance-poll-summary [poll]="seance.poll" [todayKey]="todayKey" />
           } @else {
-            <p class="seance-row__chosen-date">
+            <p class="seance-row__chosen-date" [class.seance-row__chosen-date--big]="!!seance.poll.chosenDate">
               @if (seance.poll.chosenDate) {
                 {{ dateRetenue(formatSeanceDate(seance)) }}
               } @else {
@@ -225,7 +218,7 @@
         } @else if (resolvedDate(seance)) {
           <!-- Story 32.3 — même trou côté joueur : une séance datée par héritage n'affichait
                aucune date, alors que son badge annonçait « Programmée ». -->
-          <p class="seance-row__chosen-date">{{ dateRetenue(formatSeanceDate(seance)) }}</p>
+          <p class="seance-row__chosen-date seance-row__chosen-date--big">{{ dateRetenue(formatSeanceDate(seance)) }}</p>
         }
       }
 

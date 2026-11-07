@@ -1,9 +1,12 @@
+import { bestOption, hasAnswered } from '@master-jdr/shared';
 import type { PartieMemberDto, SessionPollDto } from '@master-jdr/shared';
 import {
   getMissingVoters,
   getMissingVotersForOption,
   getRespondedCount,
   hasUnansweredOptions,
+  pollAnswerCounts,
+  pollRankableOptions,
 } from './poll.util';
 
 const members: PartieMemberDto[] = [
@@ -178,5 +181,93 @@ describe('poll.util', () => {
   it("hasUnansweredOptions : false si le poll n'a aucune option (rien à répondre)", () => {
     const poll = makePoll([]);
     expect(hasUnansweredOptions(poll, 'u1')).toBe(false);
+  });
+});
+
+// Story 54.2 — l'adaptateur unique vers `bestOption` et les comptes alignés sur la Destinée.
+describe('poll.util — pollRankableOptions / pollAnswerCounts (Story 54.2)', () => {
+  const vote = (userId: string, answer: 'YES' | 'NO' | 'MAYBE') => ({
+    userId,
+    pseudo: userId,
+    displayName: userId,
+    answer,
+  });
+  const option = (
+    id: string,
+    date: string,
+    slot: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'FULL_DAY',
+    votes: ReturnType<typeof vote>[],
+  ) => ({ id, date, slot, votes });
+
+  it('pollRankableOptions : une entrée par option, dans l’ordre servi, date ramenée au jour, comptes par réponse', () => {
+    const poll = makePoll([
+      option('b', '2026-11-08T00:00:00.000Z', 'EVENING', [vote('u1', 'YES'), vote('u2', 'NO')]),
+      option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [
+        vote('u1', 'MAYBE'),
+        vote('u2', 'YES'),
+        vote('u3', 'YES'),
+      ]),
+    ]);
+    expect(pollRankableOptions(poll)).toEqual([
+      { optionId: 'b', date: '2026-11-08', slot: 'EVENING', yes: 1, maybe: 0, no: 1 },
+      { optionId: 'a', date: '2026-11-07', slot: 'MORNING', yes: 2, maybe: 1, no: 0 },
+    ]);
+  });
+
+  it('bestOption sur sa sortie : le plus de « oui », puis de « peut-être », puis le plus tôt', () => {
+    const poll = makePoll([
+      option('b', '2026-11-08T00:00:00.000Z', 'EVENING', [vote('u1', 'YES')]),
+      option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [vote('u1', 'YES'), vote('u2', 'MAYBE')]),
+    ]);
+    expect(bestOption(pollRankableOptions(poll), '2026-11-01')?.optionId).toBe('a');
+  });
+
+  it('bestOption : aucun « oui » → null ; créneaux passés exclus', () => {
+    const noYes = makePoll([option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [vote('u1', 'NO')])]);
+    expect(bestOption(pollRankableOptions(noYes), '2026-11-01')).toBeNull();
+    const past = makePoll([option('a', '2026-10-01T00:00:00.000Z', 'MORNING', [vote('u1', 'YES')])]);
+    expect(bestOption(pollRankableOptions(past), '2026-11-01')).toBeNull();
+  });
+
+  it('pollAnswerCounts : le MJ ayant répondu est compté, une réponse partielle ne l’est pas', () => {
+    const poll = makePoll([
+      option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [vote('mj', 'YES'), vote('u1', 'YES')]),
+      option('b', '2026-11-08T00:00:00.000Z', 'MORNING', [vote('mj', 'NO')]),
+    ]);
+    expect(pollAnswerCounts(poll)).toEqual({ eligible: 4, answered: 1, missing: 3 });
+  });
+
+  it('pollAnswerCounts : aucun vote → tous manquent', () => {
+    const poll = makePoll([option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [])]);
+    expect(pollAnswerCounts(poll)).toEqual({ eligible: 4, answered: 0, missing: 4 });
+  });
+
+  it('pollAnswerCounts : `missing` n’est jamais négatif', () => {
+    const poll = {
+      ...makePoll([
+        option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [vote('u1', 'YES'), vote('u2', 'YES')]),
+      ]),
+      membersCount: 1,
+    };
+    expect(pollAnswerCounts(poll)).toEqual({ eligible: 1, answered: 2, missing: 0 });
+  });
+
+  it('pollAnswerCounts : mêmes valeurs qu’une entrée de la Destinée construite sur le même sondage', () => {
+    const poll = makePoll([
+      option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [vote('u1', 'YES'), vote('u2', 'NO')]),
+      option('b', '2026-11-08T00:00:00.000Z', 'MORNING', [vote('u1', 'MAYBE')]),
+    ]);
+    // Le serveur (`my-open-polls.service.ts`) : éligibles = membersCount, répondu = a répondu à TOUTES les options.
+    const optionIds = poll.options.map((o) => o.id);
+    const answeredByServerRule = ['u1', 'u2'].filter((id) =>
+      hasAnswered(
+        'jdr',
+        optionIds,
+        poll.options.filter((o) => o.votes.some((v) => v.userId === id)).map((o) => o.id),
+      ),
+    ).length;
+    const counts = pollAnswerCounts(poll);
+    expect(counts.eligible).toBe(poll.membersCount);
+    expect(counts.answered).toBe(answeredByServerRule);
   });
 });

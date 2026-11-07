@@ -27,9 +27,9 @@ import { PollService } from '../../../core/poll/poll.service';
 import { atelierUrl } from '@master-jdr/shared';
 import { composeSeanceInfo, toDateKey } from '../../calendar/day-detail.utils';
 import { PollStatusPanel } from '../../poll/poll-status/poll-status';
-import { PollResponseComponent } from '../../poll/poll-response/poll-response';
 import { FillIndicator } from '../fill-indicator/fill-indicator';
 import { SeanceSituationComponent } from '../seance-situation/seance-situation';
+import { SeancePollSummary } from '../seance-poll-summary/seance-poll-summary';
 import {
   seanceSituationBox,
   type SeanceSituationBox,
@@ -61,7 +61,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
  * Liste des séances d'un scénario (Story 8.2, retravaillé Story 8.7/8.8) — la création de vote ne
  * vit plus ici (panneau `<app-poll-creation>` retiré, point d'entrée unique désormais le calendrier
  * via `goToCalendarForSeance`, cf. AC2/AC3 Story 8.7). AD-4 révisé (Story 8.8) : une séance
- * épisodique peut désormais avoir à la fois un vote (`PollStatusPanel`/`PollResponseComponent`,
+ * épisodique peut désormais avoir à la fois un vote (`PollStatusPanel` côté MJ, `SeancePollSummary` côté joueur,
  * choisit *quand*) et une inscription à capacité limitée (choisit *qui*) — les deux coexistent.
  */
 @Component({
@@ -71,7 +71,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
     DurationStepper,
     MatButtonModule,
     PollStatusPanel,
-    PollResponseComponent,
+    SeancePollSummary,
     FillIndicator,
     StatusBadge,
     SituationLine,
@@ -395,13 +395,6 @@ export class SeanceList {
     } finally {
       this.pollActionPending.set(false);
     }
-  }
-
-  protected onPollResponded(poll: SessionPollDto): void {
-    this.seanceLinked.emit({
-      ...this.scenario(),
-      seances: this.scenario().seances.map((s) => (s.poll?.id === poll.id ? { ...s, poll } : s)),
-    });
   }
 
   protected isInscrit(inscrits: { userId: string; pseudo: string }[]): boolean {

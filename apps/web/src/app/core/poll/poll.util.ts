@@ -1,5 +1,10 @@
 import { hasAnswered } from '@master-jdr/shared';
-import type { PartieMemberDto, PollOptionDto, SessionPollDto } from '@master-jdr/shared';
+import type {
+  PartieMemberDto,
+  PollOptionDto,
+  RankableOption,
+  SessionPollDto,
+} from '@master-jdr/shared';
 
 /** Les options sur lesquelles `userId` a voté. */
 function votedOptionIds(poll: SessionPollDto, userId: string): string[] {
@@ -39,4 +44,47 @@ export function hasUnansweredOptions(poll: SessionPollDto, userId: string): bool
     poll.options.map((o) => o.id),
     votedOptionIds(poll, userId),
   );
+}
+
+/**
+ * Story 54.2 — une option de vote telle que `bestOption` / `rankedEntrySlots` la lisent : le `RankableOption`
+ * de `@master-jdr/shared` plus l'identifiant de l'option et le nombre de « non ».
+ */
+export type PollRankableOption = RankableOption & { optionId: string; no: number };
+
+/**
+ * LE SEUL adaptateur `SessionPollDto` → options classables (Story 54.2, revue A-10). Une entrée par option,
+ * dans l'ordre servi ; la date est ramenée au jour `YYYY-MM-DD` ; les comptes sont ceux de `option.votes`.
+ * Le meilleur créneau s'obtient par `bestOption(pollRankableOptions(poll), todayKey)`, sans autre classement.
+ */
+export function pollRankableOptions(poll: SessionPollDto): PollRankableOption[] {
+  return poll.options.map((o) => ({
+    optionId: o.id,
+    date: o.date.substring(0, 10),
+    slot: o.slot,
+    yes: o.votes.filter((v) => v.answer === 'YES').length,
+    maybe: o.votes.filter((v) => v.answer === 'MAYBE').length,
+    no: o.votes.filter((v) => v.answer === 'NO').length,
+  }));
+}
+
+/**
+ * Story 54.2 — les comptes d'un vote, alignés sur la Destinée (`OpenPollEntry.eligibleCount` /
+ * `answeredCount`) : `eligible` = l'effectif de la troupe (le MJ et ses membres, `membersCount`) ;
+ * `answered` = les votants distincts qui ont répondu à CHAQUE option (`hasAnswered('jdr', …)`, une
+ * réponse partielle ne compte pas) ; `missing` = le reste, jamais négatif.
+ */
+export function pollAnswerCounts(poll: SessionPollDto): {
+  eligible: number;
+  answered: number;
+  missing: number;
+} {
+  const optionIds = poll.options.map((o) => o.id);
+  const voterIds = new Set(poll.options.flatMap((o) => o.votes.map((v) => v.userId)));
+  let answered = 0;
+  for (const userId of voterIds) {
+    if (hasAnswered('jdr', optionIds, votedOptionIds(poll, userId))) answered++;
+  }
+  const eligible = poll.membersCount;
+  return { eligible, answered, missing: Math.max(0, eligible - answered) };
 }

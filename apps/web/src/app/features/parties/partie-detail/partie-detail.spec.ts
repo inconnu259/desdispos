@@ -43,6 +43,7 @@ import { ContextualNavService } from '../../../core/navigation/contextual-nav.se
 import { fillTone } from '../../../core/theme/tone-format';
 import { EventsApiService } from '../../events/events-api.service';
 import { ConjonctionDraftService } from '../../events/conjonction-draft.service';
+import { EditableBanner } from '../editable-banner/editable-banner';
 
 const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
@@ -8256,5 +8257,163 @@ describe('PartieDetail — onglets adressés par clé, ordre et onglet d’arriv
     expect(comp(fixture).tabs()).not.toContain('fiches');
     expect(comp(fixture).displayedTabKey()).toBe(comp(fixture).tabs()[0]);
     expect(activeLabel(el)).toBe(T['parties.detail_tab_scenarios']);
+  });
+});
+
+describe('PartieDetail — la bannière illustrée et ses puces de couverture (Story 53.6)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const members: PartieMemberDto[] = [
+    {
+      role: 'ADMIN',
+      userId: MJ_ID,
+      pseudo: 'createur',
+      displayName: 'Créateur',
+      joinedAt: '2026-10-01T00:00:00Z',
+    },
+    {
+      role: 'MEMBER',
+      userId: 'member-2',
+      pseudo: 'invite',
+      displayName: 'Invité Deux',
+      joinedAt: '2026-10-02T00:00:00Z',
+    },
+  ];
+  const chronicle = (over: Partial<PartieDto> = {}) =>
+    makePartie({ kind: 'CAMPAGNE_LINEAIRE', ownerId: MJ_ID, coverImageVersion: 'v1', ...over });
+  const groupe = (over: Partial<PartieDto> = {}) =>
+    makePartie({
+      gameSystemId: 'ralliement',
+      kind: 'CAMPAGNE_EPISODIQUE',
+      role: 'admin',
+      coverImageVersion: 'v1',
+      ...over,
+    });
+  const soiree = (over: Partial<PartieDto> = {}) =>
+    makePartie({
+      gameSystemId: 'ralliement',
+      kind: 'ONE_SHOT',
+      role: 'admin',
+      coverImageVersion: 'v1',
+      ...over,
+    });
+  const banners = (el: HTMLElement) => el.querySelectorAll('app-editable-banner');
+  const chips = (el: HTMLElement) => el.querySelectorAll('app-editable-banner .cover-chip');
+  const noCover: PartieDto['can'] = { coverUpdate: false };
+
+  it('JDR de chronique : la bannière coiffe l’onglet Détails, avant les zones', async () => {
+    const { el } = await createFixtureOnDetails(chronicle(), MJ_ID);
+    expect(banners(el)).toHaveLength(1);
+    const tab = banners(el)[0].parentElement!;
+    expect(banners(el)[0].nextElementSibling?.classList.contains('details-zone')).toBe(true);
+    expect(tab.querySelector('.details-zone')).not.toBeNull();
+    expect(banners(el)[0].querySelector('app-party-banner')).not.toBeNull();
+  });
+
+  it('JDR de quête unique : la bannière coiffe l’onglet Détails', async () => {
+    const { el } = await createFixtureOnDetails(
+      makePartie({ kind: 'ONE_SHOT', coverImageVersion: 'v1' }),
+      MJ_ID,
+    );
+    expect(banners(el)).toHaveLength(1);
+  });
+
+  it('groupe : la bannière coiffe l’onglet Détails', async () => {
+    const { el } = await createFixtureOnDetails(groupe(), MJ_ID, { members });
+    expect(banners(el)).toHaveLength(1);
+  });
+
+  it('soirée : la bannière coiffe le premier onglet, au-dessus de l’onglet de la soirée', async () => {
+    const { el } = await createFixture(soiree(), MJ_ID, { members });
+    expect(banners(el)).toHaveLength(1);
+    expect(banners(el)[0].nextElementSibling?.tagName.toLowerCase()).toBe('app-soiree-tab');
+  });
+
+  it('le MJ arrivé sur Chapitres : aucune bannière tant que l’onglet Détails n’est pas rendu', async () => {
+    const { el } = await createFixture(chronicle(), MJ_ID, { noopAnimations: true });
+    // Le MJ arrive sur Chapitres : l'onglet Détails n'est pas encore rendu.
+    expect(banners(el)).toHaveLength(0);
+  });
+
+  describe.each([
+    ['MJ', () => chronicle({ role: 'mj' }), MJ_ID],
+    ['admin de groupe', () => groupe({ role: 'admin' }), MJ_ID],
+  ] as const)('puces — %s', (_label, make, userId) => {
+    it('« Changer » et « Retirer » avec une couverture', async () => {
+      const { el } = await createFixtureOnDetails(make(), userId, { members });
+      expect(Array.from(chips(el)).map((c) => c.textContent!.trim())).toEqual([
+        'Retirer',
+        'Changer',
+      ]);
+    });
+  });
+
+  it('hôte d’une soirée : les puces figurent sur le premier onglet', async () => {
+    const { el } = await createFixture(soiree(), MJ_ID, { members });
+    expect(chips(el).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['joueur', () => chronicle({ role: 'player', can: noCover }), PLAYER_ID, 'details'],
+    ['membre de groupe', () => groupe({ role: 'member', can: noCover }), 'member-2', 'details'],
+  ] as const)('%s : la bannière, aucune puce', async (_label, make, userId, tab) => {
+    const { el } = await createFixture(make(), userId, { members, openTab: tab });
+    expect(banners(el)).toHaveLength(1);
+    expect(banners(el)[0].querySelector('app-party-banner')).not.toBeNull();
+    expect(chips(el)).toHaveLength(0);
+  });
+
+  it('invité d’une soirée : la bannière, aucune puce', async () => {
+    const { el } = await createFixture(soiree({ role: 'member', can: noCover }), 'member-2', {
+      members,
+    });
+    expect(banners(el)).toHaveLength(1);
+    expect(chips(el)).toHaveLength(0);
+  });
+
+  it('le web ne déduit pas le droit du rôle : MJ sans can.coverUpdate, aucune puce', async () => {
+    const { el } = await createFixtureOnDetails(chronicle({ role: 'mj', can: noCover }), MJ_ID);
+    expect(banners(el)).toHaveLength(1);
+    expect(chips(el)).toHaveLength(0);
+  });
+
+  it('la partie rendue par la bannière remplace celle de la page (version de couverture)', async () => {
+    const { fixture, el } = await createFixtureOnDetails(chronicle(), MJ_ID);
+    expect(el.querySelector('app-editable-banner img.party-banner')?.getAttribute('src')).toContain(
+      'v=v1',
+    );
+
+    const banner = fixture.debugElement.query(By.directive(EditableBanner))
+      .componentInstance as EditableBanner;
+    const fresh = chronicle({ coverImageVersion: 'v9' });
+    banner.partieChange.emit(fresh);
+    fixture.detectChanges();
+
+    expect(
+      (fixture.componentInstance as unknown as { partie: () => PartieDto }).partie(),
+    ).toBe(fresh);
+    expect(el.querySelector('app-editable-banner img.party-banner')?.getAttribute('src')).toContain(
+      'v=v9',
+    );
+  });
+
+  it('soirée : la partie rendue par la bannière remplace celle de la page (version de couverture)', async () => {
+    const { fixture, el } = await createFixture(soiree(), MJ_ID, { members });
+    expect(el.querySelector('app-editable-banner img.party-banner')?.getAttribute('src')).toContain(
+      'v=v1',
+    );
+
+    const banner = fixture.debugElement.query(By.directive(EditableBanner))
+      .componentInstance as EditableBanner;
+    const fresh = soiree({ coverImageVersion: 'v9' });
+    banner.partieChange.emit(fresh);
+    fixture.detectChanges();
+
+    expect(
+      (fixture.componentInstance as unknown as { partie: () => PartieDto }).partie(),
+    ).toBe(fresh);
+    expect(el.querySelector('app-editable-banner img.party-banner')?.getAttribute('src')).toContain(
+      'v=v9',
+    );
   });
 });

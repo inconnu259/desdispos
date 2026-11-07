@@ -493,6 +493,10 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'partie.cover_uploading': 'Gravure de la plaque en cours…',
   'partie.cover_upload_error': 'La plaque n’a pu être gravée. Réessayez.',
   'partie.cover_remove_error': 'La plaque n’a pu être retirée. Réessayez.',
+  'partie.cover_changed': 'Plaque changée',
+  'partie.cover_removed': 'Plaque retirée',
+  'partie.cover_remove_confirm':
+    'Retirer la plaque ? La bannière générée reprendra sa place.',
   'partie.cover_reject_type': 'Seuls les formats JPEG, PNG et WEBP sont admis.',
   'partie.cover_reject_size': 'Ce fichier dépasse 5 Mo : réduisez-le avant dépôt.',
   'partie.save_error': 'Cette mission n’a pu être enregistrée. Réessayez.',

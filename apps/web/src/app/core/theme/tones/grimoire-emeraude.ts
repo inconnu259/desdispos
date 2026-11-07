@@ -496,6 +496,10 @@ export const grimoireEmeraude = {
   'partie.cover_uploading': 'L’enluminure se fixe sur le parchemin…',
   'partie.cover_upload_error': 'L’enluminure n’a pu être fixée. Réessayez.',
   'partie.cover_remove_error': 'L’enluminure n’a pu être retirée. Réessayez.',
+  'partie.cover_changed': 'Enluminure changée',
+  'partie.cover_removed': 'Enluminure retirée',
+  'partie.cover_remove_confirm':
+    'Retirer l’enluminure ? La bannière générée reprendra sa place.',
   'partie.cover_reject_type': 'Seules les images JPEG, PNG et WEBP peuvent enluminer un grimoire.',
   'partie.cover_reject_size': 'Cette image dépasse 5 Mo : choisissez-en une plus légère.',
   'partie.save_error': 'Ce grimoire n’a pu être inscrit. Réessayez.',

@@ -103,6 +103,9 @@
                premier onglet, au nom du thème au singulier, affiche en ligne le détail de son unique
                événement (UX-DR10). -->
           <mat-tab [label]="theme.tone()['partie.ralliement_soiree_tab']">
+            <!-- Story 53.6 (⚠️ contrat UI) : la bannière illustrée coiffe le premier onglet d'une soirée
+                 (elle n'a pas d'onglet « Détails »). -->
+            <app-editable-banner [partie]="p" (partieChange)="partie.set($event)" />
             <app-soiree-tab
               [partieId]="p.id"
               [description]="p.description"
@@ -113,6 +116,10 @@
         }
         @if (hasTab('details')) {
         <mat-tab [label]="theme.tone()['parties.detail_tab_details']">
+            <!-- Story 53.6 (⚠️ contrat UI) : la bannière illustrée coiffe l'onglet Détails, pour tout
+                 membre ; les puces « Changer » / « Retirer » n'y figurent que si `p.can.coverUpdate`. -->
+            <app-editable-banner [partie]="p" (partieChange)="partie.set($event)" />
+
             <!-- Story 32.2 : l'onglet Détails est regroupé en trois zones -- Action, Consultation,
                  Référence, dans cet ordre -- plutôt que juxtaposé sans hiérarchie. Chaque bloc garde
                  exactement sa condition d'affichage et son comportement interne d'avant cette story ;

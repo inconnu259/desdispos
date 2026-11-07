@@ -68,6 +68,7 @@ import { fillTone } from '../../../core/theme/tone-format';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';
 import { gameSystemName, partieKindLabelKey } from '../../../core/parties/parties.util';
 import { ConfirmDialog } from '../confirm-dialog/confirm-dialog';
+import { EditableBanner } from '../editable-banner/editable-banner';
 import { CharacterSummaryCard } from '../../characters/character-summary-card/character-summary-card';
 import { RosterRail } from '../roster-rail/roster-rail';
 import { RosterStrip } from '../roster-strip/roster-strip';
@@ -146,6 +147,7 @@ const SEARCH_DEBOUNCE_MS = 500;
     IdentityLabel,
     StatusBadge,
     SituationPill,
+    EditableBanner,
     ConjonctionsTab,
     SoireeTab,
     EventGamesTab,

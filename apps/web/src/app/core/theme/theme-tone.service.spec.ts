@@ -1613,6 +1613,22 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     }
   });
 
+  // Story 53.6 : avis et confirmation de la bannière de couverture — une voix par thème, jamais en NEUTRAL_KEYS.
+  it('Story 53.6 : les textes de la couverture changée / retirée existent, en trois voix distinctes', () => {
+    for (const key of [
+      'partie.cover_changed',
+      'partie.cover_removed',
+      'partie.cover_remove_confirm',
+    ]) {
+      const valeurs = THEMES.map((theme) => TONE_MAP[theme][key]);
+      for (const [i, valeur] of valeurs.entries()) {
+        expect(valeur, `${THEMES[i]} / ${key}`).toBeTruthy();
+      }
+      expect(new Set(valeurs).size, key).toBe(THEMES.length);
+      expect(NEUTRAL_KEYS.has(key), key).toBe(false);
+    }
+  });
+
   it('Story 38.4 : aucun mot de JDR ni de quête dans les textes propres au ralliement', () => {
     const interdit = NON_JDR_BANNED_WORDS;
     for (const theme of THEMES) {

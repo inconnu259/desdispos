@@ -489,6 +489,10 @@ export const foretAncienne: Record<ToneKey, string> = {
   'partie.cover_uploading': 'L’image prend racine…',
   'partie.cover_upload_error': 'L’image n’a pu prendre racine. Réessaie.',
   'partie.cover_remove_error': 'L’image n’a pu être retirée. Réessaie.',
+  'partie.cover_changed': 'Image changée',
+  'partie.cover_removed': 'Image retirée',
+  'partie.cover_remove_confirm':
+    'Veux-tu ôter l’image ? La bannière générée reprendra sa place.',
   'partie.cover_reject_type': 'Seules les images JPEG, PNG et WEBP peuvent être plantées ici.',
   'partie.cover_reject_size': 'Cette image dépasse 5 Mo : choisis-en une plus légère.',
   'partie.save_error': 'Ce sentier n’a pu être tracé. Réessaie.',

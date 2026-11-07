@@ -206,14 +206,14 @@ export class SeanceList {
 
   /**
    * L'état affiché d'une séance — dérivé, jamais servi (AD-20 : aucun champ `status` sur
-   * `SeanceDto`). Dépend du LECTEUR : un vote sans sa réponse appelle une action, le même vote
-   * une fois répondu se contente d'informer.
+   * `SeanceDto`). Impersonnel depuis la story 53.1 : « Vote en cours » pour tout le monde, l'appel
+   * à l'action du lecteur vit dans la pastille « Ma situation » (`seanceSituation()`).
    *
    * ⚠️ Ce badge ne remplace RIEN : l'indicateur de remplissage, le panneau de vote et le
    * compte-rendu restent exactement où ils étaient. Il les résume, il ne les supplante pas.
    */
   protected seanceBadge(seance: SeanceDto): StatusBadgeState {
-    return seanceState(seance, this.currentUserId(), this.todayKey);
+    return seanceState(seance, this.todayKey);
   }
 
   /**

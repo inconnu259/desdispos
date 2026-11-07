@@ -1036,16 +1036,16 @@ describe('ScenarioTimeline', () => {
         });
       }
 
-      it('vote ouvert non repondu par le lecteur -> « Reponds au vote »', async () => {
+      it('vote ouvert non repondu par le lecteur -> « Vote en cours » (badge impersonnel, story 53.1)', async () => {
         const { fixture } = await createComponent([scenarioAvecVote(false)]);
         expect(
           normalize(
             fixture.nativeElement.querySelector('.card-seances__row .status-badge').textContent,
           ),
-        ).toBe('Réponds au vote');
+        ).toBe('Vote en cours');
       });
 
-      it('le MEME vote, une fois repondu par le lecteur -> « Vote en cours »', async () => {
+      it('le MEME vote, une fois repondu par le lecteur -> le meme « Vote en cours » (badge impersonnel)', async () => {
         const { fixture } = await createComponent([scenarioAvecVote(true)]);
         expect(
           normalize(

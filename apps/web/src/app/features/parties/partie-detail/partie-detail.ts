@@ -54,9 +54,15 @@ import { ambiguousUserIds } from '../../../shared/identity/identity-ambiguity.ut
 import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { getRespondedCount, hasUnansweredOptions } from '../../../core/poll/poll.util';
-import { seanceState, type StatusBadgeState } from '../../../core/status/status-derivation';
+import {
+  seanceSituation,
+  seanceState,
+  type SeanceSituation,
+  type StatusBadgeState,
+} from '../../../core/status/status-derivation';
 import { toDateKey } from '../../calendar/day-detail.utils';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
+import { SituationPill } from '../../../shared/situation-pill/situation-pill';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';
@@ -125,6 +131,7 @@ const SEARCH_DEBOUNCE_MS = 500;
     HommeDragonAventurePanel,
     IdentityLabel,
     StatusBadge,
+    SituationPill,
     ConjonctionsTab,
     SoireeTab,
     EventGamesTab,
@@ -825,26 +832,58 @@ export class PartieDetail implements OnInit {
    */
   protected readonly nextSessionBadge = computed<StatusBadgeState>(() => {
     const p = this.partie();
-    const me = this.auth.currentUser()?.id;
-    const polls = this.activePolls();
-    const pending = me ? polls.find((poll) => hasUnansweredOptions(poll, me)) : undefined;
-    const dateKey = p?.nextSessionDate ? p.nextSessionDate.substring(0, 10) : null;
-    // Story 47.2 : la prochaine séance peut avoir commencé — c'est la FIN de la plage qui la rend passée.
-    const lastKey = (p?.nextSessionEndDate ?? p?.nextSessionDate)?.substring(0, 10) ?? null;
-    const scheduled = dateKey && lastKey && lastKey >= this.todayKey ? p!.nextSessionDate : null;
+    const scheduled = this.scheduledNextSession();
     return seanceState(
       {
-        // 🚨 Un vote n'est retenu QUE tant que la prochaine séance n'a pas de date : `activePolls()`
-        // est scopé à la PARTIE, pas à une séance. Avec une date confirmée, transmettre un vote
-        // ouvert ailleurs ferait afficher « Réponds au vote » sous la date d'une AUTRE séance.
-        poll: scheduled ? undefined : (pending ?? polls[0]),
+        poll: this.retainedPoll(),
         dateValidee: scheduled,
         slotValidee: p?.nextSessionSlot ?? null,
         endDate: scheduled ? (p?.nextSessionEndDate ?? null) : null,
       },
-      me,
       this.todayKey,
     );
+  });
+
+  /** La date de la prochaine séance, tant qu'elle n'est pas passée — sinon `null`.
+   *  Story 47.2 : la prochaine séance peut avoir commencé — c'est la FIN de la plage qui la rend passée. */
+  private readonly scheduledNextSession = computed<string | null>(() => {
+    const p = this.partie();
+    const dateKey = p?.nextSessionDate ? p.nextSessionDate.substring(0, 10) : null;
+    const lastKey = (p?.nextSessionEndDate ?? p?.nextSessionDate)?.substring(0, 10) ?? null;
+    return dateKey && lastKey && lastKey >= this.todayKey ? p!.nextSessionDate! : null;
+  });
+
+  /**
+   * Le vote que le widget retient : celui qui attend MA réponse, sinon le premier ; aucun tant que
+   * la prochaine séance a une date.
+   *
+   * 🚨 Un vote n'est retenu QUE tant que la prochaine séance n'a pas de date : `activePolls()`
+   * est scopé à la PARTIE, pas à une séance. Avec une date confirmée, transmettre un vote ouvert
+   * ailleurs ferait afficher « Vote en cours » / « Vote à faire » sous la date d'une AUTRE séance.
+   */
+  private readonly retainedPoll = computed<SessionPollDto | undefined>(() => {
+    if (this.scheduledNextSession()) return undefined;
+    const me = this.auth.currentUser()?.id;
+    const polls = this.activePolls();
+    const pending = me ? polls.find((poll) => hasUnansweredOptions(poll, me)) : undefined;
+    return pending ?? polls[0];
+  });
+
+  /**
+   * Story 53.1 — « Ma situation » du joueur face au widget : l'appel à l'action du vote, que le
+   * badge d'état (impersonnel) ne porte plus. Jamais pour le MJ ; seuls `vote_a_faire` et
+   * `j_ai_vote` s'affichent ici — les autres valeurs parlent d'une séance précise, que ce widget
+   * (agrégé au niveau de la Partie) ne connaît pas.
+   */
+  protected readonly nextSessionSituation = computed<SeanceSituation | null>(() => {
+    if (this.isMj()) return null;
+    const situation = seanceSituation(
+      { poll: this.retainedPoll() },
+      this.auth.currentUser()?.id,
+      false,
+      this.todayKey,
+    );
+    return situation === 'vote_a_faire' || situation === 'j_ai_vote' ? situation : null;
   });
 
   /**

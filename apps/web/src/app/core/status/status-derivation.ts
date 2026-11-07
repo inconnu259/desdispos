@@ -19,22 +19,21 @@ import {
  * 🚨 **Aucun endpoint nouveau, aucun champ `status` sur la séance** (AD-20). Les quatre états de
  * scénario sont servis tels quels ; les états de séance sont DÉRIVÉS de la charge utile déjà
  * envoyée — vote, inscription, date effective, compte-rendu. Le serveur ne nomme pas ces états,
- * et ne doit pas commencer à le faire : ils dépendent du LECTEUR (« Réponds au vote » vs « Vote
- * en cours ») et du jour courant.
+ * et ne doit pas commencer à le faire : ils dépendent du jour courant (et la situation du LECTEUR,
+ * « Vote à faire » vs « J’ai voté », se dérive à part — `seanceSituation()`, story 53.1).
  */
 
-/** Les onze clés de libellé d'état, résolues par `theme.tone()` — jamais un libellé en dur.
+/** Les dix clés de libellé d'état, résolues par `theme.tone()` — jamais un libellé en dur.
  *
- *  La spec parle de « dix libellés » en comptant le vote pour UN état ; il en faut onze clés,
- *  parce que ce seul état porte deux libellés distincts selon que le lecteur a répondu ou non
- *  (contrainte explicite : « deux libellés distincts, lisibles sans la teinte »). */
+ *  Story 53.1 : l'état de séance est IMPERSONNEL — le « Réponds au vote » (appel à l'action du
+ *  lecteur) a quitté ce registre, il vit désormais dans la pastille « Ma situation »
+ *  (`seanceSituation()` → `situation.vote_a_faire`). */
 export type StatusLabelKey =
   | 'status.scenario_brouillon'
   | 'status.scenario_a_venir'
   | 'status.scenario_courant'
   | 'status.scenario_passe'
   | 'status.seance_a_planifier'
-  | 'status.seance_answer_poll'
   | 'status.seance_poll_open'
   | 'status.seance_inscriptions_ouvertes'
   | 'status.seance_programmee'
@@ -120,49 +119,57 @@ function slotOf(seance: SeanceStateSource): DaySlot | undefined {
 }
 
 /**
- * L'état d'une séance, du point de vue d'UN lecteur, à UN jour donné.
+ * La clé de FIN d'une séance (`YYYY-MM-DD`), ou `null` quand elle n'a aucune date effective.
+ *
+ * Story 47.2 : une séance n'est passée qu'une fois sa FIN passée — une plage commencée reste
+ * annoncée. Source unique du « passé » pour `seanceState()`, `seanceSituation()` et
+ * `nextSeanceOf()` : trois définitions auraient fini par diverger.
+ */
+function lastKeyOf(seance: SeanceStateSource): string | null {
+  const dateKey = dateKeyOf(seance);
+  const endKey = seance.endDate ? seance.endDate.substring(0, 10) : null;
+  return endKey && dateKey && endKey > dateKey ? endKey : dateKey;
+}
+
+/** Passée = fin strictement avant `todayKey`. Le jour même n'est PAS passé (une séance du soir reste
+ *  à venir le matin) : même comparaison que `sectionIdFor()` dans l'Agenda. Sans date : jamais passée. */
+function isPastSeance(seance: SeanceStateSource, todayKey: string): boolean {
+  const lastKey = lastKeyOf(seance);
+  return lastKey !== null && lastKey < todayKey;
+}
+
+/**
+ * L'état d'une séance à UN jour donné — **impersonnel** (Story 53.1).
  *
  * 🚨 **L'ordre des branches EST le départage**, et il est arbitré, pas improvisé (Design Notes de
  * la story) : actionnabilité décroissante, dans l'esprit de `dominantSignal()` (29.7).
  *   1. Une fois la date passée, « À débriefer » prime sur tout — c'est le seul état en retard.
- *   2. Un vote ouvert prime sur le reste : c'est lui qui produira la date, et sans réponse du
- *      lecteur il appelle une action (`todo`) là où les inscriptions n'informent que (`live`).
+ *   2. Un vote ouvert prime sur le reste : c'est lui qui produira la date.
  *   3. « Inscriptions ouvertes » prime sur « Programmée » (ligne explicite de la matrice d'E/S) :
  *      une place encore libre demande une décision, une date déjà connue non.
  *   4. « Programmée », et son intensité d'imminence.
  *   5. « À planifier » en repli — jamais un état inventé quand aucune date n'est exploitable.
  *
- * @param viewerId `undefined` quand le lecteur n'est pas identifié : le vote informe alors
- *   (« Vote en cours ») au lieu d'interpeller quelqu'un qu'on ne sait pas nommer.
+ * 🚨 **Aucun lecteur ici.** L'appel à l'action (« Vote à faire ») dépend de QUI regarde : il est
+ * porté par `seanceSituation()` et la pastille, pas par ce badge. Un vote ouvert dit toujours
+ * « Vote en cours », pour tout le monde.
+ *
  * @param todayKey le jour courant en `YYYY-MM-DD` — injecté, jamais lu de l'horloge ici (fonction
  *   pure, et une seule source de « aujourd'hui » par écran, comme dans l'Agenda).
  */
-export function seanceState(
-  seance: SeanceStateSource,
-  viewerId: string | undefined,
-  todayKey: string,
-): StatusBadgeState {
+export function seanceState(seance: SeanceStateSource, todayKey: string): StatusBadgeState {
   const dateKey = dateKeyOf(seance);
-  // Story 47.2 : une séance n'est passée qu'une fois sa FIN passée — une plage commencée reste annoncée.
-  const endKey = seance.endDate ? seance.endDate.substring(0, 10) : null;
-  const lastKey = endKey && dateKey && endKey > dateKey ? endKey : dateKey;
 
-  // 1 — passée. Le jour même n'est PAS passé (une séance du soir reste à venir le matin) : même
-  // comparaison que `sectionIdFor()` dans l'Agenda, `date >= todayKey` = encore annoncé.
-  if (lastKey && lastKey < todayKey) {
+  // 1 — passée.
+  if (isPastSeance(seance, todayKey)) {
     return seance.compteRendu?.trim()
       ? { tone: 'done', labelKey: 'status.seance_jouee', draft: false }
       : { tone: 'todo', labelKey: 'status.seance_a_debriefer', draft: false };
   }
 
-  // 2 — vote ouvert. « A répondu » = a voté sur CHAQUE option : la définition de
-  // `getMissingVoters()`, réutilisée via `hasUnansweredOptions()`, jamais redéfinie ici.
-  const poll = seance.poll;
-  if (poll?.status === 'OPEN') {
-    const answered = viewerId === undefined || !hasUnansweredOptions(poll, viewerId);
-    return answered
-      ? { tone: 'live', labelKey: 'status.seance_poll_open', draft: false }
-      : { tone: 'todo', labelKey: 'status.seance_answer_poll', draft: false };
+  // 2 — vote ouvert, pour tout le monde.
+  if (seance.poll?.status === 'OPEN') {
+    return { tone: 'live', labelKey: 'status.seance_poll_open', draft: false };
   }
 
   // 3 — inscriptions ouvertes : il reste une place. Aucun jumeau côté `PartySignalCode`
@@ -188,4 +195,68 @@ export function seanceState(
 
   // 5 — repli honnête.
   return { tone: 'todo', labelKey: 'status.seance_a_planifier', draft: false };
+}
+
+/**
+ * Story 53.1 — « Ma situation » : ce que la séance est POUR le lecteur. Six valeurs, ou `null`
+ * (aucune pastille). C'est LA définition — la pastille partagée et ses surfaces la lisent,
+ * aucune ne la recalcule.
+ */
+export type SeanceSituation =
+  'je_mene' | 'vote_a_faire' | 'j_ai_vote' | 'je_participe' | 'pas_inscrit' | 'j_y_etais';
+
+/**
+ * La situation d'UN lecteur face à UNE séance, à UN jour donné. Pure : ni horloge, ni Angular.
+ *
+ * 🚨 **L'ordre des branches EST la règle** (matrice d'E/S de la story 53.1) :
+ *   sans lecteur → `null` ; MJ → `je_mene` ; vote ouvert → `vote_a_faire` tant qu'une option
+ *   reste sans réponse (même inscrit), sinon `j_ai_vote` ; puis l'inscription ; puis la date
+ *   effective ; enfin un vote clos sans date.
+ *
+ * « A répondu » est `hasUnansweredOptions()`, jamais redéfini ici. « Passée » est celui de
+ * `seanceState()` (fin de plage, jour même non passé).
+ */
+export function seanceSituation(
+  seance: SeanceStateSource,
+  viewerId: string | undefined,
+  isMj: boolean,
+  todayKey: string,
+): SeanceSituation | null {
+  if (viewerId === undefined) return null;
+  if (isMj) return 'je_mene';
+
+  const poll = seance.poll;
+  if (poll?.status === 'OPEN') {
+    return hasUnansweredOptions(poll, viewerId) ? 'vote_a_faire' : 'j_ai_vote';
+  }
+
+  const past = isPastSeance(seance, todayKey);
+
+  // Séance à inscription : c'est l'inscription du lecteur qui décide, pas la seule date.
+  const inscription = seance.inscription;
+  if (inscription) {
+    const registered = inscription.inscrits.some((i) => i.userId === viewerId);
+    if (registered) return past ? 'j_y_etais' : 'je_participe';
+    return past ? null : 'pas_inscrit';
+  }
+
+  // Sans inscription : la date effective vaut participation.
+  if (dateKeyOf(seance) !== null) return past ? 'j_y_etais' : 'je_participe';
+
+  // Vote clos sans date : seule la trace d'une réponse du lecteur reste lisible.
+  if (poll && !hasUnansweredOptions(poll, viewerId)) return 'j_ai_vote';
+
+  return null;
+}
+
+/**
+ * Story 53.1 — la prochaine séance d'un scénario : la première, dans l'ordre servi, dont la fin
+ * n'est pas passée (une séance sans date n'est pas passée). `null` s'il n'y en a aucune — MJ
+ * compris : « prochaine » ne dépend pas du lecteur.
+ */
+export function nextSeanceOf<S extends SeanceStateSource>(
+  scenario: { seances?: readonly S[] } | null | undefined,
+  todayKey: string,
+): S | null {
+  return scenario?.seances?.find((s) => !isPastSeance(s, todayKey)) ?? null;
 }

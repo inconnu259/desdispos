@@ -1306,16 +1306,16 @@ describe('SeanceList — badge d’état (Story 32.3)', () => {
     expect(badges(fixture)).toEqual(['À planifier']);
   });
 
-  it('joueur qui n’a pas répondu → « Réponds au vote »', async () => {
+  it('joueur qui n’a pas répondu → « Vote en cours » (badge impersonnel, story 53.1)', async () => {
     const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN_POLL };
     const { fixture } = await createComponent(
       { ...SCENARIO, seances: [seance] },
       { isMj: false, currentUserId: 'u1' },
     );
-    expect(badges(fixture)).toEqual(['Réponds au vote']);
+    expect(badges(fixture)).toEqual(['Vote en cours']);
   });
 
-  it('joueur qui a répondu à TOUTES les options → « Vote en cours », libellé distinct', async () => {
+  it('joueur qui a répondu à TOUTES les options → le MÊME « Vote en cours » (l’état ne dépend plus du lecteur)', async () => {
     const vote = { userId: 'u1', pseudo: 'u1', displayName: 'u1', answer: 'YES' as const };
     const seance: SeanceDto = {
       ...SEANCE_NO_POLL,

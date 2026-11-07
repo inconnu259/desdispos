@@ -437,7 +437,6 @@ describe('Tones — états de scénario et de séance (Story 32.3)', () => {
     'status.scenario_courant',
     'status.scenario_passe',
     'status.seance_a_planifier',
-    'status.seance_answer_poll',
     'status.seance_poll_open',
     'status.seance_inscriptions_ouvertes',
     'status.seance_programmee',
@@ -463,13 +462,34 @@ describe('Tones — états de scénario et de séance (Story 32.3)', () => {
     });
   }
 
-  // 🚨 Deux libellés DISTINCTS pour le vote, lisibles sans la teinte : c'est la contrainte
-  // d'accessibilité explicite de la story (« deux teintes imposent deux libellés »).
+  // Story 53.1 — l'appel à l'action du vote a quitté le badge d'état (impersonnel : « Vote en
+  // cours » pour tous) pour la pastille « Ma situation » : « Vote à faire » / « J’ai voté » restent
+  // deux libellés distincts, lisibles sans la teinte, et distincts du libellé du badge.
   for (const theme of THEMES) {
-    it(`${theme} distingue « réponds au vote » de « vote en cours »`, () => {
-      expect(TONE_MAP[theme]['status.seance_answer_poll']).not.toBe(
+    it(`${theme} distingue « vote à faire », « j’ai voté » et « vote en cours »`, () => {
+      const labels = [
+        TONE_MAP[theme]['situation.vote_a_faire'],
+        TONE_MAP[theme]['situation.j_ai_vote'],
         TONE_MAP[theme]['status.seance_poll_open'],
-      );
+      ];
+      expect(new Set(labels).size).toBe(3);
+    });
+  }
+
+  // Story 53.1 — les six libellés de « Ma situation » : présents, non vides, mêmes dans les 3 thèmes.
+  const SITUATION_KEYS = [
+    'situation.je_mene',
+    'situation.vote_a_faire',
+    'situation.j_ai_vote',
+    'situation.je_participe',
+    'situation.pas_inscrit',
+    'situation.j_y_etais',
+  ];
+  for (const key of SITUATION_KEYS) {
+    it(`${key} est présent et identique dans les trois thèmes`, () => {
+      const values = THEMES.map((t) => TONE_MAP[t][key]);
+      for (const v of values) expect(v, key).toBeTruthy();
+      expect(new Set(values).size, `${key} → ${values.join(' / ')}`).toBe(1);
     });
   }
 
@@ -787,12 +807,18 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'status.scenario_courant',
     'status.scenario_passe',
     'status.seance_a_planifier',
-    'status.seance_answer_poll',
     'status.seance_poll_open',
     'status.seance_inscriptions_ouvertes',
     'status.seance_programmee',
     'status.seance_a_debriefer',
     'status.seance_jouee',
+    // Story 53.1 : les six libellés de la pastille « Ma situation » (noms d’état contractuels)
+    'situation.je_mene',
+    'situation.vote_a_faire',
+    'situation.j_ai_vote',
+    'situation.je_participe',
+    'situation.pas_inscrit',
+    'situation.j_y_etais',
     'calendar.agenda.badge_answer_poll',
     'calendar.agenda.badge_poll_open',
     'calendar.agenda.badge_signup',
@@ -1272,7 +1298,7 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
         key.startsWith('auth.field_') ||
         key.startsWith('calendar.agenda.badge_'),
     );
-    expect(contractuelles.length).toBe(24);
+    expect(contractuelles.length).toBe(23);
     for (const key of contractuelles) {
       const values = THEMES.map((theme) => TONE_MAP[theme][key]);
       expect(new Set(values).size, `${key} → ${values.join(' / ')}`).toBe(1);

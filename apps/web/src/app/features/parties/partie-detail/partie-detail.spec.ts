@@ -622,34 +622,53 @@ describe('PartieDetail — statut du vote', () => {
     expect(line!.textContent).toContain('2 votes de date en cours');
   });
 
-  // ─── Story 32.3 — le badge du widget suit le vote, et suit le LECTEUR ────
+  // ─── Story 32.3 / 53.1 — le badge du widget est IMPERSONNEL ; l'appel à l'action du lecteur est
+  // porté par la pastille « Ma situation » ────
   function widgetBadge(el: HTMLElement): string {
     return (el.querySelector('.scheduling-widget .status-badge')?.textContent ?? '').trim();
   }
+  function widgetPill(el: HTMLElement): string | null {
+    const pill = el.querySelector('.scheduling-widget .situation-pill');
+    return pill ? (pill.textContent ?? '').trim() : null;
+  }
 
-  it('vote ouvert auquel je n’ai pas répondu → « Réponds au vote »', async () => {
+  it('vote ouvert auquel je n’ai pas répondu → badge « Vote en cours » ET pastille « Vote à faire »', async () => {
     // `makePoll([])` : personne n'a voté, donc le lecteur non plus.
     const { el } = await createFixture(makePartie(), 'u1', { members, poll: makePoll([]) });
-    expect(widgetBadge(el)).toBe('Réponds au vote');
+    expect(widgetBadge(el)).toBe('Vote en cours');
+    expect(widgetPill(el)).toBe('Vote à faire');
   });
 
-  it('vote ouvert auquel j’ai répondu → « Vote en cours », libellé distinct du précédent', async () => {
+  it('vote ouvert auquel j’ai répondu → même badge, pastille « J’ai voté »', async () => {
     const { el } = await createFixture(makePartie(), 'u1', { members, poll: makePoll(['u1']) });
     expect(widgetBadge(el)).toBe('Vote en cours');
+    expect(widgetPill(el)).toBe('J’ai voté');
   });
 
-  it('🚨 plusieurs votes : c’est celui qui attend MA réponse qui gagne le badge', async () => {
+  it('🚨 le MJ n’a jamais de pastille, même avec un vote ouvert sans sa réponse', async () => {
+    const { el } = await createFixture(makePartie(), MJ_ID, { members, poll: makePoll([]) });
+    expect(widgetBadge(el)).toBe('Vote en cours');
+    expect(widgetPill(el)).toBeNull();
+  });
+
+  it('aucun vote ouvert → aucune pastille', async () => {
+    const { el } = await createFixture(makePartie(), 'u1', { members, poll: null });
+    expect(widgetPill(el)).toBeNull();
+  });
+
+  it('🚨 plusieurs votes : c’est celui qui attend MA réponse qui gagne la pastille', async () => {
     // `poll1` est déjà répondu, `poll2` ne l'est pas : prendre le premier venu masquerait
     // l'appel à l'action — exactement ce que la story cherche à rendre visible.
     const poll1 = { ...makePoll(['u1']), id: 'poll1', partieId: 'party-1' };
     const poll2 = { ...makePoll([]), id: 'poll2', partieId: 'party-1' };
     const { el } = await createFixture(makePartie(), 'u1', { members, polls: [poll1, poll2] });
-    expect(widgetBadge(el)).toBe('Réponds au vote');
+    expect(widgetBadge(el)).toBe('Vote en cours');
+    expect(widgetPill(el)).toBe('Vote à faire');
   });
 
-  it('🚨 date confirmée → « Programmée », même si un vote ouvert court sur une AUTRE séance', async () => {
+  it('🚨 date confirmée → « Programmée » et aucune pastille, même si un vote ouvert court sur une AUTRE séance', async () => {
     // `activePolls()` est scopé à la PARTIE : sans cette garde, le widget annoncerait
-    // « Réponds au vote » juste au-dessus de la date confirmée d'une tout autre séance.
+    // « Vote à faire » juste au-dessus de la date confirmée d'une tout autre séance.
     const future = new Date();
     future.setUTCHours(0, 0, 0, 0);
     future.setUTCDate(future.getUTCDate() + 10);
@@ -659,6 +678,7 @@ describe('PartieDetail — statut du vote', () => {
       { members, poll: makePoll([]) },
     );
     expect(widgetBadge(el)).toBe('Programmée');
+    expect(widgetPill(el)).toBeNull();
   });
 });
 

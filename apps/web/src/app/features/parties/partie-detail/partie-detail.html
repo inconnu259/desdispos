@@ -115,6 +115,11 @@
                 <div class="scheduling-widget__header">
                   <h4>{{ theme.tone()['partie.scheduling_title'] }}</h4>
                   <app-status-badge [state]="nextSessionBadge()" />
+                  <!-- Story 53.1 — l'appel à l'action du vote vit ici, dans la pastille « Ma
+                       situation » : le badge d'état ci-dessus est impersonnel. Jamais pour le MJ. -->
+                  @if (nextSessionSituation(); as situation) {
+                    <app-situation-pill [value]="situation" />
+                  }
                 </div>
                 @if (nextSessionLabel()) {
                   <p class="next-session-date">{{ nextSessionLabel() }}</p>

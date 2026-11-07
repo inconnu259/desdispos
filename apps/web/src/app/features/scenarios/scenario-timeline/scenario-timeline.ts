@@ -389,7 +389,7 @@ export class ScenarioTimeline {
    * `SeanceDto`), et identique à celui que `SeanceList` montre pour la même séance.
    */
   protected seanceBadge(seance: SeanceDto): StatusBadgeState {
-    return seanceState(seance, this.currentUserId(), this.todayKey);
+    return seanceState(seance, this.todayKey);
   }
 
   // Story 8.7, AC7 : date résolue d'une séance affichée sur la carte du scénario — même source

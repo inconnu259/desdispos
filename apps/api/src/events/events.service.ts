@@ -19,7 +19,8 @@ import type {
 } from '@master-jdr/shared';
 // Import RUNTIME du registre des systèmes (Story 40.1) : la famille de la partie choisit qui
 // participe à une séance datée dans les ports du calendrier. Jamais `import type` sur une valeur.
-import { familyOf, spanSlots } from '@master-jdr/shared';
+import { familyOf, isPartieActive, partieStatus, spanSlots } from '@master-jdr/shared';
+import type { ActivePartiesPort } from '../availability/ports/active-parties.port';
 import type { OccupiedSpan, OccupiedSpansPort } from '../availability/ports/occupied-spans.port';
 import type {
   OwnEvents,
@@ -358,6 +359,7 @@ const SLOT_ORDER: Record<DaySlot, number> = { MORNING: 0, AFTERNOON: 1, EVENING:
 @Injectable()
 export class EventsService
   implements
+    ActivePartiesPort,
     OccupiedSpansPort,
     OwnEventsPort,
     SeanceDatePort,
@@ -2594,6 +2596,27 @@ export class EventsService
     }
 
     return map;
+  }
+
+  /**
+   * `ActivePartiesPort` (Story 52.4, AD-5) : l'utilisateur possède ou est membre d'au moins une partie ACTIVE
+   * (`partieStatus()` puis `isPartieActive()`, la seule définition — ni terminée, ni annulée, rencontre isolée
+   * passée comprise). Une invitation en attente n'est pas une adhésion. L'avancement est lu en lot
+   * (`progressByPartieIds`), jamais une requête par partie.
+   */
+  async hasActivePartie(userId: string): Promise<boolean> {
+    // `closedAt: null` : une partie clôturée est terminée (ou annulée) pour `partieStatus()`, donc jamais active —
+    // inutile de lire et d'évaluer tout l'historique du compte à chaque rappel.
+    const parties = await this.prisma.partie.findMany({
+      where: {
+        closedAt: null,
+        OR: [{ ownerId: userId }, { memberships: { some: { userId } } }],
+      },
+      select: { id: true, kind: true, gameSystemId: true, closedAt: true },
+    });
+    if (parties.length === 0) return false;
+    const progressOf = await this.progressByPartieIds(parties);
+    return parties.some((p) => isPartieActive(partieStatus(p.closedAt, progressOf(p.id))));
   }
 
   /**

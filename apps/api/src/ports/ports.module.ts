@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ACTIVE_PARTIES_PORT } from '../availability/ports/active-parties.port';
 import { OCCUPIED_SPANS_PORT } from '../availability/ports/occupied-spans.port';
 import { OWN_EVENTS_PORT } from '../availability/ports/own-events.port';
 import { EventsModule } from '../events/events.module';
@@ -27,7 +28,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
  * `AvailabilityModule` et `PollModule` n'importent plus `PartiesModule`, `EventsModule` ni
  * `ScenariosModule`.
  *
- * - `OccupiedSpansPort`, `OwnEventsPort`, `SeanceDatePort`, `GroupPollVotePort` (Story 40.5),
+ * - `ActivePartiesPort` (Story 52.4), `OccupiedSpansPort`, `OwnEventsPort`, `SeanceDatePort`, `GroupPollVotePort` (Story 40.5),
  *   `RendezVousDurationPort` (Story 47.4) → `EventsService` ;
  * - `GroupPollChoosePort` (Story 40.6) → `GroupPollChoiceService` ;
  * - `GroupPollExtendPort` (Story 40.7) → `GroupPollExtensionService` ;
@@ -39,6 +40,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
 @Module({
   imports: [EventsModule, PartiesModule, ScenariosModule],
   providers: [
+    { provide: ACTIVE_PARTIES_PORT, useExisting: EventsService },
     { provide: OCCUPIED_SPANS_PORT, useExisting: EventsService },
     { provide: OWN_EVENTS_PORT, useExisting: EventsService },
     { provide: SEANCE_DATE_PORT, useExisting: EventsService },
@@ -51,6 +53,7 @@ import { SEANCE_DATE_PORT } from '../poll/ports/seance-date.port';
     { provide: DATABLE_SEANCE_FILTER, useExisting: ScenarioDatableSeanceFilter },
   ],
   exports: [
+    ACTIVE_PARTIES_PORT,
     OCCUPIED_SPANS_PORT,
     OWN_EVENTS_PORT,
     SEANCE_DATE_PORT,

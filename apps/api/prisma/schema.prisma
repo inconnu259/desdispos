@@ -24,6 +24,7 @@ model User {
   mustResetPassword Boolean    @default(false) // Story 28.6 — posé par rollbackEmailChange(), remis à false par resetPassword()
   partiesSort         String  @default("urgence") // AD-1 — union fermée dans @master-jdr/shared (Story 29.8)
   hideFinishedParties Boolean @default(false) // AD-1 — préférence d'affichage, appliquée côté front (Story 29.8)
+  availabilityReminder Boolean @default(true) // AD-5 (Story 52.4) — rappel « Dispos à déclarer » ; vrai par défaut, aucune reprise de données
   partiesViewMode     String  @default("medium") // AD-1 — une paire PAR LISTE, jamais partagée (Story 29.9)
   charactersViewMode  String  @default("medium") // AD-1 (Story 29.9)
   charactersSort      String  @default("partie") // AD-1 — vocabulaire disjoint de celui des parties (Story 29.9)

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   GAME_SYSTEMS,
@@ -11,6 +11,7 @@ import { PartiesService } from '../parties/parties.service';
 import { PermissionService } from '../permissions/permission.service';
 import { RELEASED_ANNOUNCEMENT_WHERE, isSpoilRestricted } from '../permissions/scenario-visibility';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeEventsService, userTopic } from '../realtime/realtime-events.service';
 import { toDto as toAnnouncementDto } from '../announcements/announcements.service';
 import { toAuthUser } from '../users/to-auth-user.util';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
@@ -40,7 +41,11 @@ export class AccountService {
     // la procédure unique de `PartiesService` (AD-17).
     private readonly auth: AuthService,
     private readonly parties: PartiesService,
+    // Story 52.4 (AD-5) : changer la préférence du rappel réveille les appareils du compte (`user:{id}`).
+    private readonly realtimeEvents: RealtimeEventsService,
   ) {}
+
+  private readonly logger = new Logger(AccountService.name);
 
   /**
    * Story 43.2 (AD-11) — efface le compte `userId`. Mot de passe vérifié d'abord, par `AuthService` : un
@@ -151,6 +156,18 @@ export class AccountService {
         throw new NotFoundException('Compte introuvable');
       }
       throw e;
+    }
+    // Story 52.4 (AD-5) — faire taire ou réactiver le rappel est lu par tous les appareils du compte : `user:{id}`,
+    // après l'écriture, et seulement quand ce champ est dans la requête. Jamais un échec d'émission ne fait croire
+    // que l'écriture a échoué.
+    if (dto.availabilityReminder !== undefined) {
+      try {
+        this.realtimeEvents.emit(userTopic(userId));
+      } catch (err) {
+        this.logger.warn(
+          `Échec de l'émission temps réel après changement du rappel des dispos (userId=${userId}) : ${String(err)}`,
+        );
+      }
     }
     return toAuthUser(user);
   }

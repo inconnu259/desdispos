@@ -21,6 +21,7 @@ describe('AuthService (front)', () => {
     // syncTheme() — les cas theme: null (push-once) sont testés séparément avec leur propre fixture.
     theme: 'grimoire-emeraude',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesSort: 'urgence',
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',
@@ -123,6 +124,7 @@ describe('AuthService (front) — synchronisation du thème (AC1, AC2, AC4)', ()
     createdAt: '2026-01-01T00:00:00.000Z',
     theme: 'grimoire-emeraude',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesSort: 'urgence',
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',

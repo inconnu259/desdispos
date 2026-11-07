@@ -5183,3 +5183,116 @@ describe('EventsService (Story 37.3)', () => {
     });
   });
 });
+
+// ─── Story 52.4 — ActivePartiesPort (AD-5) ─────────────────────────────────────────────────────────────────
+
+describe('EventsService.hasActivePartie (Story 52.4)', () => {
+  type PartieRow = {
+    id: string;
+    kind: 'CAMPAGNE_LINEAIRE' | 'CAMPAGNE_EPISODIQUE' | 'ONE_SHOT';
+    gameSystemId: string;
+    closedAt: Date | null;
+  };
+
+  const jdr = (id: string, over: Partial<PartieRow> = {}): PartieRow => ({
+    id,
+    kind: 'CAMPAGNE_LINEAIRE',
+    gameSystemId: 'ryuutama',
+    closedAt: null,
+    ...over,
+  });
+  const group = (id: string, over: Partial<PartieRow> = {}): PartieRow => ({
+    id,
+    kind: 'CAMPAGNE_EPISODIQUE',
+    gameSystemId: 'ralliement',
+    closedAt: null,
+    ...over,
+  });
+  const evening = (id: string, over: Partial<PartieRow> = {}): PartieRow => ({
+    id,
+    kind: 'ONE_SHOT',
+    gameSystemId: 'ralliement',
+    closedAt: null,
+    ...over,
+  });
+
+  function build(
+    parties: PartieRow[],
+    opts: { started?: string[]; ended?: string[]; cancelled?: string[] } = {},
+  ) {
+    const prisma = {
+      partie: { findMany: jest.fn().mockResolvedValue(parties) },
+      event: {
+        groupBy: jest
+          .fn()
+          .mockResolvedValue((opts.started ?? []).map((partieId) => ({ partieId, _count: { _all: 1 } }))),
+        findMany: jest.fn().mockResolvedValue((opts.cancelled ?? []).map((partieId) => ({ partieId }))),
+      },
+      seance: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue((opts.ended ?? []).map((partieId) => ({ event: { partieId } }))),
+      },
+    };
+    const service = new EventsService(
+      prisma as unknown as PrismaService,
+      { emit: jest.fn() } as unknown as RealtimeEventsService,
+      {} as unknown as BoardGamesService,
+    );
+    return { service, prisma };
+  }
+
+  it('lit les parties possédées OU dont on est membre — jamais une invitation en attente', async () => {
+    const { service, prisma } = build([]);
+    await expect(service.hasActivePartie('u1')).resolves.toBe(false);
+    expect(prisma.partie.findMany).toHaveBeenCalledWith({
+      where: { closedAt: null, OR: [{ ownerId: 'u1' }, { memberships: { some: { userId: 'u1' } } }] },
+      select: { id: true, kind: true, gameSystemId: true, closedAt: true },
+    });
+    // Aucune partie : aucune lecture d'avancement.
+    expect(prisma.event.groupBy).not.toHaveBeenCalled();
+  });
+
+  it('vrai : une partie de JDR active possédée', async () => {
+    const { service } = build([jdr('p1')]);
+    await expect(service.hasActivePartie('u1')).resolves.toBe(true);
+  });
+
+  it('vrai : un groupe actif dont on est membre', async () => {
+    const { service } = build([group('g1')], { started: ['g1'] });
+    await expect(service.hasActivePartie('u1')).resolves.toBe(true);
+  });
+
+  it('faux : une partie terminée (clôturée)', async () => {
+    const { service } = build([jdr('p1', { closedAt: new Date('2026-01-01T00:00:00Z') })]);
+    await expect(service.hasActivePartie('u1')).resolves.toBe(false);
+  });
+
+  it('faux : une soirée isolée annulée', async () => {
+    const { service } = build([evening('s1')], { cancelled: ['s1'] });
+    await expect(service.hasActivePartie('u1')).resolves.toBe(false);
+  });
+
+  it('faux : une soirée isolée dont la date est passée', async () => {
+    const { service } = build([evening('s1')], { ended: ['s1'] });
+    await expect(service.hasActivePartie('u1')).resolves.toBe(false);
+  });
+
+  it('vrai dès qu’une seule partie est active parmi des parties terminées', async () => {
+    const { service } = build([
+      jdr('p1', { closedAt: new Date('2026-01-01T00:00:00Z') }),
+      evening('s1'),
+      jdr('p2'),
+    ], { ended: ['s1'] });
+    await expect(service.hasActivePartie('u1')).resolves.toBe(true);
+  });
+
+  it('lit l’avancement en lot : le nombre de lectures ne dépend pas du nombre de parties', async () => {
+    const few = build([jdr('p1'), group('g1')]);
+    await few.service.hasActivePartie('u1');
+    const many = build([jdr('p1'), jdr('p2'), jdr('p3'), group('g1'), group('g2'), evening('s1')]);
+    await many.service.hasActivePartie('u1');
+    expect(many.prisma.event.groupBy.mock.calls.length).toBe(few.prisma.event.groupBy.mock.calls.length);
+    expect(many.prisma.partie.findMany).toHaveBeenCalledTimes(1);
+  });
+});

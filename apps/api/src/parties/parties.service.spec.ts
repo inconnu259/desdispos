@@ -3368,6 +3368,7 @@ describe('PartiesService', () => {
         permissions,
         realEvents,
         realEvents,
+        realEvents,
       );
       const svc = new PartiesService(
         p,

@@ -15,6 +15,7 @@ function makeUser(overrides: Partial<Record<string, unknown>> = {}) {
     mustResetPassword: false,
     partiesSort: 'urgence',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',
     charactersSort: 'partie',

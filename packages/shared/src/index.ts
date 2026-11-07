@@ -49,6 +49,14 @@ export type CalendarLayerKey = (typeof CALENDAR_LAYER_KEYS)[number];
  *  (`calendarLayersSetAt === null`, AD-16) — toutes actives, y compris `disponibilite-groupe`. */
 export const DEFAULT_CALENDAR_LAYER_KEYS: CalendarLayerKey[] = [...CALENDAR_LAYER_KEYS];
 
+/** Story 52.4 (AD-5) — fenêtre du rappel « Dispos à déclarer » : aujourd'hui compris, les 28 jours à venir. */
+export const AVAILABILITY_REMINDER_DAYS = 28;
+
+/** `GET /me/availability-reminder` : faut-il rappeler de déclarer ses dispos ? (règle unique côté serveur) */
+export interface AvailabilityReminderDto {
+  show: boolean;
+}
+
 /** Utilisateur authentifié (renvoyé par /auth/login, /auth/me). Jamais le hash. */
 export interface AuthUser {
   id: string;
@@ -64,6 +72,9 @@ export interface AuthUser {
   /** Préférence « masquer les parties terminées » (FR-3, AD-1, Story 29.8) — appliquée côté front
    *  à la liste déjà chargée, jamais par un filtre serveur. */
   hideFinishedParties: boolean;
+  /** Préférence « Me rappeler de déclarer mes dispos » (FR-5, AD-5, Story 52.4) — vraie par défaut. Faire taire le
+   *  rappel ne touche pas aux signaux à traiter des cartes (`GET /me/party-signals`). */
+  availabilityReminder: boolean;
   /** Critère de tri mémorisé de la liste des parties (FR-10, AD-1, Story 29.8). */
   partiesSort: PartieSort;
   /** Mode d'affichage mémorisé de la liste des parties (FR-45, AD-1, Story 29.9). */

@@ -7,6 +7,7 @@ import {
 import type { DaySlot, PartieRole } from '@master-jdr/shared';
 import { AvailabilityService, DeclarationLike } from './availability.service';
 import type { OccupiedSpansPort } from './ports/occupied-spans.port';
+import type { ActivePartiesPort } from './ports/active-parties.port';
 import type { OwnEventsPort } from './ports/own-events.port';
 import { EventsService } from '../events/events.service';
 import type { BoardGamesService } from '../board-games/board-games.service';
@@ -55,13 +56,13 @@ function asPermissionService(mock: MockPermissions = makeMockPermissions()): Per
  * lit les mêmes mocks Prisma) — exactement ce que fait `PortsModule` en production — et leurs
  * attentes restent INCHANGÉES. Les tests « fakes » du bas du fichier isolent, eux, le service.
  */
-function wirePorts(prisma: unknown): [OccupiedSpansPort, OwnEventsPort] {
+function wirePorts(prisma: unknown): [OccupiedSpansPort, OwnEventsPort, ActivePartiesPort] {
   const events = new EventsService(
     prisma as PrismaService,
     makeMockRealtimeEvents(),
     {} as unknown as BoardGamesService,
   );
-  return [events, events];
+  return [events, events, events];
 }
 
 // Dates de référence (UTC) :
@@ -1165,7 +1166,9 @@ describe('AvailabilityService — émission temps réel', () => {
 
     await service.create(USER_ID, baseDto);
 
-    expect(mockEmit).toHaveBeenCalledTimes(3);
+    // 3 parties + le canal personnel `user:{id}` (Story 52.4 : le rappel des dispos de l’auteur).
+    expect(mockEmit).toHaveBeenCalledTimes(4);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
     expect(mockEmit).toHaveBeenCalledWith('partie:p2');
     expect(mockEmit).toHaveBeenCalledWith('partie:p3');
@@ -1177,13 +1180,16 @@ describe('AvailabilityService — émission temps réel', () => {
 
     await service.create(USER_ID, baseDto);
 
-    expect(mockEmit).toHaveBeenCalledTimes(1);
+    expect(mockEmit).toHaveBeenCalledTimes(2);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
   });
 
   it('create() sans aucune Partie associée → aucune émission', async () => {
     await service.create(USER_ID, baseDto);
-    expect(mockEmit).not.toHaveBeenCalled();
+    // Story 52.4 : seul le canal personnel `user:{id}` est émis (le rappel des dispos de l’auteur se relit).
+    expect(mockEmit).toHaveBeenCalledTimes(1);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 
   it("deferred-work (2026-08-24) : create() n'échoue PAS si l'émission temps réel lève après le commit — la déclaration a déjà été écrite, un 500 ferait resoumettre une écriture déjà appliquée", async () => {
@@ -1193,6 +1199,25 @@ describe('AvailabilityService — émission temps réel', () => {
     });
 
     await expect(service.create(USER_ID, baseDto)).resolves.toBeDefined();
+  });
+
+  it('Story 52.4 : un échec de la lecture des parties n’empêche pas l’émission user:{id} (le rappel ne reste pas périmé)', async () => {
+    mockMembershipFindMany.mockRejectedValue(new Error('base indisponible'));
+
+    await expect(service.create(USER_ID, baseDto)).resolves.toBeDefined();
+
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
+  });
+
+  it('Story 52.4 : une émission user:{id} qui lève ne prive pas les calendriers de leurs partie:{id}', async () => {
+    mockMembershipFindMany.mockResolvedValue([{ partieId: 'p1' }]);
+    mockEmit.mockImplementation((topic: string) => {
+      if (topic.startsWith('user:')) throw new Error('EventSource down');
+    });
+
+    await expect(service.create(USER_ID, baseDto)).resolves.toBeDefined();
+
+    expect(mockEmit).toHaveBeenCalledWith('partie:p1');
   });
 
   it('createBatch() n’émet partieTopic qu’une seule fois, quelle que soit la taille du lot (AC7)', async () => {
@@ -1206,7 +1231,9 @@ describe('AvailabilityService — émission temps réel', () => {
     ];
     await service.createBatch(USER_ID, items);
 
-    expect(mockEmit).toHaveBeenCalledTimes(2);
+    // 2 parties (une fois chacune) + le canal personnel `user:{id}` (Story 52.4).
+    expect(mockEmit).toHaveBeenCalledTimes(3);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
     expect(mockEmit).toHaveBeenCalledWith('partie:p2');
   });
@@ -1218,6 +1245,7 @@ describe('AvailabilityService — émission temps réel', () => {
     await service.update(DECL_ID, USER_ID, { kind: 'AVAILABLE' });
 
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 
   it('softDelete() émet partieTopic', async () => {
@@ -1227,6 +1255,7 @@ describe('AvailabilityService — émission temps réel', () => {
     await service.softDelete(DECL_ID, USER_ID);
 
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 
   it('splitOccurrence() émet partieTopic après la transaction', async () => {
@@ -1236,6 +1265,7 @@ describe('AvailabilityService — émission temps réel', () => {
     await service.splitOccurrence(DECL_ID, USER_ID, '2026-07-01', 'delete');
 
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 });
 
@@ -1251,6 +1281,7 @@ describe('AvailabilityService.computeSlotStatus', () => {
       {} as PermissionService,
       {} as OccupiedSpansPort,
       {} as OwnEventsPort,
+      {} as ActivePartiesPort,
     );
   });
 
@@ -2204,6 +2235,7 @@ describe('AvailabilityService — consommation des ports (Story 37.8)', () => {
       asPermissionService(permissions),
       occupied,
       own,
+      { hasActivePartie: jest.fn() },
     );
     return { service, mocks, permissions };
   }
@@ -2285,5 +2317,183 @@ describe('AvailabilityService — consommation des ports (Story 37.8)', () => {
     });
     expect(permissions.rolesOf).toHaveBeenCalledTimes(1);
     expect(permissions.rolesOf).toHaveBeenCalledWith('me', ['A']);
+  });
+});
+
+// ─── Story 52.4 — le rappel « Dispos à déclarer » (AD-5) ──────────────────────────────────────────────────
+
+describe('AvailabilityService.reminderDue (Story 52.4)', () => {
+  const FAR_FUTURE = new Date('2027-12-31T00:00:00Z');
+
+  type Decl = {
+    recurKind: 'PUNCTUAL' | 'RECURRING';
+    dayOfWeek: number | null;
+    startDate: Date | null;
+    endDate: Date | null;
+    expiresAt: Date;
+  };
+
+  const punctual = (day: string): Decl => ({
+    recurKind: 'PUNCTUAL',
+    dayOfWeek: null,
+    startDate: new Date(`${day}T00:00:00Z`),
+    endDate: new Date(`${day}T00:00:00Z`),
+    expiresAt: FAR_FUTURE,
+  });
+
+  function build(
+    opts: { preference?: boolean | null; active?: boolean; declarations?: Decl[] } = {},
+  ) {
+    const prisma = {
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue(
+            opts.preference === null ? null : { availabilityReminder: opts.preference ?? true },
+          ),
+      },
+      availabilityDeclaration: { findMany: jest.fn().mockResolvedValue(opts.declarations ?? []) },
+    };
+    const active: ActivePartiesPort = {
+      hasActivePartie: jest.fn().mockResolvedValue(opts.active ?? true),
+    };
+    const service = new AvailabilityService(
+      prisma as unknown as PrismaService,
+      makeMockRealtimeEvents(),
+      asPermissionService(),
+      { occupiedSpansOf: jest.fn() },
+      { ownEventsOf: jest.fn() },
+      active,
+    );
+    return { service, prisma, active };
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-01T10:00:00Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('vrai : préférence active, partie active, aucune déclaration', async () => {
+    const { service } = build();
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('faux : préférence décochée — la partie active n’est même pas lue', async () => {
+    const { service, active } = build({ preference: false });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+    expect(active.hasActivePartie).not.toHaveBeenCalled();
+  });
+
+  it('faux : compte introuvable', async () => {
+    const { service } = build({ preference: null });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('faux : aucune partie active — les déclarations ne sont pas lues', async () => {
+    const { service, prisma } = build({ active: false });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+    expect(prisma.availabilityDeclaration.findMany).not.toHaveBeenCalled();
+  });
+
+  it('lit seulement MES déclarations non expirées (une déclaration expirée ne compte pas)', async () => {
+    const { service, prisma } = build();
+    await service.reminderDue('u1');
+    expect(prisma.availabilityDeclaration.findMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', expiresAt: { gt: new Date('2026-07-01T10:00:00Z') } },
+    });
+  });
+
+  it('faux : une déclaration ponctuelle dans la fenêtre', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-10')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('faux : une déclaration le jour même (aujourd’hui est inclus)', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-01')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('faux : une ponctuelle au dernier jour de la fenêtre (aujourd’hui + 27)', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-28')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('vrai : une ponctuelle le lendemain de ce dernier jour', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-29')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('faux : une récurrence dont un jour tombe dans la fenêtre', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: null,
+      endDate: null,
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('vrai : une récurrence qui n’atteint pas la fenêtre', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-05-01T00:00:00Z'),
+      endDate: new Date('2026-06-20T00:00:00Z'),
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('vrai : une récurrence qui ne commence qu’après la fenêtre', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-08-15T00:00:00Z'),
+      endDate: null,
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('faux : une récurrence qui commence dans la fenêtre et en couvre un jour', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-07-20T00:00:00Z'),
+      endDate: null,
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('vrai : une récurrence bornée dont le seul jour de semaine retenu tombe hors de la fenêtre', async () => {
+    // Un seul mercredi (08-05) dans sa plage, après la fenêtre qui se termine le 07-28.
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-08-04T00:00:00Z'),
+      endDate: new Date('2026-08-06T00:00:00Z'),
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('la fenêtre glisse d’un jour au passage de minuit UTC', async () => {
+    const lastDayPlusOne = [punctual('2026-07-29')];
+
+    jest.setSystemTime(new Date('2026-07-01T23:59:59Z'));
+    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(true);
+
+    jest.setSystemTime(new Date('2026-07-02T00:00:01Z'));
+    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(false);
   });
 });

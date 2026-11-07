@@ -17,10 +17,12 @@ import type {
   RecurKind,
   SlotStatus,
 } from '@master-jdr/shared';
+import { AVAILABILITY_REMINDER_DAYS } from '@master-jdr/shared';
 import { PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
+import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
+import { ACTIVE_PARTIES_PORT, type ActivePartiesPort } from './ports/active-parties.port';
 import { OCCUPIED_SPANS_PORT, type OccupiedSpansPort } from './ports/occupied-spans.port';
 import { OWN_EVENTS_PORT, type OwnEventsPort } from './ports/own-events.port';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
@@ -79,6 +81,9 @@ export class AvailabilityService {
     // `scenarios/`.
     @Inject(OCCUPIED_SPANS_PORT) private readonly occupiedSpans: OccupiedSpansPort,
     @Inject(OWN_EVENTS_PORT) private readonly ownEvents: OwnEventsPort,
+    // Story 52.4 (AD-5) : « l'utilisateur est dans une partie active » est une lecture de la couche qui calcule
+    // l'avancement des parties, jamais une règle d'ici.
+    @Inject(ACTIVE_PARTIES_PORT) private readonly activeParties: ActivePartiesPort,
   ) {}
 
   // ─── Temps réel ─────────────────────────────────────────────────────────────
@@ -107,6 +112,16 @@ export class AvailabilityService {
   // (500) alors qu'elle a bien eu lieu, ce qui ferait resoumettre une requête déjà appliquée.
   // Même garde que `PartiesService.emitPartieAndMembersSafe()`/`emitMembersOnlySafe()`.
   private async emitForUser(userId: string): Promise<void> {
+    // Story 52.4 (AD-5) : le rappel « Dispos à déclarer » de l'auteur se relit sur tous ses appareils. Émis AVANT la
+    // résolution de ses parties, et gardé À PART : une lecture de parties qui échoue ne doit pas laisser le rappel
+    // périmé, et une émission personnelle qui échoue ne doit pas priver les calendriers de leurs `partie:{id}`.
+    try {
+      this.realtimeEvents.emit(userTopic(userId));
+    } catch (err) {
+      this.logger.warn(
+        `Échec de l'émission temps réel du rappel des dispos (userId=${userId}) : ${String(err)}`,
+      );
+    }
     try {
       const partieIds = await this.affectedPartieIds(userId);
       for (const id of partieIds) {
@@ -780,6 +795,42 @@ export class AvailabilityService {
       // attente d'inscriptions n'a pas encore de date propre à comparer.
       'inscriptions-ouvertes': own.inscriptionsOuvertes,
     };
+  }
+
+  // ─── Story 52.4 — le rappel « Dispos à déclarer » ───────────────────────────────────────────────────────
+
+  /**
+   * LA définition du rappel (AD-5), la seule : vrai si et seulement si la préférence du compte est active, que
+   * l'utilisateur est dans au moins une partie ACTIVE (port : l'avancement des parties n'est pas lu d'ici), et que
+   * AUCUNE de ses propres déclarations non expirées (disponibilité comme indisponibilité, même lecture que
+   * `getMyCalendar`) ne recouvre les `AVAILABILITY_REMINDER_DAYS` jours à venir, aujourd'hui compris, selon
+   * `declarationOverlapsRange` (une récurrence compte dès qu'un de ses jours tombe dans la fenêtre).
+   *
+   * Les indisponibilités synthétiques des séances ne sont PAS des déclarations : elles ne comptent pas. Tout est
+   * recalculé à chaque lecture — le passage du temps fait glisser la fenêtre, aucune tâche planifiée.
+   */
+  async reminderDue(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { availabilityReminder: true },
+    });
+    if (!user?.availabilityReminder) return false;
+    if (!(await this.activeParties.hasActivePartie(userId))) return false;
+
+    // « Aujourd'hui » : le jour UTC, comme le calendrier personnel (`events/day-key`, que cette couche ne peut pas
+    // importer) ; les bornes se lisent comme celles de `getMyCalendar`, début et fin de journée UTC.
+    const now = new Date();
+    const today = now.toISOString().substring(0, 10);
+    const lastDay = new Date(Date.parse(`${today}T00:00:00.000Z`) + (AVAILABILITY_REMINDER_DAYS - 1) * 86_400_000)
+      .toISOString()
+      .substring(0, 10);
+    const fromMs = this.parseDateOnly(today, false);
+    const toMs = this.parseDateOnly(lastDay, true);
+
+    const declarations = await this.prisma.availabilityDeclaration.findMany({
+      where: { userId, expiresAt: { gt: now } },
+    });
+    return !declarations.some((d) => this.declarationOverlapsRange(d, fromMs, toMs));
   }
 
   /** Parse une borne `YYYY-MM-DD` en timestamp UTC, début ou fin de journée. Rejette les dates

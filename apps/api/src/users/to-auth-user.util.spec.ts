@@ -14,6 +14,7 @@ function makeUser(overrides: Partial<UserForAuth> = {}): UserForAuth {
     mustResetPassword: false,
     partiesSort: 'urgence',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',
     charactersSort: 'partie',

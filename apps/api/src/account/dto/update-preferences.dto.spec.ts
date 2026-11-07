@@ -48,3 +48,22 @@ describe('UpdatePreferencesDto.defaultCalendarLayers (Story 30.4, AC1/AC9)', () 
     expect(errors).toHaveLength(1);
   });
 });
+
+describe('UpdatePreferencesDto.availabilityReminder (Story 52.4)', () => {
+  it('booléen vrai ou faux → valide', async () => {
+    expect(await validateDto({ availabilityReminder: true })).toHaveLength(0);
+    expect(await validateDto({ availabilityReminder: false })).toHaveLength(0);
+  });
+
+  it('absent → valide (préférence non touchée)', async () => {
+    expect(await validateDto({})).toHaveLength(0);
+  });
+
+  it('chaîne ou nombre → rejeté (400)', async () => {
+    for (const value of ['oui', 'false', 1, null]) {
+      const errors = await validateDto({ availabilityReminder: value });
+      expect(errors).toHaveLength(1);
+      expect(errors[0].property).toBe('availabilityReminder');
+    }
+  });
+});

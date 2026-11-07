@@ -61,6 +61,7 @@ describe('AuthService', () => {
     mustResetPassword: false,
     partiesSort: 'urgence',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',
     charactersSort: 'partie',

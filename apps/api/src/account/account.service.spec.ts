@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../permissions/permission.service';
 import { AuthService } from '../auth/auth.service';
 import { PartiesService } from '../parties/parties.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { testGrant } from '../common/test-utils/grant';
 import { RELEASED_ANNOUNCEMENT_WHERE } from '../permissions/scenario-visibility';
 import { AccountService } from './account.service';
@@ -54,6 +55,7 @@ describe('AccountService', () => {
   // Story 43.2 : mot de passe et sessions (AuthService), sortie des parties (PartiesService), simulés.
   let auth: { verifyPassword: jest.Mock; revokeSessions: jest.Mock };
   let parties: { eraseMembershipsInTx: jest.Mock; announceAccountErasure: jest.Mock };
+  let realtime: { emit: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrisma();
@@ -66,6 +68,7 @@ describe('AccountService', () => {
       eraseMembershipsInTx: jest.fn().mockResolvedValue(EFFECTS),
       announceAccountErasure: jest.fn().mockResolvedValue(undefined),
     };
+    realtime = { emit: jest.fn() };
     const module = await Test.createTestingModule({
       providers: [
         AccountService,
@@ -73,6 +76,7 @@ describe('AccountService', () => {
         { provide: PermissionService, useValue: permissions },
         { provide: AuthService, useValue: auth },
         { provide: PartiesService, useValue: parties },
+        { provide: RealtimeEventsService, useValue: realtime },
       ],
     }).compile();
     service = module.get(AccountService);
@@ -238,6 +242,48 @@ describe('AccountService', () => {
         data: { hideFinishedParties: true },
         include: { calendarLayers: true },
       });
+    });
+
+    it('availabilityReminder (Story 52.4) → écrit la préférence ET émet user:{id}', async () => {
+      prisma.user.update.mockResolvedValue({
+        ...AUTH_USER_BASE_FIELDS,
+        id: 'u1',
+        availabilityReminder: false,
+      });
+
+      const result = await service.updatePreferences('u1', { availabilityReminder: false });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { availabilityReminder: false },
+        include: { calendarLayers: true },
+      });
+      expect(realtime.emit).toHaveBeenCalledTimes(1);
+      expect(realtime.emit).toHaveBeenCalledWith('user:u1');
+      expect(result.availabilityReminder).toBe(false);
+    });
+
+    it('sans availabilityReminder (Story 52.4) → aucune émission', async () => {
+      prisma.user.update.mockResolvedValue({
+        ...AUTH_USER_BASE_FIELDS,
+        id: 'u1',
+        hideFinishedParties: true,
+      });
+
+      await service.updatePreferences('u1', { hideFinishedParties: true });
+
+      expect(realtime.emit).not.toHaveBeenCalled();
+    });
+
+    it('une émission qui échoue ne fait pas échouer l’écriture (Story 52.4)', async () => {
+      prisma.user.update.mockResolvedValue({ ...AUTH_USER_BASE_FIELDS, id: 'u1' });
+      realtime.emit.mockImplementation(() => {
+        throw new Error('bus indisponible');
+      });
+
+      await expect(
+        service.updatePreferences('u1', { availabilityReminder: true }),
+      ).resolves.toBeDefined();
     });
 
     it('userId de session référant un compte supprimé (P2025) → NotFoundException, pas un 500 brut', async () => {

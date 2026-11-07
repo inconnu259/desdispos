@@ -58,6 +58,7 @@ export class AccountService {
   updatePreferences(prefs: {
     partiesSort?: PartieSort;
     hideFinishedParties?: boolean;
+    availabilityReminder?: boolean;
     partiesViewMode?: ListViewMode;
     charactersViewMode?: ListViewMode;
     charactersSort?: CharacterSort;

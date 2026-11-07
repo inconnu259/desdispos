@@ -15,6 +15,14 @@
     >
       {{ theme.tone()['calendar.declare_btn'] }}
     </a>
+    <button
+      mat-button
+      type="button"
+      class="reminder-banner__silence"
+      (click)="silenceReminder()"
+    >
+      {{ theme.tone()['dashboard.reminder_silence'] }}
+    </button>
   </section>
 }
 

@@ -15,6 +15,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { DeleteAccountDialog } from './delete-account-dialog/delete-account-dialog';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
 import { BoardGamesService } from '../../core/board-games/board-games.service';
+import { AvailabilityReminderService } from '../../core/availability/availability-reminder.service';
 
 function makeUser(overrides: Partial<AuthUser> = {}): AuthUser {
   return {
@@ -90,6 +91,10 @@ function makeThemeService() {
       'auth.password_show': 'Afficher le mot de passe',
       'auth.password_hide': 'Masquer le mot de passe',
       // Story 48.1 — ligne vers la Ludothèque.
+      // Story 52.6 — la case « Me rappeler de déclarer mes dispos » et son sous-titre.
+      'account.availability_reminder_label': 'Me rappeler de déclarer mes dispos',
+      'account.availability_reminder_hint':
+        'Un rappel apparaît sur le tableau de bord quand rien n’est déclaré pour les quatre semaines à venir.',
       'board_games.title': 'Mon cabinet de reliques',
       'board_games.visibility':
         'Visible par les membres de vos groupes et les invités de vos conjonctions.',
@@ -123,6 +128,7 @@ async function createFixture(
     updatePreferences: vi.fn(),
   },
   boardGamesSvc = makeBoardGamesService(),
+  reminderSvc = { setEnabled: vi.fn().mockResolvedValue(true) },
 ) {
   const currentUserSignal = signal<AuthUser | null>(currentUser);
   const authSvc = { currentUser: currentUserSignal, logout: vi.fn().mockResolvedValue(undefined) };
@@ -134,6 +140,7 @@ async function createFixture(
       { provide: AccountService, useValue: accountSvc },
       { provide: ThemeToneService, useValue: makeThemeService() },
       { provide: BoardGamesService, useValue: boardGamesSvc },
+      { provide: AvailabilityReminderService, useValue: reminderSvc },
     ],
   }).compileComponents();
 
@@ -145,7 +152,7 @@ async function createFixture(
   }
   await fixture.whenStable();
   fixture.detectChanges();
-  return { fixture, currentUserSignal, accountSvc, authSvc };
+  return { fixture, currentUserSignal, accountSvc, authSvc, reminderSvc };
 }
 
 describe('Account — nom affiché (crayon d’édition, revue de code)', () => {
@@ -1194,5 +1201,90 @@ describe('Account — pictogrammes (story 51.7)', () => {
     expect(logout.querySelector('app-icon svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(logout.textContent).toContain('Fermer le grimoire');
     expect(el.querySelector('mat-icon')).toBeNull();
+  });
+});
+
+describe('Account — « Me rappeler de déclarer mes dispos » (Story 52.6)', () => {
+  const box = (el: HTMLElement) => el.querySelector<HTMLElement>('.reminder-pref mat-checkbox')!;
+  const input = (el: HTMLElement) => box(el).querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+
+  it('la case vient juste après « Ce que révèle mon calendrier » et avant la ligne de la Ludothèque', async () => {
+    const { fixture } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+    const calendar = el.querySelector('.calendar-intents')!;
+    const ludotheque = el.querySelector('a.board-games-row')!;
+
+    expect(box(el).textContent!.trim()).toBe('Me rappeler de déclarer mes dispos');
+    expect(calendar.compareDocumentPosition(box(el)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(box(el).compareDocumentPosition(ludotheque) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('cochée par défaut (l’état du compte), décochée quand le compte l’a coupée', async () => {
+    const on = await createFixture(makeUser({ availabilityReminder: true }));
+    expect(input(on.fixture.nativeElement).checked).toBe(true);
+    TestBed.resetTestingModule();
+
+    const off = await createFixture(makeUser({ availabilityReminder: false }));
+    expect(input(off.fixture.nativeElement).checked).toBe(false);
+  });
+
+  it('suit le compte dans la même session : faire taire depuis le bandeau décoche la case', async () => {
+    const { fixture, currentUserSignal } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(input(el).checked).toBe(true);
+
+    currentUserSignal.set(makeUser({ availabilityReminder: false }));
+    fixture.detectChanges();
+
+    expect(input(el).checked).toBe(false);
+  });
+
+  it('cocher ou décocher passe par l’unique écrivain (setEnabled)', async () => {
+    const { fixture, reminderSvc } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+
+    input(el).click();
+    fixture.detectChanges();
+    expect(reminderSvc.setEnabled).toHaveBeenLastCalledWith(false);
+
+    input(el).click();
+    fixture.detectChanges();
+    expect(reminderSvc.setEnabled).toHaveBeenLastCalledWith(true);
+    expect(reminderSvc.setEnabled).toHaveBeenCalledTimes(2);
+  });
+
+  it('le sous-titre décrit la case (aria-describedby) et dit la règle', async () => {
+    const { fixture } = await createFixture();
+    const el = fixture.nativeElement as HTMLElement;
+    const hintId = box(el).getAttribute('aria-describedby')!;
+    const hint = el.querySelector('#' + hintId) as HTMLElement;
+
+    expect(hint.textContent!.trim()).toContain('quatre semaines à venir');
+    expect(hint.textContent!.trim()).toBe(
+      'Un rappel apparaît sur le tableau de bord quand rien n’est déclaré pour les quatre semaines à venir.',
+    );
+  });
+
+  it('les trois voix du sous-titre existent, le libellé de la case est identique partout', () => {
+    for (const id of ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const) {
+      expect(TONE_MAP[id]['account.availability_reminder_label']).toBe('Me rappeler de déclarer mes dispos');
+      expect(TONE_MAP[id]['account.availability_reminder_hint']).toContain('quatre semaines à venir');
+    }
+    expect(TONE_MAP['foret-ancienne']['account.availability_reminder_hint']).toContain('ton tableau de bord');
+    expect(TONE_MAP['atelier-cuivre']['account.availability_reminder_hint']).toContain('consigné');
+  });
+
+  it('la case ne touche qu’au rappel : aucune autre préférence n’est écrite par la page', async () => {
+    const accountSvc = {
+      updateDisplayName: vi.fn(),
+      setTheme: vi.fn(),
+      changePassword: vi.fn(),
+      requestEmailChange: vi.fn(),
+      updatePreferences: vi.fn(),
+    };
+    const { fixture } = await createFixture(makeUser(), accountSvc);
+    input(fixture.nativeElement).click();
+    fixture.detectChanges();
+    expect(accountSvc.updatePreferences).not.toHaveBeenCalled();
   });
 });

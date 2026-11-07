@@ -866,6 +866,10 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'calendar.rendezvous_nature_seance_poll',
     // Story 52.5 — titre du rappel « Dispos à déclarer », identique dans les trois thèmes (UX-DR106)
     'dashboard.reminder_title',
+    // Story 52.6 — bouton « Ne plus me le rappeler », « Annuler » et case de la page Compte, identiques partout (UX-DR106)
+    'dashboard.reminder_silence',
+    'dashboard.reminder_undo',
+    'account.availability_reminder_label',
     // Story 52.2 — mode déclaration : libellés du bouton, identiques dans les trois thèmes (UX-DR106)
     'calendar.declare_btn',
     'calendar.declare_done',

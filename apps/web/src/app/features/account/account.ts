@@ -14,6 +14,7 @@ import { AppIcon } from '../../core/icons/app-icon';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountService } from '../../core/account/account.service';
 import { BoardGamesService } from '../../core/board-games/board-games.service';
+import { AvailabilityReminderService } from '../../core/availability/availability-reminder.service';
 import { formatBoardGameCount } from '../board-games/board-game-measures';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
@@ -82,6 +83,7 @@ export class Account implements OnInit {
   private readonly contextualNav = inject(ContextualNavService);
   private readonly dialog = inject(MatDialog);
   private readonly boardGames = inject(BoardGamesService);
+  private readonly reminder = inject(AvailabilityReminderService);
 
   protected readonly theme = inject(ThemeToneService);
 
@@ -97,6 +99,18 @@ export class Account implements OnInit {
   protected readonly calendarLayerKeys = CALENDAR_LAYER_KEYS;
 
   protected readonly calendarIntents = CALENDAR_INTENTS;
+
+  /** Story 52.6 (AD-5) — « Me rappeler de déclarer mes dispos » : lue sur le compte, donc cochée par défaut. Le bandeau
+   *  du tableau de bord écrit la même préférence par la même méthode : une seule valeur, deux écrans. */
+  protected readonly reminderEnabled = computed(
+    () => this.auth.currentUser()?.availabilityReminder ?? true,
+  );
+
+  /** Cocher ou décocher passe par l'UNIQUE écrivain (`setEnabled`) : valeur affichée aussitôt, retour arrière en cas
+   *  d'échec seulement si aucun autre choix n'a été fait depuis. Ne touche jamais aux signaux des cartes. */
+  protected onReminderToggle(enabled: boolean): void {
+    void this.reminder.setEnabled(enabled);
+  }
 
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);

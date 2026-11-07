@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { signal, type WritableSignal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { of } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject, of } from 'rxjs';
 import { provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
@@ -105,7 +106,12 @@ function makeAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
 
 /** Story 52.5 : le rappel « Dispos à déclarer » — `show` est réglé par le test, `refresh` espionné. */
 function makeReminderService(show = false) {
-  return { show: signal(show), refresh: vi.fn().mockResolvedValue(undefined) };
+  return {
+    show: signal(show),
+    refresh: vi.fn().mockResolvedValue(undefined),
+    // Story 52.6 : l'unique écrivain de la préférence ; résout vrai quand l'écriture a abouti.
+    setEnabled: vi.fn().mockResolvedValue(true),
+  };
 }
 
 function makeAccountService() {
@@ -136,6 +142,9 @@ async function createFixture(
   };
   // Story 42.5 : la confirmation « Retirer de ma liste » (défaut : « Renoncer »).
   const dialog = { open: vi.fn().mockReturnValue({ afterClosed: () => of(false) }) };
+  // Story 52.6 : la snackbar du rappel (chargée à la demande par le tableau de bord) — `onAction` est pilotable.
+  const snackAction = new Subject<void>();
+  const snack = { open: vi.fn().mockReturnValue({ onAction: () => snackAction.asObservable() }) };
   await TestBed.configureTestingModule({
     imports: [Dashboard],
     providers: [
@@ -143,6 +152,7 @@ async function createFixture(
       provideAnimationsAsync(),
       { provide: MyPartiesService, useValue: myPartiesSvc },
       { provide: MatDialog, useValue: dialog },
+      { provide: MatSnackBar, useValue: snack },
       { provide: InvitationsService, useValue: invitationsSvc },
       { provide: OpenPollsService, useValue: { openPolls: signal(openPolls) } },
       { provide: PartySignalsService, useValue: { signals: signal(partySignals) } },
@@ -169,7 +179,18 @@ async function createFixture(
   }
   await fixture.whenStable();
   fixture.detectChanges();
-  return { fixture, invitationsSvc, realtimeSvc, authSvc, myPartiesSvc, accountSvc, dialog, reminderSvc };
+  return {
+    fixture,
+    invitationsSvc,
+    realtimeSvc,
+    authSvc,
+    myPartiesSvc,
+    accountSvc,
+    dialog,
+    reminderSvc,
+    snack,
+    snackAction,
+  };
 }
 
 describe('Dashboard — liste unifiée (Story 29.1, AC1)', () => {
@@ -2466,5 +2487,146 @@ describe('Dashboard — le rappel « Dispos à déclarer » (Story 52.5)', () =>
     reminderSvc.show.set(true);
     fixture.detectChanges();
     expect(banner(fixture)).not.toBeNull();
+  });
+});
+
+describe('Dashboard — faire taire le rappel (Story 52.6)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const flush = async (fixture: { detectChanges: () => void }) => {
+    for (let i = 0; i < 12; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+  };
+
+  async function banner() {
+    return createFixture(
+      new Map(),
+      makeInvitationsService(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      makeReminderService(true),
+    );
+  }
+
+  const silenceButton = (fixture: { nativeElement: HTMLElement }) =>
+    fixture.nativeElement.querySelector('.reminder-banner__silence') as HTMLButtonElement;
+
+  it('le bouton « Ne plus me le rappeler » est dans le bandeau, avec son nom accessible', async () => {
+    const { fixture } = await banner();
+    const button = silenceButton(fixture);
+    expect(button).not.toBeNull();
+    expect(button.textContent!.trim()).toBe('Ne plus me le rappeler');
+    expect(button.closest('.reminder-banner')).not.toBeNull();
+  });
+
+  it('un tap écrit la préférence (via l’unique écrivain) puis confirme par une snackbar « Annuler »', async () => {
+    const { fixture, reminderSvc, snack } = await banner();
+
+    silenceButton(fixture).click();
+    await flush(fixture);
+
+    expect(reminderSvc.setEnabled).toHaveBeenCalledTimes(1);
+    expect(reminderSvc.setEnabled).toHaveBeenCalledWith(false);
+    expect(snack.open).toHaveBeenCalledTimes(1);
+    expect(snack.open.mock.calls[0][0]).toBe(GRIMOIRE_TONE['dashboard.reminder_silenced']);
+    expect(snack.open.mock.calls[0][1]).toBe('Annuler');
+    expect(snack.open.mock.calls[0][0]).toContain('Mon grimoire');
+  });
+
+  it('la confirmation suit la voix du thème, « Annuler » reste identique', async () => {
+    const { fixture, snack } = await banner();
+    const tone = TestBed.inject(ThemeToneService).tone as unknown as WritableSignal<
+      (typeof TONE_MAP)[keyof typeof TONE_MAP]
+    >;
+    const expected = {
+      'grimoire-emeraude': 'Mon grimoire',
+      'foret-ancienne': 'Mon carnet',
+      'atelier-cuivre': 'Mon établi',
+    } as const;
+    for (const id of ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const) {
+      tone.set(TONE_MAP[id]);
+      snack.open.mockClear();
+      silenceButton(fixture).click();
+      await flush(fixture);
+      expect(snack.open.mock.calls[0][0]).toBe(TONE_MAP[id]['dashboard.reminder_silenced']);
+      expect(snack.open.mock.calls[0][0]).toContain(expected[id]);
+      expect(snack.open.mock.calls[0][1]).toBe('Annuler');
+    }
+    expect(TONE_MAP['foret-ancienne']['dashboard.reminder_silenced']).toContain('Tu pourras');
+  });
+
+  it('« Annuler » réactive le rappel par le même écrivain', async () => {
+    const { fixture, reminderSvc, snackAction } = await banner();
+    silenceButton(fixture).click();
+    await flush(fixture);
+    reminderSvc.setEnabled.mockClear();
+
+    snackAction.next();
+    await flush(fixture);
+
+    expect(reminderSvc.setEnabled).toHaveBeenCalledTimes(1);
+    expect(reminderSvc.setEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it('une écriture qui échoue : aucune confirmation, un message d’échec', async () => {
+    const { fixture, reminderSvc, snack } = await banner();
+    reminderSvc.setEnabled.mockResolvedValue(false);
+
+    silenceButton(fixture).click();
+    await flush(fixture);
+
+    expect(snack.open).toHaveBeenCalledTimes(1);
+    expect(snack.open.mock.calls[0][0]).toBe(GRIMOIRE_TONE['dashboard.reminder_write_error']);
+    expect(snack.open.mock.calls[0][1]).toBeUndefined();
+  });
+
+  it('un second tap pendant l’écriture est ignoré : une seule écriture, une seule snackbar', async () => {
+    const { fixture, reminderSvc, snack } = await banner();
+    let release!: (ok: boolean) => void;
+    reminderSvc.setEnabled.mockReturnValue(new Promise<boolean>((r) => (release = r)));
+
+    silenceButton(fixture).click();
+    silenceButton(fixture).click();
+    release(true);
+    await flush(fixture);
+
+    expect(reminderSvc.setEnabled).toHaveBeenCalledTimes(1);
+    expect(snack.open).toHaveBeenCalledTimes(1);
+  });
+
+  it('une snackbar qui ne peut pas s’ouvrir ne devient pas un rejet : la préférence est déjà écrite', async () => {
+    const { fixture, reminderSvc, snack } = await banner();
+    snack.open.mockImplementation(() => {
+      throw new Error('snackbar indisponible');
+    });
+
+    silenceButton(fixture).click();
+    await flush(fixture);
+
+    expect(reminderSvc.setEnabled).toHaveBeenCalledWith(false);
+    // Le geste suivant reste possible (le verrou est relâché).
+    snack.open.mockReturnValue({ onAction: () => new Subject<void>().asObservable() });
+    silenceButton(fixture).click();
+    await flush(fixture);
+    expect(reminderSvc.setEnabled).toHaveBeenCalledTimes(2);
+  });
+
+  it('une réactivation qui échoue (« Annuler ») : le message d’échec', async () => {
+    const { fixture, reminderSvc, snack, snackAction } = await banner();
+    silenceButton(fixture).click();
+    await flush(fixture);
+    snack.open.mockClear();
+    reminderSvc.setEnabled.mockResolvedValue(false);
+
+    snackAction.next();
+    await flush(fixture);
+
+    expect(snack.open.mock.calls[0][0]).toBe(GRIMOIRE_TONE['dashboard.reminder_write_error']);
   });
 });

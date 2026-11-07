@@ -16,6 +16,7 @@ import { MatCardModule } from '@angular/material/card';
 import type { StatusBadgeState } from '../../core/status/status-derivation';
 import { StatusBadge } from '../../shared/status-badge/status-badge';
 import { MatButtonModule } from '@angular/material/button';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AppIcon } from '../../core/icons/app-icon';
 import type { IconName } from '../../core/icons/icon-registry.generated';
 import { roleIconName } from '../../core/icons/role-icon-name';
@@ -600,6 +601,54 @@ export class Dashboard implements OnInit {
     // Story 52.5 : le rappel est lu à l’ouverture ; il se relit ensuite sur `user:{id}` (RealtimeService).
     void this.reminder.refresh();
     await this.loadInvitations();
+  }
+
+  // ─── Story 52.6 — faire taire le rappel « Dispos à déclarer » ────────────────────────────────────────────────
+
+  /** Un tap en cours d'écriture : le second est ignoré (le bandeau disparaît aussitôt, mais jamais deux PATCH ni deux
+   *  snackbars pour un même geste). */
+  private silencing = false;
+
+  /** « Ne plus me le rappeler » : le bandeau disparaît aussitôt (`setEnabled` est optimiste), et une fois la préférence
+   *  écrite une snackbar le confirme avec « Annuler ». Un échec rend le bandeau et le dit. `setEnabled` ne résout `false`
+   *  que pour la DERNIÈRE écriture demandée : jamais un message d'échec qui contredirait un choix plus récent. */
+  protected async silenceReminder(): Promise<void> {
+    if (this.silencing) return;
+    this.silencing = true;
+    try {
+      if (await this.reminder.setEnabled(false)) {
+        const tone = this.theme.tone();
+        await this.openSnack(
+          tone['dashboard.reminder_silenced'],
+          tone['dashboard.reminder_undo'],
+          () => void this.undoSilencedReminder(),
+        );
+      } else {
+        await this.openSnack(this.theme.tone()['dashboard.reminder_write_error']);
+      }
+    } finally {
+      this.silencing = false;
+    }
+  }
+
+  /** « Annuler » de la snackbar : la préférence redevient vraie, le bandeau revient si la règle du serveur le veut. */
+  private async undoSilencedReminder(): Promise<void> {
+    if (!(await this.reminder.setEnabled(true))) {
+      await this.openSnack(this.theme.tone()['dashboard.reminder_write_error']);
+    }
+  }
+
+  /** La snackbar se charge à la demande — comme `MatDialog` plus bas, elle ne pèse pas sur le bundle initial. La
+   *  préférence est DÉJÀ écrite quand on arrive ici : un chargement qui échoue (hors ligne) ou un écran déjà détruit ne
+   *  doit pas devenir un rejet non géré ; au pire, pas de confirmation. L'action n'écoute que tant que l'écran vit. */
+  private async openSnack(message: string, action?: string, onAction?: () => void): Promise<void> {
+    try {
+      const { MatSnackBar } = await import('@angular/material/snack-bar');
+      const ref = this.injector.get(MatSnackBar).open(message, action, { duration: 8000 });
+      if (onAction) ref.onAction().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(onAction);
+    } catch {
+      // Confirmation impossible : la préférence reste celle qui vient d'être écrite.
+    }
   }
 
   async accept(inv: InvitationDto): Promise<void> {

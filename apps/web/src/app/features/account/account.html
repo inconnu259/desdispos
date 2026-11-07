@@ -101,6 +101,24 @@
     </div>
   </div>
 
+  <!-- ⚠️ Story 52.6 (AD-5) — « Me rappeler de déclarer mes dispos », juste après « Ce que révèle mon calendrier » et
+       avant la ligne de la Ludothèque. Même patron que les cases de ce bloc ; cochée par défaut (c'est l'état du compte).
+       Elle ne fait taire que ce rappel : les signaux à traiter des cartes restent affichés. -->
+  <div class="readonly-field">
+    <div class="reminder-pref">
+      <mat-checkbox
+        [checked]="reminderEnabled()"
+        aria-describedby="availability-reminder-hint"
+        (change)="onReminderToggle($event.checked)"
+      >
+        {{ theme.tone()['account.availability_reminder_label'] }}
+      </mat-checkbox>
+    </div>
+    <p id="availability-reminder-hint" class="calendar-intents__why">
+      {{ theme.tone()['account.availability_reminder_hint'] }}
+    </p>
+  </div>
+
   <!-- ⚠️ Story 48.1 (EXPERIENCE.md §2.4) — ligne vers la Ludothèque, juste après « Ce que révèle mon
        calendrier » (ordre de la planche), donc avant la zone sensible. Le décompte n'apparaît qu'une
        fois lu ; aucun texte n'incite à la remplir. -->

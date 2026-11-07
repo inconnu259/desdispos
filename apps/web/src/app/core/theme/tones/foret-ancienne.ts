@@ -277,6 +277,9 @@ export const foretAncienne: Record<ToneKey, string> = {
   'account.calendar_layer.inscriptions-ouvertes': 'Les inscriptions ouvertes',
   'account.calendar_layer.disponibilite-groupe': 'La disponibilité du groupe',
   'account.calendar_intents_subtitle': 'Ce que je veux voir en arrivant dans la forêt.',
+  // Story 52.6 — la case « Me rappeler de déclarer mes dispos » (libellé identique dans les trois thèmes).
+  'account.availability_reminder_label': 'Me rappeler de déclarer mes dispos',
+  'account.availability_reminder_hint': 'Un rappel apparaît sur ton tableau de bord quand tu n’as rien noté pour les quatre semaines à venir.',
   'account.calendar_intent.disponibilites': 'Mes disponibilités & indisponibilités',
   'account.calendar_intent.seances': 'Mes séances confirmées',
   'account.calendar_intent.votes': 'Les votes en cours',
@@ -408,6 +411,11 @@ export const foretAncienne: Record<ToneKey, string> = {
   // Story 52.5 — le rappel « Dispos à déclarer » en tête du tableau de bord (titre identique dans les trois thèmes).
   'dashboard.reminder_title': 'Dispos à déclarer',
   'dashboard.reminder_body': 'Rien n’est noté dans ton calendrier lunaire pour les quatre semaines à venir.',
+  // Story 52.6 — faire taire le rappel : bouton et « Annuler » identiques dans les trois thèmes, confirmation et échec par thème.
+  'dashboard.reminder_silence': 'Ne plus me le rappeler',
+  'dashboard.reminder_undo': 'Annuler',
+  'dashboard.reminder_silenced': 'Rappel désactivé. Tu pourras le réactiver depuis Mon carnet.',
+  'dashboard.reminder_write_error': 'Le rappel n’a pas pu être modifié. Réessaie.',
   'dashboard.title_invitations': 'Appels de la forêt',
   'dashboard.empty': 'Aucune clairière ouverte. Plante le premier feu…',
   'dashboard.role_prefix': 'Voie :',

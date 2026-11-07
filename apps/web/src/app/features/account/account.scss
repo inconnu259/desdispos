@@ -49,7 +49,8 @@ mat-form-field {
   color: var(--mat-sys-primary, #2e7d32);
 }
 /* Story 36.14 — les quatre intentions ont remplacé les six cases techniques. */
-.calendar-intents {
+.calendar-intents,
+.reminder-pref {
   display: flex;
   flex-direction: column;
 }

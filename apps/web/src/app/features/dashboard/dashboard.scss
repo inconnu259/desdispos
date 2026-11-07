@@ -402,3 +402,8 @@ mat-card-actions app-icon {
 .reminder-banner__action {
   flex: none;
 }
+
+// Story 52.6 : « Ne plus me le rappeler » — bouton texte discret, à côté de l'action principale.
+.reminder-banner__silence {
+  flex: none;
+}

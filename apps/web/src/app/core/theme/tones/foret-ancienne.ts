@@ -842,6 +842,11 @@ export const foretAncienne: Record<ToneKey, string> = {
   'scenarios.seance_summary_missing_one': '1 personne n’a pas encore répondu',
   'scenarios.seance_summary_deadline': 'Échéance : {date}',
   'scenarios.seance_summary_ended': 'Le vote est terminé.',
+  'scenarios.seance_summary_mj_answers': 'Réponses : {x} sur {n} joueurs',
+  'scenarios.seance_summary_mj_waiting': 'N’ont pas encore répondu : {names}',
+  'scenarios.seance_summary_see_in_calendar': 'Voir dans le calendrier →',
+  'scenarios.seance_situation_fix_date': 'Fixer la date…',
+  'scenarios.close_poll_confirm': 'Clore le cercle sans fixer de date ? Les réponses ne pourront plus changer.',
   'status.seance_poll_open': 'Vote en cours',
   'status.seance_inscriptions_ouvertes': 'Inscriptions ouvertes',
   'status.seance_programmee': 'Programmée',
@@ -932,7 +937,6 @@ export const foretAncienne: Record<ToneKey, string> = {
   'scenarios.seances_compte_rendu_aria': 'Récit de la séance',
   'scenarios.seances_save_compte_rendu': 'Graver le récit',
   'scenarios.seances_compte_rendu_empty': 'Aucun récit pour cette séance pour le moment.',
-  'scenarios.seances_choose_error': 'Cette date n’a pas pu être choisie. Réessaie.',
   'scenarios.seances_capacity_error': 'La taille du cercle n’a pas pu être fixée. Réessaie.',
   'scenarios.seances_inscrire_error': 'Tu n’as pas pu rejoindre la clairière. Réessaie.',
   'scenarios.seances_desinscrire_error': 'Tu n’as pas pu te retirer de la clairière. Réessaie.',
@@ -1310,10 +1314,6 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.answer_menu_aria': 'Répondre à l’appel — {slot}',
   'calendar.answer_withdraw': 'Effacer ma réponse',
   /* — création et suivi du vote — */
-  'pollui.status_voters_aria': 'Voix du cercle',
-  'pollui.status_missing_aria': 'N’ont pas encore répondu à l’appel pour cette date',
-  'pollui.status_choose_confirm': 'Planter {date} — {slot} comme date de la prochaine séance ?',
-  'pollui.status_choose_no_vote_warning': 'Aucun habitant n’a voté pour cette date.',
 
   /* ═══ Annonces ═══ */
   /* — annonces — */

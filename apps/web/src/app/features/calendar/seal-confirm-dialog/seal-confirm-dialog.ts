@@ -34,16 +34,14 @@ export interface SealSlotsData {
 /**
  * Story 36.12, AC11 — la dernière question avant un scellement.
  *
- * 🚨 **Pourquoi une confirmation ici alors que la fiche de scénario n'en demande aucune.**
- * `PollService.choose()` fait passer le vote à `CLOSED`, pose `chosenDate`/`chosenSlot` et écrit
- * `Partie.nextSessionDate` : **il n'existe aucun retour en arrière côté produit**. Sur la fiche de
- * scénario, le bouton vit à côté de la liste complète des options et de leurs votants — le geste y
- * est délibéré par construction. Dans l'Agenda, il est à un doigt d'un bouton de réponse, sur une
- * ligne qu'on vient peut-être seulement de déplier. Le projet confirme déjà les pertes chiffrées
+ * 🚨 **Pourquoi une confirmation ici.** `PollService.choose()` fait passer le vote à `CLOSED`, pose
+ * `chosenDate`/`chosenSlot` et écrit `Partie.nextSessionDate` : **il n'existe aucun retour en arrière
+ * côté produit**. Dans l'Agenda, le bouton est à un doigt d'un bouton de réponse, sur une ligne qu'on
+ * vient peut-être seulement de déplier. Le projet confirme déjà les pertes chiffrées
  * (`ComposeConfirmDialog`, story 36.10) ; une perte irréversible mérite au moins autant.
  *
- * ⚠️ L'asymétrie avec la fiche de scénario est consignée — l'harmoniser est une décision produit,
- * pas une décision de cette story.
+ * Story 54.3 : la fiche de scénario passe désormais par la même fenêtre (« Fixer la date… », mode liste de
+ * créneaux) ; l'ancienne liste de créneaux de la fiche (`PollStatusPanel`) a disparu.
  *
  * Il n'écrit rien : il rend une décision à `CalendarView`, qui émet l'unique appel.
  */

@@ -856,6 +856,11 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'scenarios.seance_summary_missing_one',
     'scenarios.seance_summary_deadline',
     'scenarios.seance_summary_ended',
+    // Story 54.3 : le résumé côté MJ et l'encadré « Fixer la date… » (identiques dans les trois thèmes)
+    'scenarios.seance_summary_mj_answers',
+    'scenarios.seance_summary_mj_waiting',
+    'scenarios.seance_summary_see_in_calendar',
+    'scenarios.seance_situation_fix_date',
     'calendar.agenda.badge_answer_poll',
     'calendar.agenda.badge_poll_open',
     'calendar.agenda.badge_signup',
@@ -1680,6 +1685,39 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
       'pollui.response_partial_error',
       'poll.vote_closed',
       'common.envoi',
+    ]) {
+      for (const theme of THEMES) expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBeUndefined();
+    }
+  });
+
+  // Story 54.3 : résumé côté MJ et « Fixer la date… » (quatre textes neutres), confirmation de clôture (une voix par
+  // thème, hors des deux préfixes du résumé et de l'encadré), clés de l'ancienne liste de créneaux retirées.
+  it('Story 54.3 : textes du résumé MJ, confirmation de clôture à trois voix, clés de la liste retirées', () => {
+    for (const key of [
+      'scenarios.seance_summary_mj_answers',
+      'scenarios.seance_summary_mj_waiting',
+      'scenarios.seance_summary_see_in_calendar',
+      'scenarios.seance_situation_fix_date',
+    ]) {
+      const valeurs = THEMES.map((theme) => TONE_MAP[theme][key]);
+      for (const [i, valeur] of valeurs.entries()) {
+        expect(valeur, `${THEMES[i]} / ${key}`).toBeTruthy();
+      }
+      expect(new Set(valeurs).size, key).toBe(1);
+      expect(NEUTRAL_KEYS.has(key), key).toBe(true);
+    }
+    const confirm = THEMES.map((theme) => TONE_MAP[theme]['scenarios.close_poll_confirm']);
+    expect(new Set(confirm).size).toBe(THEMES.length);
+    expect(NEUTRAL_KEYS.has('scenarios.close_poll_confirm')).toBe(false);
+    expect(TONE_MAP['grimoire-emeraude']['scenarios.close_poll_confirm']).toMatch(/^Clore le conseil/);
+    expect(TONE_MAP['foret-ancienne']['scenarios.close_poll_confirm']).toMatch(/^Clore le cercle/);
+    expect(TONE_MAP['atelier-cuivre']['scenarios.close_poll_confirm']).toMatch(/^Clôturer le scrutin/);
+    for (const key of [
+      'pollui.status_voters_aria',
+      'pollui.status_missing_aria',
+      'pollui.status_choose_confirm',
+      'pollui.status_choose_no_vote_warning',
+      'scenarios.seances_choose_error',
     ]) {
       for (const theme of THEMES) expect(TONE_MAP[theme][key], `${theme} / ${key}`).toBeUndefined();
     }

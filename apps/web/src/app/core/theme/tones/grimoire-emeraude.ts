@@ -850,6 +850,11 @@ export const grimoireEmeraude = {
   'scenarios.seance_summary_missing_one': '1 personne n’a pas encore répondu',
   'scenarios.seance_summary_deadline': 'Échéance : {date}',
   'scenarios.seance_summary_ended': 'Le vote est terminé.',
+  'scenarios.seance_summary_mj_answers': 'Réponses : {x} sur {n} joueurs',
+  'scenarios.seance_summary_mj_waiting': 'N’ont pas encore répondu : {names}',
+  'scenarios.seance_summary_see_in_calendar': 'Voir dans le calendrier →',
+  'scenarios.seance_situation_fix_date': 'Fixer la date…',
+  'scenarios.close_poll_confirm': 'Clore le conseil sans fixer de date ? Les réponses ne pourront plus changer.',
   'status.seance_poll_open': 'Vote en cours',
   'status.seance_inscriptions_ouvertes': 'Inscriptions ouvertes',
   'status.seance_programmee': 'Programmée',
@@ -939,7 +944,6 @@ export const grimoireEmeraude = {
   'scenarios.seances_compte_rendu_aria': 'Chronique de la séance',
   'scenarios.seances_save_compte_rendu': 'Inscrire la chronique',
   'scenarios.seances_compte_rendu_empty': 'Aucune chronique pour cette séance pour le moment.',
-  'scenarios.seances_choose_error': 'Cette date n’a pu être scellée. Réessayez.',
   'scenarios.seances_capacity_error': 'La capacité n’a pu être fixée. Réessayez.',
   'scenarios.seances_inscrire_error': 'Votre nom n’a pu être inscrit. Réessayez.',
   'scenarios.seances_desinscrire_error': 'Votre nom n’a pu être retiré. Réessayez.',
@@ -1315,10 +1319,6 @@ export const grimoireEmeraude = {
   'calendar.answer_menu_aria': 'Répondre à l’appel du conseil — {slot}',
   'calendar.answer_withdraw': 'Reprendre ma réponse',
   /* — création et suivi du vote — */
-  'pollui.status_voters_aria': 'Votants du conseil',
-  'pollui.status_missing_aria': 'N’ont pas encore consulté l’oracle pour cette date',
-  'pollui.status_choose_confirm': 'Sceller {date} — {slot} comme date de la prochaine séance ?',
-  'pollui.status_choose_no_vote_warning': 'Aucun compagnon n’a voté pour cette date.',
 
   /* ═══ Annonces ═══ */
   /* — annonces — */

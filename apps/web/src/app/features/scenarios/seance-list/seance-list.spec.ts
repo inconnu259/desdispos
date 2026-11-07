@@ -3,6 +3,8 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
+import { of, Subject } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
 import type { ScenarioDto, SeanceDto, SessionPollDto } from '@master-jdr/shared';
 import { SeanceList } from './seance-list';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -170,12 +172,13 @@ describe('SeanceList', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/calendar?seanceId=seance1');
   });
 
-  it('MJ, séance avec poll → app-poll-status + members visibles', async () => {
+  it('MJ, séance avec poll → résumé du vote (Story 54.3), plus de liste des créneaux', async () => {
     const { fixture } = await createComponent(
       { ...SCENARIO, seances: [SEANCE_WITH_POLL] },
       { isMj: true },
     );
-    expect(fixture.nativeElement.querySelector('app-poll-status')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-poll-status')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-poll-creation')).toBeNull();
   });
 
@@ -197,51 +200,7 @@ describe('SeanceList', () => {
     expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeNull();
   });
 
-  describe('onChoose()/onClosePoll() rafraîchissent l’affichage (bug-fix : « rien ne se passe » après avoir scellé un créneau)', () => {
-    it('onChoose appelle chooseDate PUIS recharge le scénario et émet seanceLinked (confirmé)', async () => {
-      const { fixture, scenariosSvc, pollSvc } = await createComponent(
-        { ...SCENARIO, seances: [SEANCE_WITH_POLL] },
-        { isMj: true },
-      );
-      const comp = fixture.componentInstance as any;
-      const closedPoll: SessionPollDto = {
-        ...POLL,
-        status: 'CLOSED',
-        chosenDate: '2026-08-01T00:00:00.000Z',
-        chosenSlot: 'EVENING',
-        // Story 36.6 — effectif de la troupe (MJ + membres).
-        membersCount: 4,
-        durationSlots: 1,
-      };
-      const fresh = { ...SCENARIO, seances: [{ ...SEANCE_WITH_POLL, poll: closedPoll }] };
-      scenariosSvc.listAll.mockResolvedValue([fresh]);
-      let emitted: ScenarioDto | undefined;
-      comp.seanceLinked.subscribe((v: ScenarioDto) => (emitted = v));
-
-      await comp.onChoose('poll1', 'opt1');
-
-      expect(pollSvc.chooseDate).toHaveBeenCalledWith('p1', 'poll1', { optionId: 'opt1' });
-      expect(scenariosSvc.listAll).toHaveBeenCalledWith('p1');
-      expect(emitted).toEqual(fresh);
-    });
-
-    it('🚨 onChoose() ne demande PAS sa propre confirmation (revue de code, 2026-08-24) — PollStatusPanel confirme déjà en amont via son ConfirmDialog, avant même d’émettre `chosen`', async () => {
-      const { fixture, pollSvc } = await createComponent(
-        { ...SCENARIO, seances: [SEANCE_WITH_POLL] },
-        { isMj: true },
-      );
-      const comp = fixture.componentInstance as any;
-      const confirmSpy = vi.spyOn(window, 'confirm');
-
-      await comp.onChoose('poll1', 'opt1');
-
-      // Un second `window.confirm()` ici doublerait le ConfirmDialog déjà ouvert par
-      // `PollStatusPanel.onChooseClick()` avant l'émission de `chosen` — deux prompts pour le
-      // même scellement, régression du 2026-08-24 corrigée par cette revue.
-      expect(confirmSpy).not.toHaveBeenCalled();
-      expect(pollSvc.chooseDate).toHaveBeenCalledWith('p1', 'poll1', { optionId: 'opt1' });
-    });
-
+  describe('onClosePoll() rafraîchit l’affichage (bug-fix : « rien ne se passe » après avoir scellé un créneau)', () => {
     it('onClosePoll appelle closePoll PUIS recharge le scénario et émet seanceLinked', async () => {
       const { fixture, scenariosSvc, pollSvc } = await createComponent(
         { ...SCENARIO, seances: [SEANCE_WITH_POLL] },
@@ -508,13 +467,14 @@ describe('SeanceList', () => {
       expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/calendar?seanceId=seance1');
     });
 
-    it('MJ, capacité définie + vote OPEN → FillIndicator + app-poll-status + "Clôturer le vote" (Story 8.8, AC2)', async () => {
+    it('MJ, capacité définie + vote OPEN → FillIndicator + résumé + "Clôturer le vote" (Story 8.8, AC2)', async () => {
       const { fixture } = await createComponent(
         { ...SCENARIO, seances: [SEANCE_WITH_CAPACITY_AND_OPEN_POLL] },
         { isMj: true, isEpisodique: true },
       );
       expect(fixture.nativeElement.querySelector('app-fill-indicator')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-poll-status')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-poll-status')).toBeNull();
       expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['common.cloturer_le_vote']);
     });
 
@@ -1676,11 +1636,12 @@ describe('SeanceList — encadré de situation (Story 54.1)', () => {
     confirm.mockRestore();
   });
 
-  it('MJ, vote ouvert : aucun encadré, la liste actuelle reste (jusqu’à la Story 54.3)', async () => {
+  it('MJ, vote ouvert sans can.choose : aucun encadré, le résumé du MJ (Story 54.3)', async () => {
     const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN };
     const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] }, { isMj: true });
     expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-poll-status')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-poll-status')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.situation-line')).toHaveLength(1);
   });
 
@@ -1885,5 +1846,287 @@ describe('SeanceList — date en grand côté joueur (Story 54.2, revue)', () =>
     );
     const date = fixture.nativeElement.querySelector('.seance-row__chosen-date--big');
     expect(date?.textContent).toContain('Date scellée');
+  });
+});
+
+// Story 54.3 ⚠️ — le MJ conclut depuis la fiche : résumé, « Fixer la date… », « Clôturer le vote ».
+describe('SeanceList — résumé et « Fixer la date… » côté MJ (Story 54.3)', () => {
+  const vote = (userId: string, answer: 'YES' | 'NO' | 'MAYBE') => ({
+    userId,
+    pseudo: userId,
+    displayName: `Nom ${userId}`,
+    answer,
+  });
+  const OPEN: SessionPollDto = {
+    ...POLL,
+    options: [
+      { id: 'o1', date: isoInDays(10), slot: 'EVENING', votes: [vote('lou', 'YES')] },
+      { id: 'o2', date: isoInDays(12), slot: 'EVENING', votes: [vote('lou', 'NO')] },
+    ],
+  };
+  const MEMBERS = [
+    { userId: 'lou', pseudo: 'lou', displayName: 'Lou', role: 'MEMBER', joinedAt: '' },
+    { userId: 'sam', pseudo: 'sam', displayName: 'Sam', role: 'MEMBER', joinedAt: '' },
+  ] as never[];
+  const CAN = { propose: false, edit: false, choose: true, extend: false };
+
+  async function createGm(seance: SeanceDto, opts: { loaded?: boolean } = {}) {
+    const created = await createComponent({ ...SCENARIO, seances: [seance] }, { isMj: true });
+    created.fixture.componentRef.setInput('members', MEMBERS);
+    created.fixture.componentRef.setInput('membersLoaded', opts.loaded ?? true);
+    created.fixture.detectChanges();
+    return created;
+  }
+  const lines = (root: HTMLElement) =>
+    Array.from(root.querySelectorAll('.seance-poll-summary__line')).map((l) =>
+      (l.textContent ?? '').trim(),
+    );
+  const find = (root: HTMLElement, label: string) =>
+    Array.from(root.querySelectorAll('button')).filter(
+      (b) => b.textContent?.trim() === label,
+    ) as HTMLButtonElement[];
+
+  it('vote ouvert : le résumé du MJ nomme les absents, plus aucun app-poll-status', async () => {
+    const { fixture } = await createGm({ ...SEANCE_NO_POLL, poll: OPEN, can: CAN });
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('app-poll-status')).toBeNull();
+    expect(lines(root)).toContain('N’ont pas encore répondu : Sam');
+    expect(lines(root)[0]).toBe('Réponses : 1 sur 4 joueurs');
+  });
+
+  it('liste des membres non chargée : retombe sur le nombre d’absents', async () => {
+    const { fixture } = await createGm(
+      { ...SEANCE_NO_POLL, poll: OPEN, can: CAN },
+      { loaded: false },
+    );
+    expect(lines(fixture.nativeElement)).toContain('3 personnes n’ont pas encore répondu');
+  });
+
+  it('« Fixer la date… » : une seule fois, dans l’encadré, jamais dans le résumé', async () => {
+    const { fixture } = await createGm({ ...SEANCE_NO_POLL, poll: OPEN, can: CAN });
+    const root = fixture.nativeElement as HTMLElement;
+    expect(find(root, 'Fixer la date…')).toHaveLength(1);
+    expect(root.querySelector('.seance-situation')?.textContent).toContain('Fixer la date…');
+    expect(root.querySelector('.seance-poll-summary')?.textContent).not.toContain('Fixer la date…');
+  });
+
+  it('sans can.choose : pas d’encadré, pas de « Fixer la date… »', async () => {
+    const { fixture } = await createGm({
+      ...SEANCE_NO_POLL,
+      poll: OPEN,
+      can: { ...CAN, choose: false },
+    });
+    expect(find(fixture.nativeElement, 'Fixer la date…')).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+  });
+
+  it('échéance passée : l’encadré dit « Le vote est terminé. » et la date se fixe encore', async () => {
+    const { fixture } = await createGm({
+      ...SEANCE_NO_POLL,
+      poll: { ...OPEN, expiresAt: isoInDays(-3) },
+      can: CAN,
+    });
+    expect(fixture.nativeElement.querySelector('.seance-situation__text')?.textContent).toContain(
+      'Le vote est terminé.',
+    );
+    expect(find(fixture.nativeElement, 'Fixer la date…')).toHaveLength(1);
+  });
+
+  describe('« Fixer la date… » ouvre SealConfirmDialog', () => {
+    async function open(seance: SeanceDto, afterClosed: unknown) {
+      const created = await createGm(seance);
+      const dialog = (
+        created.fixture.componentInstance as unknown as { dialog: { open: (...a: unknown[]) => unknown } }
+      ).dialog;
+      const open = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed }) as unknown as {
+        mock: { calls: any[][] };
+        toString(): string;
+      };
+      return { ...created, open };
+    }
+
+    it('meilleur créneau en tête, libellé du chapitre et de la séance, restoreFocus', async () => {
+      const { fixture, open: spy } = await open(
+        { ...SEANCE_NO_POLL, poll: OPEN, can: CAN },
+        of(false),
+      );
+      find(fixture.nativeElement, 'Fixer la date…')[0].click();
+      await fixture.whenStable();
+      const [, config] = spy.mock.calls[0];
+      expect(config.data.pollLabel).toBe('Chapitre 1 — Séance 1');
+      expect(config.data.slots[0].id).toBe('o1');
+      expect(config.restoreFocus).toBe(true);
+      expect(config.width).toBe('min(560px, 96vw)');
+    });
+
+    it('confirmé : chooseDate puis relecture du scénario ; renoncer : aucun appel', async () => {
+      const a = await open({ ...SEANCE_NO_POLL, poll: OPEN, can: CAN }, of(true));
+      a.pollSvc.chooseDate.mockResolvedValue(undefined);
+      a.scenariosSvc.listAll.mockClear();
+      find(a.fixture.nativeElement, 'Fixer la date…')[0].click();
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+      const [, config] = a.open.mock.calls[0];
+      await config.data.confirm('o1');
+      expect(a.pollSvc.chooseDate).toHaveBeenCalledWith('p1', 'poll1', { optionId: 'o1' });
+      expect(a.scenariosSvc.listAll).toHaveBeenCalledWith('p1');
+      TestBed.resetTestingModule();
+
+      const b = await open({ ...SEANCE_NO_POLL, poll: OPEN, can: CAN }, of(false));
+      b.scenariosSvc.listAll.mockClear();
+      find(b.fixture.nativeElement, 'Fixer la date…')[0].click();
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+      expect(b.pollSvc.chooseDate).not.toHaveBeenCalled();
+      expect(b.scenariosSvc.listAll).not.toHaveBeenCalled();
+    });
+
+    it('double toucher : une seule fenêtre', async () => {
+      const { fixture, open: spy } = await open(
+        { ...SEANCE_NO_POLL, poll: OPEN, can: CAN },
+        new Subject<boolean>(),
+      );
+      const [btn] = find(fixture.nativeElement, 'Fixer la date…');
+      btn.click();
+      btn.click();
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('« Voir dans le calendrier → » ouvre la Destinée du MJ sur ce vote', async () => {
+    const { fixture, router } = await createGm({ ...SEANCE_NO_POLL, poll: OPEN, can: CAN });
+    find(fixture.nativeElement, 'Voir dans le calendrier →')[0].click();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/calendar?poll=poll1');
+  });
+
+  it('« Clôturer le vote » : confirmé → closePoll ; renoncer → vote ouvert, aucun appel', async () => {
+    const a = await createGm({ ...SEANCE_NO_POLL, poll: OPEN, can: CAN });
+    const summary = a.fixture.nativeElement.querySelector('app-seance-poll-summary');
+    expect(summary).not.toBeNull();
+    // La confirmation vit dans le résumé (testée dans seance-poll-summary.spec) ; ici, la sortie.
+    const comp = a.fixture.componentInstance as unknown as { onClosePoll(id: string): Promise<void> };
+    await comp.onClosePoll('poll1');
+    expect(a.pollSvc.closePoll).toHaveBeenCalledWith('p1', 'poll1');
+  });
+
+  it('vote clos sans date : le résumé laisse place à l’encadré, sans répéter le message', async () => {
+    const { fixture } = await createGm({
+      ...SEANCE_NO_POLL,
+      poll: { ...OPEN, status: 'CLOSED' },
+      can: CAN,
+    });
+    expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeNull();
+    const text = GRIMOIRE_TONE['common.vote_cloture_sans_date_retenue'];
+    expect(fixture.nativeElement.textContent.split(text).length - 1).toBe(1);
+  });
+
+  it('temps réel : une réponse reçue après un changed() met à jour les absents', async () => {
+    const answered: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      can: CAN,
+      poll: {
+        ...OPEN,
+        options: OPEN.options.map((o) => ({ ...o, votes: [...o.votes, vote('sam', 'YES')] })),
+      },
+    };
+    const { fixture, scenariosSvc } = await createGm({ ...SEANCE_NO_POLL, poll: OPEN, can: CAN });
+    expect(lines(fixture.nativeElement)).toContain('N’ont pas encore répondu : Sam');
+    scenariosSvc.listAll.mockResolvedValue([{ ...SCENARIO, seances: [answered] }]);
+    fixture.componentInstance.seanceLinked.subscribe((s) => {
+      fixture.componentRef.setInput('scenario', s);
+    });
+    scenariosSvc.changed.set({ partieId: 'p1' });
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+    expect(lines(fixture.nativeElement).some((l) => l.startsWith('N’ont pas encore'))).toBe(false);
+  });
+});
+
+// Story 54.3 (revue) — câblage de la branche épisodique, clic réel sur « Clôturer le vote », classement des créneaux.
+describe('SeanceList — câblage du résumé du MJ, cas de la revue (Story 54.3)', () => {
+  const vote = (userId: string, answer: 'YES' | 'NO') => ({
+    userId,
+    pseudo: userId,
+    displayName: `Nom ${userId}`,
+    answer,
+  });
+  const POLL_OPEN: SessionPollDto = {
+    ...POLL,
+    options: [
+      { id: 'o1', date: isoInDays(10), slot: 'EVENING', votes: [vote('lou', 'NO')] },
+      { id: 'o2', date: isoInDays(12), slot: 'EVENING', votes: [vote('lou', 'YES')] },
+    ],
+  };
+  const CAN = { propose: false, edit: false, choose: true, extend: false };
+  const EPISODIC: SeanceDto = {
+    ...SEANCE_NO_POLL,
+    can: CAN,
+    poll: POLL_OPEN,
+    inscription: { min: 2, max: 6, inscrits: [], dateValidee: null },
+  };
+  const MEMBERS = [
+    { userId: 'lou', pseudo: 'lou', displayName: 'Lou', role: 'MEMBER', joinedAt: '' },
+    { userId: 'sam', pseudo: 'sam', displayName: 'Sam', role: 'MEMBER', joinedAt: '' },
+  ] as never[];
+
+  async function create(seance: SeanceDto, opts: { episodic?: boolean } = {}) {
+    const created = await createComponent(
+      { ...SCENARIO, seances: [seance] },
+      { isMj: true, isEpisodique: opts.episodic ?? false },
+    );
+    created.fixture.componentRef.setInput('members', MEMBERS);
+    created.fixture.componentRef.setInput('membersLoaded', true);
+    created.fixture.detectChanges();
+    return created;
+  }
+  const find = (root: HTMLElement, label: string) =>
+    Array.from(root.querySelectorAll('button')).filter(
+      (b) => b.textContent?.trim() === label,
+    ) as HTMLButtonElement[];
+
+  it('séance épisodique, vote ouvert : absents nommés et « Voir dans le calendrier → » câblés', async () => {
+    const { fixture, router } = await create(EPISODIC, { episodic: true });
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('app-fill-indicator')).not.toBeNull();
+    expect(root.textContent).toContain('N’ont pas encore répondu : Sam');
+    find(root, 'Voir dans le calendrier →')[0].click();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/calendar?poll=poll1');
+  });
+
+  it('« Clôturer le vote » (clic réel) : confirmer appelle closePoll, « Renoncer » n’appelle rien', async () => {
+    const a = await create({ ...SEANCE_NO_POLL, can: CAN, poll: POLL_OPEN });
+    const dialog = TestBed.inject(MatDialog);
+    const open = vi.spyOn(dialog, 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
+    a.pollSvc.closePoll.mockResolvedValue(undefined);
+    find(a.fixture.nativeElement, 'Clore le conseil')[0].click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(a.pollSvc.closePoll).toHaveBeenCalledWith('p1', 'poll1');
+    TestBed.resetTestingModule();
+
+    const b = await create({ ...SEANCE_NO_POLL, can: CAN, poll: POLL_OPEN });
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(false),
+    } as never);
+    find(b.fixture.nativeElement, 'Clore le conseil')[0].click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(b.pollSvc.closePoll).not.toHaveBeenCalled();
+  });
+
+  it('« Fixer la date… » : le meilleur créneau passe en tête même s’il n’est pas le premier servi', async () => {
+    const { fixture } = await create({ ...SEANCE_NO_POLL, can: CAN, poll: POLL_OPEN });
+    const dialog = (
+      fixture.componentInstance as unknown as { dialog: { open: (...a: unknown[]) => unknown } }
+    ).dialog;
+    const open = vi.spyOn(dialog, 'open').mockReturnValue({ afterClosed: () => of(false) }) as unknown as {
+      mock: { calls: any[][] };
+    };
+    find(fixture.nativeElement, 'Fixer la date…')[0].click();
+    await fixture.whenStable();
+    const slots = open.mock.calls[0][1].data.slots;
+    // `o2` (un « oui ») est servi APRÈS `o1` (un « non ») et pourtant classé premier.
+    expect(slots.map((s: { id: string }) => s.id)).toEqual(['o2', 'o1']);
   });
 });

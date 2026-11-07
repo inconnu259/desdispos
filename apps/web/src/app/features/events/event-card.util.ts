@@ -675,8 +675,10 @@ export function rankedPollSlots(card: EventCardDto, todayKey: string): RankedPol
  * `rankedPollSlots` (le plus plébiscité d'abord) : la confirmation « Fixer la date » de la Destinée liste les
  * mêmes lignes, que le vote vienne d'une conjonction ou d'un scénario. Les comptes sont ceux de l'entrée.
  */
-export function rankedEntrySlots(
-  options: readonly OpenPollOption[],
+export function rankedEntrySlots<
+  T extends Pick<OpenPollOption, 'optionId' | 'date' | 'slot' | 'yes' | 'maybe' | 'no'>,
+>(
+  options: readonly T[],
   todayKey: string,
   durationSlots = 1,
 ): RankedPollSlot[] {

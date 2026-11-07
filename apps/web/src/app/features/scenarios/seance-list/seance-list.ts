@@ -10,7 +10,9 @@ import {
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import type {
   DaySlot,
   PartieMemberDto,
@@ -24,9 +26,14 @@ import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { PollService } from '../../../core/poll/poll.service';
+import { pollRankableOptions } from '../../../core/poll/poll.util';
 import { atelierUrl } from '@master-jdr/shared';
 import { composeSeanceInfo, toDateKey } from '../../calendar/day-detail.utils';
-import { PollStatusPanel } from '../../poll/poll-status/poll-status';
+import { rankedEntrySlots } from '../../events/event-card.util';
+import {
+  SealConfirmDialog,
+  type SealSlotsData,
+} from '../../calendar/seal-confirm-dialog/seal-confirm-dialog';
 import { FillIndicator } from '../fill-indicator/fill-indicator';
 import { SeanceSituationComponent } from '../seance-situation/seance-situation';
 import { SeancePollSummary } from '../seance-poll-summary/seance-poll-summary';
@@ -61,7 +68,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
  * Liste des séances d'un scénario (Story 8.2, retravaillé Story 8.7/8.8) — la création de vote ne
  * vit plus ici (panneau `<app-poll-creation>` retiré, point d'entrée unique désormais le calendrier
  * via `goToCalendarForSeance`, cf. AC2/AC3 Story 8.7). AD-4 révisé (Story 8.8) : une séance
- * épisodique peut désormais avoir à la fois un vote (`PollStatusPanel` côté MJ, `SeancePollSummary` côté joueur,
+ * épisodique peut désormais avoir à la fois un vote (`SeancePollSummary`, côté MJ comme côté joueur,
  * choisit *quand*) et une inscription à capacité limitée (choisit *qui*) — les deux coexistent.
  */
 @Component({
@@ -70,7 +77,6 @@ const SLOT_LABELS: Record<DaySlot, string> = {
     AppIcon,
     DurationStepper,
     MatButtonModule,
-    PollStatusPanel,
     SeancePollSummary,
     FillIndicator,
     StatusBadge,
@@ -85,6 +91,7 @@ export class SeanceList {
   private readonly pollSvc = inject(PollService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   protected readonly theme = inject(ThemeToneService);
 
   protected readonly currentUserId = computed(() => this.auth.currentUser()?.id);
@@ -102,6 +109,9 @@ export class SeanceList {
   readonly situationIsMj = input<boolean | undefined>(undefined);
   readonly isEpisodique = input.required<boolean>();
   readonly members = input<PartieMemberDto[]>([]);
+  /** Story 54.3 — la liste des membres est chargée (et non « vide ou en échec ») : sans elle le résumé du MJ
+   *  retombe sur le NOMBRE d'absents au lieu de les nommer. */
+  readonly membersLoaded = input(false);
 
   readonly seanceLinked = output<ScenarioDto>();
   /** Story 54.1 — la fiche va quitter la page (« Voter dans le calendrier ») : l'hôte, s'il est une
@@ -278,7 +288,10 @@ export class SeanceList {
   protected onBoxAction(seance: SeanceDto, box: SeanceSituationBox): void {
     switch (box) {
       case 'voter':
-        if (seance.poll) this.goToCalendarForPoll(seance.poll.id);
+        if (seance.poll) this.goToCalendarForPoll(seance.poll.id, 'player');
+        return;
+      case 'fixer_la_date':
+        void this.onFixDate(seance);
         return;
       case 'participer':
         void this.onInscrire(seance.id);
@@ -296,10 +309,10 @@ export class SeanceList {
   }
 
   /** Story 54.1 : ouvre la Destinée sur ce vote (`?poll=`), la fiche se fermant d'abord. */
-  private goToCalendarForPoll(pollId: string): void {
+  protected goToCalendarForPoll(pollId: string, role: 'mj' | 'player'): void {
     this.leaving.emit();
     void this.router.navigateByUrl(
-      atelierUrl({ partieId: this.partieId(), family: 'jdr', role: 'player' }, { poll: pollId }),
+      atelierUrl({ partieId: this.partieId(), family: 'jdr', role }, { poll: pollId }),
     );
   }
 
@@ -363,21 +376,32 @@ export class SeanceList {
     this.editingCapacitySeanceId.set(null);
   }
 
-  // 🚨 Revue de code (deferred-work.md, 2026-08-24) : PAS de confirmation ici. `PollStatusPanel`
-  // (`app-poll-status`, seul émetteur de `chosen`) ouvre déjà son propre `ConfirmDialog` stylé
-  // AVANT d'émettre l'événement (`poll-status.ts:onChooseClick`) — un `window.confirm()` ajouté
-  // ici (décision du 2026-08-24, retirée) doublait le prompt : deux confirmations successives
-  // pour le même scellement. Toujours confirmé, une seule fois, via le MatDialog déjà en place —
-  // même mécanisme que `CalendarView.onSealRequested()` (Agenda/grille).
-  protected async onChoose(pollId: string, optionId: string): Promise<void> {
-    if (this.pollActionPending()) return;
+  /**
+   * Story 54.3 ⚠️ — « Fixer la date… » : `SealConfirmDialog` en mode liste de créneaux, comme
+   * `CalendarView.openDestinyFix()` — le meilleur créneau en tête et présélectionné (aucun sans « oui »),
+   * un créneau passé jamais retenu, le refus du serveur affiché dans la fenêtre. L'effet est celui de
+   * « Sceller ce créneau » (`PATCH …/poll/:pollId/choose`) : le vote passe à `CLOSED` avec sa date.
+   */
+  protected async onFixDate(seance: SeanceDto): Promise<void> {
+    const poll = seance.poll;
+    if (!poll || !seance.can.choose || this.pollActionPending()) return;
+    const todayKey = this.todayKey;
+    const slots = rankedEntrySlots(pollRankableOptions(poll), todayKey, poll.durationSlots);
+    const index = this.scenario().seances.findIndex((s) => s.id === seance.id);
+    const pollLabel = `${this.scenario().title} — ${this.seanceLabel(index)}`;
+    const confirm = (optionId: string) =>
+      this.pollSvc.chooseDate(this.partieId(), poll.id, { optionId });
+    // Posé AVANT d'ouvrir la fenêtre : deux touchers rapprochés n'en ouvrent pas deux.
     this.pollActionPending.set(true);
     this.error.set(null);
     try {
-      await this.pollSvc.chooseDate(this.partieId(), pollId, { optionId });
-      await this.refreshScenario();
-    } catch {
-      this.error.set(this.theme.tone()['scenarios.seances_choose_error']);
+      const ref = this.dialog.open<SealConfirmDialog, SealSlotsData, boolean>(SealConfirmDialog, {
+        data: { pollLabel, slots, todayKey, confirm },
+        width: 'min(560px, 96vw)',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      });
+      if (await firstValueFrom(ref.afterClosed())) await this.refreshScenario();
     } finally {
       this.pollActionPending.set(false);
     }

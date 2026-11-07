@@ -16,3 +16,15 @@
   color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
   overflow-wrap: anywhere;
 }
+
+/* Story 54.3 — les deux actions secondaires du MJ : cibles de 44 px, elles passent à la ligne. */
+.seance-poll-summary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+
+  button {
+    min-height: 44px;
+  }
+}

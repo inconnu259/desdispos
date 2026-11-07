@@ -135,6 +135,8 @@ export class ScenarioEditor implements OnInit {
   protected readonly newSeanceDuration = signal(1);
   protected readonly resumeFinPending = signal(false);
   protected readonly members = signal<PartieMemberDto[]>([]);
+  /** Story 54.3 — la liste des membres est chargée : sans elle, le résumé du vote ne nomme pas les absents. */
+  protected readonly membersLoaded = signal(false);
   // Story 9.2 : vue MJ — aucun filtrage de statut (le MJ ne peut pas se spoiler son propre contenu,
   // AC6 protège les joueurs, pas l'auteur).
   protected readonly announcements = signal<AnnouncementDto[]>([]);
@@ -301,8 +303,9 @@ export class ScenarioEditor implements OnInit {
     }
     try {
       this.members.set(await this.partiesService.members(this.scenarioInput().partieId));
+      this.membersLoaded.set(true);
     } catch {
-      // Liste MJ pour PollStatusPanel (relance de vote) — non-critique, même dégradation silencieuse.
+      // Liste MJ pour nommer les absents du résumé du vote — non-critique : en cas d'échec le résumé retombe sur leur nombre.
     }
     try {
       this.announcements.set(

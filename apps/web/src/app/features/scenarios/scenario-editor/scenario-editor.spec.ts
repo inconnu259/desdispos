@@ -85,6 +85,7 @@ async function createComponent(
   unseenAnnouncementIds: string[] = [],
   markAnnouncementRead: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue(undefined),
   announcementIdQueryParam: string | null = null,
+  members: unknown[] | Error = [],
 ) {
   const scenariosSvc = {
     listAll: vi.fn().mockResolvedValue([scenario]),
@@ -101,7 +102,11 @@ async function createComponent(
   };
   const characterSvc = { listByPartie: vi.fn().mockResolvedValue(characters) };
   const partiesSvc = {
-    members: vi.fn().mockResolvedValue([]),
+    members: vi
+      .fn()
+      .mockImplementation(() =>
+        members instanceof Error ? Promise.reject(members) : Promise.resolve(members),
+      ),
     get: vi.fn().mockResolvedValue(partie),
   };
   const pollSvc = { chooseDate: vi.fn(), closePoll: vi.fn() };
@@ -1465,5 +1470,71 @@ describe('ScenarioEditor', () => {
 
       expect(comp.resumeFinDraft()).toBe('Résumé rédigé ailleurs');
     });
+  });
+});
+
+// Story 54.3 (revue) — le branchement éditeur → fiche : la liste des membres nomme les absents du résumé.
+describe('ScenarioEditor — résumé du vote du MJ (Story 54.3)', () => {
+  const POLL_OPEN = {
+    id: 'poll1',
+    partieId: 'p1',
+    status: 'OPEN' as const,
+    scenarioRef: null,
+    expiresAt: null,
+    chosenDate: null,
+    chosenSlot: null,
+    membersCount: 3,
+    durationSlots: 1,
+    options: [
+      {
+        id: 'o1',
+        date: '2099-01-01T00:00:00.000Z',
+        slot: 'EVENING' as const,
+        votes: [{ userId: 'lou', pseudo: 'lou', displayName: 'Lou', answer: 'YES' as const }],
+      },
+    ],
+  };
+  const WITH_VOTE = {
+    ...SCENARIO,
+    seances: [
+      {
+        id: 'seance1',
+        scenarioId: 's1',
+        dateValidee: null,
+        slotValidee: null,
+        endDate: null,
+        endSlot: null,
+        durationSlots: 1,
+        compteRendu: null,
+        heureRdv: null,
+        lieu: null,
+        notePratique: null,
+        createdAt: '2026-07-13T00:00:00.000Z',
+        can: { propose: false, edit: false, choose: true, extend: false },
+        poll: POLL_OPEN,
+      },
+    ],
+  } as unknown as ScenarioDto;
+  const lines = (root: HTMLElement) =>
+    Array.from(root.querySelectorAll('.seance-poll-summary__line')).map((l) =>
+      (l.textContent ?? '').trim(),
+    );
+
+  it('membres chargés : les absents sont nommés dans le résumé de la fiche', async () => {
+    const members = [
+      { userId: 'lou', pseudo: 'lou', displayName: 'Lou', role: 'MEMBER', joinedAt: '' },
+      { userId: 'sam', pseudo: 'sam', displayName: 'Sam', role: 'MEMBER', joinedAt: '' },
+    ];
+    const { fixture } = await createComponent(
+      WITH_VOTE, [], [], null, PARTIE, [], vi.fn().mockResolvedValue(undefined), null, members,
+    );
+    expect(lines(fixture.nativeElement)).toContain('N’ont pas encore répondu : Sam');
+  });
+
+  it('chargement des membres en échec : le résumé retombe sur le nombre d’absents', async () => {
+    const { fixture } = await createComponent(
+      WITH_VOTE, [], [], null, PARTIE, [], vi.fn().mockResolvedValue(undefined), null, new Error('boom'),
+    );
+    expect(lines(fixture.nativeElement)).toContain('2 personnes n’ont pas encore répondu');
   });
 });

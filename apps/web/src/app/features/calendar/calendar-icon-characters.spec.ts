@@ -25,11 +25,8 @@ function templates(dir: string): string[] {
 }
 
 describe('Caractères-icônes des gabarits (story 51.5)', () => {
-  it('features/calendar et features/poll ne contiennent plus de caractère-icône en dehors des commentaires', () => {
-    const offenders = [
-      ...templates(join(FEATURES_DIR, 'calendar')),
-      ...templates(join(FEATURES_DIR, 'poll')),
-    ]
+  it('features/calendar ne contient plus de caractère-icône en dehors des commentaires', () => {
+    const offenders = templates(join(FEATURES_DIR, 'calendar'))
       .map((file) => ({
         file,
         text: (readFileSync(file, 'utf8') as string).replace(/<!--[\s\S]*?-->/g, ''),

@@ -36,14 +36,22 @@ export class SeanceSituationComponent {
   readonly action = output<void>();
 
   protected readonly isMj = computed(
-    () => this.box() === 'lancer_le_vote' || this.box() === 'reinitialiser_la_date',
+    () =>
+      this.box() === 'lancer_le_vote' ||
+      this.box() === 'fixer_la_date' ||
+      this.box() === 'reinitialiser_la_date',
   );
 
   protected readonly text = computed(() => {
     const tone = this.theme.tone();
     switch (this.box()) {
-      case 'voter': {
+      case 'voter':
+      case 'fixer_la_date': {
         const deadline = this.expiresAt();
+        // Story 54.3 : le vote encore ouvert au-delà de son échéance se conclut encore (la date se fixe).
+        if (this.box() === 'fixer_la_date' && deadline && deadline.substring(0, 10) < this.todayKey()) {
+          return tone['scenarios.seance_summary_ended'];
+        }
         return deadline
           ? fillTone(tone['scenarios.seance_situation_vote_open'], {
               date: voteDeadlineLabel(deadline, this.todayKey()),
@@ -70,6 +78,8 @@ export class SeanceSituationComponent {
         return tone['scenarios.seances_inscrire'];
       case 'se_desinscrire':
         return tone['scenarios.seances_desinscrire'];
+      case 'fixer_la_date':
+        return tone['scenarios.seance_situation_fix_date'];
       case 'lancer_le_vote':
         return tone['common.lancer_le_vote'];
       case 'reinitialiser_la_date':

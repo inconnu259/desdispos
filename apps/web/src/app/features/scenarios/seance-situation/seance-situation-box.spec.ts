@@ -171,3 +171,40 @@ describe('voteDeadlineLabel', () => {
     expect(voteDeadlineLabel('2026-11-19T00:00:00.000Z', TODAY)).toBe('jeudi 19 novembre');
   });
 });
+
+// Story 54.3 — « Fixer la date… » : vote ouvert sans date, et seulement si le serveur le permet.
+describe('seanceSituationBox — fixer_la_date (Story 54.3)', () => {
+  const OPEN_POLL = POLL;
+
+  it('vote ouvert, can.choose → fixer_la_date', () => {
+    const s = { ...BARE, poll: OPEN_POLL, can: { choose: true } };
+    expect(seanceSituationBox(s, 'je_mene', true, ME, TODAY)).toBe('fixer_la_date');
+  });
+
+  it('échéance passée : la date se fixe encore', () => {
+    const s = {
+      ...BARE,
+      poll: { ...OPEN_POLL, expiresAt: '2026-11-01T21:59:59.000Z' },
+      can: { choose: true },
+    };
+    expect(seanceSituationBox(s, 'je_mene', true, ME, TODAY)).toBe('fixer_la_date');
+  });
+
+  it('sans can.choose (ou droit absent) → null, jamais déduit du rôle', () => {
+    expect(
+      seanceSituationBox({ ...BARE, poll: OPEN_POLL, can: { choose: false } }, 'je_mene', true, ME, TODAY),
+    ).toBeNull();
+    expect(seanceSituationBox({ ...BARE, poll: OPEN_POLL }, 'je_mene', true, ME, TODAY)).toBeNull();
+  });
+
+  it('MJ en lecture seule ou joueur : jamais fixer_la_date', () => {
+    const s = { ...BARE, poll: OPEN_POLL, can: { choose: true } };
+    expect(seanceSituationBox(s, 'je_mene', false, ME, TODAY)).toBeNull();
+    expect(seanceSituationBox(s, 'vote_a_faire', false, ME, TODAY)).toBe('voter');
+  });
+
+  it('vote clos sans date → reinitialiser_la_date, même avec can.choose', () => {
+    const s = { ...BARE, poll: { ...OPEN_POLL, status: 'CLOSED' as const }, can: { choose: true } };
+    expect(seanceSituationBox(s, 'je_mene', true, ME, TODAY)).toBe('reinitialiser_la_date');
+  });
+});

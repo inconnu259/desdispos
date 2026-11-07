@@ -122,21 +122,18 @@
               [min]="seance.inscription.min"
               [max]="seance.inscription.max"
             />
-            <app-poll-status
+            <!-- Story 54.3 ⚠️ : la liste des créneaux (`app-poll-status`) a quitté la fiche ; le résumé porte
+                 « Clôturer le vote » (après confirmation) et « Voir dans le calendrier → ». -->
+            <app-seance-poll-summary
               [poll]="seance.poll"
+              [todayKey]="todayKey"
+              [isMj]="true"
               [members]="members()"
+              [membersLoaded]="membersLoaded()"
               [busy]="pollActionPending()"
-              (chosen)="onChoose(seance.poll.id, $event)"
+              (closePoll)="onClosePoll(seance.poll.id)"
+              (seeInCalendar)="goToCalendarForPoll(seance.poll.id, 'mj')"
             />
-            <button
-              mat-stroked-button
-              color="warn"
-              type="button"
-              [disabled]="pollActionPending()"
-              (click)="onClosePoll(seance.poll.id)"
-            >
-              {{ theme.tone()['common.cloturer_le_vote'] }}
-            </button>
           }
           <!-- Story 54.1 : vote clos sans date → message et « Effacer la date » vivent dans l'encadré. -->
         } @else if (seance.inscription && resolvedDate(seance)) {
@@ -174,21 +171,18 @@
               </button>
             }
           } @else if (seance.poll.status === 'OPEN') {
-            <app-poll-status
+            <!-- Story 54.3 ⚠️ : la liste des créneaux (`app-poll-status`) a quitté la fiche ; le résumé porte
+                 « Clôturer le vote » (après confirmation) et « Voir dans le calendrier → ». -->
+            <app-seance-poll-summary
               [poll]="seance.poll"
+              [todayKey]="todayKey"
+              [isMj]="true"
               [members]="members()"
+              [membersLoaded]="membersLoaded()"
               [busy]="pollActionPending()"
-              (chosen)="onChoose(seance.poll.id, $event)"
+              (closePoll)="onClosePoll(seance.poll.id)"
+              (seeInCalendar)="goToCalendarForPoll(seance.poll.id, 'mj')"
             />
-            <button
-              mat-stroked-button
-              color="warn"
-              type="button"
-              [disabled]="pollActionPending()"
-              (click)="onClosePoll(seance.poll.id)"
-            >
-              {{ theme.tone()['common.cloturer_le_vote'] }}
-            </button>
           } @else if (seance.poll.chosenDate || resolvedDate(seance)) {
             <!-- Story 54.1 : vote clos sans date → message et « Effacer la date » vivent dans l'encadré ;
                  date scellée : sa date et son bouton actuels. -->

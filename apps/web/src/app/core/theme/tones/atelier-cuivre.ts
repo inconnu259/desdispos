@@ -845,6 +845,11 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'scenarios.seance_summary_missing_one': '1 personne n’a pas encore répondu',
   'scenarios.seance_summary_deadline': 'Échéance : {date}',
   'scenarios.seance_summary_ended': 'Le vote est terminé.',
+  'scenarios.seance_summary_mj_answers': 'Réponses : {x} sur {n} joueurs',
+  'scenarios.seance_summary_mj_waiting': 'N’ont pas encore répondu : {names}',
+  'scenarios.seance_summary_see_in_calendar': 'Voir dans le calendrier →',
+  'scenarios.seance_situation_fix_date': 'Fixer la date…',
+  'scenarios.close_poll_confirm': 'Clôturer le scrutin sans fixer de date ? Les réponses ne pourront plus changer.',
   'status.seance_poll_open': 'Vote en cours',
   'status.seance_inscriptions_ouvertes': 'Inscriptions ouvertes',
   'status.seance_programmee': 'Programmée',
@@ -935,7 +940,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'scenarios.seances_compte_rendu_aria': 'Rapport de la séance',
   'scenarios.seances_save_compte_rendu': 'Consigner le rapport',
   'scenarios.seances_compte_rendu_empty': 'Aucun rapport pour cette séance pour le moment.',
-  'scenarios.seances_choose_error': 'Cette date n’a pu être verrouillée. Réessayez.',
   'scenarios.seances_capacity_error': 'La capacité n’a pu être réglée. Réessayez.',
   'scenarios.seances_inscrire_error': 'Votre inscription n’a pu être consignée. Réessayez.',
   'scenarios.seances_desinscrire_error': 'Votre désinscription n’a pu être consignée. Réessayez.',
@@ -1313,10 +1317,6 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.answer_menu_aria': 'Répondre au scrutin — {slot}',
   'calendar.answer_withdraw': 'Annuler ma réponse',
   /* — création et suivi du vote — */
-  'pollui.status_voters_aria': 'Votants du scrutin',
-  'pollui.status_missing_aria': 'N’ont pas encore alimenté le registre pour cette date',
-  'pollui.status_choose_confirm': 'Verrouiller {date} — {slot} comme date de la prochaine séance ?',
-  'pollui.status_choose_no_vote_warning': "Aucun membre n'a voté pour cette date.",
 
   /* ═══ Annonces ═══ */
   /* — annonces — */

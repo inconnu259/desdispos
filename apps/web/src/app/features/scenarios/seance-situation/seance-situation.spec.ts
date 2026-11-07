@@ -131,3 +131,39 @@ describe('SeanceSituationComponent', () => {
     );
   });
 });
+
+// Story 54.3 — l'encadré « Fixer la date… » du MJ.
+describe('SeanceSituationComponent — fixer_la_date (Story 54.3)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('bordure du MJ, texte du vote ouvert avec son échéance, bouton plein « Fixer la date… » sans icône', async () => {
+    const { el, onAction } = await create('fixer_la_date', {
+      situation: 'je_mene',
+      expiresAt: '2026-11-12T21:59:59.000Z',
+    });
+    expect(el.querySelector('.seance-situation--mj')).not.toBeNull();
+    expect(el.querySelector('.seance-situation__text')?.textContent?.trim()).toBe(
+      'Le vote est ouvert jusqu’à jeudi.',
+    );
+    const btn = el.querySelector('button') as HTMLButtonElement;
+    expect(btn.textContent?.trim()).toBe('Fixer la date…');
+    expect(btn.querySelector('app-icon')).toBeNull();
+    btn.click();
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('échéance passée : « Le vote est terminé. », la date se fixe encore', async () => {
+    const { el } = await create('fixer_la_date', { expiresAt: '2026-10-30T21:59:59.000Z' });
+    expect(el.querySelector('.seance-situation__text')?.textContent?.trim()).toBe(
+      'Le vote est terminé.',
+    );
+    expect(el.querySelector('button')?.textContent?.trim()).toBe('Fixer la date…');
+  });
+
+  it('sans échéance : « Le vote est ouvert. »', async () => {
+    const { el } = await create('fixer_la_date');
+    expect(el.querySelector('.seance-situation__text')?.textContent?.trim()).toBe(
+      'Le vote est ouvert.',
+    );
+  });
+});

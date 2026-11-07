@@ -5,7 +5,7 @@ import type { SeanceSituation } from '../../../core/status/status-derivation';
 /**
  * Story 54.1 — l'encadré de situation d'une séance : l'action attendue du lecteur, ou rien.
  *
- * `voter`, `participer`, `se_desinscrire` sont des encadrés de joueur ; `lancer_le_vote` et
+ * `voter`, `participer`, `se_desinscrire` sont des encadrés de joueur ; `lancer_le_vote`, `fixer_la_date` et
  * `reinitialiser_la_date` des encadrés de MJ.
  */
 export type SeanceSituationBox =
@@ -13,9 +13,13 @@ export type SeanceSituationBox =
   | 'participer'
   | 'se_desinscrire'
   | 'lancer_le_vote'
+  | 'fixer_la_date'
   | 'reinitialiser_la_date';
 
-type BoxSource = Pick<SeanceDto, 'poll' | 'inscription' | 'dateValidee'>;
+type BoxSource = Pick<SeanceDto, 'poll' | 'inscription' | 'dateValidee'> & {
+  /** Ce que le serveur permet à CETTE personne (Story 44.1) ; absent = aucun droit. */
+  can?: Pick<SeanceDto['can'], 'choose'>;
+};
 
 /** Date effective de la séance (même résolution que `SeanceList.resolvedDate`). */
 function hasDate(seance: BoxSource): boolean {
@@ -44,7 +48,13 @@ export function seanceSituationBox(
   if (situation === 'je_mene') {
     if (!isMj) return null;
     const poll = seance.poll;
-    if (poll) return poll.status !== 'OPEN' && !hasDate(seance) ? 'reinitialiser_la_date' : null;
+    if (poll) {
+      if (poll.status === 'OPEN') {
+        // Story 54.3 : « Fixer la date… » seulement si le serveur le permet — jamais déduit du rôle.
+        return !hasDate(seance) && seance.can?.choose ? 'fixer_la_date' : null;
+      }
+      return hasDate(seance) ? null : 'reinitialiser_la_date';
+    }
     if (hasDate(seance)) return null; // datée sans vote : sa date et son bouton actuels
     if (episodic && !seance.inscription) return null; // capacité à fixer d'abord
     return 'lancer_le_vote';

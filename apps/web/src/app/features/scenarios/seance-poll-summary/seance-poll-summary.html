@@ -2,4 +2,20 @@
   @for (line of lines(); track $index) {
     <p class="seance-poll-summary__line">{{ line }}</p>
   }
+  @if (isMj()) {
+    <!-- Story 54.3 — les deux actions secondaires du MJ ; « Fixer la date… » n'est que dans l'encadré. -->
+    <div class="seance-poll-summary__actions">
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="busy()"
+        (click)="onCloseClick()"
+      >
+        {{ theme.tone()['common.cloturer_le_vote'] }}
+      </button>
+      <button mat-button type="button" (click)="seeInCalendar.emit()">
+        {{ theme.tone()['scenarios.seance_summary_see_in_calendar'] }}
+      </button>
+    </div>
+  }
 </div>

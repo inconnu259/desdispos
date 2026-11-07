@@ -46,6 +46,8 @@ interface CreateOptions {
   mode?: 'mj' | 'personal';
   partieId?: string;
   queryParams?: Record<string, string>;
+  /** Story 52.5 — la chaîne de requête DÉJÀ dans l'adresse au montage (le paramètre lu puis retiré par `ngOnInit`). */
+  initialQuery?: string;
   scenarios?: any[];
   availabilitySvc?: ReturnType<typeof makeAvailabilityService>;
   authSvc?: ReturnType<typeof makeAuthService>;
@@ -313,6 +315,7 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
   // router.navigate() dans ngOnInit) — on espionne juste back() plutôt que de le remplacer.
   const location = TestBed.inject(Location);
   vi.spyOn(location, 'back').mockImplementation(() => {});
+  if (opts.initialQuery) location.replaceState('/profile/calendar', opts.initialQuery);
 
   const fixture = TestBed.createComponent(CalendarView);
   if (opts.mode) fixture.componentRef.setInput('mode', opts.mode);
@@ -9916,5 +9919,87 @@ describe('CalendarView — un tap suffit en mode déclaration (Story 52.3)', () 
     month['selectedCells'].set([{ date: new Date(2030, 0, 10), slot: 'EVENING' }]);
     month['onOtherRequested']();
     expect(comp.interaction()).toBe('declaration');
+  });
+});
+
+describe('CalendarView — ?declarer=1 ouvre le mode déclaration (Story 52.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('?declarer=1 : vue Mois, mode déclaration allumé, paramètre retiré de l’adresse', async () => {
+    const { fixture, location } = await createCalendarView({
+      mode: 'personal',
+      desktop: false,
+      queryParams: { declarer: '1' },
+      initialQuery: 'declarer=1',
+    });
+    const comp = fixture.componentInstance as any;
+
+    expect(comp.view()).toBe('month');
+    expect(comp.interaction()).toBe('declaration');
+    expect(location.path()).not.toContain('declarer');
+  });
+
+  it('un rechargement sans le paramètre ne rallume pas le mode', async () => {
+    const { fixture } = await createCalendarView({ mode: 'personal' });
+    expect((fixture.componentInstance as any).interaction()).toBe('lecture');
+  });
+
+  it('une autre valeur que 1 : le paramètre est retiré, le mode reste éteint', async () => {
+    const { fixture, location } = await createCalendarView({
+      mode: 'personal',
+      queryParams: { declarer: '0' },
+      initialQuery: 'declarer=0',
+    });
+    expect((fixture.componentInstance as any).interaction()).toBe('lecture');
+    expect(location.path()).not.toContain('declarer');
+  });
+
+  it('?poll= l’emporte : la Destinée s’ouvre, declarer est seulement retiré', async () => {
+    const { fixture, location } = await createCalendarView({
+      mode: 'personal',
+      queryParams: { declarer: '1', poll: 'poll9' },
+      initialQuery: 'declarer=1&poll=poll9',
+      openPolls: [openPollEntry({ pollId: 'poll9' })],
+    });
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+    const comp = fixture.componentInstance as any;
+
+    expect(comp.interaction()).toBe('destinee');
+    expect(comp.destinyPollId()).toBe('poll9');
+    expect(location.path()).not.toContain('declarer');
+    expect(location.path()).toContain('poll=poll9');
+  });
+
+  it('le bandeau d’aide du mode est affiché à l’arrivée', async () => {
+    const { fixture } = await createCalendarView({
+      mode: 'personal',
+      queryParams: { declarer: '1' },
+      initialQuery: 'declarer=1',
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.declare-banner')).not.toBeNull();
+  });
+});
+
+describe('CalendarView — declarer ne revient pas par la navigation de plage (Story 52.5)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    TestBed.resetTestingModule();
+  });
+
+  it('les navigations qui fusionnent les paramètres retirent explicitement declarer (sinon un rechargement le rallume)', async () => {
+    const navigate = vi.spyOn(Router.prototype, 'navigate');
+    await createCalendarView({ mode: 'mj', partieId: 'partie-1', queryParams: { declarer: '1' } });
+
+    const merged = navigate.mock.calls.filter(
+      ([, extras]) => (extras as { queryParamsHandling?: string } | undefined)?.queryParamsHandling === 'merge',
+    );
+    expect(merged.length).toBeGreaterThan(0);
+    for (const [, extras] of merged) {
+      expect((extras as { queryParams: Record<string, unknown> }).queryParams['declarer']).toBeNull();
+    }
   });
 });

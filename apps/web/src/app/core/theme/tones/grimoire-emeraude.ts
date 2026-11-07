@@ -412,6 +412,9 @@ export const grimoireEmeraude = {
 
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */
+  // Story 52.5 — le rappel « Dispos à déclarer » en tête du tableau de bord (titre identique dans les trois thèmes).
+  'dashboard.reminder_title': 'Dispos à déclarer',
+  'dashboard.reminder_body': 'Rien n’est inscrit à votre almanach pour les quatre semaines à venir.',
   'dashboard.title_invitations': 'Missives reçues',
   'dashboard.empty': 'Nulle quête en cours. Forgez la première…',
   'dashboard.role_prefix': 'Rang :',

@@ -13,6 +13,7 @@ import { AnnouncementsService } from '../announcements/announcements.service';
 import { CharacterRolesService } from '../character-roles/character-roles.service';
 import { PartySignalsService } from '../parties/party-signals.service';
 import { BoardGamesService } from '../board-games/board-games.service';
+import { AvailabilityReminderService } from '../availability/availability-reminder.service';
 
 export function partieTopic(partieId: string): string {
   return `partie:${partieId}`;
@@ -62,6 +63,7 @@ export class RealtimeService {
   private readonly characterRoles = inject(CharacterRolesService);
   private readonly partySignals = inject(PartySignalsService);
   private readonly boardGames = inject(BoardGamesService);
+  private readonly availabilityReminder = inject(AvailabilityReminderService);
 
   // Table de correspondance topic-prefix -> services à notifier (AD-3), câblée ici, dans
   // RealtimeService lui-même (jamais par le composant appelant connect()/disconnect()) —
@@ -107,6 +109,9 @@ export class RealtimeService {
     // le canal 'user:{id}' est déjà ouvert pour l'utilisateur courant, aucune connexion
     // supplémentaire par Partie (même discipline que `myParties` ci-dessus).
     { prefix: 'user:', notifyChanged: () => this.partySignals.notifyChanged() },
+    // Story 52.5 (AD-5) : le rappel « Dispos à déclarer » se relit sur `user:{id}` SEUL — toute écriture de déclaration,
+    // tout changement de la préférence et toute acceptation d'invitation y préviennent ; jamais `partie:`.
+    { prefix: 'user:', notifyChanged: () => this.availabilityReminder.notifyChanged() },
     // Deferred-work (SSE, calendrier personnel) : RÉUTILISE `notifyRealtimeChanged()`, déjà câblée
     // ci-dessus sur 'partie:' — elle ignore déjà quel partieId a changé (REALTIME_WILDCARD), donc
     // convient telle quelle à un événement 'user:{id}' qui agrège plusieurs Parties. CalendarView

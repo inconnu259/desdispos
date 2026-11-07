@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, type WritableSignal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { provideRouter } from '@angular/router';
@@ -18,6 +18,7 @@ import { MyPartiesService } from '../../core/my-parties/my-parties.service';
 import { InvitationsService } from '../../core/invitations/invitations.service';
 import { OpenPollsService } from '../../core/poll/open-polls.service';
 import { PartySignalsService } from '../../core/parties/party-signals.service';
+import { AvailabilityReminderService } from '../../core/availability/availability-reminder.service';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountService } from '../../core/account/account.service';
@@ -102,6 +103,11 @@ function makeAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
   };
 }
 
+/** Story 52.5 : le rappel « Dispos à déclarer » — `show` est réglé par le test, `refresh` espionné. */
+function makeReminderService(show = false) {
+  return { show: signal(show), refresh: vi.fn().mockResolvedValue(undefined) };
+}
+
 function makeAccountService() {
   return {
     updatePreferences: vi.fn().mockResolvedValue(undefined),
@@ -117,6 +123,7 @@ async function createFixture(
   partySignals = new Map<string, PartySignalsDto>(),
   authUserOverrides: Partial<AuthUser> = {},
   accountSvc = makeAccountService(),
+  reminderSvc = makeReminderService(),
 ) {
   // Story 21.1 (Task 4) : Dashboard ouvre désormais sa propre connexion RealtimeService — mock
   // direct, jsdom n'implémente pas EventSource.
@@ -139,6 +146,7 @@ async function createFixture(
       { provide: InvitationsService, useValue: invitationsSvc },
       { provide: OpenPollsService, useValue: { openPolls: signal(openPolls) } },
       { provide: PartySignalsService, useValue: { signals: signal(partySignals) } },
+      { provide: AvailabilityReminderService, useValue: reminderSvc },
       {
         provide: ThemeToneService,
         // `activeTheme` est requis depuis la Story 29.10 : `PartyBanner` le lit pour choisir le
@@ -161,7 +169,7 @@ async function createFixture(
   }
   await fixture.whenStable();
   fixture.detectChanges();
-  return { fixture, invitationsSvc, realtimeSvc, authSvc, myPartiesSvc, accountSvc, dialog };
+  return { fixture, invitationsSvc, realtimeSvc, authSvc, myPartiesSvc, accountSvc, dialog, reminderSvc };
 }
 
 describe('Dashboard — liste unifiée (Story 29.1, AC1)', () => {
@@ -2354,5 +2362,109 @@ describe('Dashboard — icônes du jeu de thème (Story 51.2)', () => {
     expect(after.favorite).not.toBe(before.favorite);
     expect(after.valider).toBe(before.valider);
     expect(after.filtres).toBe(before.filtres);
+  });
+});
+
+describe('Dashboard — le rappel « Dispos à déclarer » (Story 52.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const banner = (fixture: { nativeElement: HTMLElement }) =>
+    fixture.nativeElement.querySelector('.reminder-banner') as HTMLElement | null;
+
+  async function withReminder(show: boolean, invitations = makeInvitationsService()) {
+    const made = await createFixture(
+      new Map(),
+      invitations,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      makeReminderService(show),
+    );
+    return made;
+  }
+
+  it('la lecture du rappel part à l’ouverture du tableau de bord', async () => {
+    const { reminderSvc } = await withReminder(false);
+    expect(reminderSvc.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('aucun bandeau quand le serveur ne demande rien (ni pendant le chargement)', async () => {
+    const { fixture } = await withReminder(false);
+    expect(banner(fixture)).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain(GRIMOIRE_TONE['dashboard.reminder_title']);
+  });
+
+  it('un seul bandeau, en tête de page : avant les invitations reçues et les cartes', async () => {
+    const invitations = makeInvitationsService();
+    invitations.listReceived.mockResolvedValue([
+      {
+        id: 'inv1',
+        partie: { id: 'p9', name: 'La Compagnie', kind: 'CAMPAGNE_LINEAIRE', gameSystemId: 'ryuutama' },
+        inviterPseudo: 'mj',
+      },
+    ]);
+    const { fixture } = await withReminder(true, invitations);
+
+    expect(fixture.nativeElement.querySelectorAll('.reminder-banner')).toHaveLength(1);
+    const root = fixture.nativeElement as HTMLElement;
+    // Le bandeau est le PREMIER élément de la page, avant les invitations reçues et les listes.
+    expect(root.firstElementChild).toBe(banner(fixture));
+    const tile = root.querySelector('.tile') as HTMLElement;
+    expect(
+      banner(fixture)!.compareDocumentPosition(tile) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // Jamais une pastille par carte.
+    expect(root.querySelectorAll('.tile .reminder-banner')).toHaveLength(0);
+  });
+
+  it('le bandeau est une région nommée par son titre, qui est identique dans les trois thèmes', async () => {
+    const { fixture } = await withReminder(true);
+    const region = banner(fixture)!;
+    expect(region.tagName).toBe('SECTION');
+    const titleId = region.getAttribute('aria-labelledby')!;
+    const title = fixture.nativeElement.querySelector('#' + titleId) as HTMLElement;
+    expect(title.textContent!.trim()).toBe('Dispos à déclarer');
+    for (const id of ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const) {
+      expect(TONE_MAP[id]['dashboard.reminder_title']).toBe('Dispos à déclarer');
+    }
+  });
+
+  it('la phrase suit la voix du thème', async () => {
+    const { fixture } = await withReminder(true);
+    const tone = TestBed.inject(ThemeToneService).tone as unknown as WritableSignal<
+      (typeof TONE_MAP)[keyof typeof TONE_MAP]
+    >;
+    for (const id of ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const) {
+      tone.set(TONE_MAP[id]);
+      fixture.detectChanges();
+      expect(banner(fixture)!.textContent).toContain(TONE_MAP[id]['dashboard.reminder_body']);
+    }
+    expect(TONE_MAP['grimoire-emeraude']['dashboard.reminder_body']).toContain('almanach');
+    expect(TONE_MAP['foret-ancienne']['dashboard.reminder_body']).toContain('lunaire');
+    expect(TONE_MAP['atelier-cuivre']['dashboard.reminder_body']).toContain('registre horaire');
+    tone.set(TONE_MAP['grimoire-emeraude']);
+  });
+
+  it('l’action « Déclarer mes dispos » ouvre le calendrier personnel en mode déclaration (?declarer=1)', async () => {
+    const { fixture } = await withReminder(true);
+    const action = banner(fixture)!.querySelector('a.reminder-banner__action') as HTMLAnchorElement;
+    expect(action.textContent!.trim()).toBe('Déclarer mes dispos');
+    const href = action.getAttribute('href')!;
+    expect(href).toContain('/profile/calendar');
+    expect(new URL(href, 'http://x').searchParams.get('declarer')).toBe('1');
+  });
+
+  it('le bandeau disparaît sans recharger quand le rappel passe à faux, et revient quand il repasse à vrai', async () => {
+    const { fixture, reminderSvc } = await withReminder(true);
+    expect(banner(fixture)).not.toBeNull();
+
+    reminderSvc.show.set(false);
+    fixture.detectChanges();
+    expect(banner(fixture)).toBeNull();
+
+    reminderSvc.show.set(true);
+    fixture.detectChanges();
+    expect(banner(fixture)).not.toBeNull();
   });
 });

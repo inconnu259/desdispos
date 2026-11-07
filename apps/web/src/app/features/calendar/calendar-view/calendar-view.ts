@@ -3484,6 +3484,19 @@ export class CalendarView implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((id) => void this.loadForPartieId(id));
+
+    // ⚠️ Story 52.5 (AD-7) — `?declarer=1` (le rappel du tableau de bord) ouvre le calendrier en MODE DÉCLARATION, en vue
+    // Mois. Lu ICI, une seule fois, APRÈS l'abonnement ci-dessus (dont le premier `loadForPartieId` repasse en
+    // `lecture`) ; puis aussitôt retiré de l'adresse, si bien qu'un rechargement ou un retour arrière ne rallume pas le
+    // mode. Si `?poll=` est présent aussi, la Destinée l'emporte et `declarer` est seulement retiré.
+    const declarerParam = this.route.snapshot.queryParamMap.get('declarer');
+    if (declarerParam !== null) {
+      this.writeQuery((params) => params.delete('declarer'));
+      if (declarerParam === '1' && !pollParam) {
+        this.onViewChange('month');
+        this.setInteraction('declaration');
+      }
+    }
   }
 
   private async loadForPartieId(id: string | null): Promise<void> {
@@ -3549,7 +3562,7 @@ export class CalendarView implements OnInit {
       await Promise.all([
         this.router.navigate([], {
           relativeTo: this.route,
-          queryParams: { from: this.fromDateStr(), to: this.toDateStr() },
+          queryParams: { from: this.fromDateStr(), to: this.toDateStr(), declarer: null },
           queryParamsHandling: 'merge',
           replaceUrl: true,
         }),
@@ -4252,7 +4265,7 @@ export class CalendarView implements OnInit {
     this.slotsError.set(null);
     await this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { from, to, weeks: null },
+      queryParams: { from, to, weeks: null, declarer: null },
       queryParamsHandling: 'merge',
     });
     // Revue de code Story 29.4 : même piège que ngOnInit — cette navigation interne vide le

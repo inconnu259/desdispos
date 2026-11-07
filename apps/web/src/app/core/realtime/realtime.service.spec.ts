@@ -13,6 +13,7 @@ import { MyPartiesService } from '../my-parties/my-parties.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { CharacterRolesService } from '../character-roles/character-roles.service';
 import { PartySignalsService } from '../parties/party-signals.service';
+import { AvailabilityReminderService } from '../availability/availability-reminder.service';
 import { BoardGamesService } from '../board-games/board-games.service';
 import { RealtimeService, matchingHandlers, partieTopic, userTopic } from './realtime.service';
 
@@ -94,6 +95,7 @@ describe('RealtimeService', () => {
   let characterRolesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let partySignalsSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let boardGamesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
+  let availabilityReminderSvc: { notifyChanged: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     originalEventSource = (globalThis as any).EventSource;
@@ -128,6 +130,8 @@ describe('RealtimeService', () => {
     partySignalsSvc = { notifyChanged: vi.fn() };
     // Story 48.1 : BoardGamesService ajoutée au préfixe 'user:' SEUL.
     boardGamesSvc = { notifyChanged: vi.fn() };
+    // Story 52.5 : AvailabilityReminderService ajoutée au préfixe 'user:' SEUL (AD-5).
+    availabilityReminderSvc = { notifyChanged: vi.fn() };
     // RealtimeService injecte désormais PartiesService (Story 18.3, Task 4) — PartiesService
     // injecte lui-même HttpClient, jamais fourni par ce module de test isolé. Mock direct : ce
     // test ne porte pas sur les appels HTTP de PartiesService.
@@ -145,6 +149,7 @@ describe('RealtimeService', () => {
         { provide: CharacterRolesService, useValue: characterRolesSvc },
         { provide: PartySignalsService, useValue: partySignalsSvc },
         { provide: BoardGamesService, useValue: boardGamesSvc },
+        { provide: AvailabilityReminderService, useValue: availabilityReminderSvc },
       ],
     });
     service = TestBed.inject(RealtimeService);
@@ -305,6 +310,22 @@ describe('RealtimeService', () => {
     FakeEventSource.instances[0].emit('open');
 
     expect(partySignalsSvc.notifyChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("Story 52.5 : le rappel « Dispos à déclarer » se relit sur 'user:' (déclaration, préférence, invitation)", () => {
+    service.connect(userTopic('u1'));
+
+    FakeEventSource.instances[0].emit('open');
+
+    expect(availabilityReminderSvc.notifyChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("un topic 'partie:' ne déclenche JAMAIS le rappel des dispos (préfixe 'user:' seul)", () => {
+    service.connect(partieTopic('p1'));
+
+    FakeEventSource.instances[0].emit('open');
+
+    expect(availabilityReminderSvc.notifyChanged).not.toHaveBeenCalled();
   });
 
   it("un topic 'partie:' ne déclenche PAS notifyChanged() sur PartySignalsService (préfixe 'user:' seul, AD-14)", () => {

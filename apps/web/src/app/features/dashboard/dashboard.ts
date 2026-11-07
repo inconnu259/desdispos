@@ -42,6 +42,7 @@ import { MyPartiesService } from '../../core/my-parties/my-parties.service';
 import { InvitationsService } from '../../core/invitations/invitations.service';
 import { OpenPollsService } from '../../core/poll/open-polls.service';
 import { PartySignalsService } from '../../core/parties/party-signals.service';
+import { AvailabilityReminderService } from '../../core/availability/availability-reminder.service';
 import {
   dominantCategory,
   dominantSignal,
@@ -116,6 +117,8 @@ export class Dashboard implements OnInit {
   private readonly invitations = inject(InvitationsService);
   private readonly openPollsSvc = inject(OpenPollsService);
   private readonly partySignalsSvc = inject(PartySignalsService);
+  /** Story 52.5 (AD-5) : le rappel « Dispos à déclarer » — la règle est côté serveur, le tableau de bord ne fait que l'afficher. */
+  protected readonly reminder = inject(AvailabilityReminderService);
   protected readonly theme = inject(ThemeToneService);
   private readonly auth = inject(AuthService);
   private readonly account = inject(AccountService);
@@ -594,6 +597,8 @@ export class Dashboard implements OnInit {
       this.realtime.connect(userTopic(id));
       this.destroyRef.onDestroy(() => this.realtime.disconnect(userTopic(id)));
     }
+    // Story 52.5 : le rappel est lu à l’ouverture ; il se relit ensuite sur `user:{id}` (RealtimeService).
+    void this.reminder.refresh();
     await this.loadInvitations();
   }
 

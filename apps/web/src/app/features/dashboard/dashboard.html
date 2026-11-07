@@ -1,3 +1,23 @@
+<!-- Story 52.5 (AD-5) — LE rappel « Dispos à déclarer » : un seul bandeau en tête de page, avant les invitations et les
+     listes, jamais une pastille par carte. La règle est entièrement côté serveur ; rien ne s'affiche pendant le
+     chargement ni si la lecture échoue. Le patron est celui du bandeau de la Destinée (`.calendar-notice`). -->
+@if (reminder.show()) {
+  <section class="reminder-banner" aria-labelledby="reminder-banner-title">
+    <h2 id="reminder-banner-title" class="reminder-banner__title">
+      {{ theme.tone()['dashboard.reminder_title'] }}
+    </h2>
+    <p class="reminder-banner__body">{{ theme.tone()['dashboard.reminder_body'] }}</p>
+    <a
+      mat-flat-button
+      class="reminder-banner__action"
+      routerLink="/profile/calendar"
+      [queryParams]="{ declarer: 1 }"
+    >
+      {{ theme.tone()['calendar.declare_btn'] }}
+    </a>
+  </section>
+}
+
 @if (received().length > 0) {
   <h2>{{ theme.tone()['dashboard.title_invitations'] }}</h2>
   <div class="grid">

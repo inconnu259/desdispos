@@ -405,6 +405,9 @@ export const foretAncienne: Record<ToneKey, string> = {
 
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */
+  // Story 52.5 — le rappel « Dispos à déclarer » en tête du tableau de bord (titre identique dans les trois thèmes).
+  'dashboard.reminder_title': 'Dispos à déclarer',
+  'dashboard.reminder_body': 'Rien n’est noté dans ton calendrier lunaire pour les quatre semaines à venir.',
   'dashboard.title_invitations': 'Appels de la forêt',
   'dashboard.empty': 'Aucune clairière ouverte. Plante le premier feu…',
   'dashboard.role_prefix': 'Voie :',

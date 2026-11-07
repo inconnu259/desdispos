@@ -409,6 +409,9 @@ export const atelierCuivre: Record<ToneKey, string> = {
 
   /* ═══ Tableau de bord ═══ */
   /* — tableau de bord — */
+  // Story 52.5 — le rappel « Dispos à déclarer » en tête du tableau de bord (titre identique dans les trois thèmes).
+  'dashboard.reminder_title': 'Dispos à déclarer',
+  'dashboard.reminder_body': 'Aucune disponibilité au registre horaire pour les quatre semaines à venir.',
   'dashboard.title_invitations': 'Transmissions reçues',
   'dashboard.empty': 'Aucune manufacture active. Lancez la première…',
   'dashboard.role_prefix': 'Poste :',

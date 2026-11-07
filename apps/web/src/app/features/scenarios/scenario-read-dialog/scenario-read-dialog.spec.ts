@@ -12,6 +12,7 @@ import type {
   PartieKind,
   ScenarioDto,
   SeanceDto,
+  SessionPollDto,
 } from '@master-jdr/shared';
 import { ScenarioReadDialog, type ScenarioReadDialogData } from './scenario-read-dialog';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -96,7 +97,7 @@ async function createComponent(
   };
   const authSvc = { currentUser: () => ({ id: currentUserId }) };
   const pollSvc = { chooseDate: vi.fn(), closePoll: vi.fn() };
-  const router = { navigate: vi.fn() };
+  const router = { navigate: vi.fn(), navigateByUrl: vi.fn() };
   const characterSvc = {
     getNotes: vi.fn().mockResolvedValue(ownNotes),
     setJournalAutoAssociate: vi.fn(),
@@ -1039,5 +1040,112 @@ describe('ScenarioReadDialog — « Ma situation » (Story 53.3)', () => {
   it('joueur sur le même chapitre PASSE → la pastille du joueur (« J’y étais »)', async () => {
     const { fixture } = await createComponent(PASSE_AVEC_SEANCES, { isMj: false });
     expect(pills(fixture)).toEqual(['J’y étais', 'J’y étais']);
+  });
+});
+
+// Story 54.1 ⚠️ — les séances viennent en premier dans la fiche de lecture ; « Voter dans le calendrier »
+// ferme la fenêtre avant de naviguer ; le MJ n'y reçoit jamais d'encadré.
+describe('ScenarioReadDialog — séances en tête (Story 54.1)', () => {
+  const OPEN_POLL: SessionPollDto = {
+    id: 'poll1',
+    partieId: 'p1',
+    status: 'OPEN',
+    scenarioRef: null,
+    expiresAt: null,
+    chosenDate: null,
+    chosenSlot: null,
+    membersCount: 4,
+    durationSlots: 1,
+    options: [{ id: 'o1', date: '2099-01-01T00:00:00.000Z', slot: 'EVENING', votes: [] }],
+  };
+  const SEANCE: SeanceDto = {
+    id: 'seance1',
+    scenarioId: 's1',
+    dateValidee: null,
+    slotValidee: null,
+    compteRendu: null,
+    heureRdv: null,
+    lieu: null,
+    notePratique: null,
+    createdAt: '2026-07-12T00:00:00.000Z',
+    durationSlots: 1,
+    endDate: null,
+    endSlot: null,
+    can: { propose: false, edit: false, choose: false, extend: false },
+    poll: OPEN_POLL,
+  };
+
+  function before(a: Element | null, b: Element | null): boolean {
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+    return Boolean(a!.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }
+
+  it('chapitre courant : badge → séances → description → durées', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'COURANT', dureeSeances: 3, seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const el = fixture.nativeElement as HTMLElement;
+    const badge = el.querySelector('app-scenario-status-badge');
+    const list = el.querySelector('app-seance-list');
+    const description = el.querySelector('.description');
+    const durations = el.querySelector('.durations');
+    expect(before(badge, list)).toBe(true);
+    expect(before(list, description)).toBe(true);
+    expect(before(description, durations)).toBe(true);
+  });
+
+  it('chapitre passé : séances avant le résumé de fin', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'PASSE', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const el = fixture.nativeElement as HTMLElement;
+    expect(before(el.querySelector('app-seance-list'), el.querySelector('.resume'))).toBe(true);
+  });
+
+  it('chapitre « à venir » restreint : note, séances juste après le titre, aucune description', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'A_VENIR', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.description')).toBeNull();
+    expect(
+      before(el.querySelector('.a-venir-note'), el.querySelector('app-seance-list')),
+    ).toBe(true);
+    expect(el.querySelector('app-scenario-status-badge')).toBeNull();
+  });
+
+  it('« Voter dans le calendrier » ferme la fenêtre AVANT de naviguer vers la Destinée', async () => {
+    const { fixture, dialogRef, router } = await createComponent(
+      { ...BASE, status: 'COURANT', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const order: string[] = [];
+    dialogRef.close.mockImplementation(() => order.push('close'));
+    router.navigateByUrl.mockImplementation(() => {
+      order.push('navigate');
+      return Promise.resolve(true);
+    });
+    const btn = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).find((b) => b.textContent?.trim() === 'Voter dans le calendrier');
+    expect(btn).toBeTruthy();
+    btn!.click();
+    expect(order).toEqual(['close', 'navigate']);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/guild-calendar?poll=poll1');
+  });
+
+  it('le MJ qui lit un chapitre n’y reçoit aucun encadré de joueur', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'COURANT', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE', isMj: true },
+    );
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.situation-pill')?.textContent?.trim()).toBe(
+      'Je mène',
+    );
   });
 });

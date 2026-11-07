@@ -29,6 +29,11 @@ import { composeSeanceInfo, toDateKey } from '../../calendar/day-detail.utils';
 import { PollStatusPanel } from '../../poll/poll-status/poll-status';
 import { PollResponseComponent } from '../../poll/poll-response/poll-response';
 import { FillIndicator } from '../fill-indicator/fill-indicator';
+import { SeanceSituationComponent } from '../seance-situation/seance-situation';
+import {
+  seanceSituationBox,
+  type SeanceSituationBox,
+} from '../seance-situation/seance-situation-box';
 import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 import { SituationLine } from '../../../shared/situation-line/situation-line';
@@ -70,6 +75,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
     FillIndicator,
     StatusBadge,
     SituationLine,
+    SeanceSituationComponent,
   ],
   templateUrl: './seance-list.html',
   styleUrl: './seance-list.scss',
@@ -98,6 +104,9 @@ export class SeanceList {
   readonly members = input<PartieMemberDto[]>([]);
 
   readonly seanceLinked = output<ScenarioDto>();
+  /** Story 54.1 — la fiche va quitter la page (« Voter dans le calendrier ») : l'hôte, s'il est une
+   *  fenêtre, doit se fermer AVANT la navigation, comme `ScenarioReadDialog.editResume()`. */
+  readonly leaving = output<void>();
 
   constructor() {
     // Story 19.1 (AC2) : réutilise le signal ScenariosService.changed déjà actif — SeanceList
@@ -217,7 +226,7 @@ export class SeanceList {
    * rendues de part et d'autre de minuit ne compareraient plus au même « aujourd'hui », et
    * l'intensité d'imminence deviendrait incohérente d'une ligne à l'autre.
    */
-  private readonly todayKey = toDateKey(new Date());
+  protected readonly todayKey = toDateKey(new Date());
 
   /**
    * L'état affiché d'une séance — dérivé, jamais servi (AD-20 : aucun champ `status` sur
@@ -242,6 +251,55 @@ export class SeanceList {
       this.currentUserId(),
       this.situationIsMj() ?? this.isMj(),
       this.todayKey,
+    );
+  }
+
+  /**
+   * Story 54.1 — l'encadré d'action de cette séance, ou `null` (la ligne « Ma situation » seule).
+   * Fonction pure `seanceSituationBox()` ; reçoit la valeur de `seanceSituation()` sans la recalculer.
+   * `isMj()` (les contrôles) et non `situationIsMj` : le MJ qui lit un chapitre passé en lecture seule
+   * ne reçoit aucun encadré, ses actions vivant dans `ScenarioEditor`.
+   */
+  protected situationBox(
+    seance: SeanceDto,
+    situation: SeanceSituation | null,
+  ): SeanceSituationBox | null {
+    return seanceSituationBox(
+      seance,
+      situation,
+      this.isMj(),
+      this.currentUserId(),
+      this.todayKey,
+      this.isEpisodique(),
+    );
+  }
+
+  /** L'action de l'encadré : les mêmes méthodes qu'avant, l'action n'apparaît plus qu'une fois. */
+  protected onBoxAction(seance: SeanceDto, box: SeanceSituationBox): void {
+    switch (box) {
+      case 'voter':
+        if (seance.poll) this.goToCalendarForPoll(seance.poll.id);
+        return;
+      case 'participer':
+        void this.onInscrire(seance.id);
+        return;
+      case 'se_desinscrire':
+        void this.onDesinscrire(seance.id);
+        return;
+      case 'lancer_le_vote':
+        this.goToCalendarForSeance(seance.id);
+        return;
+      case 'reinitialiser_la_date':
+        void this.onResetSeanceDate(seance.id);
+        return;
+    }
+  }
+
+  /** Story 54.1 : ouvre la Destinée sur ce vote (`?poll=`), la fiche se fermant d'abord. */
+  private goToCalendarForPoll(pollId: string): void {
+    this.leaving.emit();
+    void this.router.navigateByUrl(
+      atelierUrl({ partieId: this.partieId(), family: 'jdr', role: 'player' }, { poll: pollId }),
     );
   }
 

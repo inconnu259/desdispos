@@ -677,17 +677,17 @@ describe('SeanceList', () => {
       );
     });
 
-    it('joueur non-inscrit, capacité au max → bouton "S\'inscrire" désactivé (AC4)', async () => {
+    it('joueur non-inscrit, capacité au max → aucun bouton d’inscription, ni encadré (AC4, Story 54.1)', async () => {
       const { fixture } = await createComponent(
         { ...SCENARIO, seances: [SEANCE_AT_MAX] },
         { isMj: false, isEpisodique: true, currentUserId: 'u1' },
       );
-      const btn: HTMLButtonElement = Array.from(
-        fixture.nativeElement.querySelectorAll('button'),
-      ).find((b: any) =>
-        b.textContent.includes(GRIMOIRE_TONE['scenarios.seances_inscrire']),
-      ) as HTMLButtonElement;
-      expect(btn.disabled).toBe(true);
+      // Complète : la ligne « Pas inscrit·e » suffit, plus de bouton grisé.
+      expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain(
+        GRIMOIRE_TONE['scenarios.seances_inscrire'],
+      );
+      expect(fixture.nativeElement.querySelector('.situation-line')).not.toBeNull();
     });
 
     it('joueur, capacité définie + vote OPEN → FillIndicator/inscrire ET app-poll-response, tous deux visibles (Story 8.8, AC2)', async () => {
@@ -1396,9 +1396,14 @@ describe('SeanceList — « Ma situation » (Story 53.3)', () => {
     const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
     expect(situation(fixture)).toEqual({ label: 'Ma situation', pill: 'Vote à faire' });
 
-    // Position : directement après `.seance-row__header` (titre, badge d'état, suppression).
+    // Position : directement après `.seance-row__header` (titre, badge d'état, suppression). Une
+    // action est attendue (voter) : la ligne est portée par l'encadré (Story 54.1), en tête.
     const header = fixture.nativeElement.querySelector('.seance-row__header') as HTMLElement;
-    expect(header.nextElementSibling?.tagName.toLowerCase()).toBe('app-situation-line');
+    const box = header.nextElementSibling as HTMLElement;
+    expect(box.tagName.toLowerCase()).toBe('app-seance-situation');
+    expect(box.querySelector('.seance-situation')?.firstElementChild?.tagName.toLowerCase()).toBe(
+      'app-situation-line',
+    );
     expect(header.querySelector('.situation-line')).toBeNull();
   });
 
@@ -1495,5 +1500,273 @@ describe('SeanceList — situationIsMj (Story 53.3)', () => {
     const fixture = await create({ isMj: true, situationIsMj: false });
     expect(pills(fixture)).toEqual(['J’y étais', 'J’y étais']);
     expect(fixture.nativeElement.querySelector('.seance-row__delete')).toBeTruthy();
+  });
+});
+
+// Story 54.1 ⚠️ — l'encadré de situation : l'action attendue, une seule fois, sous l'en-tête.
+describe('SeanceList — encadré de situation (Story 54.1)', () => {
+  const OPEN: SessionPollDto = {
+    ...POLL,
+    options: [{ id: 'o1', date: isoInDays(10), slot: 'EVENING', votes: [] }],
+  };
+  const VOTE = { userId: 'u1', pseudo: 'u1', displayName: 'u1', answer: 'YES' as const };
+  const CAPACITY = (inscrits: string[], max = 6): SeanceDto['inscription'] => ({
+    min: 2,
+    max,
+    inscrits: inscrits.map((userId) => ({ userId, pseudo: userId })),
+    dateValidee: null,
+  });
+
+  function find(root: HTMLElement, label: string): HTMLButtonElement[] {
+    return Array.from(root.querySelectorAll('button')).filter(
+      (b) => b.textContent?.trim() === label,
+    ) as HTMLButtonElement[];
+  }
+
+  it('joueur, vote à faire : en-tête puis encadré ; ligne et encadré jamais ensemble', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    const row = fixture.nativeElement.querySelector('.seance-row') as HTMLElement;
+    const tags = Array.from(row.children).map((c) => c.tagName.toLowerCase());
+    expect(tags[0]).toBe('div');
+    expect(tags[1]).toBe('app-seance-situation');
+    expect(row.querySelectorAll('.situation-line')).toHaveLength(1);
+    expect(row.querySelector('.seance-situation .situation-line')).not.toBeNull();
+    expect(row.querySelector('.seance-situation__text')?.textContent?.trim()).toBe(
+      GRIMOIRE_TONE['scenarios.seance_situation_vote_open_no_deadline'],
+    );
+  });
+
+  it('joueur, « Voter dans le calendrier » : la fiche se ferme AVANT la navigation vers guild-calendar?poll=', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN };
+    const { fixture, router } = await createComponent({ ...SCENARIO, seances: [seance] });
+    const order: string[] = [];
+    fixture.componentInstance.leaving.subscribe(() => order.push('leaving'));
+    router.navigateByUrl.mockImplementation(() => {
+      order.push('navigate');
+      return Promise.resolve(true);
+    });
+    const [btn] = find(fixture.nativeElement, 'Voter dans le calendrier');
+    btn.click();
+    expect(order).toEqual(['leaving', 'navigate']);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/guild-calendar?poll=poll1');
+  });
+
+  it('joueur, échéance passée → la ligne seule, aucun encadré', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      poll: { ...OPEN, expiresAt: isoInDays(-3) },
+    };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.situation-line')).toHaveLength(1);
+  });
+
+  it('joueur, inscription : « Inscrire mon nom » une seule fois, appelle inscrire', async () => {
+    const free: SeanceDto = { ...SEANCE_NO_POLL, inscription: CAPACITY(['u2']) };
+    const { fixture, scenariosSvc } = await createComponent(
+      { ...SCENARIO, seances: [free] },
+      { isEpisodique: true, currentUserId: 'u1' },
+    );
+    const inscrire = find(fixture.nativeElement, GRIMOIRE_TONE['scenarios.seances_inscrire']);
+    expect(inscrire).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.seance-situation__text')?.textContent).toContain(
+      GRIMOIRE_TONE['scenarios.seance_situation_not_registered'],
+    );
+    scenariosSvc.inscrire.mockResolvedValue({ ...SCENARIO, seances: [free] });
+    inscrire[0].click();
+    expect(scenariosSvc.inscrire).toHaveBeenCalledWith('seance1');
+  });
+
+  it('joueur inscrit : « Retirer mon nom » une seule fois, appelle desinscrire', async () => {
+    const registered: SeanceDto = { ...SEANCE_NO_POLL, inscription: CAPACITY(['u1']) };
+    const { fixture, scenariosSvc } = await createComponent(
+      { ...SCENARIO, seances: [registered] },
+      { isEpisodique: true, currentUserId: 'u1' },
+    );
+    const retirer = find(fixture.nativeElement, GRIMOIRE_TONE['scenarios.seances_desinscrire']);
+    expect(retirer).toHaveLength(1);
+    scenariosSvc.desinscrire.mockResolvedValue({ ...SCENARIO, seances: [registered] });
+    retirer[0].click();
+    expect(scenariosSvc.desinscrire).toHaveBeenCalledWith('seance1');
+  });
+
+  it('joueur, inscription ET vote ouvert, vote à faire → « Voter », même inscrit ou non', async () => {
+    const pending: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN, inscription: CAPACITY(['u2']) };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [pending] },
+      { isEpisodique: true, currentUserId: 'u1' },
+    );
+    expect(find(fixture.nativeElement, 'Voter dans le calendrier')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelectorAll('.situation-line')).toHaveLength(1);
+  });
+
+  it('joueur, inscription ET vote ouvert, vote répondu → l’inscription décide', async () => {
+    const answered: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      poll: { ...OPEN, options: OPEN.options.map((o) => ({ ...o, votes: [VOTE] })) },
+      inscription: CAPACITY(['u2']),
+    };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [answered] },
+      { isEpisodique: true, currentUserId: 'u1' },
+    );
+    expect(find(fixture.nativeElement, 'Voter dans le calendrier')).toHaveLength(0);
+    expect(
+      find(fixture.nativeElement, GRIMOIRE_TONE['scenarios.seances_inscrire']),
+    ).toHaveLength(1);
+  });
+
+  it('joueur, vote clos sans date : le message reste en ligne, sans encadré', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: { ...OPEN, status: 'CLOSED' } };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(
+      GRIMOIRE_TONE['common.vote_cloture_sans_date_retenue'],
+    );
+  });
+
+  it('MJ, sans date ni vote : « Lancer le vote » une seule fois, avec l’icône vote, ouvre ?seanceId=', async () => {
+    const { fixture, router } = await createComponent(
+      { ...SCENARIO, seances: [SEANCE_NO_POLL] },
+      { isMj: true },
+    );
+    const found = find(fixture.nativeElement, GRIMOIRE_TONE['common.lancer_le_vote']);
+    expect(found).toHaveLength(1);
+    expect(found[0].querySelector('app-icon[data-icon="vote"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.seance-situation--mj')).not.toBeNull();
+    found[0].click();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/calendar?seanceId=seance1');
+  });
+
+  it('MJ, épisodique : capacité fixée → « Lancer le vote » dans l’encadré', async () => {
+    const withCapacity: SeanceDto = { ...SEANCE_NO_POLL, inscription: CAPACITY([], 6) };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [withCapacity] },
+      { isMj: true, isEpisodique: true },
+    );
+    expect(find(fixture.nativeElement, GRIMOIRE_TONE['common.lancer_le_vote'])).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).not.toBeNull();
+  });
+
+  it('MJ, épisodique sans capacité : formulaire de capacité seul, aucun encadré', async () => {
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [SEANCE_NO_POLL] },
+      { isMj: true, isEpisodique: true },
+    );
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.capacity-form')).not.toBeNull();
+  });
+
+  it('MJ, vote clos sans date : message et « Effacer la date » une seule fois, confirmation puis resetSeanceDate', async () => {
+    const closed: SeanceDto = { ...SEANCE_NO_POLL, poll: { ...OPEN, status: 'CLOSED' } };
+    const { fixture, scenariosSvc } = await createComponent(
+      { ...SCENARIO, seances: [closed] },
+      { isMj: true },
+    );
+    const text = GRIMOIRE_TONE['common.vote_cloture_sans_date_retenue'];
+    expect(fixture.nativeElement.textContent.split(text).length - 1).toBe(1);
+    const reset = find(fixture.nativeElement, GRIMOIRE_TONE['common.reinitialiser_la_date']);
+    expect(reset).toHaveLength(1);
+    scenariosSvc.resetSeanceDate.mockResolvedValue({ ...SCENARIO, seances: [SEANCE_NO_POLL] });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    reset[0].click();
+    expect(confirm).toHaveBeenCalled();
+    expect(scenariosSvc.resetSeanceDate).toHaveBeenCalledWith('seance1');
+    confirm.mockRestore();
+  });
+
+  it('MJ, vote ouvert : aucun encadré, la liste actuelle reste (jusqu’à la Story 54.3)', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] }, { isMj: true });
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-poll-status')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.situation-line')).toHaveLength(1);
+  });
+
+  it('MJ en lecture seule (isMj faux, situationIsMj vrai) : aucun encadré, « Je mène » en ligne', async () => {
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [SEANCE_NO_POLL] });
+    fixture.componentRef.setInput('situationIsMj', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.situation-pill')?.textContent?.trim()).toBe(
+      'Je mène',
+    );
+  });
+
+  it('pendant une écriture, le bouton de l’encadré est désactivé', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, inscription: CAPACITY(['u2']) };
+    const { fixture, scenariosSvc } = await createComponent(
+      { ...SCENARIO, seances: [seance] },
+      { isEpisodique: true },
+    );
+    scenariosSvc.inscrire.mockReturnValue(new Promise(() => undefined));
+    const label = GRIMOIRE_TONE['scenarios.seances_inscrire'];
+    find(fixture.nativeElement, label)[0].click();
+    fixture.detectChanges();
+    expect(find(fixture.nativeElement, label)[0].disabled).toBe(true);
+  });
+
+  it('temps réel : une réponse reçue après un changed() fait disparaître l’encadré', async () => {
+    const pending: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN };
+    const answered: SeanceDto = {
+      ...pending,
+      poll: { ...OPEN, options: OPEN.options.map((o) => ({ ...o, votes: [VOTE] })) },
+    };
+    const { fixture, scenariosSvc } = await createComponent({ ...SCENARIO, seances: [pending] });
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).not.toBeNull();
+
+    scenariosSvc.listAll.mockResolvedValue([{ ...SCENARIO, seances: [answered] }]);
+    fixture.componentInstance.seanceLinked.subscribe((s) => {
+      fixture.componentRef.setInput('scenario', s);
+    });
+    scenariosSvc.changed.set({ partieId: 'p1' });
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.situation-pill')?.textContent?.trim()).toBe(
+      'J’ai voté',
+    );
+  });
+});
+
+// Story 54.1 (revue) — deux cas limites trouvés par les relecteurs.
+describe('SeanceList — encadré de situation, cas limites (Story 54.1, revue)', () => {
+  const CLOSED_POLL: SessionPollDto = { ...POLL, status: 'CLOSED' };
+
+  it('MJ linéaire, vote clos sans date scellée mais date héritée : « Effacer la date » reste, une seule fois', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      poll: CLOSED_POLL,
+      dateValidee: isoInDays(10),
+    };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] }, { isMj: true });
+    const label = GRIMOIRE_TONE['common.reinitialiser_la_date'];
+    const resets = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).filter((b) => b.textContent?.trim() === label);
+    expect(resets).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+  });
+
+  it('MJ épisodique : « Modifier la capacité » retire l’encadré « Lancer le vote » le temps de la saisie', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      inscription: { min: 2, max: 6, inscrits: [], dateValidee: null },
+    };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [seance] },
+      { isMj: true, isEpisodique: true },
+    );
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).not.toBeNull();
+    const edit = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).find((b) => b.textContent?.trim() === GRIMOIRE_TONE['scenarios.seances_edit_capacity']);
+    edit!.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.capacity-form')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
   });
 });

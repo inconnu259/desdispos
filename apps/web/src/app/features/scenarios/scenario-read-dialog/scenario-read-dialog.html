@@ -5,6 +5,22 @@
     <p class="a-venir-note">{{ theme.tone()['common.date_a_definir_2'] }}</p>
   } @else {
     <app-scenario-status-badge [status]="scenario().status" />
+  }
+
+  <!-- Story 54.1 ⚠️ — les séances viennent juste après le titre (et le badge, ou la note d'un chapitre
+       « à venir » restreint) : c'est elles qui disent quoi faire. `leaving` ferme la fenêtre avant la
+       navigation vers la Destinée, comme `editResume()`. -->
+  <app-seance-list
+    [scenario]="scenario()"
+    [partieId]="scenario().partieId"
+    [isMj]="false"
+    [situationIsMj]="isMj()"
+    [isEpisodique]="isEpisodique()"
+    (seanceLinked)="onSeanceLinked($event)"
+    (leaving)="close()"
+  />
+
+  @if (!isRestricted()) {
     <p class="description">{{ scenario().description }}</p>
     <p class="durations">
       {{ scenario().dureeHeures ?? '—' }} h · {{ scenario().dureeSeances ?? '—' }} séances
@@ -134,15 +150,6 @@
       }
     </section>
   }
-
-  <app-seance-list
-    [scenario]="scenario()"
-    [partieId]="scenario().partieId"
-    [isMj]="false"
-    [situationIsMj]="isMj()"
-    [isEpisodique]="isEpisodique()"
-    (seanceLinked)="onSeanceLinked($event)"
-  />
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">

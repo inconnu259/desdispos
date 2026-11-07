@@ -18,3 +18,9 @@
   /* Pictogramme <app-icon> seul dans un bouton nommé (aria-label) : 18px. */
   --app-icon-size: 18px;
 }
+
+/* Story 54.1 — les séances ouvrent la fiche : un peu d air sous le titre / badge, avant la description. */
+app-seance-list {
+  display: block;
+  margin: 0.75rem 0;
+}

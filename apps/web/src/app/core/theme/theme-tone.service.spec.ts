@@ -843,6 +843,12 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     'situation.j_y_etais',
     'situation.place_reservee',
     'situation.ma_situation',
+    // Story 54.1 : l’encadré de situation de la fiche de scénario (texte identique dans les trois thèmes)
+    'scenarios.seance_situation_vote_open',
+    'scenarios.seance_situation_vote_open_no_deadline',
+    'scenarios.seance_situation_vote_in_calendar',
+    'scenarios.seance_situation_not_registered',
+    'scenarios.seance_situation_no_date',
     'calendar.agenda.badge_answer_poll',
     'calendar.agenda.badge_poll_open',
     'calendar.agenda.badge_signup',
@@ -1611,6 +1617,28 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
       }
       expect(new Set(valeurs).size, key).toBe(THEMES.length);
     }
+  });
+
+  // Story 54.1 : l'encadré de situation de la fiche de scénario — cinq textes neutres, un seul à voix propre.
+  it('Story 54.1 : les textes de l’encadré de situation existent, cinq neutres et « registered » à voix propre', () => {
+    for (const key of [
+      'scenarios.seance_situation_vote_open',
+      'scenarios.seance_situation_vote_open_no_deadline',
+      'scenarios.seance_situation_vote_in_calendar',
+      'scenarios.seance_situation_not_registered',
+      'scenarios.seance_situation_no_date',
+    ]) {
+      const valeurs = THEMES.map((theme) => TONE_MAP[theme][key]);
+      for (const [i, valeur] of valeurs.entries()) {
+        expect(valeur, `${THEMES[i]} / ${key}`).toBeTruthy();
+      }
+      expect(new Set(valeurs).size, key).toBe(1);
+      expect(NEUTRAL_KEYS.has(key), key).toBe(true);
+    }
+    const registered = 'scenarios.seance_situation_registered';
+    expect(TONE_MAP['grimoire-emeraude'][registered]).toBe('Vous participez.');
+    expect(TONE_MAP['atelier-cuivre'][registered]).toBe('Vous participez.');
+    expect(TONE_MAP['foret-ancienne'][registered]).toBe('Tu participes.');
   });
 
   // Story 53.6 : avis et confirmation de la bannière de couverture — une voix par thème, jamais en NEUTRAL_KEYS.

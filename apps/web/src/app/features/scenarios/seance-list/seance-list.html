@@ -25,7 +25,22 @@
       </div>
       <!-- Story 53.3 — « Ma situation », juste sous l'en-tête de la séance (titre, badge d'état,
            suppression) : même emplacement pour toutes les branches rendues en dessous. -->
-      <app-situation-line [value]="seanceSituation(seance)" />
+      <!-- Story 54.1 — quand une action est attendue, l'encadré porte la ligne « Ma situation » en
+           tête (jamais rendue deux fois) ; sinon la ligne seule. -->
+      @let situation = seanceSituation(seance);
+      @let box = editingCapacitySeanceId() === seance.id ? null : situationBox(seance, situation);
+      @if (box) {
+        <app-seance-situation
+          [box]="box"
+          [situation]="situation"
+          [expiresAt]="seance.poll?.expiresAt ?? null"
+          [todayKey]="todayKey"
+          [busy]="pollActionPending()"
+          (action)="onBoxAction(seance, box)"
+        />
+      } @else {
+        <app-situation-line [value]="situation" />
+      }
       @if (isEpisodique()) {
         @if (isMj()) {
           @if (!seance.inscription || editingCapacitySeanceId() === seance.id) {
@@ -90,15 +105,8 @@
               [min]="seance.inscription.min"
               [max]="seance.inscription.max"
             />
+            <!-- Story 54.1 : « Lancer le vote » vit dans l'encadré de situation. -->
             <div class="seance-row__mj-actions">
-              <button
-                mat-flat-button
-                color="primary"
-                type="button"
-                (click)="goToCalendarForSeance(seance.id)"
-              >
-                {{ theme.tone()['common.lancer_le_vote'] }}
-              </button>
               <button
                 mat-stroked-button
                 type="button"
@@ -129,18 +137,8 @@
             >
               {{ theme.tone()['common.cloturer_le_vote'] }}
             </button>
-          } @else {
-            <p class="seance-row__chosen-date">{{ theme.tone()['common.vote_cloture_sans_date_retenue'] }}</p>
-            <button
-              mat-stroked-button
-              color="warn"
-              type="button"
-              [disabled]="pollActionPending()"
-              (click)="onResetSeanceDate(seance.id)"
-            >
-              {{ theme.tone()['common.reinitialiser_la_date'] }}
-            </button>
           }
+          <!-- Story 54.1 : vote clos sans date → message et « Effacer la date » vivent dans l'encadré. -->
         } @else if (seance.inscription && resolvedDate(seance)) {
           <p class="seance-row__chosen-date">{{ dateRetenue(formatSeanceDate(seance)) }}</p>
         } @else if (seance.inscription) {
@@ -149,26 +147,7 @@
             [min]="seance.inscription.min"
             [max]="seance.inscription.max"
           />
-          @if (isInscrit(seance.inscription.inscrits)) {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="pollActionPending()"
-              (click)="onDesinscrire(seance.id)"
-            >
-              {{ theme.tone()['scenarios.seances_desinscrire'] }}
-            </button>
-          } @else {
-            <button
-              mat-flat-button
-              color="primary"
-              type="button"
-              [disabled]="pollActionPending() || seance.inscription.inscrits.length >= seance.inscription.max"
-              (click)="onInscrire(seance.id)"
-            >
-              {{ theme.tone()['scenarios.seances_inscrire'] }}
-            </button>
-          }
+          <!-- Story 54.1 : « s'inscrire » / « se désinscrire » vivent dans l'encadré de situation. -->
           @if (seance.poll?.status === 'OPEN') {
             <app-poll-response
               [partieId]="partieId()"
@@ -186,15 +165,17 @@
                  cette ligne, le badge annonçait « Programmée » sans qu'aucune date ne soit visible. -->
             @if (resolvedDate(seance)) {
               <p class="seance-row__chosen-date">{{ dateRetenue(formatSeanceDate(seance)) }}</p>
+              <!-- Story 54.1 : une séance datée sans vote garde son bouton actuel, sans encadré ; sans
+                   date, « Lancer le vote » vit dans l'encadré de situation. -->
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                (click)="goToCalendarForSeance(seance.id)"
+              >
+                {{ theme.tone()['common.lancer_le_vote'] }}
+              </button>
             }
-            <button
-              mat-flat-button
-              color="primary"
-              type="button"
-              (click)="goToCalendarForSeance(seance.id)"
-            >
-              {{ theme.tone()['common.lancer_le_vote'] }}
-            </button>
           } @else if (seance.poll.status === 'OPEN') {
             <app-poll-status
               [poll]="seance.poll"
@@ -211,14 +192,10 @@
             >
               {{ theme.tone()['common.cloturer_le_vote'] }}
             </button>
-          } @else {
-            <p class="seance-row__chosen-date">
-              @if (seance.poll.chosenDate) {
-                {{ dateRetenue(formatSeanceDate(seance)) }}
-              } @else {
-                {{ theme.tone()['common.vote_cloture_sans_date_retenue'] }}
-              }
-            </p>
+          } @else if (seance.poll.chosenDate || resolvedDate(seance)) {
+            <!-- Story 54.1 : vote clos sans date → message et « Effacer la date » vivent dans l'encadré ;
+                 date scellée : sa date et son bouton actuels. -->
+            <p class="seance-row__chosen-date">{{ dateRetenue(formatSeanceDate(seance)) }}</p>
             <button
               mat-stroked-button
               color="warn"

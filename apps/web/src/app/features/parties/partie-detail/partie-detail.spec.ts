@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { PartieDetail } from './partie-detail';
+import { PartieDetail, type TabKey } from './partie-detail';
 import { ActivatedRoute } from '@angular/router';
 import { provideRouter, Router } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -218,6 +218,10 @@ interface CreateFixtureOptions {
   markAnnouncementRead?: ReturnType<typeof vi.fn>;
   characterRoles?: CharacterGroupRoleDto[];
   noopAnimations?: boolean;
+  /** Story 53.4 : onglet à ouvrir, par sa clé, une fois la page installée (rend alors des animations noop).
+   *  Un MJ arrive sur Chapitres, un joueur sur Chronologie : le contenu de « Détails » (rendu à l'ouverture
+   *  de l'onglet seulement) se teste après cette ouverture. */
+  openTab?: TabKey;
   desktop?: boolean;
   displayName?: string;
   announcementIdQueryParam?: string;
@@ -240,7 +244,7 @@ async function createFixture(
       provideRouter([]),
       // MatTabGroup anime le changement d'onglet via le Web Animations API, non fiable en jsdom —
       // les tests qui doivent naviguer entre onglets utilisent le mode noop pour un rendu synchrone.
-      options.noopAnimations ? provideNoopAnimations() : provideAnimationsAsync(),
+      options.noopAnimations || options.openTab ? provideNoopAnimations() : provideAnimationsAsync(),
       {
         provide: ActivatedRoute,
         useValue: {
@@ -387,14 +391,41 @@ async function createFixture(
   }
   await fixture.whenStable();
   fixture.detectChanges();
+  if (options.openTab) await openTabByKey(fixture, options.openTab);
   return { fixture, el: fixture.nativeElement };
+}
+
+/** Story 53.4 : un MJ arrive sur Chapitres, un joueur sur Chronologie — les tests qui lisent le contenu de
+ *  « Détails » (zones, widget séance, annonces, XP, fiches) ouvrent d'abord cet onglet, par sa clé. */
+function createFixtureOnDetails(
+  partie: PartieDto,
+  currentUserId: string,
+  options: CreateFixtureOptions = {},
+): Promise<{ fixture: ComponentFixture<PartieDetail>; el: HTMLElement }> {
+  return createFixture(partie, currentUserId, { openTab: 'details', ...options });
+}
+
+/** Story 53.4 : ouvre un onglet par sa clé (comme le ferait un lien interne), jamais par sa position. */
+async function openTabByKey(fixture: ComponentFixture<PartieDetail>, key: TabKey): Promise<void> {
+  const comp = fixture.componentInstance as unknown as {
+    hasTab: (k: TabKey) => boolean;
+    selectedTabKey: { set: (k: TabKey) => void };
+  };
+  expect(comp.hasTab(key)).toBe(true);
+  comp.selectedTabKey.set(key);
+  for (let i = 0; i < 5; i++) {
+    await Promise.resolve();
+    fixture.detectChanges();
+  }
+  await fixture.whenStable();
+  fixture.detectChanges();
 }
 
 describe('PartieDetail — widget de planification', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it("affiche l'état vide quand nextSessionDate est null", async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ nextSessionDate: null, nextSessionSlot: null }),
       MJ_ID,
     );
@@ -408,7 +439,7 @@ describe('PartieDetail — widget de planification', () => {
   });
 
   it('affiche la date + slot formatés quand nextSessionDate est renseigné', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ nextSessionDate: '2026-08-15T00:00:00.000Z', nextSessionSlot: 'EVENING' }),
       MJ_ID,
     );
@@ -427,13 +458,13 @@ describe('PartieDetail — widget de planification', () => {
     const partie = makePartie({ ownerId: MJ_ID });
 
     // MJ voit le bouton
-    const { el: elMj } = await createFixture(partie, MJ_ID);
+    const { el: elMj } = await createFixtureOnDetails(partie, MJ_ID);
     const sectionMj = elMj.querySelector('.scheduling-widget');
     expect(sectionMj!.querySelector('a[mat-flat-button]')).toBeTruthy();
     TestBed.resetTestingModule();
 
     // Joueur ne voit pas le bouton
-    const { el: elPlayer } = await createFixture(partie, PLAYER_ID);
+    const { el: elPlayer } = await createFixtureOnDetails(partie, PLAYER_ID);
     const sectionPlayer = elPlayer.querySelector('.scheduling-widget');
     expect(sectionPlayer!.querySelector('a[mat-flat-button]')).toBeFalsy();
   });
@@ -454,7 +485,7 @@ describe('PartieDetail — widget de planification', () => {
   }
 
   it('aucune séance à venir → badge « À planifier », sans effacer l’état vide existant', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ nextSessionDate: null, nextSessionSlot: null }),
       MJ_ID,
     );
@@ -463,7 +494,7 @@ describe('PartieDetail — widget de planification', () => {
   });
 
   it('séance à venir (> 7 j) → badge « Programmée », la ligne de date reste affichée', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ nextSessionDate: isoInDays(10), nextSessionSlot: 'EVENING' }),
       MJ_ID,
     );
@@ -472,7 +503,7 @@ describe('PartieDetail — widget de planification', () => {
   });
 
   it('Story 47.2 : une plage commencée hier et finissant demain reste la prochaine séance, écrite « début → fin »', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({
         nextSessionDate: isoInDays(-1),
         nextSessionSlot: 'EVENING',
@@ -489,7 +520,7 @@ describe('PartieDetail — widget de planification', () => {
   });
 
   it('Story 47.2 : une plage finie hier est passée comme une date passée', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({
         nextSessionDate: isoInDays(-3),
         nextSessionSlot: 'EVENING',
@@ -502,7 +533,7 @@ describe('PartieDetail — widget de planification', () => {
   });
 
   it('🚨 une date déjà passée ne fait jamais apparaître « À débriefer » ici (widget « Prochaine séance »)', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ nextSessionDate: isoInDays(-10), nextSessionSlot: 'EVENING' }),
       MJ_ID,
     );
@@ -563,7 +594,7 @@ describe('PartieDetail — statut du vote', () => {
   }
 
   it('affiche la ligne de statut X/Y quand un poll OPEN existe — Y = poll.membersCount (MJ compris, deferred-work 2026-08-24)', async () => {
-    const { el } = await createFixture(makePartie(), MJ_ID, { members, poll: makePoll(['u1']) });
+    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, { members, poll: makePoll(['u1']) });
     const line = el.querySelector('.poll-status-line');
     expect(line).toBeTruthy();
     // `members` ne porte que 2 entrées (le MJ n'a jamais de ligne Membership), mais
@@ -574,20 +605,20 @@ describe('PartieDetail — statut du vote', () => {
   });
 
   it("n'affiche pas la ligne de statut si aucun poll OPEN n'existe", async () => {
-    const { el } = await createFixture(makePartie(), MJ_ID, { members, poll: null });
+    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, { members, poll: null });
     expect(el.querySelector('.poll-status-line')).toBeFalsy();
   });
 
   it('le lien joueur utilise poll.vote_pending quand un poll est actif', async () => {
     const partie = makePartie({ ownerId: MJ_ID });
-    const { el } = await createFixture(partie, PLAYER_ID, { members, poll: makePoll(['u1']) });
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID, { members, poll: makePoll(['u1']) });
     const link = el.querySelector('.scheduling-widget a[mat-stroked-button]');
     expect(link).toBeTruthy();
     expect(link!.textContent).toContain('Vote de date en cours');
   });
 
   it('44.7 : le lien joueur arrive en Destinée sur le vote s’il est seul, ouvre la liste s’il y en a plusieurs', async () => {
-    const one = await createFixture(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
+    const one = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
       members,
       poll: makePoll(['u1']),
     });
@@ -598,14 +629,14 @@ describe('PartieDetail — statut du vote', () => {
 
     const poll1 = { ...makePoll(['u1']), id: 'poll1', partieId: 'party-1' };
     const poll2 = { ...makePoll([]), id: 'poll2', partieId: 'party-1' };
-    const many = await createFixture(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
+    const many = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
       members,
       polls: [poll1, poll2],
     });
     expect(href(many.el)).toBe('/parties/party-1/guild-calendar?pollList=');
     TestBed.resetTestingModule();
 
-    const none = await createFixture(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
+    const none = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID }), PLAYER_ID, {
       members,
       poll: null,
     });
@@ -615,7 +646,7 @@ describe('PartieDetail — statut du vote', () => {
   it('plusieurs votes OPEN en parallèle → message agrégé "N votes de date en cours" (Story 8.8, revue de code)', async () => {
     const poll1 = { ...makePoll(['u1']), id: 'poll1', partieId: 'party-1' };
     const poll2 = { ...makePoll([]), id: 'poll2', partieId: 'party-1' };
-    const { el } = await createFixture(makePartie(), MJ_ID, { members, polls: [poll1, poll2] });
+    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, { members, polls: [poll1, poll2] });
 
     const line = el.querySelector('.poll-status-line');
     expect(line).toBeTruthy();
@@ -634,25 +665,25 @@ describe('PartieDetail — statut du vote', () => {
 
   it('vote ouvert auquel je n’ai pas répondu → badge « Vote en cours » ET pastille « Vote à faire »', async () => {
     // `makePoll([])` : personne n'a voté, donc le lecteur non plus.
-    const { el } = await createFixture(makePartie(), 'u1', { members, poll: makePoll([]) });
+    const { el } = await createFixtureOnDetails(makePartie(), 'u1', { members, poll: makePoll([]) });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBe('Vote à faire');
   });
 
   it('vote ouvert auquel j’ai répondu → même badge, pastille « J’ai voté »', async () => {
-    const { el } = await createFixture(makePartie(), 'u1', { members, poll: makePoll(['u1']) });
+    const { el } = await createFixtureOnDetails(makePartie(), 'u1', { members, poll: makePoll(['u1']) });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBe('J’ai voté');
   });
 
   it('🚨 le MJ n’a jamais de pastille, même avec un vote ouvert sans sa réponse', async () => {
-    const { el } = await createFixture(makePartie(), MJ_ID, { members, poll: makePoll([]) });
+    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, { members, poll: makePoll([]) });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBeNull();
   });
 
   it('aucun vote ouvert → aucune pastille', async () => {
-    const { el } = await createFixture(makePartie(), 'u1', { members, poll: null });
+    const { el } = await createFixtureOnDetails(makePartie(), 'u1', { members, poll: null });
     expect(widgetPill(el)).toBeNull();
   });
 
@@ -661,7 +692,7 @@ describe('PartieDetail — statut du vote', () => {
     // l'appel à l'action — exactement ce que la story cherche à rendre visible.
     const poll1 = { ...makePoll(['u1']), id: 'poll1', partieId: 'party-1' };
     const poll2 = { ...makePoll([]), id: 'poll2', partieId: 'party-1' };
-    const { el } = await createFixture(makePartie(), 'u1', { members, polls: [poll1, poll2] });
+    const { el } = await createFixtureOnDetails(makePartie(), 'u1', { members, polls: [poll1, poll2] });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBe('Vote à faire');
   });
@@ -672,7 +703,7 @@ describe('PartieDetail — statut du vote', () => {
     const future = new Date();
     future.setUTCHours(0, 0, 0, 0);
     future.setUTCDate(future.getUTCDate() + 10);
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ nextSessionDate: future.toISOString(), nextSessionSlot: 'EVENING' }),
       'u1',
       { members, poll: makePoll([]) },
@@ -1167,24 +1198,24 @@ describe('PartieDetail — roster (Story 6.1)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // Joueur mobile : sélection manuelle explicite de l'onglet "Ma fiche" (index 1).
+    // Joueur mobile : sélection manuelle explicite de l'onglet "Ma fiche" (par sa clé).
     const comp = fixture.componentInstance as unknown as {
-      onTabIndexChange: (i: number) => void;
-      selectedTabIndex: () => number;
+      selectedTabKey: { set: (k: TabKey) => void };
+      displayedTabKey: () => TabKey;
     };
-    comp.onTabIndexChange(1);
-    expect(comp.selectedTabIndex()).toBe(1);
+    comp.selectedTabKey.set('fiches');
+    expect(comp.displayedTabKey()).toBe('fiches');
 
-    // Redimensionnement vers desktop : `tabSetKey` ne dépend plus que de `isMj()` (Story 29.15,
-    // l'onglet "Ma fiche" se rend désormais pour tout joueur non-MJ, desktop compris) — le rôle ne
-    // change pas, donc `manualTabIndex` n'est jamais réinitialisé (AC4 : la bascule manuelle reste
+    // Redimensionnement vers desktop : `tabSetKey` ne dépend que du rôle, de la nature et de la famille (Story
+    // 53.4 ; l'onglet "Ma fiche" se rend pour tout joueur non-MJ, desktop compris) — rien de cela ne
+    // change, donc la sélection n'est jamais réinitialisée (AC4 : la bascule manuelle reste
     // prioritaire sur le calcul par défaut pour la visite en cours).
     breakpoint$.next({ matches: true, breakpoints: {} });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(comp.selectedTabIndex()).toBe(1); // la sélection manuelle survit au redimensionnement
+    expect(comp.displayedTabKey()).toBe('fiches'); // la sélection manuelle survit au redimensionnement
   });
 });
 
@@ -1200,8 +1231,8 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
       noopAnimations: true,
     });
 
-    const comp = fixture.componentInstance as unknown as { selectedTabIndex: () => number };
-    expect(comp.selectedTabIndex()).toBe(1);
+    const comp = fixture.componentInstance as unknown as { displayedTabKey: () => TabKey };
+    expect(comp.displayedTabKey()).toBe('fiches');
     const activeTab = el.querySelector('div[role="tab"][aria-selected="true"]');
     expect(activeTab?.textContent?.trim()).toBe(GRIMOIRE_TONE['character.party_sheets_tab_label']);
     expect(el.querySelector('.party-sheets-tab a[mat-flat-button]')).toBeTruthy();
@@ -1214,8 +1245,8 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
       noopAnimations: true,
     });
 
-    const comp = fixture.componentInstance as unknown as { selectedTabIndex: () => number };
-    expect(comp.selectedTabIndex()).toBe(1);
+    const comp = fixture.componentInstance as unknown as { displayedTabKey: () => TabKey };
+    expect(comp.displayedTabKey()).toBe('fiches');
     expect(el.querySelector('.party-sheets-tab a[mat-flat-button]')).toBeTruthy();
   });
 
@@ -1237,8 +1268,8 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
       characters: [character],
     });
 
-    const comp = fixture.componentInstance as unknown as { selectedTabIndex: () => number };
-    expect(comp.selectedTabIndex()).toBe(0);
+    const comp = fixture.componentInstance as unknown as { displayedTabKey: () => TabKey };
+    expect(comp.displayedTabKey()).toBe('details');
 
     const maFicheTab = Array.from(el.querySelectorAll<HTMLElement>('div[role="tab"]')).find(
       (t) => t.textContent?.trim() === GRIMOIRE_TONE['character.party_sheets_tab_label'],
@@ -1258,8 +1289,8 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
       noopAnimations: true,
     });
 
-    const comp = fixture.componentInstance as unknown as { selectedTabIndex: () => number };
-    expect(comp.selectedTabIndex()).toBe(0);
+    const comp = fixture.componentInstance as unknown as { displayedTabKey: () => TabKey };
+    expect(comp.displayedTabKey()).toBe('details');
 
     const maFicheTab = Array.from(el.querySelectorAll<HTMLElement>('div[role="tab"]')).find(
       (t) => t.textContent?.trim() === GRIMOIRE_TONE['character.party_sheets_tab_label'],
@@ -1280,8 +1311,8 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
       noopAnimations: true,
     });
 
-    const comp = fixture.componentInstance as unknown as { selectedTabIndex: () => number };
-    expect(comp.selectedTabIndex()).toBe(0);
+    const comp = fixture.componentInstance as unknown as { displayedTabKey: () => TabKey };
+    expect(comp.displayedTabKey()).toBe('details');
 
     const maFicheTab = Array.from(el.querySelectorAll<HTMLElement>('div[role="tab"]')).find(
       (t) => t.textContent?.trim() === GRIMOIRE_TONE['character.party_sheets_tab_label'],
@@ -1298,8 +1329,8 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama', status: 'EN_COURS' });
     const { fixture } = await createFixture(partie, MJ_ID, { desktop: true, noopAnimations: true });
 
-    const comp = fixture.componentInstance as unknown as { selectedTabIndex: () => number };
-    expect(comp.selectedTabIndex()).toBe(0);
+    const comp = fixture.componentInstance as unknown as { displayedTabKey: () => TabKey };
+    expect(comp.displayedTabKey()).toBe('scenario');
   });
 
   it("slot d'initiale du roster desktop (isSelf sans personnage) : aria-label/tooltip thématisé depuis roster.create_slot_label", async () => {
@@ -1371,11 +1402,11 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
     });
 
     const comp = fixture.componentInstance as unknown as {
-      selectedTabIndex: () => number;
+      displayedTabKey: () => TabKey;
       charactersLoaded: () => boolean;
     };
     expect(comp.charactersLoaded()).toBe(true);
-    expect(comp.selectedTabIndex()).toBe(1);
+    expect(comp.displayedTabKey()).toBe('fiches');
     const activeTab = el.querySelector('div[role="tab"][aria-selected="true"]');
     expect(activeTab?.textContent?.trim()).toBe(GRIMOIRE_TONE['character.party_sheets_tab_label']);
     expect(el.querySelector('.party-sheets-tab a[mat-flat-button]')).toBeTruthy();
@@ -1869,14 +1900,14 @@ describe('PartieDetail — distribution d’XP', () => {
   it('bouton "Distribuer de l’XP" visible pour le MJ uniquement', async () => {
     const partie = makePartie({ ownerId: MJ_ID });
 
-    const { el: elMj } = await createFixture(partie, MJ_ID);
+    const { el: elMj } = await createFixtureOnDetails(partie, MJ_ID);
     const buttons = Array.from(elMj.querySelectorAll('button')).filter((b) =>
       b.textContent?.includes('XP'),
     );
     expect(buttons.length).toBeGreaterThan(0);
     TestBed.resetTestingModule();
 
-    const { el: elPlayer } = await createFixture(partie, PLAYER_ID);
+    const { el: elPlayer } = await createFixtureOnDetails(partie, PLAYER_ID);
     const playerButtons = Array.from(elPlayer.querySelectorAll('button')).filter((b) =>
       b.textContent?.includes('XP'),
     );
@@ -1885,14 +1916,14 @@ describe('PartieDetail — distribution d’XP', () => {
 
   it('section historique chargée seulement pour le MJ', async () => {
     const partie = makePartie({ ownerId: MJ_ID });
-    await createFixture(partie, MJ_ID);
+    await createFixtureOnDetails(partie, MJ_ID);
     const parties = TestBed.inject(PartiesService) as unknown as {
       listXpDistributions: ReturnType<typeof vi.fn>;
     };
     expect(parties.listXpDistributions).toHaveBeenCalledWith('party-1');
     TestBed.resetTestingModule();
 
-    await createFixture(partie, PLAYER_ID);
+    await createFixtureOnDetails(partie, PLAYER_ID);
     const partiesPlayer = TestBed.inject(PartiesService) as unknown as {
       listXpDistributions: ReturnType<typeof vi.fn>;
     };
@@ -1901,7 +1932,7 @@ describe('PartieDetail — distribution d’XP', () => {
 
   it('après distributed(), characters()/xpDistributions() sont rechargés', async () => {
     const partie = makePartie({ ownerId: MJ_ID });
-    const { fixture } = await createFixture(partie, MJ_ID, {
+    const { fixture } = await createFixtureOnDetails(partie, MJ_ID, {
       characters: [makeCharacterDto({ id: 'c1' })],
     });
     const characters = TestBed.inject(CharacterService) as unknown as {
@@ -1929,17 +1960,17 @@ describe('PartieDetail — publication d’annonce (Story 9.1)', () => {
   it('bouton de publication d’annonce visible pour le MJ, absent pour un joueur (AC6)', async () => {
     const partie = makePartie({ ownerId: MJ_ID });
 
-    const { el: elMj } = await createFixture(partie, MJ_ID);
+    const { el: elMj } = await createFixtureOnDetails(partie, MJ_ID);
     expect(elMj.querySelector('.announcement-section')).toBeTruthy();
     TestBed.resetTestingModule();
 
-    const { el: elPlayer } = await createFixture(partie, PLAYER_ID);
+    const { el: elPlayer } = await createFixtureOnDetails(partie, PLAYER_ID);
     expect(elPlayer.querySelector('.announcement-section')).toBeFalsy();
   });
 
   it('le panel reste ouvert après publication (revue de code : le MJ voit la confirmation avant de fermer lui-même)', async () => {
     const partie = makePartie({ ownerId: MJ_ID });
-    const { fixture } = await createFixture(partie, MJ_ID);
+    const { fixture } = await createFixtureOnDetails(partie, MJ_ID);
 
     const component = fixture.componentInstance as unknown as {
       showAnnouncementForm: WritableSignal<boolean>;
@@ -1961,7 +1992,7 @@ describe('PartieDetail — consultation des annonces « toute la campagne » (St
       makeAnnouncementDto({ id: 'ann-ancien', text: 'La plus ancienne' }),
     ];
 
-    const { el } = await createFixture(partie, MJ_ID, { announcements });
+    const { el } = await createFixtureOnDetails(partie, MJ_ID, { announcements });
 
     const feed = el.querySelector('.announcements-feed');
     expect(feed).toBeTruthy();
@@ -1976,7 +2007,7 @@ describe('PartieDetail — consultation des annonces « toute la campagne » (St
       makeAnnouncementDto({ id: 'ann-scenario', text: 'Annonce scénario', scenarioId: 's1' }),
     ];
 
-    const { el } = await createFixture(partie, MJ_ID, { announcements });
+    const { el } = await createFixtureOnDetails(partie, MJ_ID, { announcements });
 
     const feed = el.querySelector('.announcements-feed');
     expect(feed!.textContent).toContain('Annonce campagne');
@@ -1985,14 +2016,14 @@ describe('PartieDetail — consultation des annonces « toute la campagne » (St
 
   it('libellé « Ce one-shot » pour une Partie ONE_SHOT, « Toute la campagne » sinon', async () => {
     const oneShot = makePartie({ ownerId: MJ_ID, kind: 'ONE_SHOT' });
-    const { el: elOneShot } = await createFixture(oneShot, MJ_ID, {
+    const { el: elOneShot } = await createFixtureOnDetails(oneShot, MJ_ID, {
       announcements: [makeAnnouncementDto()],
     });
     expect(elOneShot.querySelector('.announcements-feed')!.textContent).toContain('Cette quête');
     TestBed.resetTestingModule();
 
     const campagne = makePartie({ ownerId: MJ_ID, kind: 'CAMPAGNE_LINEAIRE' });
-    const { el: elCampagne } = await createFixture(campagne, MJ_ID, {
+    const { el: elCampagne } = await createFixtureOnDetails(campagne, MJ_ID, {
       announcements: [makeAnnouncementDto()],
     });
     expect(elCampagne.querySelector('.announcements-feed')!.textContent).toContain(
@@ -2002,7 +2033,7 @@ describe('PartieDetail — consultation des annonces « toute la campagne » (St
 
   it('visible pour un joueur, pas seulement le MJ', async () => {
     const partie = makePartie({ ownerId: MJ_ID, kind: 'CAMPAGNE_LINEAIRE' });
-    const { el } = await createFixture(partie, PLAYER_ID, {
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID, {
       announcements: [makeAnnouncementDto({ text: 'Visible du joueur' })],
     });
 
@@ -2011,7 +2042,7 @@ describe('PartieDetail — consultation des annonces « toute la campagne » (St
 
   it('publication réussie recharge la liste (announcementsSvc.listAll rappelé)', async () => {
     const partie = makePartie({ ownerId: MJ_ID, kind: 'CAMPAGNE_LINEAIRE' });
-    const { fixture } = await createFixture(partie, MJ_ID);
+    const { fixture } = await createFixtureOnDetails(partie, MJ_ID);
     const announcementsSvc = TestBed.inject(AnnouncementsService) as unknown as {
       listAll: ReturnType<typeof vi.fn>;
     };
@@ -2034,7 +2065,7 @@ describe('PartieDetail — marquage « vue » des annonces de campagne sur clic 
     const announcements = [makeAnnouncementDto({ id: 'ann-non-vue', text: 'Non vue' })];
     const markAnnouncementRead = vi.fn().mockResolvedValue(undefined);
 
-    await createFixture(partie, MJ_ID, {
+    await createFixtureOnDetails(partie, MJ_ID, {
       announcements,
       unseenAnnouncementIds: ['ann-non-vue'],
       markAnnouncementRead,
@@ -2048,7 +2079,7 @@ describe('PartieDetail — marquage « vue » des annonces de campagne sur clic 
     const announcements = [makeAnnouncementDto({ id: 'ann-non-vue', text: 'Non vue' })];
     const markAnnouncementRead = vi.fn().mockResolvedValue(undefined);
 
-    const { fixture, el } = await createFixture(partie, MJ_ID, {
+    const { fixture, el } = await createFixtureOnDetails(partie, MJ_ID, {
       announcements,
       unseenAnnouncementIds: ['ann-non-vue'],
       markAnnouncementRead,
@@ -2066,7 +2097,7 @@ describe('PartieDetail — marquage « vue » des annonces de campagne sur clic 
     const announcements = [makeAnnouncementDto({ id: 'ann-deja-vue', text: 'Déjà vue' })];
     const markAnnouncementRead = vi.fn().mockResolvedValue(undefined);
 
-    const { fixture, el } = await createFixture(partie, MJ_ID, {
+    const { fixture, el } = await createFixtureOnDetails(partie, MJ_ID, {
       announcements,
       unseenAnnouncementIds: [],
       markAnnouncementRead,
@@ -2086,7 +2117,7 @@ describe('PartieDetail — arrivée depuis le bandeau du Shell (Story 29.13, ré
   it('force l\'onglet "Détails" même quand un autre onglet serait sélectionné par défaut (joueur mobile)', async () => {
     Element.prototype.scrollIntoView = vi.fn();
     // gameSystemId: 'ryuutama' (avec module) — sans forçage, ce joueur sans personnage atterrit
-    // sur "Ma fiche" (index 1, Story 29.15) ; le test vérifie que le forçage du bandeau l'emporte.
+    // sur "Fiches" (Story 29.15) ; le test vérifie que le lien du bandeau (par la clé `details`) l'emporte.
     const partie = makePartie({
       ownerId: MJ_ID,
       kind: 'CAMPAGNE_LINEAIRE',
@@ -2104,7 +2135,7 @@ describe('PartieDetail — arrivée depuis le bandeau du Shell (Story 29.13, ré
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect((fixture.componentInstance as any).selectedTabIndex()).toBe(0);
+    expect((fixture.componentInstance as any).displayedTabKey()).toBe('details');
   });
 
   it("fait défiler jusqu'à l'AnnonceCard visée et la met en évidence", async () => {
@@ -2383,7 +2414,7 @@ describe('PartieDetail — fiches de préparation MJ-only (Story 12.2)', () => {
 
   it('MJ + Partie Ryuutama → section "Fiches de préparation" présente avec les 8 liens', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-    const { el } = await createFixture(partie, MJ_ID);
+    const { el } = await createFixtureOnDetails(partie, MJ_ID);
     const section = el.querySelector('.prep-sheets');
     expect(section).toBeTruthy();
     expect(section?.querySelectorAll('.prep-sheets__links button').length).toBe(8);
@@ -2391,13 +2422,13 @@ describe('PartieDetail — fiches de préparation MJ-only (Story 12.2)', () => {
 
   it('joueur (non-MJ) → section "Fiches de préparation" absente, même sur une Partie Ryuutama (AC2)', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-    const { el } = await createFixture(partie, PLAYER_ID);
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID);
     expect(el.querySelector('.prep-sheets')).toBeNull();
   });
 
   it('MJ + Partie non-Ryuutama → section "Fiches de préparation" absente', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'draconis' });
-    const { el } = await createFixture(partie, MJ_ID);
+    const { el } = await createFixtureOnDetails(partie, MJ_ID);
     expect(el.querySelector('.prep-sheets')).toBeNull();
   });
 
@@ -2414,7 +2445,7 @@ describe('PartieDetail — fiches de préparation MJ-only (Story 12.2)', () => {
     'clic sur le lien #%s (index %i) → appelle getGameSystemAsset(partieId, "ryuutama", "%s")',
     async (key, index) => {
       const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-      const { fixture, el } = await createFixture(partie, MJ_ID);
+      const { fixture, el } = await createFixtureOnDetails(partie, MJ_ID);
       const characterSvc = TestBed.inject(CharacterService) as any;
       vi.spyOn(HTMLAnchorElement.prototype, 'click').mockReturnValue(undefined);
 
@@ -2966,7 +2997,7 @@ describe('PartieDetail — pseudo en complément (gestion des membres)', () => {
 
   it("Revue de code (2026-08-06) : le badge « MJ » est toujours affiché sur l'auteur d'une annonce campagne", async () => {
     const partie = makePartie({ ownerId: MJ_ID, kind: 'CAMPAGNE_LINEAIRE' });
-    const { el } = await createFixture(partie, PLAYER_ID, {
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID, {
       announcements: [makeAnnouncementDto({ scenarioId: null, authorDisplayName: 'MJ Nom' })],
     });
 
@@ -3104,7 +3135,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
   const ZONE_REFERENCE = '.details-zone--reference';
 
   it('les trois titres de zone (Action/Consultation/Référence) sont rendus, thématisés via theme.tone()', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' }),
       MJ_ID,
     );
@@ -3129,7 +3160,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
   it.each([true, false])(
     'la zone Action précède la zone Consultation, elle-même avant la zone Référence, dans le flux du DOM (desktop=%s)',
     async (desktop) => {
-      const { el } = await createFixture(
+      const { el } = await createFixtureOnDetails(
         makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' }),
         MJ_ID,
         {
@@ -3153,7 +3184,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
   );
 
   it('MJ, système Ryuutama : la zone Action porte le widget séance, la distribution d’XP et la publication d’annonce', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' }),
       MJ_ID,
     );
@@ -3168,7 +3199,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
 
   it('MJ, système Ryuutama : la zone Consultation porte le fil d’annonces et l’historique d’XP (extrait de la zone Action)', async () => {
     const announcements = [makeAnnouncementDto({ id: 'ann-1', scenarioId: null })];
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama', kind: 'CAMPAGNE_LINEAIRE' }),
       MJ_ID,
       { announcements },
@@ -3180,7 +3211,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
   });
 
   it('MJ, système Ryuutama : la zone Référence porte la description, les fiches de référence et les fiches de préparation', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama', description: 'Un récit à découvrir' }),
       MJ_ID,
     );
@@ -3193,7 +3224,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
 
   it('Joueur (non-MJ) : la zone Action est réduite au widget séance, aucun bloc MJ-only dans Consultation/Référence', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-    const { el } = await createFixture(partie, PLAYER_ID);
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID);
 
     const action = el.querySelector(ZONE_ACTION)!;
     expect(action.querySelector('.scheduling-widget')).toBeTruthy();
@@ -3214,7 +3245,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
 
   it('Système non-Ryuutama : les fiches de référence/préparation sont absentes de la zone Référence, les zones Action/Consultation restent intactes', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'draconis' });
-    const { el } = await createFixture(partie, MJ_ID);
+    const { el } = await createFixtureOnDetails(partie, MJ_ID);
 
     const reference = el.querySelector(ZONE_REFERENCE)!;
     expect(reference.querySelector('.reference-sheets')).toBeNull();
@@ -3247,7 +3278,7 @@ describe('PartieDetail — zones de l’onglet Détails (Story 32.2)', () => {
         },
       ],
     };
-    const { el } = await createFixture(partie, PLAYER_ID, { poll });
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID, { poll });
 
     const link = el.querySelector(`${ZONE_ACTION} .scheduling-widget a[mat-stroked-button]`);
     expect(link).toBeTruthy();
@@ -3261,7 +3292,7 @@ describe('PartieDetail — défilement de page unique (dynamicHeight)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it("mat-tab-group porte dynamicHeight (API publique Material) -- l'overflow interne par défaut du corps d'onglet est neutralisé, la molette défile toute la page", async () => {
-    const { fixture } = await createFixture(makePartie({ ownerId: MJ_ID }), MJ_ID);
+    const { fixture } = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID }), MJ_ID);
 
     const tabGroup = fixture.debugElement.query(By.directive(MatTabGroup))?.componentInstance as
       MatTabGroup | undefined;
@@ -3275,7 +3306,7 @@ describe('PartieDetail — grimoires de référence/préparation repliés par d�
 
   it('à l’affichage initial de l’onglet Détails, les deux grimoires (référence, préparation MJ) sont repliés', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-    const { el } = await createFixture(partie, MJ_ID);
+    const { el } = await createFixtureOnDetails(partie, MJ_ID);
 
     const referenceDetails = el.querySelector<HTMLDetailsElement>(
       '.reference-sheets details.download-sheet',
@@ -3289,7 +3320,7 @@ describe('PartieDetail — grimoires de référence/préparation repliés par d�
 
   it('un joueur (non-MJ) voit aussi le grimoire de référence replié par défaut (les fiches de préparation restent MJ-only, inchangé)', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-    const { el } = await createFixture(partie, PLAYER_ID);
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID);
 
     const referenceDetails = el.querySelector<HTMLDetailsElement>(
       '.reference-sheets details.download-sheet',
@@ -3301,7 +3332,7 @@ describe('PartieDetail — grimoires de référence/préparation repliés par d�
 
   it('clic sur le résumé « Grimoires de référence » déplie la fiche -- les puces (icône+libellé) deviennent visibles', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-    const { fixture, el } = await createFixture(partie, MJ_ID);
+    const { fixture, el } = await createFixtureOnDetails(partie, MJ_ID);
 
     const details = el.querySelector<HTMLDetailsElement>(
       '.reference-sheets details.download-sheet',
@@ -3322,7 +3353,7 @@ describe('PartieDetail — grimoires de référence/préparation repliés par d�
 
   it('clic sur le résumé « Grimoires de préparation (MJ) » déplie la fiche -- les 8 puces deviennent visibles', async () => {
     const partie = makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' });
-    const { fixture, el } = await createFixture(partie, MJ_ID);
+    const { fixture, el } = await createFixtureOnDetails(partie, MJ_ID);
 
     const details = el.querySelector<HTMLDetailsElement>('.prep-sheets details.download-sheet')!;
     const summary = details.querySelector<HTMLElement>('summary')!;
@@ -3340,7 +3371,7 @@ describe('PartieDetail — barre d’icônes partagée (retouche UX 2026-09-23)'
   afterEach(() => TestBed.resetTestingModule());
 
   it('MJ : les déclencheurs "Distribuer de l’XP" et "Proclamer une annonce" partagent la même barre d’icônes', async () => {
-    const { el } = await createFixture(makePartie({ ownerId: MJ_ID }), MJ_ID);
+    const { el } = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID }), MJ_ID);
 
     const bar = el.querySelector('.details-zone--action .icon-bar');
     expect(bar).toBeTruthy();
@@ -3349,7 +3380,7 @@ describe('PartieDetail — barre d’icônes partagée (retouche UX 2026-09-23)'
   });
 
   it('le pied de carte (Retranscrire/Sceller/Clore/Supprimer) est une barre d’icônes -- "Supprimer" porte la classe de couleur destructrice', async () => {
-    const { el } = await createFixture(makePartie({ ownerId: MJ_ID, status: 'EN_COURS' }), MJ_ID);
+    const { el } = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID, status: 'EN_COURS' }), MJ_ID);
 
     const actions = el.querySelector('mat-card-actions.icon-bar');
     expect(actions).toBeTruthy();
@@ -3368,7 +3399,7 @@ describe('PartieDetail — barre d’icônes partagée (retouche UX 2026-09-23)'
 
   it('suppression confirmée : supprime la partie puis recharge la liste des parties (refreshAll, Story 38.5)', async () => {
     const partie = makePartie({ ownerId: MJ_ID, status: 'EN_COURS' });
-    const { fixture } = await createFixture(partie, MJ_ID);
+    const { fixture } = await createFixtureOnDetails(partie, MJ_ID);
     const dialog = TestBed.inject(MatDialog) as unknown as { open: ReturnType<typeof vi.fn> };
     dialog.open.mockReturnValue({ afterClosed: () => of(true) });
     const parties = TestBed.inject(PartiesService) as unknown as {
@@ -3386,7 +3417,7 @@ describe('PartieDetail — barre d’icônes partagée (retouche UX 2026-09-23)'
 
   it('suppression annulée : ni suppression ni rechargement', async () => {
     const partie = makePartie({ ownerId: MJ_ID, status: 'EN_COURS' });
-    const { fixture } = await createFixture(partie, MJ_ID);
+    const { fixture } = await createFixtureOnDetails(partie, MJ_ID);
     const dialog = TestBed.inject(MatDialog) as unknown as { open: ReturnType<typeof vi.fn> };
     dialog.open.mockReturnValue({ afterClosed: () => of(false) });
     const myParties = TestBed.inject(MyPartiesService) as unknown as {
@@ -3404,7 +3435,7 @@ describe('PartieDetail — patron de carte à liseré, revue de code (retouche U
 
   it('MJ, système Ryuutama : app-xp-history et chaque app-annonce-card reçoivent les classes de carte de la zone Consultation', async () => {
     const announcements = [makeAnnouncementDto({ id: 'ann-1', scenarioId: null })];
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama', kind: 'CAMPAGNE_LINEAIRE' }),
       MJ_ID,
       { announcements },
@@ -3423,7 +3454,7 @@ describe('PartieDetail — patron de carte à liseré, revue de code (retouche U
   });
 
   it('la description de la partie (zone Référence) reçoit le même patron de carte à liseré que les deux autres zones', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, description: 'Un récit à découvrir' }),
       MJ_ID,
     );
@@ -3945,17 +3976,18 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
   );
 
   it('témoin JDR : une quête Ryuutama garde ses cinq onglets, son widget de séance et son sous-titre', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ gameSystemId: 'ryuutama', kind: 'CAMPAGNE_EPISODIQUE', ownerId: MJ_ID }),
       MJ_ID,
     );
     const tone = TONE_MAP['grimoire-emeraude'];
+    // Story 53.4 : la suite des séances passe en tête, l'Homme Dragon ferme la marche.
     expect(tabLabels(el)).toEqual([
+      tone['parties.detail_tab_scenarios'],
+      tone['parties.detail_tab_timeline'],
       tone['parties.detail_tab_details'],
       tone['partie.invitations_tab_label'],
       'Homme Dragon',
-      tone['parties.detail_tab_scenarios'],
-      tone['parties.detail_tab_timeline'],
     ]);
     expect(el.querySelector('.scheduling-widget')).not.toBeNull();
     expect(TestBed.inject(ContextualNavService).subtitle()).toBe(
@@ -4291,7 +4323,7 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
     );
     const tone = TONE_MAP['grimoire-emeraude'];
     expect(tabLabels(el)).not.toContain(tone['partie.ralliement_conjonctions_tab']);
-    expect(tabLabels(el)[0]).toBe(tone['parties.detail_tab_details']);
+    expect(tabLabels(el)[0]).toBe(tone['parties.detail_tab_scenarios']);
   });
 });
 
@@ -7366,7 +7398,7 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       makePartie({ gameSystemId: 'ryuutama', kind: 'ONE_SHOT', ownerId: MJ_ID }),
       MJ_ID,
     );
-    expect(tabLabels(quete.el)[0]).toBe(tone['parties.detail_tab_details']);
+    expect(tabLabels(quete.el)[0]).toBe(tone['parties.detail_tab_scenario']);
     expect(quete.el.querySelector('app-soiree-tab')).toBeNull();
   });
 });
@@ -7679,13 +7711,13 @@ describe('PartieDetail — icônes du jeu : états, actions et ressources (story
   });
 
   it('actions du MJ : « Distribuer l’XP » et « Proclamer une annonce »', async () => {
-    const { el } = await createFixture(makePartie({ ownerId: MJ_ID }), MJ_ID);
+    const { el } = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID }), MJ_ID);
     expect(iconOf(el.querySelector('.xp-section button'))).toBe('distribuer-xp');
     expect(iconOf(el.querySelector('.announcement-section button'))).toBe('proclamer');
   });
 
   it('les dix boutons de téléchargement portent la même icône « telecharger »', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' }),
       MJ_ID,
     );
@@ -7697,7 +7729,7 @@ describe('PartieDetail — icônes du jeu : états, actions et ressources (story
   });
 
   it('les deux feuilles repliables ont le chevron « deplier »', async () => {
-    const { el } = await createFixture(
+    const { el } = await createFixtureOnDetails(
       makePartie({ ownerId: MJ_ID, gameSystemId: 'ryuutama' }),
       MJ_ID,
     );
@@ -7944,5 +7976,284 @@ describe('PartieDetail — icônes du jeu : membres, invitations et gouvernance 
 
     for (const name of themed) expect(drawing(name), name).not.toBe(before[name]);
     for (const name of utility) expect(drawing(name), name).toBe(before[name]);
+  });
+});
+
+// ─── Une partie s'ouvre sur la suite de ses séances (Story 53.4) ─────────────────────────────
+
+describe('PartieDetail — onglets adressés par clé, ordre et onglet d’arrivée (Story 53.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  type Comp = {
+    tabs: () => TabKey[];
+    displayedTabKey: () => TabKey;
+    selectedTabKey: { set: (k: TabKey | null) => void };
+    partie: { (): PartieDto; set: (p: PartieDto) => void };
+    openInvitationsTab: () => void;
+    charactersLoaded: () => boolean;
+  };
+  const comp = (fixture: ComponentFixture<PartieDetail>) =>
+    fixture.componentInstance as unknown as Comp;
+  const tabLabels = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLElement>('div[role="tab"]')).map((t) =>
+      (t.textContent ?? '').trim(),
+    );
+  const activeLabel = (el: HTMLElement) =>
+    el.querySelector('div[role="tab"][aria-selected="true"]')?.textContent?.trim();
+  const flush = async (fixture: ComponentFixture<PartieDetail>) => {
+    for (let i = 0; i < 6; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+  const T = GRIMOIRE_TONE;
+  const heroDone = [makeCharacterDto({ userId: PLAYER_ID, partieId: 'party-1' })];
+  const chronicle = (over: Partial<PartieDto> = {}) =>
+    makePartie({ kind: 'CAMPAGNE_LINEAIRE', ownerId: MJ_ID, ...over });
+  const oneShot = (over: Partial<PartieDto> = {}) =>
+    makePartie({ kind: 'ONE_SHOT', ownerId: MJ_ID, ...over });
+
+  it('MJ de chronique : Chapitres · Chronologie · Détails · Invitations, arrive sur Chapitres', async () => {
+    const { fixture, el } = await createFixture(chronicle(), MJ_ID, { noopAnimations: true });
+    expect(tabLabels(el)).toEqual([
+      T['parties.detail_tab_scenarios'],
+      T['parties.detail_tab_timeline'],
+      T['parties.detail_tab_details'],
+      T['partie.invitations_tab_label'],
+    ]);
+    expect(comp(fixture).tabs()).toEqual(['chapitres', 'chronologie', 'details', 'invitations']);
+    expect(comp(fixture).displayedTabKey()).toBe('chapitres');
+    expect(activeLabel(el)).toBe(T['parties.detail_tab_scenarios']);
+  });
+
+  it('MJ de chronique Ryuutama : l’Homme Dragon ferme la marche, arrivée inchangée', async () => {
+    const { fixture, el } = await createFixture(chronicle({ gameSystemId: 'ryuutama' }), MJ_ID, {
+      noopAnimations: true,
+    });
+    expect(tabLabels(el)).toEqual([
+      T['parties.detail_tab_scenarios'],
+      T['parties.detail_tab_timeline'],
+      T['parties.detail_tab_details'],
+      T['partie.invitations_tab_label'],
+      'Homme Dragon',
+    ]);
+    expect(comp(fixture).displayedTabKey()).toBe('chapitres');
+  });
+
+  it('MJ de quête unique : Scénario (« Chapitre ») · Détails · Invitations, arrive sur Scénario', async () => {
+    const { fixture, el } = await createFixture(oneShot(), MJ_ID, { noopAnimations: true });
+    expect(tabLabels(el)).toEqual([
+      T['parties.detail_tab_scenario'],
+      T['parties.detail_tab_details'],
+      T['partie.invitations_tab_label'],
+    ]);
+    expect(comp(fixture).displayedTabKey()).toBe('scenario');
+    expect(activeLabel(el)).toBe(T['parties.detail_tab_scenario']);
+  });
+
+  it('MJ de quête unique Ryuutama : l’Homme Dragon ferme la marche', async () => {
+    const { el } = await createFixture(oneShot({ gameSystemId: 'ryuutama' }), MJ_ID, {
+      noopAnimations: true,
+    });
+    expect(tabLabels(el)).toEqual([
+      T['parties.detail_tab_scenario'],
+      T['parties.detail_tab_details'],
+      T['partie.invitations_tab_label'],
+      'Homme Dragon',
+    ]);
+  });
+
+  it('joueur de chronique : Chronologie · Détails · Fiches, arrive sur Chronologie', async () => {
+    const { fixture, el } = await createFixture(chronicle(), PLAYER_ID, {
+      noopAnimations: true,
+      characters: heroDone,
+    });
+    expect(tabLabels(el)).toEqual([
+      T['parties.detail_tab_timeline'],
+      T['parties.detail_tab_details'],
+      T['character.party_sheets_tab_label'],
+    ]);
+    expect(comp(fixture).displayedTabKey()).toBe('chronologie');
+    expect(activeLabel(el)).toBe(T['parties.detail_tab_timeline']);
+  });
+
+  it('joueur de quête unique : Détails · Fiches, arrive sur Détails', async () => {
+    const { fixture, el } = await createFixture(oneShot(), PLAYER_ID, {
+      noopAnimations: true,
+      characters: heroDone,
+    });
+    expect(tabLabels(el)).toEqual([
+      T['parties.detail_tab_details'],
+      T['character.party_sheets_tab_label'],
+    ]);
+    expect(comp(fixture).displayedTabKey()).toBe('details');
+  });
+
+  it('joueur qui doit créer son héros : même ordre, arrive sur Fiches (chronique et quête unique)', async () => {
+    const chron = await createFixture(chronicle({ gameSystemId: 'ryuutama' }), PLAYER_ID, {
+      noopAnimations: true,
+    });
+    expect(tabLabels(chron.el)).toEqual([
+      T['parties.detail_tab_timeline'],
+      T['parties.detail_tab_details'],
+      T['character.party_sheets_tab_label'],
+    ]);
+    expect(comp(chron.fixture).displayedTabKey()).toBe('fiches');
+    expect(activeLabel(chron.el)).toBe(T['character.party_sheets_tab_label']);
+    TestBed.resetTestingModule();
+
+    const quest = await createFixture(oneShot({ gameSystemId: 'ryuutama' }), PLAYER_ID, {
+      noopAnimations: true,
+    });
+    expect(tabLabels(quest.el)).toEqual([
+      T['parties.detail_tab_details'],
+      T['character.party_sheets_tab_label'],
+    ]);
+    expect(comp(quest.fixture).displayedTabKey()).toBe('fiches');
+  });
+
+  it('groupe et soirée gardent leur ordre et leur arrivée (conjonctions / soirée)', async () => {
+    const group = await createFixture(
+      makePartie({ gameSystemId: 'ralliement', kind: 'CAMPAGNE_EPISODIQUE', role: 'admin' }),
+      MJ_ID,
+      { noopAnimations: true },
+    );
+    expect(comp(group.fixture).tabs()).toEqual(['conjonctions', 'jeux', 'details', 'membres']);
+    expect(comp(group.fixture).displayedTabKey()).toBe('conjonctions');
+    expect(activeLabel(group.el)).toBe(T['partie.ralliement_conjonctions_tab']);
+    TestBed.resetTestingModule();
+
+    const soiree = await createFixture(
+      makePartie({ gameSystemId: 'ralliement', kind: 'ONE_SHOT', role: 'admin' }),
+      MJ_ID,
+      { noopAnimations: true },
+    );
+    expect(comp(soiree.fixture).tabs()).toEqual(['soiree', 'membres', 'jeux']);
+    expect(comp(soiree.fixture).displayedTabKey()).toBe('soiree');
+    expect(activeLabel(soiree.el)).toBe(T['partie.ralliement_soiree_tab']);
+  });
+
+  it('« + Inviter » ouvre Invitations pour le MJ, en chronique comme en quête unique', async () => {
+    for (const partie of [chronicle(), oneShot()]) {
+      const { fixture, el } = await createFixture(partie, MJ_ID, { noopAnimations: true });
+      comp(fixture).openInvitationsTab();
+      await flush(fixture);
+      expect(comp(fixture).displayedTabKey()).toBe('invitations');
+      expect(activeLabel(el)).toBe(T['partie.invitations_tab_label']);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('« + Inviter » ne fait rien pour un joueur (pas d’onglet Invitations)', async () => {
+    const { fixture } = await createFixture(chronicle(), PLAYER_ID, {
+      noopAnimations: true,
+      characters: heroDone,
+    });
+    comp(fixture).openInvitationsTab();
+    await flush(fixture);
+    expect(comp(fixture).displayedTabKey()).toBe('chronologie');
+  });
+
+  it('le lien d’une annonce ouvre Détails (par sa clé) puis défile, MJ de chronique compris', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const { fixture } = await createFixture(chronicle(), MJ_ID, {
+      announcements: [makeAnnouncementDto({ id: 'ann-cible', scenarioId: null })],
+      unseenAnnouncementIds: ['ann-cible'],
+      announcementIdQueryParam: 'ann-cible',
+      noopAnimations: true,
+    });
+    await flush(fixture);
+    expect(comp(fixture).displayedTabKey()).toBe('details');
+  });
+
+  it('un lecteur de Détails n’est pas basculé sur Fiches quand ses personnages arrivent tard', async () => {
+    let resolveCharacters!: (chars: CharacterDto[]) => void;
+    const charactersPromise = new Promise<CharacterDto[]>((resolve) => {
+      resolveCharacters = resolve;
+    });
+    const { fixture } = await createFixture(chronicle({ gameSystemId: 'ryuutama' }), PLAYER_ID, {
+      noopAnimations: true,
+      charactersPromise,
+    });
+    expect(comp(fixture).charactersLoaded()).toBe(false);
+    comp(fixture).selectedTabKey.set('details');
+    await flush(fixture);
+
+    resolveCharacters([]); // aucun héros : il devrait créer le sien
+    await flush(fixture);
+    expect(comp(fixture).charactersLoaded()).toBe(true);
+    expect(comp(fixture).displayedTabKey()).toBe('details');
+  });
+
+  it('un onglet qui apparaît plus tard (Homme Dragon) ne change pas l’onglet affiché', async () => {
+    const { fixture } = await createFixture(chronicle(), MJ_ID, { noopAnimations: true });
+    comp(fixture).selectedTabKey.set('details');
+    await flush(fixture);
+
+    comp(fixture).partie.set({ ...comp(fixture).partie(), gameSystemId: 'ryuutama' });
+    await flush(fixture);
+    expect(comp(fixture).tabs()).toContain('homme-dragon');
+    expect(comp(fixture).displayedTabKey()).toBe('details');
+  });
+
+  it('un changement de rôle revient à l’onglet d’arrivée du nouveau jeu d’onglets', async () => {
+    const { fixture, el } = await createFixture(chronicle(), MJ_ID, {
+      noopAnimations: true,
+      characters: heroDone,
+    });
+    comp(fixture).selectedTabKey.set('details');
+    await flush(fixture);
+
+    const auth = TestBed.inject(AuthService) as unknown as {
+      currentUser: { set: (u: unknown) => void };
+    };
+    auth.currentUser.set({
+      id: PLAYER_ID,
+      pseudo: 'Test',
+      displayName: 'Test',
+      email: 'test@test.com',
+      role: 'USER',
+      createdAt: '',
+    });
+    await flush(fixture);
+    expect(comp(fixture).tabs()).toEqual(['chronologie', 'details', 'fiches']);
+    expect(comp(fixture).displayedTabKey()).toBe('chronologie');
+    expect(activeLabel(el)).toBe(T['parties.detail_tab_timeline']);
+  });
+
+  it('une conversion de la nature de la partie revient à l’onglet d’arrivée', async () => {
+    const { fixture } = await createFixture(oneShot(), MJ_ID, { noopAnimations: true });
+    comp(fixture).selectedTabKey.set('invitations');
+    await flush(fixture);
+    expect(comp(fixture).displayedTabKey()).toBe('invitations');
+
+    comp(fixture).partie.set({ ...comp(fixture).partie(), kind: 'CAMPAGNE_LINEAIRE' });
+    await flush(fixture);
+    expect(comp(fixture).tabs()[0]).toBe('chapitres');
+    expect(comp(fixture).displayedTabKey()).toBe('chapitres');
+  });
+
+  it('une clé qui n’est plus rendue revient à l’onglet d’arrivée', async () => {
+    const { fixture } = await createFixture(oneShot(), MJ_ID, { noopAnimations: true });
+    comp(fixture).selectedTabKey.set('scenario');
+    comp(fixture).partie.set({ ...comp(fixture).partie(), kind: 'CAMPAGNE_EPISODIQUE' });
+    await flush(fixture);
+    expect(comp(fixture).tabs()).not.toContain('scenario');
+    expect(comp(fixture).displayedTabKey()).toBe('chapitres');
+  });
+
+  it('un onglet d’arrivée non rendu retombe sur le premier onglet, jamais sur aucun', async () => {
+    const { fixture, el } = await createFixture(chronicle(), MJ_ID, { noopAnimations: true });
+    // Règle d'arrivée forcée sur une clé que ce MJ n'a pas (pas d'onglet Fiches pour lui).
+    (fixture.componentInstance as unknown as { wantedTabKey: () => TabKey }).wantedTabKey = () =>
+      'fiches';
+    comp(fixture).selectedTabKey.set(null);
+    comp(fixture).partie.set({ ...comp(fixture).partie(), name: 'Autre nom' });
+    await flush(fixture);
+    expect(comp(fixture).tabs()).not.toContain('fiches');
+    expect(comp(fixture).displayedTabKey()).toBe(comp(fixture).tabs()[0]);
+    expect(activeLabel(el)).toBe(T['parties.detail_tab_scenarios']);
   });
 });

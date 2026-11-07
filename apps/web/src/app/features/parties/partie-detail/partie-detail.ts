@@ -92,8 +92,22 @@ import { EventGamesTab } from '../../events/event-games-tab/event-games-tab';
 import { SoireeTab } from '../../events/soiree-tab/soiree-tab';
 import { EventsApiService } from '../../events/events-api.service';
 
-/** Index de l'onglet "Invitations" — toujours en 2e position pour le MJ (jamais d'onglet "Ma fiche" pour lui). */
-const MJ_INVITATIONS_TAB_INDEX = 1;
+/** Story 53.4 : clé d'un onglet de la page Partie — union fermée. Un onglet se désigne toujours par sa
+ *  clé, jamais par sa position : l'index du `mat-tab-group` n'existe qu'au rendu (`tabs().indexOf(clé)`),
+ *  de sorte qu'un réordonnancement ne casse plus aucun lien interne. `jeux` couvre les jeux d'un groupe
+ *  comme ceux d'une soirée (jamais les deux sur la même partie). */
+export type TabKey =
+  | 'chapitres'
+  | 'scenario'
+  | 'chronologie'
+  | 'fiches'
+  | 'invitations'
+  | 'homme-dragon'
+  | 'details'
+  | 'conjonctions'
+  | 'jeux'
+  | 'soiree'
+  | 'membres';
 
 /** Story 32.1 : longueur minimale de saisie avant d'interroger `GET /users/search` (autocomplétion
  *  par pseudo) — en dessous, aucune requête HTTP n'est émise (décidé par l'utilisateur, 2026-09-22). */
@@ -488,30 +502,77 @@ export class PartieDetail implements OnInit {
     this.homonymyDismissed.set(true);
   }
 
-  /** Onglet "Ma fiche" sélectionné par défaut quand il reste à créer son personnage (même prédicat
-   *  que le bouton, desktop et mobile confondus, Story 29.15) ; sinon "Détails" (index 0) — le MJ
-   *  n'a jamais cet onglet, donc toujours "Détails" par défaut. */
-  protected readonly defaultTabIndex = computed(() => (this.canCreateCharacter() ? 1 : 0));
+  /** Story 53.4 : les onglets rendus, dans l'ordre du gabarit — seule source de vérité des conditions
+   *  d'affichage de chaque `mat-tab` (le gabarit les lit via `hasTab()`). Une partie de JDR s'ouvre sur la
+   *  suite de ses séances : Chapitres/Scénario (MJ) puis Chronologie en tête, jamais pour un ralliement. */
+  protected readonly tabs = computed<TabKey[]>(() => {
+    const p = this.partie();
+    if (!p) return [];
+    const isMj = this.isMj();
+    const keys: TabKey[] = [];
+    if (isMj && p.kind === 'ONE_SHOT') keys.push('scenario');
+    if (isMj && p.kind !== 'ONE_SHOT') keys.push('chapitres');
+    if (p.kind !== 'ONE_SHOT' && !this.isRalliement()) keys.push('chronologie');
+    if (this.isGroup()) keys.push('conjonctions', 'jeux');
+    keys.push(this.isSoiree() ? 'soiree' : 'details');
+    if (!isMj && !this.isRalliement()) keys.push('fiches');
+    if (isMj) keys.push('invitations');
+    if (this.isRalliement()) keys.push('membres');
+    if (this.isSoireeOpen()) keys.push('jeux');
+    if (isMj && p.gameSystemId === 'ryuutama') keys.push('homme-dragon');
+    return keys;
+  });
 
-  private readonly manualTabIndex = signal<number | null>(null);
+  protected hasTab(key: TabKey): boolean {
+    return this.tabs().includes(key);
+  }
 
-  protected readonly selectedTabIndex = computed(
-    () => this.manualTabIndex() ?? this.defaultTabIndex(),
+  /** Onglet d'arrivée, règle par rôle (⚠️ écran validé, Story 53.4) : groupe → conjonctions, soirée →
+   *  soirée ; MJ → Chapitres (Scénario en quête unique) ; joueur → Chronologie (Détails en quête unique),
+   *  ou Fiches quand il lui reste à créer son personnage (même prédicat `canCreateCharacter()`,
+   *  Story 29.15). */
+  private defaultTabKey(): TabKey {
+    const wanted = this.wantedTabKey();
+    const tabs = this.tabs();
+    // Garde-fou : jamais une clé non rendue (index -1, aucun onglet affiché) — à défaut, le premier onglet.
+    return tabs.includes(wanted) ? wanted : (tabs[0] ?? wanted);
+  }
+
+  private wantedTabKey(): TabKey {
+    const p = this.partie();
+    if (this.isGroup()) return 'conjonctions';
+    if (this.isSoiree()) return 'soiree';
+    if (this.isMj()) return p?.kind === 'ONE_SHOT' ? 'scenario' : 'chapitres';
+    if (this.canCreateCharacter()) return 'fiches';
+    return p?.kind === 'ONE_SHOT' ? 'details' : 'chronologie';
+  }
+
+  /** Choix de l'utilisateur ou du lien interne ; `null` tant que l'onglet d'arrivée n'est pas figé. */
+  private readonly selectedTabKey = signal<TabKey | null>(null);
+
+  /** Onglet affiché : la sélection si elle est encore rendue, sinon l'onglet d'arrivée courant. Le
+   *  gabarit n'en tire l'index du `mat-tab-group` qu'au rendu (`tabs().indexOf(clé)`) — jamais stocké
+   *  ni désigné ailleurs. */
+  protected readonly displayedTabKey = computed<TabKey>(() => {
+    const key = this.selectedTabKey();
+    return key !== null && this.hasTab(key) ? key : this.defaultTabKey();
+  });
+
+  /** Détermine l'ensemble des onglets (rôle MJ/joueur, nature de la partie après conversion, famille) —
+   *  un changement renvoie à l'onglet d'arrivée du nouveau jeu d'onglets. */
+  private readonly tabSetKey = computed(
+    () => `${this.isMj()}|${this.partie()?.kind ?? ''}|${familyOf(this.partie()?.gameSystemId ?? '')}`,
   );
 
-  /** Détermine l'ensemble des onglets rendus — un changement invalide toute sélection manuelle
-   *  antérieure. Ne dépend plus de l'appareil (Story 29.15) : l'onglet "Ma fiche" se rend
-   *  désormais pour tout joueur non-MJ, desktop compris — seul le rôle MJ/joueur fait varier le
-   *  jeu d'onglets. */
-  private readonly tabSetKey = computed(() => `${this.isMj()}`);
-
+  /** Le `mat-tab-group` rend un index : on le ramène à la clé de l'onglet. */
   protected onTabIndexChange(index: number): void {
-    this.manualTabIndex.set(index);
+    const key = this.tabs()[index];
+    if (key) this.selectedTabKey.set(key);
   }
 
   /** Ouvre l'onglet Invitations depuis le slot "+ Inviter" du roster (MJ uniquement — seul rôle où cet onglet existe). */
   protected openInvitationsTab(): void {
-    if (this.isMj()) this.manualTabIndex.set(MJ_INVITATIONS_TAB_INDEX);
+    if (this.hasTab('invitations')) this.selectedTabKey.set('invitations');
   }
 
   protected onSelectRosterCharacter(event: { characterId: string }): void {
@@ -588,27 +649,29 @@ export class PartieDetail implements OnInit {
       if (this.isMj()) void this.loadXpDistributions();
     });
 
-    // Revue de code (bmad-review, 2026-09-21) : `tabSettled` figé une seule fois par « session » de
-    // rôle MJ/joueur (réarmé par tabSetKey ci-dessous), pas suivi en continu. Sans ce gel,
-    // `defaultTabIndex()` restant réactif à `canCreateCharacter()`, un joueur déjà en train de lire
-    // « Détails » pouvait être basculé vers « Ma fiche » sans avoir rien demandé dès que
-    // `charactersLoaded()` passait à `true` (ou plus tard, si `canCreateCharacter()` change encore
-    // en cours de visite, ex. personnage créé ailleurs et rechargé par le signal temps réel) — AC1
-    // ne couvre que l'atterrissage initial, pas une bascule surprise ultérieure.
-    let tabSettled = false;
+    // Story 53.4 (reprend la revue de code du 2026-09-21) : l'onglet d'arrivée est figé une seule fois
+    // par jeu d'onglets (`settled`, réarmé quand `tabSetKey()` change), après `charactersLoaded()`,
+    // puis ne bouge plus. Sans ce gel, un joueur déjà en train de lire « Chronologie » serait basculé
+    // vers « Fiches » sans avoir rien demandé quand `canCreateCharacter()` change en cours de visite
+    // (personnage créé ailleurs, rechargé par le signal temps réel). Un changement de jeu d'onglets
+    // (rôle, nature, famille) ou une clé qui n'est plus rendue ramène à l'onglet d'arrivée ; un onglet
+    // qui apparaît plus tard (Homme Dragon, fiches chargées) ne change jamais l'onglet affiché.
+    let seenSetKey: string | null = null;
+    let settled = false;
     effect(() => {
-      this.tabSetKey();
+      const setKey = this.tabSetKey();
+      const tabs = this.tabs();
+      const loaded = this.charactersLoaded();
       untracked(() => {
-        this.manualTabIndex.set(null);
-        tabSettled = false;
-      });
-    });
-
-    effect(() => {
-      if (tabSettled || !this.charactersLoaded()) return;
-      tabSettled = true;
-      untracked(() => {
-        if (this.manualTabIndex() === null) this.manualTabIndex.set(this.defaultTabIndex());
+        const selected = this.selectedTabKey();
+        if (setKey !== seenSetKey || (selected !== null && !tabs.includes(selected))) {
+          seenSetKey = setKey;
+          this.selectedTabKey.set(null);
+          settled = false;
+        }
+        if (!loaded || tabs.length === 0 || settled) return;
+        settled = true;
+        if (this.selectedTabKey() === null) this.selectedTabKey.set(this.defaultTabKey());
       });
     });
 
@@ -727,10 +790,10 @@ export class PartieDetail implements OnInit {
     });
 
     // Story 29.13 (révision du 2026-08-13, retour utilisateur) : clic sur le bandeau du Shell —
-    // force l'onglet "Détails" (0, où vivent les annonces de campagne) puis défile jusqu'à
-    // l'annonce visée dès qu'elle apparaît dans campaignAnnouncements(). Après `tabSetKey()`
-    // (qui remet `manualTabIndex` à `null` uniquement sur un changement de rôle MJ/joueur — plus sur
-    // un changement d'appareil/breakpoint desktop-mobile depuis Story 29.15) pour ne pas être écrasé.
+    // ouvre l'onglet « Détails » (où vivent les annonces de campagne), par sa clé (Story 53.4), puis
+    // défile jusqu'à l'annonce visée dès qu'elle apparaît dans campaignAnnouncements(). Après l'effet
+    // d'onglet d'arrivée (qui remet la sélection à `null` sur un changement de jeu d'onglets) pour ne
+    // pas être écrasé.
     effect(() => {
       const id = this.pendingScrollAnnouncementId;
       if (!id) return;
@@ -738,7 +801,7 @@ export class PartieDetail implements OnInit {
       if (!found) return;
       untracked(() => {
         this.pendingScrollAnnouncementId = null;
-        this.manualTabIndex.set(0);
+        if (this.hasTab('details')) this.selectedTabKey.set('details');
         scrollToAnnouncement(id);
       });
     });

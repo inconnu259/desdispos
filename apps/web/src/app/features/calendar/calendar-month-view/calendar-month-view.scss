@@ -454,3 +454,15 @@
     padding: 6px 0;
   }
 }
+
+/* ── Story 52.3 : le mode déclaration ──
+   Un tap sélectionne et un glissement HORIZONTAL sélectionne aussitôt, sans appui long : le défilement vertical de la
+   page redevient donc natif (`pan-y`) au lieu d'être sacrifié comme en lecture (`touch-action: none` ci-dessus). Une
+   marge réservée sous la grille laisse la barre collante ne jamais cacher sa dernière ligne. */
+.calendar-grid--declare {
+  margin-bottom: 16px;
+
+  .day-cell {
+    touch-action: pan-y;
+  }
+}

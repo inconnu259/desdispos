@@ -48,6 +48,21 @@ describe('SelectionBar', () => {
     TestBed.configureTestingModule({ imports: [SelectionBar] });
   });
 
+  it('Story 52.3 — la barre est collante en mode déclaration seulement', () => {
+    create(2);
+    expect(fixture.nativeElement.classList).not.toContain('selection-bar-sticky');
+
+    for (const mode of ['composer', 'destinee', 'lecture'] as const) {
+      fixture.componentRef.setInput('interaction', mode);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.classList).not.toContain('selection-bar-sticky');
+    }
+
+    fixture.componentRef.setInput('interaction', 'declaration');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.classList).toContain('selection-bar-sticky');
+  });
+
   it('affiche le nombre de créneaux sélectionnés', () => {
     create(4, 'mar. → ven., soirée');
     expect(el.textContent).toContain(

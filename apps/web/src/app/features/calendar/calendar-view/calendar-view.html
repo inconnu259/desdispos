@@ -100,6 +100,7 @@
         [class.declare-arm--on]="interaction() === 'declaration'"
         [attr.aria-pressed]="interaction() === 'declaration'"
         (click)="toggleDeclaration()"
+        (keydown.escape)="onDeclareEscape()"
       >
         <app-icon name="declarer-dispos" />
         {{
@@ -168,7 +169,7 @@
          annoncé. Jamais affiché en lecture. -->
     <div class="declare-banner-slot" role="status">
       @if (interaction() === 'declaration') {
-        <div class="declare-banner">
+        <div class="declare-banner" (keydown.escape)="onDeclareEscape()">
           <span>{{ theme.tone()['calendar.declare_banner'] }}</span>
           <button type="button" class="declare-banner__done" (click)="endDeclaration()">
             {{ theme.tone()['calendar.declare_done'] }}
@@ -361,6 +362,7 @@
         (slotSelected)="onSlotSelected($event)"
         (displayDateChange)="onMonthDateChange($event)"
         (batchDeclareRequested)="onBatchDeclareRequested($event)"
+        (declarationExitRequested)="endDeclaration()"
         (declarationPanelRequested)="onDeclarationPanelRequested($event)"
         (voteOptionActivated)="onVoteOptionActivated($event)"
         (composeToggled)="onComposeToggled($event)"
@@ -390,6 +392,7 @@
         (slotSelected)="onSlotSelected($event)"
         (displayDateChange)="onWeekDateChange($event)"
         (batchDeclareRequested)="onBatchDeclareRequested($event)"
+        (declarationExitRequested)="endDeclaration()"
         (declarationPanelRequested)="onDeclarationPanelRequested($event)"
         (voteOptionActivated)="onVoteOptionActivated($event)"
         (composeToggled)="onComposeToggled($event)"

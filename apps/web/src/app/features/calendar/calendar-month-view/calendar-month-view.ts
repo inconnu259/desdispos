@@ -51,6 +51,7 @@ import {
   type GesturePointerType,
   type SelectedCell,
   composeCellKey,
+  mergeCells,
   monthRangeDays,
 } from '../selection.utils';
 
@@ -363,6 +364,8 @@ export class CalendarMonthView {
   readonly canSeal = input(false);
 
   readonly slotSelected = output<SlotSelectedEvent>();
+  /** Story 52.3 — `Échap` en mode déclaration, sélection vide : la vue demande à `CalendarView` d'éteindre le mode. */
+  readonly declarationExitRequested = output<void>();
   readonly displayDateChange = output<Date>();
   /** Story 30.3 : lot construit par un glissement (souris/tactile) ou une validation clavier —
    *  CalendarView construit les items et appelle createDeclarationBatch(), jamais cette vue. */
@@ -536,8 +539,10 @@ export class CalendarMonthView {
     const anchor = this.selectionAnchor();
     if (!anchor) return;
     this.selectionCurrent.set(current);
+    const range = monthRangeDays(anchor.date, current.date).map((date) => ({ date, slot: anchor.slot }));
+    // Story 52.3 — en mode déclaration le glissement AJOUTE sa plage aux créneaux déjà retenus.
     this.selectedCells.set(
-      monthRangeDays(anchor.date, current.date).map((date) => ({ date, slot: anchor.slot })),
+      this.interaction() === 'declaration' && this.dragArmed() ? mergeCells(this.dragBase, range) : range,
     );
   }
 
@@ -667,6 +672,18 @@ export class CalendarMonthView {
     // ⚠️ Story 36.3, AC15 — hors mode modification, un tap court est un geste de LECTURE : il
     // désigne le créneau, le rail suit (AC2 de 36.1), et rien ne s'ouvre. Ni le panneau (retiré
     // par l'AC1), ni la barre — celle-ci appartient à l'appui maintenu et au glissement.
+    // ⚠️ Story 52.3 — en MODE DÉCLARATION le tap ne lit plus : il ajoute ou retire le créneau (une journée entière
+    // compte pour un). Le rail reste sur son jour (aucun `slotSelected`), le sélecteur de réponse ne s'ouvre pas, et
+    // le repère de date courante suit le dernier créneau touché. Le `click` qui suit un geste armé est avalé.
+    if (this.interaction() === 'declaration') {
+      this.currentDate.set(date);
+      if (this.suppressNextClick) {
+        this.suppressNextClick = false;
+        return;
+      }
+      this.toggleCell(date, slot);
+      return;
+    }
     this.slotSelected.emit({ date, slot });
     this.currentDate.set(date);
     // 🚨 Story 36.10, AC2/AC12 — LE MODE DE COMPOSITION RÉASSIGNE LE TAP, et il le fait ICI :
@@ -972,7 +989,9 @@ export class CalendarMonthView {
       // comprise, et non plus seulement au doigt. C'est lui qui sépare désormais lire (tap court)
       // de déclarer (appui long). Le glissement reste la seconde porte, plus découvrable en
       // ordinateur.
-      longPressTimer: setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
+      // Story 52.3 — en mode déclaration il n'y a plus d'appui long : un tap lent bascule le créneau comme un tap vif.
+      longPressTimer:
+        this.interaction() === 'declaration' ? null : setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
       fromBand,
     };
   }
@@ -992,7 +1011,9 @@ export class CalendarMonthView {
     const moved = Math.hypot(dx, dy) > MOVE_THRESHOLD_PX;
 
     if (!this.dragArmed()) {
-      if (down.pointerType === 'touch') {
+      // ⚠️ Story 52.3 — en mode déclaration le doigt n'a plus besoin de l'appui maintenu : il suit la règle d'axe de la
+      // souris (horizontal = sélection immédiate, vertical = défilement de la page).
+      if (down.pointerType === 'touch' && this.interaction() !== 'declaration') {
         // Appui maintenu requis (AC4) : un déplacement avant l'expiration du délai laisse le
         // défilement natif se produire, on n'appelle pas preventDefault().
         if (moved) {
@@ -1008,6 +1029,9 @@ export class CalendarMonthView {
       // des lignes de semaine. Le tactile n'en a pas besoin : l'appui maintenu l'assure déjà.
       if (Math.abs(dx) <= Math.abs(dy)) {
         this.cancelLongPressTimer();
+        // En mode déclaration, un départ vertical est un défilement : le relâchement qui suit ne doit pas compter comme
+        // un tap (sinon faire défiler cocherait un créneau).
+        if (this.interaction() === 'declaration') this.pointerDown = null;
         return;
       }
       this.armDrag(down.cell, down.slot);
@@ -1034,6 +1058,8 @@ export class CalendarMonthView {
     this.pointerDown = null;
     if (!wasArmed) {
       // Relâché sans déplacement ni appui maintenu écoulé → tap normal (AC3, AC9).
+      // Story 52.3 — un `pointercancel` (le navigateur prend la main pour défiler) n'est pas un tap.
+      if (event.type === 'pointercancel' && this.interaction() === 'declaration') return;
       // Un pointerdown parti d'une bande ne rejoue pas de tap FULL_DAY : la bande gère déjà
       // son propre tap via son (click), qui n'est pas passé par ce mécanisme.
       if (down && !down.fromBand) this.onCellClick(down.cell.date, 'FULL_DAY');
@@ -1053,8 +1079,14 @@ export class CalendarMonthView {
     // effaçant l'extension en cours.
     this.cancelLongPressTimer();
     this.dragArmed.set(true);
+    // Story 52.3 — en mode déclaration, les créneaux déjà retenus survivent au geste : il y AJOUTE sa plage.
+    this.dragBase = this.interaction() === 'declaration' ? this.selectedCells() : [];
     this.armSelection(cell.date, slot);
+    if (this.dragBase.length > 0) this.selectedCells.set(mergeCells(this.dragBase, this.selectedCells()));
   }
+
+  /** Story 52.3 — les créneaux retenus avant le glissement en cours (mode déclaration), auxquels sa plage s'ajoute. */
+  private dragBase: SelectedCell[] = [];
 
   private cancelLongPressTimer(): void {
     if (this.pointerDown?.longPressTimer) clearTimeout(this.pointerDown.longPressTimer);
@@ -1095,7 +1127,12 @@ export class CalendarMonthView {
 
   /** Story 36.10, AC3 — `Échap` a UNE signification à un instant donné, jamais deux : en
    *  composition il quitte le mode sans rien écrire, sinon il annule la sélection comme avant. */
-  protected onEscape(): void {
+  onEscape(): void {
+    // Story 52.3 — en mode déclaration, `Échap` vide d'abord la sélection ; vide, il éteint le mode (comme « Terminer »).
+    if (this.interaction() === 'declaration' && this.selectedCells().length === 0) {
+      this.declarationExitRequested.emit();
+      return;
+    }
     if (this.interaction() === 'composer') {
       // Story 45.3 — une barre de sélection ouverte se ferme d'abord : `Échap` n'a qu'UN sens à la fois, celui de la
       // couche la plus proche. Sans barre, il quitte le composer.

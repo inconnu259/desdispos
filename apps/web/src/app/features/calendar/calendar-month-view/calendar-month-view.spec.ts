@@ -2375,3 +2375,246 @@ describe('CalendarMonthView — fenêtre de l’automate sélectionnée (Story 4
     expect(el.querySelectorAll('.band--window')).toHaveLength(0);
   });
 });
+
+describe('CalendarMonthView — un tap suffit en mode déclaration (Story 52.3)', () => {
+  let el: HTMLElement;
+
+  const VOTE_ENTRY = {
+    key: 'vote-1',
+    type: 'votes-en-cours' as const,
+    date: '2026-08-20',
+    label: 'Chapitre 1',
+    slot: 'EVENING' as const,
+    vote: {
+      pollId: 'poll1',
+      optionId: 'opt1',
+      partieId: 'partie-1',
+      yes: 1,
+      no: 0,
+      maybe: 0,
+      total: 4,
+      myAnswer: null,
+    },
+  };
+
+  async function createWith(inputs: Record<string, unknown> = {}) {
+    await TestBed.configureTestingModule({
+      imports: [CalendarMonthView],
+      providers: [provideAnimationsAsync()],
+    }).compileComponents();
+    const f = TestBed.createComponent(CalendarMonthView);
+    f.componentRef.setInput('activeLayers', [
+      'mes-disponibilites',
+      'mes-indisponibilites',
+      'mes-seances',
+      'votes-en-cours',
+    ]);
+    f.componentRef.setInput('initialDate', new Date(2026, 7, 15));
+    f.componentRef.setInput('interaction', 'declaration');
+    for (const [k, v] of Object.entries(inputs)) f.componentRef.setInput(k, v);
+    f.detectChanges();
+    el = f.nativeElement;
+    return f;
+  }
+
+  const cellOf = (day: number): HTMLElement =>
+    el.querySelector(`.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`) as HTMLElement;
+  const bandOf = (day: number, index: number): HTMLElement =>
+    [...cellOf(day).querySelectorAll('.band')][index] as HTMLElement;
+  const uniformBandOf = (day: number): HTMLElement => cellOf(day).querySelector('.band') as HTMLElement;
+  const gridEl = () => el.querySelector('.calendar-grid') as HTMLElement;
+  const barEl = () => el.querySelector('app-selection-bar');
+  const pointerAt = (type: string, x: number, y: number, pointerType = 'touch') =>
+    new PointerEvent(type, { clientX: x, clientY: y, pointerType, bubbles: true });
+
+  /** Un glissement de la case de départ à la case d'arrivée, relâché — par défaut au DOIGT et sans appui long. */
+  function dragDays(from: number, to: number, dx = 60, dy = 0, pointerType = 'touch'): void {
+    cellOf(from).dispatchEvent(pointerAt('pointerdown', 0, 0, pointerType));
+    document.elementFromPoint = vi.fn().mockReturnValue(cellOf(to));
+    gridEl().dispatchEvent(pointerAt('pointermove', dx, dy, pointerType));
+    gridEl().dispatchEvent(pointerAt('pointerup', dx, dy, pointerType));
+  }
+
+  const click = (node: Element) => node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 10));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
+
+  it('un tap sur une bande l’ajoute, un second la retire ; la barre suit, le rail ne bouge pas', async () => {
+    const f = await createWith({ entries: [VOTE_ENTRY] });
+    const selected = vi.fn();
+    const picked = vi.fn();
+    f.componentInstance.slotSelected.subscribe(selected);
+    f.componentInstance.voteOptionActivated.subscribe(picked);
+
+    click(bandOf(20, 2));
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['EVENING']);
+    expect(barEl()).not.toBeNull();
+    expect(f.componentInstance['currentDate']()?.getDate()).toBe(20);
+
+    click(bandOf(20, 2));
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+    // Le tap ne sert plus à lire : ni rail, ni sélecteur de réponse à un vote.
+    expect(selected).not.toHaveBeenCalled();
+    expect(picked).not.toHaveBeenCalled();
+  });
+
+  it('un tap hors des bandes ajoute ou retire la journée entière, qui compte pour un seul créneau', async () => {
+    const f = await createWith();
+    cellOf(21).dispatchEvent(pointerAt('pointerdown', 5, 5, 'mouse'));
+    gridEl().dispatchEvent(pointerAt('pointerup', 5, 5, 'mouse'));
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['FULL_DAY']);
+
+    cellOf(21).dispatchEvent(pointerAt('pointerdown', 5, 5, 'mouse'));
+    gridEl().dispatchEvent(pointerAt('pointerup', 5, 5, 'mouse'));
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('un glissement horizontal au doigt sélectionne aussitôt, sans appui long', async () => {
+    const f = await createWith();
+    dragDays(21, 23);
+    f.detectChanges();
+    expect(f.componentInstance['selectedDays']().map((d: Date) => d.getDate())).toEqual([21, 22, 23]);
+    expect(barEl()).not.toBeNull();
+  });
+
+  it('le glissement AJOUTE sa plage aux créneaux déjà retenus', async () => {
+    const f = await createWith({ entries: [VOTE_ENTRY] });
+    click(bandOf(20, 2));
+    f.detectChanges();
+
+    dragDays(24, 26);
+    f.detectChanges();
+
+    expect(f.componentInstance['selectedDays']().map((d: Date) => d.getDate())).toEqual([20, 24, 25, 26]);
+  });
+
+  it('un glissement parti à la verticale reste un défilement : aucune sélection, pas de tap au relâchement', async () => {
+    const f = await createWith();
+    dragDays(21, 28, 0, 60);
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('un double-clic vaut deux taps : ajouté puis retiré', async () => {
+    const f = await createWith({ entries: [VOTE_ENTRY] });
+    click(bandOf(20, 2));
+    click(bandOf(20, 2));
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+
+  it('Échap vide d’abord la sélection ; vide, il demande à éteindre le mode', async () => {
+    const f = await createWith({ entries: [VOTE_ENTRY] });
+    const exit = vi.fn();
+    f.componentInstance.declarationExitRequested.subscribe(exit);
+    click(bandOf(20, 2));
+    f.detectChanges();
+
+    f.componentInstance.onEscape();
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(exit).not.toHaveBeenCalled();
+
+    f.componentInstance.onEscape();
+    expect(exit).toHaveBeenCalledTimes(1);
+  });
+
+  it('la barre est collante en mode déclaration seulement', async () => {
+    const f = await createWith({ entries: [VOTE_ENTRY] });
+    click(bandOf(20, 2));
+    f.detectChanges();
+    expect(barEl()!.classList).toContain('selection-bar-sticky');
+    expect(gridEl().classList).toContain('calendar-grid--declare');
+
+    f.componentRef.setInput('interaction', 'lecture');
+    f.detectChanges();
+    expect(gridEl().classList).not.toContain('calendar-grid--declare');
+    cellOf(21).dispatchEvent(pointerAt('pointerdown', 5, 5, 'mouse'));
+    vi.advanceTimersByTime(LONG_PRESS_MS);
+    gridEl().dispatchEvent(pointerAt('pointerup', 5, 5, 'mouse'));
+    f.detectChanges();
+    expect(barEl()).not.toBeNull();
+    expect(barEl()!.classList).not.toContain('selection-bar-sticky');
+  });
+
+  it('un glissement qui chevauche un créneau déjà retenu ne le double pas', async () => {
+    const f = await createWith();
+    cellOf(21).dispatchEvent(pointerAt('pointerdown', 5, 5, 'mouse'));
+    gridEl().dispatchEvent(pointerAt('pointerup', 5, 5, 'mouse'));
+    f.detectChanges();
+
+    dragDays(20, 22);
+    f.detectChanges();
+
+    const cells = f.componentInstance['selectedCells']() as { date: Date; slot: string }[];
+    expect(cells.map((c) => `${c.date.getDate()}|${c.slot}`)).toEqual([
+      '20|FULL_DAY',
+      '21|FULL_DAY',
+      '22|FULL_DAY',
+    ]);
+  });
+
+  it('un tap lent ne devient pas un appui long : il retire le créneau comme un tap vif', async () => {
+    const f = await createWith();
+    cellOf(21).dispatchEvent(pointerAt('pointerdown', 5, 5, 'mouse'));
+    gridEl().dispatchEvent(pointerAt('pointerup', 5, 5, 'mouse'));
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']()).toHaveLength(1);
+
+    cellOf(21).dispatchEvent(pointerAt('pointerdown', 5, 5, 'mouse'));
+    vi.advanceTimersByTime(LONG_PRESS_MS + 50);
+    gridEl().dispatchEvent(pointerAt('pointerup', 5, 5, 'mouse'));
+    f.detectChanges();
+
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+
+  it('un pointercancel (le navigateur prend le défilement) ne compte pas comme un tap', async () => {
+    const f = await createWith();
+    cellOf(21).dispatchEvent(pointerAt('pointerdown', 5, 5));
+    gridEl().dispatchEvent(pointerAt('pointercancel', 5, 5));
+    f.detectChanges();
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('Maj+flèche après un glissement ne ressuscite pas les créneaux retirés depuis', async () => {
+    const f = await createWith();
+    dragDays(21, 22);
+    f.detectChanges();
+    f.componentInstance['onSelectionCancelled']();
+    f.detectChanges();
+
+    const start = f.componentInstance['allCells']().find((c: any) => c.date.getDate() === 26);
+    f.componentInstance['onShiftArrow'](start!, 1);
+    f.detectChanges();
+
+    const days = f.componentInstance['selectedDays']().map((d: Date) => d.getDate());
+    expect(days).not.toContain(21);
+    expect(days).not.toContain(22);
+  });
+
+  it('en lecture un tap lit toujours : le rail suit et rien n’est sélectionné', async () => {
+    const f = await createWith({ entries: [VOTE_ENTRY], interaction: 'lecture' });
+    const selected = vi.fn();
+    f.componentInstance.slotSelected.subscribe(selected);
+    click(uniformBandOf(21));
+    f.detectChanges();
+    expect(selected).toHaveBeenCalledTimes(1);
+    expect(f.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+});

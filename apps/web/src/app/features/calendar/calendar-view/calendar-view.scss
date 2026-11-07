@@ -410,11 +410,11 @@
 
 /* Allumé : plein (fond `accent-1`, texte `on-primary`) ; le libellé passe à « Terminer ». */
 .declare-arm--on {
-  --mat-button-outlined-label-text-color: var(--jdr-on-primary);
+  --mat-button-outlined-label-text-color: var(--jdr-bg, #0d0a14);
   --mat-button-outlined-outline-color: var(--jdr-accent-1);
-  --mat-button-outlined-state-layer-color: var(--jdr-on-primary);
+  --mat-button-outlined-state-layer-color: var(--jdr-bg, #0d0a14);
   background: var(--jdr-accent-1);
-  color: var(--jdr-on-primary);
+  color: var(--jdr-bg, #0d0a14);
 }
 
 .declare-banner {
@@ -428,7 +428,7 @@
   border: 1px solid var(--jdr-accent-1);
   border-radius: 12px;
   background: color-mix(in srgb, var(--jdr-accent-1) 10%, transparent);
-  color: var(--jdr-text-primary);
+  color: var(--jdr-text, #e8e0f0);
   font-size: 13px;
   font-weight: 500;
 }

@@ -9705,3 +9705,216 @@ describe('CalendarView — le bouton « Déclarer mes dispos » et le mode décl
     expect(comp.interaction()).toBe('lecture');
   });
 });
+
+describe('CalendarView — un tap suffit en mode déclaration (Story 52.3)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const CELLS = [
+    { date: new Date('2026-08-10'), slot: 'EVENING' as const },
+    { date: new Date('2026-08-11'), slot: 'FULL_DAY' as const },
+    { date: new Date('2026-08-12'), slot: 'MORNING' as const },
+    { date: new Date('2026-08-13'), slot: 'EVENING' as const },
+  ];
+
+  function conflictAt(index: number) {
+    return {
+      id: 'ex-' + index,
+      kind: 'AVAILABLE' as const,
+      slot: 'EVENING' as const,
+      recurKind: 'PUNCTUAL' as const,
+      startDate: '2026-08-11',
+      endDate: '2026-08-11',
+      dayOfWeek: null,
+      batchIndex: index,
+    };
+  }
+
+  /** Le premier appel est refusé en 409, le second (résolu) réussit. */
+  function rejectingBatchOnce() {
+    const svc = makeAvailabilityService();
+    let call = 0;
+    svc.createDeclarationBatch = vi.fn(() => {
+      call += 1;
+      return call === 1
+        ? Promise.reject(new ConflictError([conflictAt(1)]))
+        : Promise.resolve({ created: [] });
+    });
+    return svc;
+  }
+
+  async function declaringView(options: Record<string, unknown> = {}) {
+    const made = await createCalendarView({ mode: 'personal', ...options });
+    const comp = made.fixture.componentInstance as any;
+    comp.setInteraction('declaration');
+    return { ...made, comp };
+  }
+
+  const snackText = (snack: { open: { mock: { calls: unknown[][] } } }): string =>
+    String(snack.open.mock.calls[0][0]);
+
+  it('un lot enregistré donne son nombre de créneaux, au pluriel puis au singulier', async () => {
+    const { comp, snack } = await declaringView();
+
+    await comp.onBatchDeclareRequested({ cells: CELLS, kind: 'AVAILABLE' });
+    expect(snackText(snack)).toBe('4 créneaux déclarés disponibles');
+
+    snack.open.mockClear();
+    await comp.onBatchDeclareRequested({ cells: CELLS.slice(0, 1), kind: 'AVAILABLE' });
+    expect(snackText(snack)).toBe('1 créneau déclaré disponible');
+
+    snack.open.mockClear();
+    await comp.onBatchDeclareRequested({ cells: CELLS, kind: 'UNAVAILABLE' });
+    expect(snackText(snack)).toBe('4 créneaux déclarés indisponibles');
+
+    snack.open.mockClear();
+    await comp.onBatchDeclareRequested({ cells: CELLS.slice(0, 1), kind: 'UNAVAILABLE' });
+    expect(snackText(snack)).toBe('1 créneau déclaré indisponible');
+    // Le mode reste allumé après l'enregistrement.
+    expect(comp.interaction()).toBe('declaration');
+  });
+
+  it('le bilan suit la voix du thème, sur les quatre formes', async () => {
+    const { comp, snack } = await declaringView();
+    const theme = TestBed.inject(ThemeToneService);
+    const expected = {
+      'foret-ancienne': ['1 créneau marqué disponible', '3 créneaux marqués indisponibles'],
+      'atelier-cuivre': ['1 créneau consigné disponible', '3 créneaux consignés indisponibles'],
+    } as const;
+    for (const [id, [one, many]] of Object.entries(expected)) {
+      theme.setTheme(id as 'foret-ancienne' | 'atelier-cuivre');
+      snack.open.mockClear();
+      await comp.onBatchDeclareRequested({ cells: CELLS.slice(0, 1), kind: 'AVAILABLE' });
+      expect(snackText(snack)).toBe(one);
+      snack.open.mockClear();
+      await comp.onBatchDeclareRequested({ cells: CELLS.slice(0, 3), kind: 'UNAVAILABLE' });
+      expect(snackText(snack)).toBe(many);
+    }
+    // Le thème est persisté d'un test à l'autre : on rend la voix par défaut.
+    theme.setTheme('grimoire-emeraude');
+  });
+
+  it('hors du mode déclaration, aucun bilan n’est annoncé', async () => {
+    const { fixture, snack } = await createCalendarView('personal');
+    await (fixture.componentInstance as any).onBatchDeclareRequested({ cells: CELLS, kind: 'AVAILABLE' });
+    expect(snack.open).not.toHaveBeenCalled();
+  });
+
+  it('après un conflit résolu, le bilan donne le nombre de créneaux du geste', async () => {
+    const { comp, snack, dialog } = await declaringView({ availabilitySvc: rejectingBatchOnce() });
+    dialog.__result = { 1: 'overwrite' };
+
+    await comp.onBatchDeclareRequested({ cells: CELLS, kind: 'UNAVAILABLE' });
+
+    expect(snack.open).toHaveBeenCalledTimes(1);
+    expect(snackText(snack)).toBe('4 créneaux déclarés indisponibles');
+  });
+
+  it('un dialogue de conflit abandonné n’annonce rien', async () => {
+    const { comp, snack, dialog } = await declaringView({ availabilitySvc: rejectingBatchOnce() });
+    dialog.__result = null;
+
+    await comp.onBatchDeclareRequested({ cells: CELLS, kind: 'UNAVAILABLE' });
+
+    expect(snack.open).not.toHaveBeenCalled();
+  });
+
+  it('un échec garde le message actuel, sans bilan', async () => {
+    const availabilitySvc = makeAvailabilityService();
+    availabilitySvc.createDeclarationBatch = vi.fn().mockRejectedValue(new Error('boom'));
+    const { comp, snack } = await declaringView({ availabilitySvc });
+
+    await comp.onBatchDeclareRequested({ cells: CELLS, kind: 'AVAILABLE' });
+
+    expect(snack.open).toHaveBeenCalledTimes(1);
+    expect(snackText(snack)).toBe(
+      GRIMOIRE_TONE['common.impossible_d_enregistrer_ces_disponibilites_reessayez'],
+    );
+  });
+
+  it('Échap avec le focus sur le bouton : vide la sélection de la vue, puis éteint le mode', async () => {
+    const { fixture, comp } = await declaringView();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+    month['selectedCells'].set([{ date: new Date(2030, 0, 10), slot: 'EVENING' }]);
+    const button = fixture.nativeElement.querySelector('.declare-arm') as HTMLElement;
+    const escape = () =>
+      button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    escape();
+    fixture.detectChanges();
+    expect(month['selectedCells']()).toHaveLength(0);
+    expect(comp.interaction()).toBe('declaration');
+
+    escape();
+    fixture.detectChanges();
+    expect(comp.interaction()).toBe('lecture');
+  });
+
+  it('Échap avec le focus sur le bandeau : la même règle, traitée une seule fois', async () => {
+    const { fixture, comp } = await declaringView();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+    const onEscape = vi.spyOn(month, 'onEscape');
+    const banner = fixture.nativeElement.querySelector('.declare-banner') as HTMLElement;
+
+    banner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(onEscape).toHaveBeenCalledTimes(1);
+    expect(comp.interaction()).toBe('lecture');
+  });
+
+  it('Échap sur le bouton avec la vue Semaine montée : la même règle (vider, puis éteindre)', async () => {
+    const { fixture, comp } = await declaringView();
+    comp.onViewChange('week');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const week = fixture.debugElement.query(By.directive(CalendarWeekView)).componentInstance;
+    week['selectedCells'].set([{ date: new Date(2030, 0, 10), slot: 'EVENING' }]);
+    const button = fixture.nativeElement.querySelector('.declare-arm') as HTMLElement;
+    const escape = () =>
+      button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    escape();
+    fixture.detectChanges();
+    expect(week['selectedCells']()).toHaveLength(0);
+    expect(comp.interaction()).toBe('declaration');
+
+    escape();
+    fixture.detectChanges();
+    expect(comp.interaction()).toBe('lecture');
+  });
+
+  it('un panneau, une liste ou un dialogue ouvert garde Échap : le bouton ne touche à rien', async () => {
+    const { fixture, comp } = await declaringView();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+    month['selectedCells'].set([{ date: new Date(2030, 0, 10), slot: 'EVENING' }]);
+    const button = fixture.nativeElement.querySelector('.declare-arm') as HTMLElement;
+
+    comp.panelOpen.set(true);
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(month['selectedCells']()).toHaveLength(1);
+    expect(comp.interaction()).toBe('declaration');
+  });
+
+  it('« Autre… » et « Annuler » de la barre laissent le mode allumé', async () => {
+    const { fixture, comp } = await declaringView();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const month = fixture.debugElement.query(By.directive(CalendarMonthView)).componentInstance;
+    month['selectedCells'].set([{ date: new Date(2030, 0, 10), slot: 'EVENING' }]);
+
+    month['onSelectionCancelled']();
+    expect(comp.interaction()).toBe('declaration');
+
+    month['selectedCells'].set([{ date: new Date(2030, 0, 10), slot: 'EVENING' }]);
+    month['onOtherRequested']();
+    expect(comp.interaction()).toBe('declaration');
+  });
+});

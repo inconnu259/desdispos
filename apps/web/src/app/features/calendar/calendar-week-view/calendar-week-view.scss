@@ -420,3 +420,14 @@
     font-size: 1.2rem;
   }
 }
+
+/* ── Story 52.3 : le mode déclaration ──
+   Les cellules sont déjà en `pan-y` ; la marge réservée sous la grille laisse la barre collante ne jamais cacher sa
+   dernière ligne. L'en-tête de colonne devient une cible de tap (la journée entière). */
+.week-grid--declare {
+  margin-bottom: 16px;
+
+  .col-header {
+    cursor: pointer;
+  }
+}

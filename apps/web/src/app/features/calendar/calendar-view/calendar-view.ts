@@ -2065,6 +2065,37 @@ export class CalendarView implements OnInit {
     this.setInteraction('declaration');
   }
 
+  /** Story 52.3 — la vue de grille montée, pour lui déléguer `Échap` quand le focus est sur le bouton ou le bandeau. */
+  private readonly monthViewRef = viewChild(CalendarMonthView);
+  private readonly weekViewRef = viewChild(CalendarWeekView);
+
+  /** `Échap` avec le focus sur le bouton ou le bandeau : la MÊME méthode que dans la grille (vider la sélection, sinon
+   *  éteindre le mode) — une frappe n'est traitée qu'une fois, ces deux éléments n'étant pas dans la grille. */
+  protected onDeclareEscape(): void {
+    if (this.interactionState() !== 'declaration') return;
+    // Un panneau, une liste ou un dialogue ouvert garde la priorité sur la touche, comme avant la 52.3.
+    if (
+      this.displayPanelOpen() ||
+      this.panelOpen() ||
+      this.destinyListShown() ||
+      this.rendezvousPickerShown() ||
+      this.conflictDialogOpen()
+    ) {
+      return;
+    }
+    const mounted = this.monthViewRef() ?? this.weekViewRef();
+    if (mounted) mounted.onEscape();
+    else this.endDeclaration();
+  }
+
+  /** Story 52.3 — le bilan d'un lot enregistré en mode déclaration : le nombre de créneaux du geste (une journée compte
+   *  pour 1), au singulier ou au pluriel. Muet hors du mode, et jamais après un dialogue de conflit abandonné. */
+  private announceDeclared(count: number, kind: AvailKind): void {
+    if (this.interactionState() !== 'declaration') return;
+    const key = `calendar.declared_${kind === 'AVAILABLE' ? 'available' : 'unavailable'}_${count > 1 ? 'many' : 'one'}` as const;
+    this.snack.open(fillTone(this.theme.tone()[key], { n: count }), undefined, { duration: 5000 });
+  }
+
   private readonly declareButtonRef = viewChild('declareBtn', {
     read: ElementRef<HTMLButtonElement>,
   });
@@ -3729,6 +3760,7 @@ export class CalendarView implements OnInit {
       await this.availabilitySvc.createDeclarationBatch(items);
       await this.loadDeclarations();
       await this.refreshMjPanels();
+      this.announceDeclared(event.cells.length, event.kind);
     } catch (err) {
       if (err instanceof ConflictError) {
         await this.resolveBatchConflicts(err, event.cells, event.kind, items);
@@ -3817,6 +3849,7 @@ export class CalendarView implements OnInit {
       }
       await this.loadDeclarations();
       await this.refreshMjPanels();
+      this.announceDeclared(cells.length, kind);
     } catch {
       this.snack.open(
         this.theme.tone()['common.impossible_d_enregistrer_ces_disponibilites_reessayez'],

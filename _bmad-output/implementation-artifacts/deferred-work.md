@@ -484,3 +484,7 @@ Source des règles : `docs/dragons.md` (transcription du livre fournie par l'uti
 - source_spec: `_bmad-output/implementation-artifacts/spec-51-8-retirer-la-police-material-icons.md`
   summary: Decide whether the level-up badge `▲` of `character-summary-card.html` should become an icon from the set (no meaning icon exists for it today).
   evidence: A literal `▲` (U+25B2) remains in a template; it is outside the AC's character list (which has `▴`), so the strict guard does not flag it. Low: cosmetic and font-dependent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-52-3-un-tap-suffit-en-mode-declaration-et-la-barre-reste-a-portee.md`
+  summary: Une journée entière et ses créneaux partiels peuvent être sélectionnés ensemble dans le calendrier, ce qui produit un conflit interne (409) à l'enregistrement.
+  evidence: Le corps de la case (Mois) et l'en-tête de colonne (Semaine, 52.3) ajoutent un `FULL_DAY` sans retirer les bandes du même jour, et inversement ; `toggleCell` et `mergeCells` ne dédoublonnent que sur `date|slot`. Déjà possible en lecture avant la 52.3 ; les retirer l'un de l'autre changerait la règle de sélection de la 36.3.

@@ -1753,3 +1753,198 @@ describe('CalendarWeekView — plusieurs plages d’un même vote (Story 47.5)',
     expect(el.querySelector('.ev-overlap')).toBeNull();
   });
 });
+
+describe('CalendarWeekView — un tap suffit en mode déclaration (Story 52.3)', () => {
+  let fixture: ComponentFixture<CalendarWeekView>;
+  let el: HTMLElement;
+
+  // Semaine future : évite `isPast`, qui retire le rôle bouton et l'aria-label des cellules.
+  const futureStart = new Date();
+  futureStart.setDate(futureStart.getDate() + 14);
+
+  function create(inputs: Record<string, unknown> = {}): void {
+    fixture = TestBed.createComponent(CalendarWeekView);
+    fixture.componentRef.setInput('startDate', futureStart);
+    fixture.componentRef.setInput('interaction', 'declaration');
+    for (const [k, v] of Object.entries(inputs)) fixture.componentRef.setInput(k, v);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+
+  const cellAt = (slot: 'MORNING' | 'AFTERNOON' | 'EVENING', dayIndex: number): HTMLElement =>
+    Array.from(el.querySelectorAll<HTMLElement>(`.slot-cell[data-cell-slot="${slot}"]`))[dayIndex];
+  const headerAt = (dayIndex: number): HTMLElement =>
+    Array.from(el.querySelectorAll<HTMLElement>('.col-header'))[dayIndex];
+  const gridEl = () => el.querySelector('.week-grid') as HTMLElement;
+  const barEl = () => el.querySelector('app-selection-bar');
+  const pointer = (type: string, x = 10, y = 10, pointerType = 'touch') =>
+    new PointerEvent(type, { clientX: x, clientY: y, pointerType, bubbles: true });
+
+  /** Le tap de cette vue n'est PAS un clic : il est synthétisé par la fin du geste sur la grille. */
+  function tap(cell: HTMLElement): void {
+    cell.dispatchEvent(pointer('pointerdown'));
+    gridEl().dispatchEvent(pointer('pointerup'));
+    fixture.detectChanges();
+  }
+
+  /** Un glissement de la cellule de départ à celle d'arrivée, relâché — au doigt, sans appui long. */
+  function drag(from: HTMLElement, to: HTMLElement, dx = 60, dy = 0): void {
+    from.dispatchEvent(pointer('pointerdown', 0, 0));
+    document.elementFromPoint = vi.fn().mockReturnValue(to);
+    gridEl().dispatchEvent(pointer('pointermove', dx, dy));
+    gridEl().dispatchEvent(pointer('pointerup', dx, dy));
+    fixture.detectChanges();
+  }
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [CalendarWeekView] });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
+
+  it('un tap sur un créneau l’ajoute, un second le retire ; la barre suit, le rail ne bouge pas', () => {
+    create();
+    const selected = vi.fn();
+    fixture.componentInstance.slotSelected.subscribe(selected);
+
+    tap(cellAt('EVENING', 2));
+    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['EVENING']);
+    expect(barEl()).not.toBeNull();
+    expect(fixture.componentInstance['currentCell']()?.slot).toBe('EVENING');
+
+    tap(cellAt('EVENING', 2));
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+    expect(selected).not.toHaveBeenCalled();
+  });
+
+  it('l’en-tête de colonne ajoute ou retire la journée entière, qui compte pour un seul créneau', () => {
+    create();
+    headerAt(3).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['FULL_DAY']);
+    expect(fixture.componentInstance['currentCell']()?.slot).toBe('FULL_DAY');
+
+    headerAt(3).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('hors du mode déclaration, l’en-tête de colonne ne répond pas', () => {
+    create({ interaction: 'lecture' });
+    headerAt(3).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+
+  it('un glissement horizontal sélectionne aussitôt, sans appui long, et AJOUTE aux créneaux retenus', () => {
+    create();
+    tap(cellAt('EVENING', 0));
+
+    drag(cellAt('EVENING', 3), cellAt('EVENING', 5));
+
+    const days = fixture.componentInstance['selectedCells']().map((c: any) => c.date.getDate());
+    expect(new Set(days).size).toBe(4);
+    expect(barEl()).not.toBeNull();
+  });
+
+  it('un glissement parti à la verticale reste un défilement : aucune sélection, pas de tap au relâchement', () => {
+    create();
+    drag(cellAt('MORNING', 2), cellAt('EVENING', 2), 0, 60);
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(barEl()).toBeNull();
+  });
+
+  it('Échap vide d’abord la sélection ; vide, il demande à éteindre le mode', () => {
+    create();
+    const exit = vi.fn();
+    fixture.componentInstance.declarationExitRequested.subscribe(exit);
+    tap(cellAt('EVENING', 2));
+
+    fixture.componentInstance.onEscape();
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+    expect(exit).not.toHaveBeenCalled();
+
+    fixture.componentInstance.onEscape();
+    expect(exit).toHaveBeenCalledTimes(1);
+  });
+
+  it('la barre est collante en mode déclaration seulement', () => {
+    create();
+    tap(cellAt('EVENING', 2));
+    expect(barEl()!.classList).toContain('selection-bar-sticky');
+    expect(gridEl().classList).toContain('week-grid--declare');
+
+    fixture.componentRef.setInput('interaction', 'lecture');
+    fixture.detectChanges();
+    expect(gridEl().classList).not.toContain('week-grid--declare');
+    vi.useFakeTimers();
+    cellAt('EVENING', 4).dispatchEvent(pointer('pointerdown', 5, 5, 'mouse'));
+    vi.advanceTimersByTime(LONG_PRESS_MS);
+    gridEl().dispatchEvent(pointer('pointerup', 5, 5, 'mouse'));
+    fixture.detectChanges();
+    expect(barEl()).not.toBeNull();
+    expect(barEl()!.classList).not.toContain('selection-bar-sticky');
+  });
+
+  it('un glissement qui chevauche un créneau déjà retenu ne le double pas', () => {
+    create();
+    tap(cellAt('EVENING', 3));
+
+    drag(cellAt('EVENING', 2), cellAt('EVENING', 4));
+
+    const cells = fixture.componentInstance['selectedCells']() as { date: Date; slot: string }[];
+    expect(cells).toHaveLength(3);
+    expect(new Set(cells.map((c) => c.date.getTime())).size).toBe(3);
+  });
+
+  it('un pointercancel (le navigateur prend le défilement) ne compte pas comme un tap', () => {
+    create();
+    cellAt('EVENING', 2).dispatchEvent(pointer('pointerdown'));
+    gridEl().dispatchEvent(pointer('pointercancel'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+
+  it('l’en-tête d’un jour passé ne répond pas', () => {
+    create({ startDate: new Date(2020, 0, 6) });
+    headerAt(2).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+
+  it('l’en-tête est atteignable au clavier en mode déclaration (Entrée, Espace)', () => {
+    create();
+    const header = headerAt(2);
+    expect(header.getAttribute('role')).toBe('button');
+    expect(header.getAttribute('tabindex')).toBe('0');
+
+    header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['FULL_DAY']);
+
+    header.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+
+  it('hors du mode déclaration, l’en-tête n’est ni un bouton ni un arrêt de tabulation', () => {
+    create({ interaction: 'lecture' });
+    expect(headerAt(2).getAttribute('role')).toBeNull();
+    expect(headerAt(2).getAttribute('tabindex')).toBeNull();
+  });
+
+  it('en lecture un tap lit toujours : le rail suit et rien n’est sélectionné', () => {
+    create({ interaction: 'lecture' });
+    const selected = vi.fn();
+    fixture.componentInstance.slotSelected.subscribe(selected);
+    tap(cellAt('EVENING', 2));
+    expect(selected).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance['selectedCells']()).toHaveLength(0);
+  });
+});

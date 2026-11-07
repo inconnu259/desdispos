@@ -1036,6 +1036,11 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.declare_btn': 'Déclarer mes dispos',
   'calendar.declare_done': 'Terminer',
   'calendar.declare_banner': 'Touche les créneaux où tu es disponible ou non, puis valide.',
+  // Story 52.3 — le bilan d'un lot enregistré en mode déclaration (une journée compte pour 1 créneau).
+  'calendar.declared_available_one': '{n} créneau marqué disponible',
+  'calendar.declared_available_many': '{n} créneaux marqués disponibles',
+  'calendar.declared_unavailable_one': '{n} créneau marqué indisponible',
+  'calendar.declared_unavailable_many': '{n} créneaux marqués indisponibles',
   'calendar.view_modify_dates': 'Modifie les dates',
   // Story 45.2 — lien vers un rendez-vous qui n'est plus à dater (ou plus modifiable) : écrit une fois, sans rien dire de la séance.
   'calendar.compose_link_stale': 'Ce moment n’est plus à dater.',

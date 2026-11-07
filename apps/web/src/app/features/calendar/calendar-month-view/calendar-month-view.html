@@ -43,6 +43,7 @@
   } @else {
     <div
       class="calendar-grid"
+      [class.calendar-grid--declare]="interaction() === 'declaration'"
       tabindex="-1"
       (pointermove)="onGridPointerMove($event)"
       (pointerup)="onGridPointerUp($event)"
@@ -215,6 +216,7 @@
         [armedKind]="armedKind()"
         [sealCandidate]="sealCandidate()"
         [composeMode]="interaction() === 'composer'"
+        [interaction]="interaction()"
         [fullDayAllowed]="composeFullDay()"
         (scopeChange)="onScopeChange($event)"
         (composeAdd)="onComposeAdd()"

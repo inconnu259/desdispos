@@ -31,6 +31,7 @@
   } @else {
     <div
       class="week-grid"
+      [class.week-grid--declare]="interaction() === 'declaration'"
       role="grid"
       tabindex="-1"
       (pointermove)="onGridPointerMove($event)"
@@ -46,6 +47,11 @@
              en-tête net et se lirait comme un jour mis en avant. -->
         <div
           class="grid-cell col-header"
+          (click)="onHeaderClick(cell)"
+          [attr.role]="interaction() === 'declaration' ? 'button' : null"
+          [attr.tabindex]="interaction() === 'declaration' && !cell.isPast ? 0 : null"
+          (keydown.enter)="onHeaderClick(cell)"
+          (keydown.space)="$event.preventDefault(); onHeaderClick(cell)"
           [class.today]="cell.isToday"
           [class.col-header--dim]="isDayDimmed(cell)"
         >
@@ -161,6 +167,7 @@
         [armedKind]="armedKind()"
         [sealCandidate]="sealCandidate()"
         [composeMode]="interaction() === 'composer'"
+        [interaction]="interaction()"
         [fullDayAllowed]="composeFullDay()"
         (scopeChange)="onScopeChange($event)"
         (composeAdd)="onComposeAdd()"

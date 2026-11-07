@@ -4,6 +4,7 @@ import type { AvailKind, DaySlot } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import type { AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
+import type { CalendarInteraction } from '../calendar-interaction';
 
 /** Un segment du sélecteur de portée. L'ordre est celui du contrat d'UI :
  *  Journée · Matin · Après-m. · Soir. [Source: contrat-ui-calendrier.html:254] */
@@ -41,6 +42,8 @@ export const SCOPE_OPTIONS: readonly ScopeOption[] = [
   selector: 'app-selection-bar',
   standalone: true,
   imports: [MatButtonModule],
+  // Story 52.3 — en mode déclaration la barre colle au bas de l'écran (téléphone) ou de la zone du calendrier (ordinateur).
+  host: { '[class.selection-bar-sticky]': "interaction() === 'declaration'" },
   templateUrl: './selection-bar.html',
   styleUrl: './selection-bar.scss',
 })
@@ -64,6 +67,8 @@ export class SelectionBar {
   /** ⚠️ Story 45.3 — version COMPOSITION : la barre ne déclare plus rien, elle désigne des créneaux du vote.
    *  Elle perd Sceller, Disponible, Indisponible et « Autre… » ; elle gagne « Ajouter au vote » et « Retirer ». */
   readonly composeMode = input(false);
+  /** Story 52.3 (AD-7) — l'outil allumé : en `declaration` seulement, la barre est collante. Hors mode, elle reste dans le flux. */
+  readonly interaction = input<CalendarInteraction>('lecture');
   /** Story 45.3 — la journée entière est-elle permise ici ? Vrai en JDR ; faux pour une conjonction ou une
    *  soirée, où le segment « Journée » n'est pas proposé (40.5b). Sans effet hors composition. */
   readonly fullDayAllowed = input(true);

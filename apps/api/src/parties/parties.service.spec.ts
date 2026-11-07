@@ -376,6 +376,7 @@ describe('PartiesService', () => {
       status: 'EN_COURS',
       isFavorite: false,
       coverImageVersion: null,
+      can: { coverUpdate: true },
     });
   });
 
@@ -649,6 +650,7 @@ describe('PartiesService', () => {
         status: 'A_VENIR',
         isFavorite: false,
         coverImageVersion: null,
+        can: { coverUpdate: false },
       },
     ]);
     expect(prisma.membership.findMany).toHaveBeenCalledWith(
@@ -718,6 +720,7 @@ describe('PartiesService', () => {
           status: 'A_VENIR',
           isFavorite: false,
           coverImageVersion: null,
+          can: { coverUpdate: false },
         },
       ]);
     });
@@ -740,6 +743,11 @@ describe('PartiesService', () => {
       expect(dtos.map((d) => [d.id, d.role])).toEqual([
         ['r1', 'admin'],
         ['r2', 'member'],
+      ]);
+      // Story 53.5 : le drapeau suit le rôle (administrateur oui, membre non).
+      expect(dtos.map((d) => [d.id, d.can.coverUpdate])).toEqual([
+        ['r1', true],
+        ['r2', false],
       ]);
     });
 
@@ -825,6 +833,7 @@ describe('PartiesService', () => {
         status: 'A_VENIR',
         isFavorite: false,
         coverImageVersion: null,
+        can: { coverUpdate: true },
       },
     ]);
   });
@@ -961,6 +970,7 @@ describe('PartiesService', () => {
         'status',
         'isFavorite',
         'coverImageVersion',
+        'can',
       ].sort(),
     );
   });
@@ -995,6 +1005,7 @@ describe('PartiesService', () => {
         'status',
         'isFavorite',
         'coverImageVersion',
+        'can',
       ].sort(),
     );
   });
@@ -1271,6 +1282,8 @@ describe('PartiesService', () => {
       ownerDisplayName: 'MJ Nom',
       isFavorite: false,
       coverImageVersion: null,
+      // Story 53.5 : le MJ peut changer la couverture.
+      can: { coverUpdate: true },
     });
     expect(prisma.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'mj1' },
@@ -1308,6 +1321,8 @@ describe('PartiesService', () => {
       ownerDisplayName: 'MJ Nom',
       isFavorite: false,
       coverImageVersion: null,
+      // Story 53.5 : un joueur ne peut pas changer la couverture.
+      can: { coverUpdate: false },
     });
   });
 
@@ -1373,6 +1388,7 @@ describe('PartiesService', () => {
       status: 'A_VENIR',
       isFavorite: false,
       coverImageVersion: null,
+      can: { coverUpdate: true },
     });
     expect((dto as unknown as Record<string, unknown>).ownerPseudo).toBeUndefined();
   });
@@ -2410,6 +2426,7 @@ describe('PartiesService', () => {
       status: 'A_VENIR',
       isFavorite: false,
       coverImageVersion: null,
+      can: { coverUpdate: true },
     });
   });
 
@@ -3616,7 +3633,12 @@ describe('PartiesService', () => {
       });
       expect(prisma.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: future, nextSessionSlot: 'EVENING', nextSessionEndDate: future, nextSessionEndSlot: 'EVENING' },
+        data: {
+          nextSessionDate: future,
+          nextSessionSlot: 'EVENING',
+          nextSessionEndDate: future,
+          nextSessionEndSlot: 'EVENING',
+        },
       });
       expect(dto.nextSessionDate).toBe(future.toISOString());
     });

@@ -15,6 +15,7 @@ import {
   PermissionService,
   RALLIEMENT_POLICY,
   RALLIEMENT_UNAVAILABLE_MESSAGE,
+  partieCan,
 } from './permission.service';
 
 // Story 37.6 (AD-6) — service UNIQUE de décision des droits. Un test de refus par cellule
@@ -295,6 +296,63 @@ describe('PermissionService', () => {
       const refusal = service.assert(STRANGER, action, { partieId: 'A' });
       await expect(refusal).rejects.toBeInstanceOf(ForbiddenException);
       await expect(refusal).rejects.toThrow(NO_ACCESS_MESSAGE);
+    });
+  });
+
+  // Story 53.5 — `partieCan` : les droits de la partie décidés par `refusalFor`, sans lecture en base.
+  describe('partieCan() — can.coverUpdate', () => {
+    const ralliement = partie('R', 'hote', 'ralliement');
+    const evening = { ...ralliement, kind: 'ONE_SHOT' };
+
+    it.each([
+      ['MJ d’une partie de JDR', 'mj', PARTIE_A, true],
+      ['joueur d’une partie de JDR', 'player', PARTIE_A, false],
+      ['administrateur d’un groupe', 'admin', ralliement, true],
+      ['simple membre d’un groupe', 'member', ralliement, false],
+      ['hôte d’une soirée (créateur, ADMIN)', 'admin', evening, true],
+      ['invité d’une soirée', 'member', evening, false],
+    ] as const)('%s → %s', (_label, role, target, expected) => {
+      expect(partieCan(role, target)).toEqual({ coverUpdate: expected });
+    });
+
+    it('ne lit rien en base', () => {
+      partieCan('mj', PARTIE_A);
+      for (const model of Object.values(prisma)) {
+        for (const fn of Object.values(model)) expect(fn).not.toHaveBeenCalled();
+      }
+    });
+
+    it('s’accorde avec assert() sur la même cellule PARTIE_COVER_UPDATE', async () => {
+      const cases = [
+        { userId: MJ, partieId: 'A', role: 'mj' as const, target: PARTIE_A },
+        { userId: PLAYER, partieId: 'A', role: 'player' as const, target: PARTIE_A },
+      ];
+      for (const { userId, partieId, role, target } of cases) {
+        const granted = await service
+          .assert(userId, 'PARTIE_COVER_UPDATE', { partieId })
+          .then(() => true)
+          .catch(() => false);
+        expect(partieCan(role, target).coverUpdate).toBe(granted);
+      }
+      // Ralliement : l'administrateur passe, le membre est refusé — comme `partieCan`.
+      prisma.partie.findUnique.mockResolvedValue(ralliement);
+      prisma.membership.findUnique.mockImplementation(
+        ({ where }: { where: { userId_partieId: { userId: string } } }) =>
+          Promise.resolve({
+            userId: where.userId_partieId.userId,
+            role: where.userId_partieId.userId === 'adm' ? 'ADMIN' : 'MEMBER',
+          }),
+      );
+      for (const [userId, role] of [
+        ['adm', 'admin'],
+        ['mem', 'member'],
+      ] as const) {
+        const granted = await service
+          .assert(userId, 'PARTIE_COVER_UPDATE', { partieId: 'R' })
+          .then(() => true)
+          .catch(() => false);
+        expect(partieCan(role, ralliement).coverUpdate).toBe(granted);
+      }
     });
   });
 

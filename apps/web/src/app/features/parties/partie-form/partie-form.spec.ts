@@ -27,6 +27,7 @@ const PARTIE: PartieDto = {
   status: 'A_VENIR',
   isFavorite: false,
   coverImageVersion: null,
+  can: { coverUpdate: true },
 };
 
 function scenario(over: Partial<ScenarioDto> = {}): ScenarioDto {
@@ -130,7 +131,7 @@ describe('PartieForm', () => {
       expect(comp.form.value.gameSystemId).toBe('draconis');
     });
 
-    it("édition d’une partie déjà sur un système sans module : aucun AUTRE système sans module ne devient choisissable", async () => {
+    it('édition d’une partie déjà sur un système sans module : aucun AUTRE système sans module ne devient choisissable', async () => {
       const { fixture } = await createComponent('p1', { partie: { gameSystemId: 'draconis' } });
       const comp = fixture.componentInstance as any;
       const ids = comp.systems().map((s: { id: string }) => s.id);
@@ -433,24 +434,46 @@ describe('PartieForm', () => {
       expect(comp.coverImageVersion()).toBe('v1');
     });
 
+    /** Lance un dépôt dont la réponse reste en attente : `coverSaving()` reste vrai jusqu'à `release()`. */
+    async function startPendingUpload(
+      fixture: { componentInstance: unknown; detectChanges(): void },
+      partiesSvc: { setCoverImage: ReturnType<typeof vi.fn> },
+    ) {
+      const comp = fixture.componentInstance as any;
+      let release!: () => void;
+      partiesSvc.setCoverImage.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            release = () => resolve({ ...PARTIE, coverImageVersion: 'v1' });
+          }),
+      );
+      const first = comp.onCoverFileSelected(fileEvent(validFile())) as Promise<void>;
+      fixture.detectChanges();
+      return { comp, first, release: () => release() };
+    }
+
     it('Review Findings 29.12 : un second dépôt pendant coverSaving() est ignoré', async () => {
       const { fixture, partiesSvc } = await createComponent('p1');
-      const comp = fixture.componentInstance as any;
-      comp.coverSaving.set(true);
+      const { comp, first, release } = await startPendingUpload(fixture, partiesSvc);
+      expect(comp.coverSaving()).toBe(true);
 
       await comp.onCoverFileSelected(fileEvent(validFile()));
 
-      expect(partiesSvc.setCoverImage).not.toHaveBeenCalled();
+      expect(partiesSvc.setCoverImage).toHaveBeenCalledTimes(1);
+      release();
+      await first;
+      expect(comp.coverSaving()).toBe(false);
     });
 
     it('Review Findings 29.12 : un second retrait pendant coverSaving() est ignoré', async () => {
       const { fixture, partiesSvc } = await createComponent('p1');
-      const comp = fixture.componentInstance as any;
-      comp.coverSaving.set(true);
+      const { comp, first, release } = await startPendingUpload(fixture, partiesSvc);
 
       await comp.removeCoverImage();
 
       expect(partiesSvc.removeCoverImage).not.toHaveBeenCalled();
+      release();
+      await first;
     });
 
     it('édition — retrait : appelle removeCoverImage(id), coverImageVersion() redevient null', async () => {
@@ -541,20 +564,17 @@ describe('PartieForm', () => {
     });
 
     it('AC13 — un indicateur de progression est visible pendant le dépôt', async () => {
-      const { fixture } = await createComponent('p1');
-      const comp = fixture.componentInstance as any;
-
-      comp.coverSaving.set(true);
-      fixture.detectChanges();
+      const { fixture, partiesSvc } = await createComponent('p1');
+      const { first, release } = await startPendingUpload(fixture, partiesSvc);
 
       expect(fixture.nativeElement.querySelector('mat-progress-bar')).not.toBeNull();
+      release();
+      await first;
     });
 
     describe('bannière d’aperçu et puces (Story 38.3)', () => {
       const chipTexts = (root: HTMLElement): string[] =>
-        Array.from(root.querySelectorAll('.cover-chip')).map((el) =>
-          (el.textContent ?? '').trim(),
-        );
+        Array.from(root.querySelectorAll('.cover-chip')).map((el) => (el.textContent ?? '').trim());
 
       // Les stubs globaux sont restaurés après chaque test (jsdom peut ne pas définir ces méthodes).
       const originalCreate = URL.createObjectURL;
@@ -682,12 +702,12 @@ describe('PartieForm', () => {
           const root = fixture.nativeElement as HTMLElement;
           expect(chipTexts(root)).toEqual([t.retirer, t.changer]);
           // WCAG 2.5.3 : le nom accessible commence par le mot affiché.
-          expect(
-            root.querySelector('button.cover-chip')?.getAttribute('aria-label'),
-          ).toMatch(new RegExp(`^${t.retirer} — `));
-          expect(
-            root.querySelector('label.cover-chip input')?.getAttribute('aria-label'),
-          ).toMatch(new RegExp(`^${t.changer} — `));
+          expect(root.querySelector('button.cover-chip')?.getAttribute('aria-label')).toMatch(
+            new RegExp(`^${t.retirer} — `),
+          );
+          expect(root.querySelector('label.cover-chip input')?.getAttribute('aria-label')).toMatch(
+            new RegExp(`^${t.changer} — `),
+          );
         });
       }
 
@@ -804,15 +824,17 @@ describe('PartieForm', () => {
       });
 
       it('pendant le dépôt, les deux puces et le champ fichier sont désactivés', async () => {
-        const { fixture } = await createComponent('p1', { partie: { coverImageVersion: 'v9' } });
-        const comp = fixture.componentInstance as any;
-        comp.coverSaving.set(true);
-        fixture.detectChanges();
+        const { fixture, partiesSvc } = await createComponent('p1', {
+          partie: { coverImageVersion: 'v9' },
+        });
+        const { first, release } = await startPendingUpload(fixture, partiesSvc);
 
         const root = fixture.nativeElement as HTMLElement;
         expect((root.querySelector('button.cover-chip') as HTMLButtonElement).disabled).toBe(true);
         expect((root.querySelector('.cover-chip input') as HTMLInputElement).disabled).toBe(true);
         expect(root.querySelector('label.cover-chip')?.classList).toContain('cover-chip--disabled');
+        release();
+        await first;
       });
     });
   });
@@ -821,7 +843,11 @@ describe('PartieForm', () => {
     const labels = (fixture: { nativeElement: HTMLElement }, selector: string): string[] =>
       Array.from(fixture.nativeElement.querySelectorAll(selector)).map((el) =>
         // Story 45.7 : une option porte son nom (ligne 1) et sa ligne en clair (ligne 2) — les libellés se lisent sur le nom.
-        ((el as HTMLElement).querySelector('.option-name')?.textContent ?? el.textContent ?? '').trim(),
+        (
+          (el as HTMLElement).querySelector('.option-name')?.textContent ??
+          el.textContent ??
+          ''
+        ).trim(),
       );
 
     it('création : la bascule est présente, à deux options, ralliement à gauche et quête à droite, quête par défaut', async () => {
@@ -967,9 +993,7 @@ describe('PartieForm', () => {
       expect(fixture.nativeElement.querySelector('.mode-toggle')).toBeNull();
       expect(comp.mode()).toBe('ralliement');
       expect(scenariosSvc.listAll).not.toHaveBeenCalled();
-      expect(
-        comp.kindAvailability().every((o: { disabled: boolean }) => o.disabled),
-      ).toBe(true);
+      expect(comp.kindAvailability().every((o: { disabled: boolean }) => o.disabled)).toBe(true);
       expect(labels(fixture, 'button[type=submit]')).toEqual(['Inscrire']);
 
       await comp.submit();
@@ -996,7 +1020,10 @@ describe('PartieForm', () => {
 
         partiesSvc.setCoverImage.mockRejectedValueOnce(new Error('boom'));
         await comp.onCoverFileSelected({
-          target: { files: [new File([new Uint8Array(10)], 'c.png', { type: 'image/png' })], value: '' },
+          target: {
+            files: [new File([new Uint8Array(10)], 'c.png', { type: 'image/png' })],
+            value: '',
+          },
         });
         await comp.submit();
         expect(comp.error()).toBe(tone['partie.ralliement_created_but_cover_failed']);
@@ -1014,28 +1041,34 @@ describe('PartieForm', () => {
   });
 
   describe('titre contextuel selon le mode (Story 38.4)', () => {
-    const settle = async (fixture: { detectChanges: () => void; whenStable: () => Promise<unknown> }) => {
+    const settle = async (fixture: {
+      detectChanges: () => void;
+      whenStable: () => Promise<unknown>;
+    }) => {
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
     };
 
-    it.each(THEMES)('création, thème %s : le titre suit la bascule quête / ralliement', async (theme) => {
-      const { fixture } = await createComponent();
-      TestBed.inject(ThemeToneService).activeTheme.set(theme);
-      const nav = TestBed.inject(ContextualNavService);
-      const tone = TONE_MAP[theme];
-      await settle(fixture);
-      expect(nav.title()).toBe(tone['partie.new_title']);
+    it.each(THEMES)(
+      'création, thème %s : le titre suit la bascule quête / ralliement',
+      async (theme) => {
+        const { fixture } = await createComponent();
+        TestBed.inject(ThemeToneService).activeTheme.set(theme);
+        const nav = TestBed.inject(ContextualNavService);
+        const tone = TONE_MAP[theme];
+        await settle(fixture);
+        expect(nav.title()).toBe(tone['partie.new_title']);
 
-      (fixture.componentInstance as any).setMode('ralliement');
-      await settle(fixture);
-      expect(nav.title()).toBe(tone['partie.ralliement_new_title']);
+        (fixture.componentInstance as any).setMode('ralliement');
+        await settle(fixture);
+        expect(nav.title()).toBe(tone['partie.ralliement_new_title']);
 
-      (fixture.componentInstance as any).setMode('quest');
-      await settle(fixture);
-      expect(nav.title()).toBe(tone['partie.new_title']);
-    });
+        (fixture.componentInstance as any).setMode('quest');
+        await settle(fixture);
+        expect(nav.title()).toBe(tone['partie.new_title']);
+      },
+    );
 
     it('édition d’un ralliement : titre de modification du ralliement, nom de la partie en sous-titre', async () => {
       const { fixture } = await createComponent('p1', {
@@ -1113,7 +1146,9 @@ describe('PartieForm — lignes en clair (Story 45.7)', () => {
     fixture.detectChanges();
     // Le choix ne retire aucune ligne.
     expect(cell(root, KIND).every((o) => !!o.plain)).toBe(true);
-    expect(root.querySelectorAll(`${KIND}.mat-button-toggle-checked .option-plain`)).toHaveLength(1);
+    expect(root.querySelectorAll(`${KIND}.mat-button-toggle-checked .option-plain`)).toHaveLength(
+      1,
+    );
   });
 
   it('mode ralliement : les deux lignes de la soirée isolée et du groupe, sans mot du JDR', async () => {
@@ -1128,7 +1163,9 @@ describe('PartieForm — lignes en clair (Story 45.7)', () => {
       'Une bande d’amis durable : chaque membre peut proposer des rencontres, chez lui, quand il veut.',
     ]);
     for (const line of lines) {
-      expect(line).not.toMatch(/\b(MJ|campagne|sc[ée]nario|s[ée]ance|joueur|qu[êe]te|troupe|partie)/i);
+      expect(line).not.toMatch(
+        /\b(MJ|campagne|sc[ée]nario|s[ée]ance|joueur|qu[êe]te|troupe|partie)/i,
+      );
     }
   });
 

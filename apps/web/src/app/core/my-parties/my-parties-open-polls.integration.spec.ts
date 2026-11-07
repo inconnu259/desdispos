@@ -33,6 +33,7 @@ function makeParty(id: string, role: PartieDto['role'], isFavorite = false): Par
     status: 'EN_COURS',
     isFavorite,
     coverImageVersion: null,
+    can: { coverUpdate: role === 'mj' || role === 'admin' },
   } as PartieDto;
 }
 

@@ -26,6 +26,7 @@ const PARTIE: PartieDto = {
   status: 'A_VENIR',
   isFavorite: false,
   coverImageVersion: null,
+  can: { coverUpdate: true },
 };
 
 // Schéma minimal représentatif de `GameSystemService.getSchema()` (Story 31.6/31.7) — reprend

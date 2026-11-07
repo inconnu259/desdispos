@@ -25,6 +25,7 @@ function makeParty(id: string, role: PartieDto['role'] = 'player'): PartieDto {
     status: 'EN_COURS',
     isFavorite: false,
     coverImageVersion: null,
+    can: { coverUpdate: role === 'mj' || role === 'admin' },
   } as PartieDto;
 }
 

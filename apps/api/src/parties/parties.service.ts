@@ -46,6 +46,7 @@ import {
   NO_ACCESS_MESSAGE,
   PermissionService,
   RALLIEMENT_UNAVAILABLE_MESSAGE,
+  partieCan,
 } from '../permissions/permission.service';
 import type { PartieSignalsPort } from '../poll/ports/partie-signals.port';
 import { PollVoteCleanupService } from '../poll/poll-vote-cleanup.service';
@@ -245,6 +246,8 @@ function toPartieDto(
     status,
     isFavorite,
     coverImageVersion: coverImageVersion(partie.coverImageUrl ?? null),
+    // Story 53.5 : les droits viennent du serveur (même décision que `assert()`), jamais du rôle côté web.
+    can: partieCan(role, partie),
   };
 }
 

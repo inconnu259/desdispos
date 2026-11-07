@@ -73,6 +73,7 @@ const PARTIE: PartieDto = {
   status: 'EN_COURS',
   isFavorite: false,
   coverImageVersion: null,
+  can: { coverUpdate: true },
 };
 
 async function createComponent(

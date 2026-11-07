@@ -31,6 +31,7 @@ describe('PartySignalsService', () => {
       status: 'EN_COURS',
       isFavorite: false,
       coverImageVersion: null,
+      can: { coverUpdate: true },
     };
     return Object.assign(base, overrides);
   }

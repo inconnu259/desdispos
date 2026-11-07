@@ -25,6 +25,7 @@ describe('PartiesService (front)', () => {
     status: 'EN_COURS',
     isFavorite: false,
     coverImageVersion: null,
+    can: { coverUpdate: true },
   };
 
   beforeEach(() => {

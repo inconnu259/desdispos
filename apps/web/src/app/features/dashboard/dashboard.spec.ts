@@ -52,6 +52,7 @@ function makeParty(
     status,
     isFavorite,
     coverImageVersion,
+    can: { coverUpdate: role === 'mj' || role === 'admin' },
   };
 }
 

@@ -61,6 +61,7 @@ function makePartie(overrides: Partial<PartieDto> = {}): PartieDto {
     status: 'EN_COURS',
     isFavorite: false,
     coverImageVersion: null,
+    can: { coverUpdate: false },
     ...overrides,
   };
 }

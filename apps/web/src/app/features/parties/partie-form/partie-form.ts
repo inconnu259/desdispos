@@ -18,6 +18,7 @@ import {
 } from '@master-jdr/shared';
 import type { PartieKind, PartieKindTransitionRefusal, ScenarioDto } from '@master-jdr/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
+import { CoverUpload } from '../../../core/parties/cover-upload';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { MyPartiesService } from '../../../core/my-parties/my-parties.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
@@ -43,9 +44,6 @@ const RALLIEMENT_SYSTEM_ID = 'ralliement';
 
 /** Modes proposés par la bascule : ralliement à gauche, quête à droite (planche validée). */
 const MODE_OPTIONS: readonly FormMode[] = ['ralliement', 'quest'] as const;
-
-/** Formats acceptés par le contrôleur de couverture (`party-cover.controller.ts`). */
-const ACCEPTED_COVER_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /** Forme minimale consommée par le `<mat-select>` — `string` plutôt que `GameSystemId` pour rester
  *  compatible avec une entrée synthétique (`systems`, cas d'un id persisté inconnu de `GAME_SYSTEMS`,
@@ -74,17 +72,6 @@ const OPEN_GAME_SYSTEMS: readonly GameSystemOption[] = (() => {
  *  `PartieDto.gameSystemId` côté serveur (revue de code, cf. `savedGameSystemId`). */
 const DEFAULT_GAME_SYSTEM_ID: string = OPEN_GAME_SYSTEMS[0].id;
 
-/**
- * Plafond de dépôt appliqué AVANT tout envoi réseau (Story 29.14, AC14).
- *
- * TROISIÈME déclaration des 5 Mo, après `party-cover.controller.ts` et
- * `characters.controller.ts` — la Story 29.12 a acté que la valeur n'est pas factorisable côté
- * serveur (elle vit dans des décorateurs, qui ne peuvent pas lire une constante importée). Celle-ci
- * ne doit JAMAIS être plus permissive que celle du serveur : elle épargne un aller-retour réseau,
- * elle ne remplace pas la garde serveur.
- */
-const MAX_COVER_SIZE = 5 * 1024 * 1024;
-
 /** Ce qui s'affiche à la place du formulaire quand une conversion réclame un arbitrage. */
 interface CourantChoice {
   kind: FormKind;
@@ -108,6 +95,8 @@ interface CourantChoice {
   ],
   templateUrl: './partie-form.html',
   styleUrl: './partie-form.scss',
+  // Story 53.5 : l'unité de dépôt de couverture, une instance par formulaire (son `saving` est le nôtre).
+  providers: [CoverUpload],
 })
 export class PartieForm implements OnInit {
   private readonly fb = inject(FormBuilder);
@@ -117,6 +106,7 @@ export class PartieForm implements OnInit {
   private readonly contextualNav = inject(ContextualNavService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly cover = inject(CoverUpload);
 
   protected readonly theme = inject(ThemeToneService);
   protected readonly modeOptions = MODE_OPTIONS;
@@ -130,7 +120,8 @@ export class PartieForm implements OnInit {
   /** `null` = bannière générée (Story 29.12, AC1/AC3) — dépôt/retrait vivent hors du
    *  formulaire réactif : ce n'est pas un champ enregistré par `submit()`. */
   protected readonly coverImageVersion = signal<string | null>(null);
-  protected readonly coverSaving = signal(false);
+  /** Un dépôt ou un retrait est en vol : état de l'unité `CoverUpload`, seule garde du double envoi. */
+  protected readonly coverSaving = this.cover.saving;
   protected readonly coverError = signal<string | null>(null);
 
   /** Création uniquement (Story 29.14, AC12) : le fichier est retenu jusqu'à ce que la partie
@@ -344,11 +335,11 @@ export class PartieForm implements OnInit {
     input.value = ''; // permet de redéposer le même fichier une seconde fois
     if (!file) return;
 
-    // AC14 — rejet local avant tout envoi réseau. Le serveur reste la garde réelle ; ceci évite
-    // simplement de faire transiter un fichier voué au 413.
-    const rejection = this.rejectCoverFile(file);
-    if (rejection) {
-      this.coverError.set(rejection);
+    // AC14 — rejet local avant tout envoi réseau (règles dans `CoverUpload`). Le serveur reste la
+    // garde réelle ; ceci évite simplement de faire transiter un fichier voué au 413.
+    const refusalKey = this.cover.refusal(file);
+    if (refusalKey) {
+      this.coverError.set(this.theme.tone()[refusalKey]);
       return;
     }
     this.coverError.set(null);
@@ -364,31 +355,14 @@ export class PartieForm implements OnInit {
       return;
     }
 
-    // Garde anti-double-clic (Review Findings 29.12) — même patron qu'ailleurs dans le projet :
-    // `[disabled]="coverSaving()"` a un délai de peinture, un second déclenchement avant ce délai
-    // enverrait deux dépôts concurrents pour la même partie.
-    if (this.coverSaving()) return;
-
-    this.coverSaving.set(true);
+    // Anti-double-clic (Review Findings 29.12) : `CoverUpload.change()` n'envoie rien (`null`) tant
+    // qu'un envoi est en vol.
     try {
-      const updated = await this.parties.setCoverImage(id, file);
-      this.coverImageVersion.set(updated.coverImageVersion);
+      const updated = await this.cover.change(id, file);
+      if (updated) this.coverImageVersion.set(updated.coverImageVersion);
     } catch {
       this.coverError.set(this.theme.tone()['partie.cover_upload_error']);
-    } finally {
-      this.coverSaving.set(false);
     }
-  }
-
-  /** `null` si le fichier est acceptable, sinon le message expliquant la cause réelle (AC14/AC15). */
-  private rejectCoverFile(file: File): string | null {
-    if (!ACCEPTED_COVER_MIMES.includes(file.type)) {
-      return this.theme.tone()['partie.cover_reject_type'];
-    }
-    if (file.size > MAX_COVER_SIZE) {
-      return this.theme.tone()['partie.cover_reject_size'];
-    }
-    return null;
   }
 
   /** Retrait de l'image de couverture (AC3) — la bannière générée reprend sa place. */
@@ -399,16 +373,13 @@ export class PartieForm implements OnInit {
       this.clearPendingCover();
       return;
     }
-    if (this.coverSaving()) return; // garde anti-double-clic (Review Findings)
-    this.coverSaving.set(true);
     this.coverError.set(null);
     try {
-      const updated = await this.parties.removeCoverImage(id);
-      this.coverImageVersion.set(updated.coverImageVersion);
+      // Anti-double-clic : `null` tant qu'un envoi est en vol.
+      const updated = await this.cover.remove(id);
+      if (updated) this.coverImageVersion.set(updated.coverImageVersion);
     } catch {
       this.coverError.set(this.theme.tone()['partie.cover_remove_error']);
-    } finally {
-      this.coverSaving.set(false);
     }
   }
 
@@ -496,7 +467,7 @@ export class PartieForm implements OnInit {
       const file = this.pendingCoverFile();
       if (file) {
         try {
-          await this.parties.setCoverImage(partie.id, file);
+          await this.cover.change(partie.id, file);
           // Dépôt réussi : l'URL de blob locale n'a plus lieu d'être, la couverture réelle vient
           // désormais de coverImageVersion. Sans ce nettoyage, l'URL n'est jamais révoquée (fuite).
           this.clearPendingCover();

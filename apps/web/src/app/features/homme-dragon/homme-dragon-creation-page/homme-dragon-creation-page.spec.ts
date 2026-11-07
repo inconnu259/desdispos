@@ -38,6 +38,7 @@ function makePartie(overrides: Partial<PartieDto> = {}): PartieDto {
     status: 'A_VENIR',
     isFavorite: false,
     coverImageVersion: null,
+    can: { coverUpdate: true },
     ...overrides,
   };
 }

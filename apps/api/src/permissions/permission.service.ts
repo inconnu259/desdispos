@@ -10,6 +10,7 @@ import type {
   GameSystemFamily,
   MembershipRole,
   OrganizerCan,
+  PartieCan,
   PartieRole,
   PermissionAction,
 } from '@master-jdr/shared';
@@ -574,6 +575,22 @@ function refusalFor(input: {
     return new BadRequestException(CAPABILITY_UNAVAILABLE_MESSAGE);
   }
   return null;
+}
+
+/**
+ * Story 53.5 — les droits de `role` sur la partie elle-même (`PartieDto.can`). PURE : aucune lecture en
+ * base, le rôle et la partie sont déjà connus de l'appelant. Même décision que `assert()` sur une cible
+ * `{ partieId }` — UNE fonction, `refusalFor` — donc `can.coverUpdate` ne peut pas diverger de la garde
+ * des routes de couverture. Une cible de partie n'a pas d'événement : les règles « hôte » n'y jouent pas
+ * (`userId` n'est lu par aucune des cellules concernées).
+ */
+export function partieCan(
+  role: PartieRole,
+  partie: Pick<Partie, 'id' | 'gameSystemId'>,
+): PartieCan {
+  const decide = (action: PermissionAction): boolean =>
+    refusalFor({ userId: '', action, role, partie, resolved: { partieId: partie.id } }) === null;
+  return { coverUpdate: decide('PARTIE_COVER_UPDATE') };
 }
 
 /**

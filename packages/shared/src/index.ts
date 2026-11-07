@@ -618,6 +618,16 @@ export interface PartieDto {
    *  client (l'URL se construit depuis l'`id` de la partie, même patron que
    *  `CharacterAvatar.absolutePortraitUrl`). */
   coverImageVersion: string | null;
+  /** Droits de l'appelant sur cette partie — calculés serveur (Story 53.5), jamais déduits du rôle côté
+   *  client. Toujours présent, comme `role`. */
+  can: PartieCan;
+}
+
+/** Ce que l'appelant peut faire sur une partie, décidé par le serveur (Story 53.5) — même décision que
+ *  la garde `PARTIE_COVER_UPDATE` des routes de couverture. */
+export interface PartieCan {
+  /** Peut déposer ou retirer l'image de couverture. */
+  coverUpdate: boolean;
 }
 
 /** Code de signal d'état d'une partie (FR-12, AD-3) — union fermée, jamais un booléen libre ni

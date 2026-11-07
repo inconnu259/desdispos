@@ -36,6 +36,9 @@
                   {{ theme.tone()['common.ouvrir_aux_joueurs'] }}
                 </button>
               }
+              <!-- Story 53.3 — « Ma situation » du MJ sur la PROCHAINE séance du chapitre : « Je mène »
+                   s'il en reste une à venir, aucune ligne sinon. Texte seul, sous la ligne. -->
+              <app-situation-line class="scenario-row__situation" [value]="chapterSituation(scenario)" />
             </li>
           }
         </ul>

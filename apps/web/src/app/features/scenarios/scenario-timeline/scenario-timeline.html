@@ -27,10 +27,17 @@
           <ul class="card-seances">
             @for (seance of scenario.seances; track seance.id; let i = $index) {
               <li class="card-seances__row">
-                <span class="card-seances__label">
-                  <b>{{ seanceLabel(i) }}</b> · {{ seanceDateLabel(seance) }}
-                </span>
-                <app-status-badge [state]="seanceBadge(seance)" />
+                <div class="card-seances__line">
+                  <span class="card-seances__label">
+                    <b>{{ seanceLabel(i) }}</b> · {{ seanceDateLabel(seance) }}
+                  </span>
+                  <app-status-badge [state]="seanceBadge(seance)" />
+                </div>
+                <!-- Story 53.3 — « Ma situation » : un appel à l'action par séance, jamais par carte
+                     de chapitre. Valeur `null` = aucune ligne (le badge d'état suffit). Le masquage
+                     des brouillons côté joueur reste celui de `buildNodes` : aucune pastille ne
+                     trahit un brouillon. -->
+                <app-situation-line [value]="seanceSituation(seance)" />
               </li>
             }
           </ul>

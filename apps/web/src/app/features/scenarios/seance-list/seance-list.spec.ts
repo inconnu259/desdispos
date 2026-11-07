@@ -1369,3 +1369,131 @@ describe('SeanceList — badge d’état (Story 32.3)', () => {
     );
   });
 });
+
+// Story 53.3 — « Ma situation » juste sous l'en-tête de chaque séance de la fiche. Le calcul est
+// celui de `seanceSituation()` (non rejoué ici) : on épingle le CÂBLAGE, la position et les deux
+// côtés (joueur / MJ). `seance-list` est partagé par l'éditeur, le dialogue de lecture et l'onglet
+// Chapitre d'une quête unique : une seule implémentation, trois surfaces.
+describe('SeanceList — « Ma situation » (Story 53.3)', () => {
+  const OPEN_POLL: SessionPollDto = {
+    ...POLL,
+    options: [{ id: 'o1', date: isoInDays(10), slot: 'EVENING', votes: [] }],
+  };
+  const VOTE = { userId: 'u1', pseudo: 'u1', displayName: 'u1', answer: 'YES' as const };
+
+  function situation(fixture: { nativeElement: HTMLElement }, index = 0) {
+    const row = fixture.nativeElement.querySelectorAll('.seance-row')[index] as HTMLElement;
+    const line = row.querySelector('.situation-line');
+    if (!line) return null;
+    return {
+      label: (line.querySelector('.situation-line__label')?.textContent ?? '').trim(),
+      pill: (line.querySelector('.situation-pill')?.textContent ?? '').trim(),
+    };
+  }
+
+  it('joueur, vote ouvert non répondu → « Ma situation » + « Vote à faire », sous l’en-tête', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN_POLL };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    expect(situation(fixture)).toEqual({ label: 'Ma situation', pill: 'Vote à faire' });
+
+    // Position : directement après `.seance-row__header` (titre, badge d'état, suppression).
+    const header = fixture.nativeElement.querySelector('.seance-row__header') as HTMLElement;
+    expect(header.nextElementSibling?.tagName.toLowerCase()).toBe('app-situation-line');
+    expect(header.querySelector('.situation-line')).toBeNull();
+  });
+
+  it('joueur, vote ouvert répondu → « J’ai voté »', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      poll: { ...OPEN_POLL, options: OPEN_POLL.options.map((o) => ({ ...o, votes: [VOTE] })) },
+    };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    expect(situation(fixture)?.pill).toBe('J’ai voté');
+  });
+
+  it('joueur, séance datée à venir → « Je participe » ; passée → « J’y étais »', async () => {
+    const future: SeanceDto = { ...SEANCE_NO_POLL, id: 'f', dateValidee: isoInDays(10) };
+    const past: SeanceDto = { ...SEANCE_NO_POLL, id: 'p', dateValidee: isoInDays(-10) };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [future, past] });
+    expect(situation(fixture, 0)?.pill).toBe('Je participe');
+    expect(situation(fixture, 1)?.pill).toBe('J’y étais');
+  });
+
+  it('joueur, inscription ouverte non inscrit → « Pas inscrit·e »', async () => {
+    const seance: SeanceDto = {
+      ...SEANCE_NO_POLL,
+      dateValidee: isoInDays(10),
+      inscription: { min: 2, max: 4, inscrits: [], dateValidee: isoInDays(10) },
+    };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [seance] },
+      { isEpisodique: true },
+    );
+    expect(situation(fixture)?.pill).toBe('Pas inscrit·e');
+  });
+
+  it('joueur, séance sans date ni vote → aucune ligne (le badge seul)', async () => {
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [SEANCE_NO_POLL] });
+    expect(situation(fixture)).toBeNull();
+    expect(fixture.nativeElement.querySelector('.seance-row .status-badge')).toBeTruthy();
+  });
+
+  it('MJ → « Je mène » sur chaque séance', async () => {
+    const seance2: SeanceDto = { ...SEANCE_NO_POLL, id: 'seance2', poll: OPEN_POLL };
+    const { fixture } = await createComponent(
+      { ...SCENARIO, seances: [SEANCE_NO_POLL, seance2] },
+      { isMj: true },
+    );
+    expect(situation(fixture, 0)?.pill).toBe('Je mène');
+    expect(situation(fixture, 1)?.pill).toBe('Je mène');
+  });
+
+  it('texte seul, et jamais « Réponds au vote » dans la fiche', async () => {
+    const seance: SeanceDto = { ...SEANCE_NO_POLL, poll: OPEN_POLL };
+    const { fixture } = await createComponent({ ...SCENARIO, seances: [seance] });
+    const line = fixture.nativeElement.querySelector('.situation-line') as HTMLElement;
+    expect(line.querySelector('button, a, input, [role="button"], [tabindex]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Réponds au vote');
+  });
+});
+
+// Story 53.3 (boucle 1) — `situationIsMj` ne règle QUE la ligne « Ma situation » ; `isMj` reste seul
+// juge des contrôles MJ (dialogue de lecture : contrôles cachés, mais le MJ lit « Je mène »).
+describe('SeanceList — situationIsMj (Story 53.3)', () => {
+  const PAST: SeanceDto = { ...SEANCE_NO_POLL, id: 'a', dateValidee: isoInDays(-10) };
+  const PAST_2: SeanceDto = { ...PAST, id: 'b' };
+
+  async function create(inputs: { isMj: boolean; situationIsMj?: boolean }) {
+    const scenario: ScenarioDto = { ...SCENARIO, seances: [PAST, PAST_2] };
+    const created = await createComponent(scenario, { isMj: inputs.isMj });
+    if (inputs.situationIsMj !== undefined) {
+      created.fixture.componentRef.setInput('situationIsMj', inputs.situationIsMj);
+      created.fixture.detectChanges();
+    }
+    return created.fixture;
+  }
+
+  function pills(fixture: { nativeElement: HTMLElement }): string[] {
+    return [...fixture.nativeElement.querySelectorAll('.situation-pill')].map((p) =>
+      (p.textContent ?? '').trim(),
+    );
+  }
+
+  it('par défaut, la situation suit isMj (MJ → « Je mène », joueur → « J’y étais »)', async () => {
+    expect(pills(await create({ isMj: true }))).toEqual(['Je mène', 'Je mène']);
+    TestBed.resetTestingModule();
+    expect(pills(await create({ isMj: false }))).toEqual(['J’y étais', 'J’y étais']);
+  });
+
+  it('isMj=false + situationIsMj=true → « Je mène », sans aucun contrôle MJ', async () => {
+    const fixture = await create({ isMj: false, situationIsMj: true });
+    expect(pills(fixture)).toEqual(['Je mène', 'Je mène']);
+    expect(fixture.nativeElement.querySelector('.seance-row__delete')).toBeNull();
+  });
+
+  it('isMj=true + situationIsMj=false → la situation du joueur, les contrôles MJ restent', async () => {
+    const fixture = await create({ isMj: true, situationIsMj: false });
+    expect(pills(fixture)).toEqual(['J’y étais', 'J’y étais']);
+    expect(fixture.nativeElement.querySelector('.seance-row__delete')).toBeTruthy();
+  });
+});

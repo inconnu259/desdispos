@@ -31,7 +31,13 @@ import { PollResponseComponent } from '../../poll/poll-response/poll-response';
 import { FillIndicator } from '../fill-indicator/fill-indicator';
 import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
-import { seanceState, type StatusBadgeState } from '../../../core/status/status-derivation';
+import { SituationLine } from '../../../shared/situation-line/situation-line';
+import {
+  seanceSituation,
+  seanceState,
+  type SeanceSituation,
+  type StatusBadgeState,
+} from '../../../core/status/status-derivation';
 import { isSpan, spanShortLabel } from '../../calendar/span-label';
 
 /** Même forme que côté serveur (`set-infos-pratiques.dto.ts`) : sert uniquement à détecter une
@@ -63,6 +69,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
     PollResponseComponent,
     FillIndicator,
     StatusBadge,
+    SituationLine,
   ],
   templateUrl: './seance-list.html',
   styleUrl: './seance-list.scss',
@@ -79,6 +86,14 @@ export class SeanceList {
   readonly scenario = input.required<ScenarioDto>();
   readonly partieId = input.required<string>();
   readonly isMj = input(false);
+  /**
+   * Story 53.3 — rôle pris en compte par la SEULE ligne « Ma situation » ; par défaut `isMj()`.
+   *
+   * 🚨 Le dialogue de lecture passe `[isMj]="false"` pour garder les contrôles MJ cachés, mais le MJ
+   * y ouvre ses chapitres PASSE : sans cette entrée il lirait la situation d'un joueur sur des
+   * séances qu'il a menées. Elle ne débloque AUCUN contrôle — `isMj` reste seul juge de ceux-là.
+   */
+  readonly situationIsMj = input<boolean | undefined>(undefined);
   readonly isEpisodique = input.required<boolean>();
   readonly members = input<PartieMemberDto[]>([]);
 
@@ -214,6 +229,20 @@ export class SeanceList {
    */
   protected seanceBadge(seance: SeanceDto): StatusBadgeState {
     return seanceState(seance, this.todayKey);
+  }
+
+  /**
+   * Story 53.3 — « Ma situation » du lecteur sur cette séance, ou `null` (aucune ligne). Calcul
+   * unique `seanceSituation()` avec le `todayKey` de l'écran, jamais redéfini ici. Partagé par
+   * l'éditeur de scénario, le dialogue de lecture et l'onglet Chapitre d'une quête unique.
+   */
+  protected seanceSituation(seance: SeanceDto): SeanceSituation | null {
+    return seanceSituation(
+      seance,
+      this.currentUserId(),
+      this.situationIsMj() ?? this.isMj(),
+      this.todayKey,
+    );
   }
 
   /**

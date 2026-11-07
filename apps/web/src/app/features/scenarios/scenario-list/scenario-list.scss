@@ -40,6 +40,7 @@ ul {
 }
 .scenario-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
@@ -48,9 +49,16 @@ ul {
   border-radius: 0.25rem;
 }
 /* Le titre absorbe la place restante : badge et bouton restent alignés à droite quelle que soit
-   la longueur du nom du scénario. */
+   la longueur du nom du scénario. Base à 0 (Story 53.3) : le `flex-wrap` de la ligne ne doit jamais
+   renvoyer le badge ou le bouton sous un long titre — seule la ligne de situation passe dessous. */
 .scenario-row__title {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Story 53.3 — « Ma situation » : la ligne occupe toute la largeur sous le titre/badge/bouton (le flex
+   passe à la ligne), sans jamais déborder. */
+.scenario-row__situation {
+  flex: 1 0 100%;
   min-width: 0;
 }
 .empty,

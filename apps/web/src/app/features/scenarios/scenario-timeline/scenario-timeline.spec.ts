@@ -1055,6 +1055,218 @@ describe('ScenarioTimeline', () => {
       });
     });
 
+    // -- Story 53.3 -- « Ma situation » sur chaque seance de la chronologie ------------------------
+    // Le lecteur injecte est `u1`. Une ligne = libelle « Ma situation » + pastille partagee ; la
+    // valeur vient de `seanceSituation()`, ces tests n'en rejouent pas la matrice, ils epinglent le
+    // CABLAGE (une ligne par seance, la bonne valeur, rien pour `null`, MJ et brouillons).
+    describe('Story 53.3 - « Ma situation » par seance', () => {
+      function pollWith(
+        status: 'OPEN' | 'CLOSED',
+        answered: boolean,
+        extra: Partial<SessionPollDto> = {},
+      ): SessionPollDto {
+        return {
+          id: 'poll-1',
+          partieId: 'p1',
+          status,
+          scenarioRef: null,
+          expiresAt: null,
+          chosenDate: null,
+          chosenSlot: null,
+          membersCount: 3,
+          durationSlots: 1,
+          options: [
+            {
+              id: 'opt1',
+              date: '2099-10-10T00:00:00.000Z',
+              slot: 'EVENING',
+              votes: answered
+                ? [{ userId: 'u1', pseudo: 'u1', displayName: 'U1', answer: 'YES' }]
+                : [],
+            },
+          ],
+          ...extra,
+        };
+      }
+
+      const INSCRIPTION_FUTURE = (inscrits: { userId: string; pseudo: string }[]) => ({
+        min: 1,
+        max: 4,
+        inscrits,
+        dateValidee: '2099-10-10T00:00:00.000Z',
+      });
+
+      function single(seance: SeanceDto, status: ScenarioDto['status'] = 'A_VENIR'): ScenarioDto {
+        return makeScenario({ id: seance.scenarioId, status, seances: [seance] });
+      }
+
+      /** Le texte de la ligne « Ma situation » de la N-ieme seance rendue, ou `null` si absente. */
+      function situationOf(fixture: { nativeElement: HTMLElement }, index = 0) {
+        const row = fixture.nativeElement.querySelectorAll('.card-seances__row')[index];
+        const line = row.querySelector('.situation-line');
+        if (!line) return null;
+        return {
+          label: normalize(line.querySelector('.situation-line__label')?.textContent ?? ''),
+          pill: normalize(line.querySelector('.situation-pill')?.textContent ?? ''),
+        };
+      }
+
+      it('vote ouvert non repondu -> « Ma situation » + « Vote à faire »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', false) })),
+        ]);
+        expect(situationOf(fixture)).toEqual({ label: 'Ma situation', pill: 'Vote à faire' });
+      });
+
+      it('vote ouvert repondu -> « J’ai voté »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', true) })),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('J’ai voté');
+      });
+
+      it('seance datee a venir -> « Je participe »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', '2099-10-10T00:00:00.000Z')),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('Je participe');
+      });
+
+      it('seance datee passee -> « J’y étais »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', '2020-06-12T00:00:00.000Z'), 'PASSE'),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('J’y étais');
+      });
+
+      it('inscription ouverte, lecteur inscrit -> « Je participe » ; non inscrit -> « Pas inscrit·e »', async () => {
+        const inscrit = await createComponent([
+          single(
+            makeSeance('s1', 'sc', '2099-10-10T00:00:00.000Z', {
+              inscription: INSCRIPTION_FUTURE([{ userId: 'u1', pseudo: 'u1' }]),
+            }),
+          ),
+        ]);
+        expect(situationOf(inscrit.fixture)?.pill).toBe('Je participe');
+        TestBed.resetTestingModule();
+
+        const pasInscrit = await createComponent([
+          single(
+            makeSeance('s1', 'sc', '2099-10-10T00:00:00.000Z', {
+              inscription: INSCRIPTION_FUTURE([]),
+            }),
+          ),
+        ]);
+        expect(situationOf(pasInscrit.fixture)?.pill).toBe('Pas inscrit·e');
+      });
+
+      it('inscription passee, lecteur non inscrit -> aucune ligne', async () => {
+        const { fixture } = await createComponent([
+          single(
+            makeSeance('s1', 'sc', '2020-06-12T00:00:00.000Z', {
+              inscription: {
+                min: 1,
+                max: 4,
+                inscrits: [],
+                dateValidee: '2020-06-12T00:00:00.000Z',
+              },
+            }),
+            'PASSE',
+          ),
+        ]);
+        expect(situationOf(fixture)).toBeNull();
+      });
+
+      it('seance sans date ni vote -> aucune ligne, le badge seul', async () => {
+        const { fixture } = await createComponent([single(makeSeance('s1', 'sc', null))]);
+        expect(situationOf(fixture)).toBeNull();
+        expect(fixture.nativeElement.querySelector('.card-seances__row .status-badge')).toBeTruthy();
+      });
+
+      it('vote clos non repondu et sans date -> aucune ligne', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('CLOSED', false) })),
+        ]);
+        expect(situationOf(fixture)).toBeNull();
+      });
+
+      it('MJ : « Je mène » sur chaque seance, brouillon compris', async () => {
+        const brouillon = single(
+          makeSeance('sb', 'brouillon', null, { poll: pollWith('OPEN', false) }),
+          'BROUILLON',
+        );
+        const publie = makeScenario({
+          id: 'publie',
+          status: 'A_VENIR',
+          createdAt: '2026-07-10T00:00:00.000Z',
+          seances: [makeSeance('sp', 'publie', null)],
+        });
+        const { fixture } = await createComponent([brouillon, publie], { isMj: true });
+        const pills = [
+          ...fixture.nativeElement.querySelectorAll('.card-seances__row .situation-pill'),
+        ].map((p: Element) => normalize(p.textContent ?? ''));
+        expect(pills).toEqual(['Je mène', 'Je mène']);
+        expect(fixture.nativeElement.querySelector('.node__dot--draft')).toBeTruthy();
+      });
+
+      it('joueur : le brouillon reste masque, aucune pastille ne le trahit', async () => {
+        const brouillon = single(
+          makeSeance('sb', 'brouillon', '2099-10-10T00:00:00.000Z'),
+          'BROUILLON',
+        );
+        const { fixture } = await createComponent([brouillon]);
+        expect(fixture.nativeElement.querySelector('.card-seances__row')).toBeNull();
+        expect(fixture.nativeElement.querySelector('.situation-pill')).toBeNull();
+      });
+
+      it('une carte de chapitre n’a pas de ligne a elle : une ligne par seance, dans sa seance', async () => {
+        const chapitre = makeScenario({
+          id: 'deux',
+          status: 'A_VENIR',
+          seances: [
+            makeSeance('s1', 'deux', '2099-10-10T00:00:00.000Z'),
+            makeSeance('s2', 'deux', '2099-10-17T00:00:00.000Z'),
+          ],
+        });
+        const { fixture } = await createComponent([chapitre]);
+        const lines = fixture.nativeElement.querySelectorAll('.situation-line');
+        expect(lines).toHaveLength(2);
+        for (const line of lines) {
+          expect(line.closest('.card-seances__row')).toBeTruthy();
+        }
+        expect(fixture.nativeElement.querySelector('.card > .situation-line')).toBeNull();
+      });
+
+      it('texte seul : aucun element interactif dans la ligne, jamais « Réponds au vote »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', false) })),
+        ]);
+        const line = fixture.nativeElement.querySelector('.situation-line') as HTMLElement;
+        expect(line.querySelector('button, a, input, [role="button"], [tabindex]')).toBeNull();
+        expect(fixture.nativeElement.textContent).not.toContain('Réponds au vote');
+      });
+
+      it('apres un changed() qui apporte la reponse du lecteur, la pastille passe a « J’ai voté »', async () => {
+        const { fixture, scenariosSvc } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', false) })),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('Vote à faire');
+
+        scenariosSvc.listAll.mockResolvedValue([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', true) })),
+        ]);
+        scenariosSvc.changed.set({ partieId: 'p1' });
+        fixture.detectChanges();
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+          fixture.detectChanges();
+        }
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(situationOf(fixture)?.pill).toBe('J’ai voté');
+      });
+    });
+
     it('matrice - plusieurs COURANT : un seul noeud empile, une seule pastille `live`', async () => {
       const { fixture } = await createComponent([PASSE, COURANT_1, COURANT_2]);
       const courantNode = instance(fixture)

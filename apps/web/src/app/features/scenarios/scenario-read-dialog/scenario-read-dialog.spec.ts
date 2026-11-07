@@ -11,6 +11,7 @@ import type {
   PartieDto,
   PartieKind,
   ScenarioDto,
+  SeanceDto,
 } from '@master-jdr/shared';
 import { ScenarioReadDialog, type ScenarioReadDialogData } from './scenario-read-dialog';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -993,5 +994,49 @@ describe('ScenarioReadDialog', () => {
     // ajouté par cette story — la garde `matchesPartie()` elle-même est déjà exhaustivement testée en
     // tant que fonction pure (Story 19.1, scenarios.service.spec.ts) et son câblage ici est prouvé par
     // le test positif ci-dessus.
+  });
+});
+
+// Story 53.3 (boucle 1) — le MJ ouvre ses chapitres PASSE dans ce dialogue : la ligne « Ma situation »
+// de la fiche doit y lire « Je mène », comme dans la chronologie, sans pour autant montrer les
+// contrôles MJ (`[isMj]="false"` reste passé à la liste des séances).
+describe('ScenarioReadDialog — « Ma situation » (Story 53.3)', () => {
+  const seance = (id: string): SeanceDto => ({
+    id,
+    scenarioId: 's1',
+    dateValidee: '2020-06-12T00:00:00.000Z',
+    slotValidee: null,
+    compteRendu: null,
+    heureRdv: null,
+    lieu: null,
+    notePratique: null,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    durationSlots: 1,
+    endDate: '2020-06-12T00:00:00.000Z',
+    endSlot: null,
+    can: { propose: false, edit: false, choose: false, extend: false },
+  });
+  const PASSE_AVEC_SEANCES: ScenarioDto = {
+    ...BASE,
+    status: 'PASSE',
+    seances: [seance('sa'), seance('sb')],
+  };
+
+  function pills(fixture: { nativeElement: HTMLElement }): string[] {
+    return [...fixture.nativeElement.querySelectorAll('.seance-row .situation-pill')].map((p) =>
+      (p.textContent ?? '').trim(),
+    );
+  }
+
+  it('MJ sur un chapitre PASSE → « Je mène » sur chaque séance, sans contrôle MJ', async () => {
+    const { fixture } = await createComponent(PASSE_AVEC_SEANCES, { isMj: true });
+    expect(pills(fixture)).toEqual(['Je mène', 'Je mène']);
+    // Les contrôles MJ restent cachés : le dialogue de lecture n'est pas une vue d'édition.
+    expect(fixture.nativeElement.querySelector('.seance-row__delete')).toBeNull();
+  });
+
+  it('joueur sur le même chapitre PASSE → la pastille du joueur (« J’y étais »)', async () => {
+    const { fixture } = await createComponent(PASSE_AVEC_SEANCES, { isMj: false });
+    expect(pills(fixture)).toEqual(['J’y étais', 'J’y étais']);
   });
 });

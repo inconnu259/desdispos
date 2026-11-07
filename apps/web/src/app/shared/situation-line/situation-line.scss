@@ -1,0 +1,27 @@
+/* Story 53.3 — « Ma situation » : libellé à gauche, pastille à droite, texte seul. Elle passe à la
+   ligne (flex-wrap) plutôt que de déborder : la chronologie est verticale sous 768 px. Aucun token
+   nouveau : uniquement des `--jdr-*` existants. */
+:host {
+  display: block;
+}
+
+/* `null` : l'hôte est vide (ni libellé ni pastille) — il ne doit réserver ni hauteur ni écart dans le
+   flex qui le porte (la ligne d'un chapitre, la séance de la chronologie). */
+:host:empty {
+  display: none;
+}
+
+.situation-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.situation-line__label {
+  min-width: 0;
+  color: var(--jdr-text-muted, #9b8fb0);
+}

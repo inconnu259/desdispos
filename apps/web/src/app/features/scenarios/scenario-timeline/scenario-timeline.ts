@@ -25,11 +25,14 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import {
   scenarioState,
+  seanceSituation,
   seanceState,
+  type SeanceSituation,
   type StatusBadgeState,
 } from '../../../core/status/status-derivation';
 import { toDateKey } from '../../calendar/day-detail.utils';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
+import { SituationLine } from '../../../shared/situation-line/situation-line';
 import { ScenarioStatusBadge } from '../scenario-status-badge/scenario-status-badge';
 import {
   ScenarioReadDialog,
@@ -190,7 +193,7 @@ function buildNodes(scenarios: ScenarioDto[], includeBrouillon: boolean): Timeli
 
 @Component({
   selector: 'app-scenario-timeline',
-  imports: [ScenarioStatusBadge, StatusBadge, MatButtonModule, NgTemplateOutlet],
+  imports: [ScenarioStatusBadge, StatusBadge, SituationLine, MatButtonModule, NgTemplateOutlet],
   templateUrl: './scenario-timeline.html',
   styleUrl: './scenario-timeline.scss',
 })
@@ -390,6 +393,16 @@ export class ScenarioTimeline {
    */
   protected seanceBadge(seance: SeanceDto): StatusBadgeState {
     return seanceState(seance, this.todayKey);
+  }
+
+  /**
+   * Story 53.3 — « Ma situation » du lecteur sur CETTE séance, ou `null` (aucune ligne). Calcul
+   * unique `seanceSituation()`, avec le `todayKey` de l'écran : jamais redéfini ici. Le MJ lit
+   * « Je mène » sur toutes ses séances, brouillons compris ; le masquage côté joueur reste celui de
+   * `buildNodes`.
+   */
+  protected seanceSituation(seance: SeanceDto): SeanceSituation | null {
+    return seanceSituation(seance, this.currentUserId(), this.isMj(), this.todayKey);
   }
 
   // Story 8.7, AC7 : date résolue d'une séance affichée sur la carte du scénario — même source

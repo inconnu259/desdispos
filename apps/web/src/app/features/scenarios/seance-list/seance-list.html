@@ -23,6 +23,9 @@
           </button>
         }
       </div>
+      <!-- Story 53.3 — « Ma situation », juste sous l'en-tête de la séance (titre, badge d'état,
+           suppression) : même emplacement pour toutes les branches rendues en dessous. -->
+      <app-situation-line [value]="seanceSituation(seance)" />
       @if (isEpisodique()) {
         @if (isMj()) {
           @if (!seance.inscription || editingCapacitySeanceId() === seance.id) {

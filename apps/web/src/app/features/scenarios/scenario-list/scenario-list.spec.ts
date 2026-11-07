@@ -3,8 +3,9 @@ import { signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
-import type { ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDto, SeanceDto } from '@master-jdr/shared';
 import { ScenarioList } from './scenario-list';
+import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 
@@ -59,6 +60,7 @@ async function createComponent(
       { provide: Router, useValue: router },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => routeParam } } } },
       { provide: RealtimeService, useValue: realtimeSvc },
+      { provide: AuthService, useValue: { currentUser: signal({ id: 'u1' }) } },
     ],
   }).compileComponents();
 
@@ -190,6 +192,88 @@ describe('ScenarioList', () => {
     expect(comp.loadError()).toBeTruthy();
     expect(scenariosSvc.listAll).not.toHaveBeenCalled();
     expect(realtimeSvc.connect).not.toHaveBeenCalled();
+  });
+
+  // Story 53.3 — « Ma situation » du MJ sur chaque ligne de chapitre : « Je mène » quand le chapitre
+  // a une séance à venir (`nextSeanceOf`), aucune ligne sinon. L'onglet est MJ seul.
+  describe('« Ma situation » sur les chapitres (Story 53.3)', () => {
+    function seance(id: string, scenarioId: string, iso: string | null): SeanceDto {
+      return {
+        id,
+        scenarioId,
+        dateValidee: iso,
+        slotValidee: null,
+        compteRendu: null,
+        heureRdv: null,
+        lieu: null,
+        notePratique: null,
+        createdAt: '2020-01-01T00:00:00.000Z',
+        durationSlots: 1,
+        endDate: iso,
+        endSlot: null,
+        can: { propose: false, edit: false, choose: false, extend: false },
+      };
+    }
+
+    const AVEC_PROCHAINE: ScenarioDto = {
+      ...A_VENIR,
+      seances: [seance('x1', 's3', '2020-06-12T00:00:00.000Z'), seance('x2', 's3', '2099-10-10T00:00:00.000Z')],
+    };
+    const SANS_PROCHAINE: ScenarioDto = {
+      ...PASSE_1,
+      seances: [seance('y1', 's5', '2020-06-12T00:00:00.000Z')],
+    };
+    const SANS_SEANCE: ScenarioDto = { ...DRAFT_1, seances: [] };
+
+    function situationOf(fixture: { nativeElement: HTMLElement }, title: string) {
+      const row = [...fixture.nativeElement.querySelectorAll('.scenario-row')].find((r) =>
+        r.querySelector('.scenario-row__title')?.textContent?.includes(title),
+      ) as HTMLElement;
+      const line = row.querySelector('.situation-line');
+      if (!line) return null;
+      return {
+        label: (line.querySelector('.situation-line__label')?.textContent ?? '').trim(),
+        pill: (line.querySelector('.situation-pill')?.textContent ?? '').trim(),
+      };
+    }
+
+    it('chapitre avec une séance à venir → « Ma situation » + « Je mène »', async () => {
+      const { fixture } = await createComponent([AVEC_PROCHAINE]);
+      expect(situationOf(fixture, 'La Route des Lanternes')).toEqual({
+        label: 'Ma situation',
+        pill: 'Je mène',
+      });
+    });
+
+    it('chapitre sans séance à venir (toutes passées) ou sans séance → aucune ligne', async () => {
+      const { fixture } = await createComponent([SANS_PROCHAINE, SANS_SEANCE]);
+      expect(situationOf(fixture, 'La Vallée Blanche')).toBeNull();
+      expect(situationOf(fixture, 'Le Marché aux Ombres')).toBeNull();
+    });
+
+    it('la ligne est du texte seul, jamais « Réponds au vote », et ne gêne pas « Ouvrir aux joueurs »', async () => {
+      const brouillon: ScenarioDto = {
+        ...DRAFT_1,
+        seances: [seance('z1', 's1', '2099-10-10T00:00:00.000Z')],
+      };
+      const { fixture } = await createComponent([brouillon]);
+      const row = fixture.nativeElement.querySelector('.scenario-row') as HTMLElement;
+      const line = row.querySelector('.situation-line') as HTMLElement;
+      expect(line.querySelector('button, a, input, [role="button"], [tabindex]')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('Réponds au vote');
+      // Le seul bouton de la ligne reste « Ouvrir aux joueurs », hors de la ligne de situation.
+      const buttons = [...row.querySelectorAll('button')];
+      expect(buttons).toHaveLength(1);
+      expect(line.contains(buttons[0])).toBe(false);
+    });
+
+    it('le clic sur la ligne de situation ouvre le chapitre (la ligne de chapitre reste cliquable)', async () => {
+      const { fixture, router } = await createComponent([AVEC_PROCHAINE]);
+      (fixture.nativeElement.querySelector('.situation-pill') as HTMLElement).click();
+      expect(router.navigate).toHaveBeenCalledWith(['/parties', 'p1', 'scenarios', 's3'], {
+        state: { scenario: AVEC_PROCHAINE },
+      });
+    });
   });
 
   describe('câblage temps réel (Story 21.2, AC1)', () => {

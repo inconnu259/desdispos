@@ -118,11 +118,12 @@ $dot-radius: 7px;
   border-left: 2px solid $line-color;
   align-self: stretch;
 }
+/* Story 53.3 — une séance = deux lignes : « Séance N · date » + badge d'état, puis « Ma situation »
+   (libellé + pastille). La seconde passe à la ligne plutôt que de déborder (vertical sous 768 px). */
 .card-seances__row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 4px;
   padding: 4px 0;
   font-size: 0.8125rem;
   border-bottom: 1px solid color-mix(in srgb, $line-color 60%, transparent);
@@ -130,6 +131,12 @@ $dot-radius: 7px;
   &:last-child {
     border-bottom: none;
   }
+}
+.card-seances__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 .card-seances__label {
   color: var(--jdr-text-muted, #9b8fb0);

@@ -15,7 +15,15 @@ import type { ScenarioDto, ScenarioStatus } from '@master-jdr/shared';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { ScenarioStatusBadge } from '../scenario-status-badge/scenario-status-badge';
+import { SituationLine } from '../../../shared/situation-line/situation-line';
+import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import {
+  nextSeanceOf,
+  seanceSituation,
+  type SeanceSituation,
+} from '../../../core/status/status-derivation';
+import { toDateKey } from '../../calendar/day-detail.utils';
 
 /** Une section de la liste : un état, son libellé de registre, ses scénarios. */
 interface ScenarioSection {
@@ -41,7 +49,7 @@ const SECTIONS: { status: ScenarioStatus; labelKey: string }[] = [
 
 @Component({
   selector: 'app-scenario-list',
-  imports: [MatButtonModule, ScenarioStatusBadge],
+  imports: [MatButtonModule, ScenarioStatusBadge, SituationLine],
   templateUrl: './scenario-list.html',
   styleUrl: './scenario-list.scss',
 })
@@ -51,7 +59,15 @@ export class ScenarioList implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly realtime = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeToneService);
+
+  /**
+   * Jour courant figé à la CONSTRUCTION, une seule fois pour tout l'onglet — même patron que
+   * `ScenarioTimeline.todayKey` : deux chapitres rendus de part et d'autre de minuit ne doivent pas
+   * comparer à deux « aujourd'hui » différents.
+   */
+  private readonly todayKey = toDateKey(new Date());
 
   // Optionnel : rempli par le parent quand intégré directement dans un onglet (`PartieDetail`) ;
   // sinon repli sur le paramètre de route `:id`, quand ce composant est chargé via la route
@@ -137,6 +153,17 @@ export class ScenarioList implements OnInit {
     this.realtime.connect(partieTopic(partieId));
     this.destroyRef.onDestroy(() => this.realtime.disconnect(partieTopic(partieId)));
     await this.load(partieId);
+  }
+
+  /**
+   * Story 53.3 — « Ma situation » d'un chapitre : celle de la PROCHAINE séance (`nextSeanceOf`),
+   * calculée par `seanceSituation()` — jamais redéfinie ici. Cet onglet est MJ seul : `isMj` vaut
+   * `true`, donc « Je mène » quand une séance reste à venir, `null` (aucune ligne) sinon.
+   */
+  protected chapterSituation(scenario: ScenarioDto): SeanceSituation | null {
+    const next = nextSeanceOf(scenario, this.todayKey);
+    if (!next) return null;
+    return seanceSituation(next, this.auth.currentUser()?.id, true, this.todayKey);
   }
 
   protected newScenario(): void {

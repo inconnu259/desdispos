@@ -1,5 +1,8 @@
 # Déploiement en production — Raspberry Pi + Cloudflare Tunnel
 
+> **Première installation du Pi, pas à pas (matériel, système, SSH, tunnel, domaine) :**
+> [`tuto-raspberry-pi.md`](tuto-raspberry-pi.md).
+>
 > Fichiers : `docker-compose.prod.yml`, `docker/prod.api.Dockerfile`, `docker/prod.web.Dockerfile`,
 > `docker/nginx.conf`, `docker/nginx-security-headers.conf`, `.env.prod.example`.
 

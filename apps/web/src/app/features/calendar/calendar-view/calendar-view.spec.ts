@@ -2593,6 +2593,14 @@ describe('CalendarView — vue Agenda (Story 30.6)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Calendrier personnel portant une séance datée, pour exercer le rail hors contexte de partie. */
+/** Jour (clé locale `AAAA-MM-JJ`) d'une séance À VENIR, relatif à aujourd'hui : le rail au repos cherche le
+ *  prochain jour porteur à partir d'aujourd'hui — une date fixe finit toujours par passer et casser le test. */
+const UPCOMING_SEANCE_DAY = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toLocaleDateString('sv-SE');
+})();
+
 function makeAvailabilityServiceWithSeance(date = '2026-09-01', slot = 'EVENING') {
   const svc = makeAvailabilityService();
   svc.getMyCalendar.mockResolvedValue({
@@ -2719,12 +2727,12 @@ describe('CalendarView — rail : état de repos (AC3/AC4)', () => {
   it('montre le prochain jour porteur quand aucune case n’a été touchée', async () => {
     const { fixture } = await createCalendarView({
       mode: 'personal',
-      availabilitySvc: makeAvailabilityServiceWithSeance('2026-09-01'),
+      availabilitySvc: makeAvailabilityServiceWithSeance(UPCOMING_SEANCE_DAY),
     });
     const comp = fixture.componentInstance as any;
 
     expect(comp.railDate()).toBeNull();
-    expect(comp.railDetail().date).toBe('2026-09-01');
+    expect(comp.railDetail().date).toBe(UPCOMING_SEANCE_DAY);
     expect(comp.railDetail().slots[2].seanceLabel).toBe('Partie X — Chapitre X');
   });
 
@@ -2864,7 +2872,7 @@ describe('CalendarView — rail : AC11, activer une ligne ouvre le scénario', (
   it('expose une cible navigable sur la séance du calendrier personnel', async () => {
     const { fixture } = await createCalendarView({
       mode: 'personal',
-      availabilitySvc: makeAvailabilityServiceWithSeance('2026-09-01'),
+      availabilitySvc: makeAvailabilityServiceWithSeance(UPCOMING_SEANCE_DAY),
     });
     const comp = fixture.componentInstance as any;
 

@@ -60,6 +60,7 @@ import {
   type DetectedImageMime,
 } from '../common/image-upload.util';
 import { UPLOADS_ROOT } from '../common/uploads-root';
+import { publicWebOrigin } from '../config/env';
 
 /**
  * Mapping type de capacité (`CapabilityType`) → clé de contenu seedé (`GameSystemService`
@@ -730,7 +731,7 @@ export class CharacterService {
 
     const narrative = sheetData.narrative;
     const characterName = narrative?.name?.trim() || 'Personnage sans nom';
-    const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${updated.partieId}/characters/${updated.id}`;
+    const link = `${publicWebOrigin()}/parties/${updated.partieId}/characters/${updated.id}`;
 
     // `sendMail` ne relance jamais (déjà try/catch interne, { ok: false } silencieux) — pas de
     // try/catch supplémentaire ici, un échec d'envoi ne doit jamais faire échouer l'appelant.

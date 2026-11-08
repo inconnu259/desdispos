@@ -11,9 +11,10 @@ services:
   mailpit:
     image: axllent/mailpit
     restart: unless-stopped
+    # Toujours limité au poste : l'UI de Mailpit montre les liens de réinitialisation de mot de passe.
     ports:
-      - '8025:8025' # UI web + API HTTP
-      - '1025:1025' # SMTP
+      - '127.0.0.1:8025:8025' # UI web + API HTTP
+      - '127.0.0.1:1025:1025' # SMTP
 
   db:
     image: postgres:17-alpine
@@ -56,7 +57,9 @@ services:
       - node_modules_root:/work/node_modules
       - node_modules_api:/work/apps/api/node_modules
     ports:
-      - '${API_PORT}:3000'
+      # Limité au poste par défaut. Pour tester depuis un téléphone du réseau local : BIND_HOST=0.0.0.0
+      # dans .env (et l'IP LAN dans WEB_ORIGIN).
+      - '${BIND_HOST:-127.0.0.1}:${API_PORT}:3000'
     command: sh -c "pnpm prisma generate && pnpm prisma migrate deploy && pnpm run seed && pnpm start:dev"
 
   web:
@@ -72,7 +75,7 @@ services:
       - node_modules_root:/work/node_modules
       - node_modules_web:/work/apps/web/node_modules
     ports:
-      - '${WEB_PORT}:4200'
+      - '${BIND_HOST:-127.0.0.1}:${WEB_PORT}:4200'
     command: sh -c "pnpm ng serve --host 0.0.0.0 --port 4200 --poll 500"
 
 volumes:

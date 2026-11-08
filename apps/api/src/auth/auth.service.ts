@@ -18,6 +18,7 @@ import { PartiesService } from '../parties/parties.service';
 import { EmailService } from '../email/email.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { RegisterDto } from './dto/register.dto';
+import { publicWebOrigin } from '../config/env';
 
 const RESET_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // +24h (FR-6)
 const RESET_TOKEN_INVALID_MESSAGE = 'Lien invalide ou expiré. Merci de refaire une demande.';
@@ -28,6 +29,14 @@ const EMAIL_CHANGE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // +24h, même TTL que le
 const EMAIL_CHANGE_ROLLBACK_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // +1 mois (AC2, Story 28.6)
 const EMAIL_CHANGE_TOKEN_INVALID_MESSAGE = 'Lien invalide ou expiré. Merci de refaire une demande.';
 const EMAIL_CHANGE_ROLLBACK_TOKEN_INVALID_MESSAGE = 'Lien invalide ou expiré.';
+
+/** Hash argon2 d'un secret aléatoire jeté, calculé une fois (mêmes paramètres que les vrais hash) : sert
+ *  à vérifier un mot de passe quand le compte n'existe pas, pour que la durée de réponse n'en dise rien. */
+let dummyPasswordHash: Promise<string> | undefined;
+function getDummyPasswordHash(): Promise<string> {
+  dummyPasswordHash ??= argon2.hash(randomBytes(32).toString('hex'));
+  return dummyPasswordHash;
+}
 
 @Injectable()
 export class AuthService {
@@ -47,7 +56,16 @@ export class AuthService {
   /** Vérifie les identifiants (email OU pseudo) ; renvoie l'utilisateur (sans le hash) ou null. */
   async validateUser(identifier: string, password: string) {
     const user = await this.users.findByEmailOrPseudo(identifier);
-    if (!user) return null;
+    if (!user) {
+      // Même coût qu'un vrai compte (vérification argon2 contre un hash factice) : sans ça, la durée de
+      // la réponse dit si l'e-mail ou le pseudo existe.
+      try {
+        await argon2.verify(await getDummyPasswordHash(), password);
+      } catch {
+        // sans importance : le résultat est ignoré, seule la durée compte
+      }
+      return null;
+    }
 
     let ok: boolean;
     try {
@@ -178,7 +196,7 @@ export class AuthService {
         },
       });
       await this.email.sendMail('password-reset', user.email, {
-        link: `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/reset-password/${created.id}.${secret}`,
+        link: `${publicWebOrigin()}/reset-password/${created.id}.${secret}`,
       });
     }
     return { ok: true };
@@ -434,7 +452,7 @@ export class AuthService {
     });
 
     await this.email.sendMail('email-change-confirm', normalizedNewEmail, {
-      link: `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/confirm-email-change/${created.id}.${secret}`,
+      link: `${publicWebOrigin()}/confirm-email-change/${created.id}.${secret}`,
     });
     await this.email.sendMail('email-change-notice', user.email, {});
 
@@ -526,7 +544,7 @@ export class AuthService {
 
     // Hors transaction, best-effort — même patron que resetPassword()/changePassword().
     await this.email.sendMail('email-change-rollback-available', oldEmail, {
-      link: `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/rollback-email-change/${createdRollback.id}.${rollbackSecret}`,
+      link: `${publicWebOrigin()}/rollback-email-change/${createdRollback.id}.${rollbackSecret}`,
     });
 
     return { ok: true };
@@ -600,7 +618,7 @@ export class AuthService {
 
     // Hors transaction, best-effort.
     await this.email.sendMail('email-change-rolled-back', record.oldEmail, {
-      link: `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/forgot-password`,
+      link: `${publicWebOrigin()}/forgot-password`,
     });
 
     return { ok: true };

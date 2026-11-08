@@ -31,6 +31,7 @@ import {
   type EventSeanceInput,
 } from './events.service';
 import { formatSessionSpan } from './session-date';
+import { publicWebOrigin } from '../config/env';
 
 /** Refus d'une clé de jour bien formée mais inexistante au calendrier (ex. `2026-02-31`). */
 export const INVALID_DAY_MESSAGE = "Cette date n'existe pas";
@@ -255,7 +256,7 @@ export class GroupEventsService {
     try {
       const notice = await this.events.reservationNotice(eventId, userIds);
       if (!notice) return;
-      const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${grant.partieId}`;
+      const link = `${publicWebOrigin()}/parties/${grant.partieId}`;
       const sessionDate = notice.startDate
         ? formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot)
         : null;

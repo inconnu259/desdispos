@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
 import { EmailService } from './email.service';
+import { mailRequireTls } from '../config/env';
 
 // Lit et valide MAIL_HOST/MAIL_PORT/MAIL_FROM au démarrage : une config email cassée doit
 // empêcher l'app de démarrer plutôt que d'échouer silencieusement au premier envoi (le
@@ -31,6 +32,9 @@ function readMailConfig() {
             host,
             port,
             secure: false,
+            // STARTTLS exigé en production (sinon nodemailer retombe en clair si le serveur ne le propose
+            // pas, identifiants SMTP compris) ; désactivé en dev, Mailpit ne parle pas TLS.
+            requireTLS: mailRequireTls(),
             // undefined (pas `{ user: '', pass: '' }`) : Nodemailer tenterait un AUTH LOGIN avec des
             // identifiants vides sinon. Mailpit n'exige aucune authentification. Les deux variables
             // doivent être renseignées ensemble (un user sans password est une config incomplète).

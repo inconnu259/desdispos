@@ -145,6 +145,14 @@ describe('AuthService', () => {
       expect(await service.validateUser('x@y.z', 'pw')).toBeNull();
     });
 
+    it('identifiant inconnu : vérifie quand même un hash argon2 (durée de réponse indiscernable)', async () => {
+      users.findByEmailOrPseudo.mockResolvedValue(null);
+      (argon2.hash as jest.Mock).mockResolvedValue('$argon2id$factice');
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+      expect(await service.validateUser('inconnu', 'pw')).toBeNull();
+      expect(argon2.verify).toHaveBeenCalledWith(expect.any(String), 'pw');
+    });
+
     it('renvoie null si mauvais mot de passe', async () => {
       users.findByEmailOrPseudo.mockResolvedValue(fakeUser);
       (argon2.verify as jest.Mock).mockResolvedValue(false);

@@ -10,6 +10,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { formatSessionDate } from '../events/session-date';
+import { publicWebOrigin } from '../config/env';
 
 const SLOT_LABELS: Record<DaySlot, string> = {
   MORNING: 'matin',
@@ -152,7 +153,7 @@ export class NotificationsService {
     const recipients = this.events.reminderRecipients(seance);
     // Story 41.2 : tout ralliement (groupe ou soirée isolée) reçoit l'e-mail neutre de la conjonction.
     const group = familyOf(partie.gameSystemId) === 'ralliement';
-    const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${partie.id}`;
+    const link = `${publicWebOrigin()}/parties/${partie.id}`;
     const sessionDate = this.formatSessionRange(seance);
     for (const recipient of recipients) {
       // Story 40.3 : un groupe reçoit l'e-mail neutre de la conjonction (hôte et inscrits seulement) ;
@@ -272,7 +273,7 @@ export class NotificationsService {
     if (familyOf(partie.gameSystemId) !== 'ralliement') return;
     const recipients = this.events.voteReminderRecipients({ votes: poll.votes, seance });
     // Story 44.7 — le lien arrive en Destinée sur CE vote (`?poll`), par l'adresse unique de l'atelier.
-    const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}${atelierUrl(
+    const link = `${publicWebOrigin()}${atelierUrl(
       { partieId: partie.id, family: 'ralliement', role: 'member' },
       { poll: poll.id },
     )}`;

@@ -5,6 +5,7 @@ import { PermissionService } from '../permissions/permission.service';
 import type { GroupPollChoosePort } from '../poll/ports/group-poll-choose.port';
 import { EventsService } from './events.service';
 import { formatSessionSpan } from './session-date';
+import { publicWebOrigin } from '../config/env';
 
 /**
  * Fixer la date d'une conjonction depuis son sondage (Story 40.6) — le côté `events/` de la route
@@ -42,7 +43,7 @@ export class GroupPollChoiceService implements GroupPollChoosePort {
     try {
       const notice = await this.events.dateFixedNotice(poll.id);
       if (!notice || notice.recipients.length === 0) return;
-      const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${poll.partieId}`;
+      const link = `${publicWebOrigin()}/parties/${poll.partieId}`;
       const sessionDate = notice.startDate
         ? formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot)
         : null;

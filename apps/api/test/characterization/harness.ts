@@ -12,6 +12,9 @@ import request from 'supertest';
 import type { Response } from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
+import { enforceSessionLifetime } from '../../src/auth/session-lifetime.middleware';
+import { originCheck } from '../../src/common/middleware/origin-check.middleware';
+import { sessionSecret, webOrigins } from '../../src/config/env';
 import { EmailService } from '../../src/email/email.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
@@ -112,14 +115,17 @@ export class Harness {
     app.use(
       session({
         store: sessionStore,
-        secret: process.env.SESSION_SECRET ?? 'dev-secret',
+        secret: sessionSecret(),
         resave: false,
         saveUninitialized: false,
         cookie: { httpOnly: true, secure: false, sameSite: 'lax' },
       }),
     );
+    app.use(enforceSessionLifetime());
     app.use(passport.initialize());
     app.use(passport.session());
+    app.enableCors({ origin: webOrigins(), credentials: true });
+    app.use(originCheck(webOrigins()));
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );

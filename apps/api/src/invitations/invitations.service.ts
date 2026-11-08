@@ -15,6 +15,7 @@ import { PermissionService } from '../permissions/permission.service';
 import { InviteLinksService } from './invite-links.service';
 import { EmailService } from '../email/email.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
+import { publicWebOrigin } from '../config/env';
 
 @Injectable()
 export class InvitationsService {
@@ -68,12 +69,7 @@ export class InvitationsService {
     // Story 41.3 : l'invité d'une soirée isolée en est prévenu par e-mail (jamais bloquant) ; les autres
     // invitations par pseudo gardent leur comportement (aucun e-mail).
     if (partie.kind === 'ONE_SHOT' && familyOf(partie.gameSystemId) === 'ralliement') {
-      await this.sendSoireeInvitation(
-        partie,
-        inviterId,
-        invitee.email,
-        `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/`,
-      );
+      await this.sendSoireeInvitation(partie, inviterId, invitee.email, `${publicWebOrigin()}/`);
     }
     return invitation;
   }
@@ -227,7 +223,7 @@ export class InvitationsService {
     const email = rawEmail.trim().toLowerCase();
     const { partie } = await this.permissions.assert(inviterId, 'INVITATION_CREATE', { partieId });
     await this.events.assertIsolatedOpen(partie);
-    const origin = process.env.WEB_ORIGIN ?? 'http://localhost:4200';
+    const origin = publicWebOrigin();
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     const isSoiree = partie.kind === 'ONE_SHOT' && familyOf(partie.gameSystemId) === 'ralliement';

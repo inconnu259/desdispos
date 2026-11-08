@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '../email/email.service';
 import { EventsService } from './events.service';
 import { formatSessionSpan } from './session-date';
+import { publicWebOrigin } from '../config/env';
 
 /**
  * E-mail n° 7 « Annulée : « *Conjonction* » » (Stories 42.1 et 42.3) — UNE seule définition de l'envoi,
@@ -47,7 +48,7 @@ export class EventCancellationMailer {
         addresses.push(address);
       }
       if (addresses.length === 0) return;
-      const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${partieId}`;
+      const link = `${publicWebOrigin()}/parties/${partieId}`;
       const sessionDate = notice.startDate
         ? formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot)
         : null;

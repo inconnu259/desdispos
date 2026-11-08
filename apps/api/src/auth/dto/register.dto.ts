@@ -1,13 +1,21 @@
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { normalizeEmailIfString } from '../../common/dto/email.transform';
+import { trimIfString } from '../../common/dto/trim.transform';
 
 export class RegisterDto {
+  @Transform(normalizeEmailIfString)
   @IsEmail()
   @MaxLength(255)
   email!: string;
 
+  // Sans `@` : la connexion accepte e-mail OU pseudo, un pseudo en forme d'adresse pourrait usurper
+  // l'e-mail d'un autre compte à l'écran de connexion.
+  @Transform(trimIfString)
   @IsString()
   @MinLength(3)
   @MaxLength(30)
+  @Matches(/^[^@]+$/, { message: 'Le pseudo ne peut pas contenir « @ ».' })
   pseudo!: string;
 
   @IsString()

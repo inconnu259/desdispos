@@ -31,6 +31,16 @@ import { GetCoverDto } from './dto/get-cover.dto';
 // `characters.controller.ts:MAX_PORTRAIT_SIZE`, mais un décorateur de classe ne peut pas lire une
 // constante importée d'un autre domaine sans perdre la garantie d'indépendance qu'AD-17 demande.
 const MAX_COVER_SIZE = 5 * 1024 * 1024;
+// Plafonds du formulaire multipart : UN fichier et quelques champs texte courts. Sans eux, Multer accepte un
+// nombre illimité de champs (jusqu'à 1 Mo chacun), lus en mémoire AVANT tout contrôle de droits.
+const COVER_UPLOAD_LIMITS = {
+  fileSize: MAX_COVER_SIZE,
+  files: 1,
+  fields: 5,
+  parts: 6,
+  fieldSize: 16 * 1024,
+  fieldNameSize: 100,
+};
 
 /**
  * Endpoints d'image de couverture d'une partie (Story 29.12, AD-17/AD-19). Vit dans
@@ -75,7 +85,7 @@ export class PartyCoverController {
       // Rejette la requête pendant le streaming, avant de bufferiser un fichier surdimensionné en
       // mémoire (le `ParseFilePipe` ci-dessous ne s'exécute qu'APRÈS que Multer a fini de lire le
       // body) — cf. `MulterExceptionFilter` pour le remappage de l'erreur Multer en 413.
-      limits: { fileSize: MAX_COVER_SIZE },
+      limits: COVER_UPLOAD_LIMITS,
     }),
   )
   setCover(

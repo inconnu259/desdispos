@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { Prisma, type Event, type Scenario, type ScenarioDocument } from '@prisma/client';
@@ -63,6 +64,10 @@ export interface PasseScenarioBatchItem {
   closedAt: string;
   participants: BatchParticipant[];
 }
+
+/** Quota de documents par partie (cf. assertDocumentQuota). */
+const MAX_DOCUMENTS_PER_PARTIE = 50;
+const MAX_DOCUMENT_BYTES_PER_PARTIE = 100 * 1024 * 1024;
 
 @Injectable()
 export class ScenariosService {
@@ -198,6 +203,29 @@ export class ScenariosService {
     return this.enrich(flattenScenario(updated), partie.kind, grant);
   }
 
+  /**
+   * Quota de documents par partie (revue de sécurité 2026-11) : sans lui, un MJ — et tout membre peut en
+   * devenir un en créant sa partie — remplissait le disque du serveur à coups de 5 Mo. Vérifié avant
+   * l'écriture ; deux envois simultanés peuvent dépasser d'un fichier, sans conséquence.
+   */
+  private async assertDocumentQuota(partieId: string, incomingBytes: number): Promise<void> {
+    const { _count, _sum } = await this.prisma.scenarioDocument.aggregate({
+      where: { partieId },
+      _count: { _all: true },
+      _sum: { sizeBytes: true },
+    });
+    if (_count._all >= MAX_DOCUMENTS_PER_PARTIE) {
+      throw new PayloadTooLargeException(
+        `Une partie peut contenir au plus ${MAX_DOCUMENTS_PER_PARTIE} documents.`,
+      );
+    }
+    if ((_sum.sizeBytes ?? 0) + incomingBytes > MAX_DOCUMENT_BYTES_PER_PARTIE) {
+      throw new PayloadTooLargeException(
+        `Les documents d'une partie sont limités à ${MAX_DOCUMENT_BYTES_PER_PARTIE / (1024 * 1024)} Mo au total.`,
+      );
+    }
+  }
+
   async uploadDocument(
     partieId: string,
     mjId: string,
@@ -232,6 +260,7 @@ export class ScenariosService {
     if (mime === 'application/pdf' && !hasValidPdfEnvelope(file.buffer)) {
       throw new BadRequestException('Le fichier PDF fourni est tronqué ou invalide');
     }
+    await this.assertDocumentQuota(partieId, file.size);
 
     const filename = await writeDocumentFile(file.buffer, mime);
     try {

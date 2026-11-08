@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
@@ -82,6 +83,7 @@ function makePrisma() {
       create: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      aggregate: jest.fn().mockResolvedValue({ _count: { _all: 0 }, _sum: { sizeBytes: 0 } }),
     },
     scenarioParticipant: {
       upsert: jest.fn(),
@@ -216,7 +218,9 @@ function pollCreates(pollService: ReturnType<typeof makePollService>, pollId: st
       _grant: unknown,
       _userId: unknown,
       _dto: unknown,
-      persist?: (write: (tx: unknown, durationSlots: number) => Promise<{ id: string }>) => Promise<void>,
+      persist?: (
+        write: (tx: unknown, durationSlots: number) => Promise<{ id: string }>,
+      ) => Promise<void>,
     ) => {
       await persist?.(async () => ({ id: pollId }));
       return { id: pollId };
@@ -857,6 +861,23 @@ describe('ScenariosService', () => {
       expect(prisma.scenarioDocument.create).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['50 documents déjà présents', { _count: { _all: 50 }, _sum: { sizeBytes: 1000 } }],
+      ['100 Mo dépassés', { _count: { _all: 3 }, _sum: { sizeBytes: 100 * 1024 * 1024 } }],
+    ])(
+      'revue de sécurité : quota de la partie atteint (%s) → 413, aucune écriture',
+      async (_l, agg) => {
+        permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
+        (detectDocumentMime as jest.Mock).mockReturnValue('text/plain');
+        prisma.scenarioDocument.aggregate.mockResolvedValue(agg);
+
+        await expect(service.uploadDocument('p1', 'mj1', makeFile())).rejects.toThrow(
+          PayloadTooLargeException,
+        );
+        expect(writeDocumentFile).not.toHaveBeenCalled();
+      },
+    );
+
     it('fichier texte détecté → hasValidPdfEnvelope jamais appelé, upload réussit (Story 16.1 AC3, non-régression texte)', async () => {
       permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       (detectDocumentMime as jest.Mock).mockReturnValue('text/plain');
@@ -1459,7 +1480,14 @@ describe('ScenariosService', () => {
             endSlot: 'AFTERNOON',
           },
           { ...seanceRow, id: 'se2', startSlot: 'MORNING', endDate: null, endSlot: null },
-          { ...seanceRow, id: 'se3', startDate: null, startSlot: null, endDate: null, endSlot: null },
+          {
+            ...seanceRow,
+            id: 'se3',
+            startDate: null,
+            startSlot: null,
+            endDate: null,
+            endSlot: null,
+          },
         ]);
 
         const [dto] = await service.findAllForPartie('p1', 'u1');
@@ -2404,7 +2432,12 @@ describe('ScenariosService', () => {
 
       expect(prisma.partie.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
-        data: { nextSessionDate: future, nextSessionSlot: 'EVENING', nextSessionEndDate: future, nextSessionEndSlot: 'EVENING' },
+        data: {
+          nextSessionDate: future,
+          nextSessionSlot: 'EVENING',
+          nextSessionEndDate: future,
+          nextSessionEndSlot: 'EVENING',
+        },
       });
       // Statut et recalcul dans UNE transaction, la partie verrouillée AVANT la lecture des
       // séances (FOR UPDATE), puis l'écriture de la prochaine séance.

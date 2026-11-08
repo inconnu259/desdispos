@@ -57,6 +57,38 @@ describe('detectImageMime', () => {
 });
 
 describe('stripImageMetadata', () => {
+  it('maxDimension : ramène le plus grand côté, sans jamais agrandir', async () => {
+    const big = await sharp({
+      create: { width: 3000, height: 1500, channels: 3, background: { r: 0, g: 0, b: 0 } },
+    })
+      .png()
+      .toBuffer();
+    const meta = await sharp(await stripImageMetadata(big, { maxDimension: 1024 })).metadata();
+    expect([meta.width, meta.height]).toEqual([1024, 512]);
+    expect(meta.format).toBe('png'); // format conservé (l'export PDF n'accepte que JPEG/PNG)
+
+    const small = await sharp({
+      create: { width: 100, height: 50, channels: 3, background: { r: 0, g: 0, b: 0 } },
+    })
+      .jpeg()
+      .toBuffer();
+    const smallMeta = await sharp(
+      await stripImageMetadata(small, { maxDimension: 1024 }),
+    ).metadata();
+    expect([smallMeta.width, smallMeta.height]).toEqual([100, 50]);
+  });
+
+  it('revue de sécurité : refuse une image dont les dimensions dépassent le plafond de pixels', async () => {
+    // 8000 × 8000 = 64 Mpx > 50 Mpx : PNG uni, quelques dizaines de Ko seulement sur disque.
+    const bomb = await sharp({
+      create: { width: 8000, height: 8000, channels: 3, background: { r: 0, g: 0, b: 0 } },
+    })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+    expect(bomb.length).toBeLessThan(5 * 1024 * 1024);
+    await expect(stripImageMetadata(bomb)).rejects.toThrow(/pixel limit/i);
+  });
+
   it("supprime les métadonnées EXIF (GPS) d'une image réelle", async () => {
     const withExif = await sharp({
       create: {

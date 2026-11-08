@@ -19,6 +19,7 @@ import { EmailService } from '../email/email.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { RegisterDto } from './dto/register.dto';
 import { publicWebOrigin } from '../config/env';
+import { normalizeEmail } from '../common/dto/email.transform';
 
 const RESET_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // +24h (FR-6)
 const RESET_TOKEN_INVALID_MESSAGE = 'Lien invalide ou expiré. Merci de refaire une demande.';
@@ -55,7 +56,10 @@ export class AuthService {
 
   /** Vérifie les identifiants (email OU pseudo) ; renvoie l'utilisateur (sans le hash) ou null. */
   async validateUser(identifier: string, password: string) {
-    const user = await this.users.findByEmailOrPseudo(identifier);
+    // Un identifiant contenant « @ » est une adresse (un pseudo ne peut pas en contenir) : comparée en
+    // minuscules, comme elle est stockée.
+    const lookup = identifier.includes('@') ? normalizeEmail(identifier) : identifier.trim();
+    const user = await this.users.findByEmailOrPseudo(lookup);
     if (!user) {
       // Même coût qu'un vrai compte (vérification argon2 contre un hash factice) : sans ça, la durée de
       // la réponse dit si l'e-mail ou le pseudo existe.
@@ -91,6 +95,10 @@ export class AuthService {
   // Inscription **sur invitation** (spec §2) : un token de lien valide est requis ; le compte créé
   // est rattaché à la partie du lien dans la même transaction (compte + Membership atomiques).
   async register(dto: RegisterDto) {
+    // Lien vérifié AVANT tout le reste (hash argon2, création du compte) : sans lien valide, la réponse ne
+    // doit rien dire de l'adresse ni du pseudo (avant, un 409 « déjà utilisé » répondait à n'importe qui,
+    // et chaque essai coûtait un hash argon2 au serveur). consumeLink() revérifie dans la transaction.
+    await this.inviteLinks.assertUsableForRegistration(dto.token, dto.email);
     try {
       const passwordHash = await argon2.hash(dto.password);
       let joinedPartieId: string | undefined;
@@ -598,6 +606,23 @@ export class AuthService {
         });
 
         await this.revokeSessions(tx, record.userId);
+
+        // Brûle tous les autres jetons encore valides du compte : celui qui a détourné l'adresse a pu,
+        // avant ce rollback, demander une réinitialisation de mot de passe (lien reçu sur SON adresse)
+        // ou un nouveau changement d'e-mail — il reprendrait le compte avec, sessions révoquées ou non.
+        const now = new Date();
+        await tx.passwordResetToken.updateMany({
+          where: { userId: record.userId, usedAt: null },
+          data: { usedAt: now },
+        });
+        await tx.emailChangeToken.updateMany({
+          where: { userId: record.userId, usedAt: null },
+          data: { usedAt: now },
+        });
+        await tx.emailChangeRollbackToken.updateMany({
+          where: { userId: record.userId, usedAt: null },
+          data: { usedAt: now },
+        });
       });
     } catch (e: unknown) {
       const err = e as { code?: string };
@@ -632,11 +657,18 @@ export class AuthService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async purgeExpiredResetTokens(): Promise<void> {
-    const { count } = await this.prisma.passwordResetToken.deleteMany({
-      where: { expiresAt: { lt: new Date() } },
-    });
+    const where = { expiresAt: { lt: new Date() } };
+    const { count } = await this.prisma.passwordResetToken.deleteMany({ where });
     if (count > 0) {
       this.logger.log(`${count} PasswordResetToken(s) expiré(s) purgé(s)`);
+    }
+    // Les jetons de changement d'e-mail expirés (et leurs hash) n'ont pas non plus à rester en base.
+    const emailChange = await this.prisma.emailChangeToken.deleteMany({ where });
+    const rollback = await this.prisma.emailChangeRollbackToken.deleteMany({ where });
+    if (emailChange.count + rollback.count > 0) {
+      this.logger.log(
+        `${emailChange.count + rollback.count} jeton(s) de changement d'e-mail expiré(s) purgé(s)`,
+      );
     }
   }
 }

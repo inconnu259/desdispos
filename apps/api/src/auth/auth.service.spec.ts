@@ -41,10 +41,11 @@ describe('AuthService', () => {
       findUnique: jest.Mock;
       count: jest.Mock;
       updateMany: jest.Mock;
+      deleteMany: jest.Mock;
     };
-    emailChangeRollbackToken: { findUnique: jest.Mock };
+    emailChangeRollbackToken: { findUnique: jest.Mock; deleteMany: jest.Mock };
   };
-  let inviteLinks: { consumeLink: jest.Mock };
+  let inviteLinks: { consumeLink: jest.Mock; assertUsableForRegistration: jest.Mock };
   let email: { sendMail: jest.Mock };
   let realtimeEvents: { emit: jest.Mock };
   let parties: { notifyPartieSignalsChanged: jest.Mock };
@@ -120,11 +121,16 @@ describe('AuthService', () => {
         findUnique: jest.fn(),
         count: jest.fn().mockResolvedValue(0),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
-      emailChangeRollbackToken: { findUnique: jest.fn() },
+      emailChangeRollbackToken: {
+        findUnique: jest.fn(),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
     };
     inviteLinks = {
       consumeLink: jest.fn().mockResolvedValue({ partieId: 'p1', partie: { ownerId: 'mj1' } }),
+      assertUsableForRegistration: jest.fn().mockResolvedValue(undefined),
     };
     email = { sendMail: jest.fn().mockResolvedValue({ ok: true }) };
     realtimeEvents = { emit: jest.fn() };
@@ -143,6 +149,14 @@ describe('AuthService', () => {
     it('renvoie null si identifiant (email ou pseudo) inconnu', async () => {
       users.findByEmailOrPseudo.mockResolvedValue(null);
       expect(await service.validateUser('x@y.z', 'pw')).toBeNull();
+    });
+
+    it('identifiant en forme d’adresse : cherché en minuscules ; pseudo : tel quel (rogné)', async () => {
+      users.findByEmailOrPseudo.mockResolvedValue(null);
+      await service.validateUser('  Alice@Example.COM ', 'pw');
+      expect(users.findByEmailOrPseudo).toHaveBeenLastCalledWith('alice@example.com');
+      await service.validateUser(' Alice ', 'pw');
+      expect(users.findByEmailOrPseudo).toHaveBeenLastCalledWith('Alice');
     });
 
     it('identifiant inconnu : vérifie quand même un hash argon2 (durée de réponse indiscernable)', async () => {
@@ -187,6 +201,24 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
+    it('revue de sécurité : lien invalide → refus AVANT tout hash et toute création (aucun oracle 409)', async () => {
+      inviteLinks.assertUsableForRegistration.mockRejectedValue(
+        new NotFoundException('Lien invalide'),
+      );
+      (argon2.hash as jest.Mock).mockClear();
+      await expect(
+        service.register({
+          email: 'pris@b.c',
+          pseudo: 'alice',
+          password: 'password123',
+          token: 'faux',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(argon2.hash).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(inviteLinks.assertUsableForRegistration).toHaveBeenCalledWith('faux', 'pris@b.c');
+    });
+
     it("crée le compte, consomme le lien et renvoie l'utilisateur sans le hash", async () => {
       tx.user.create.mockResolvedValue(fakeUser);
       const result = await service.register({
@@ -925,6 +957,19 @@ describe('AuthService', () => {
       );
     });
 
+    it('revue de sécurité : brûle tous les autres jetons du compte (reset mdp, changement d’e-mail, rollback)', async () => {
+      prisma.emailChangeRollbackToken.findUnique.mockResolvedValue(validRollbackRecord);
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+      tx.emailChangeRollbackToken.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.rollbackEmailChange('rb1.secretvalue');
+
+      const burnAll = { where: { userId: 'u1', usedAt: null }, data: { usedAt: anyOf(Date) } };
+      expect(tx.passwordResetToken.updateMany).toHaveBeenCalledWith(burnAll);
+      expect(tx.emailChangeToken.updateMany).toHaveBeenCalledWith(burnAll);
+      expect(tx.emailChangeRollbackToken.updateMany).toHaveBeenCalledWith(burnAll);
+    });
+
     it('token inconnu/expiré/déjà utilisé/secret invalide → NotFoundException, aucune écriture', async () => {
       prisma.emailChangeRollbackToken.findUnique.mockResolvedValue(null);
 
@@ -966,6 +1011,14 @@ describe('AuthService', () => {
       expect(prisma.passwordResetToken.deleteMany).toHaveBeenCalledWith({
         where: { expiresAt: { lt: anyOf(Date) } },
       });
+    });
+
+    it('purge aussi les jetons de changement d’e-mail et de rollback expirés', async () => {
+      prisma.passwordResetToken.deleteMany.mockResolvedValue({ count: 0 });
+      await service.purgeExpiredResetTokens();
+      const expired = { where: { expiresAt: { lt: anyOf(Date) } } };
+      expect(prisma.emailChangeToken.deleteMany).toHaveBeenCalledWith(expired);
+      expect(prisma.emailChangeRollbackToken.deleteMany).toHaveBeenCalledWith(expired);
     });
 
     it('aucun token expiré → se résout normalement sans erreur', async () => {

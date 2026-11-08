@@ -50,6 +50,16 @@ import { ExportCharacterPdfDto } from './dto/export-character-pdf.dto';
 import { PortraitCropDataDto } from './dto/portrait-crop-data.dto';
 
 const MAX_PORTRAIT_SIZE = 5 * 1024 * 1024;
+// Plafonds du formulaire multipart : UN fichier et quelques champs texte courts. Sans eux, Multer accepte un
+// nombre illimité de champs (jusqu'à 1 Mo chacun), lus en mémoire AVANT tout contrôle de droits.
+const PORTRAIT_UPLOAD_LIMITS = {
+  fileSize: MAX_PORTRAIT_SIZE,
+  files: 1,
+  fields: 5,
+  parts: 6,
+  fieldSize: 16 * 1024,
+  fieldNameSize: 100,
+};
 
 @UseGuards(AuthenticatedGuard)
 @Controller('characters')
@@ -139,7 +149,7 @@ export class CharactersController {
       // Rejette la requête pendant le streaming, avant de bufferiser un fichier surdimensionné
       // en mémoire (le `ParseFilePipe` ci-dessous ne s'exécute qu'APRÈS que Multer a fini de lire
       // le body) — cf. `MulterExceptionFilter` pour le remappage de l'erreur Multer en 413.
-      limits: { fileSize: MAX_PORTRAIT_SIZE },
+      limits: PORTRAIT_UPLOAD_LIMITS,
     }),
   )
   async updatePortrait(

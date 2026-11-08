@@ -13,7 +13,7 @@ import { InviteLinksService } from './invite-links.service';
 import { EmailService } from '../email/email.service';
 import type { EventsService } from '../events/events.service';
 import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realtime-events.service';
-import { objectLike, stringLike } from '../common/test-utils/jest-typed';
+import { callArg, objectLike, stringLike } from '../common/test-utils/jest-typed';
 
 describe('InvitationsService', () => {
   let service: InvitationsService;
@@ -29,7 +29,7 @@ describe('InvitationsService', () => {
     $transaction: jest.Mock;
   };
   let parties: { notifyPartieSignalsChanged: jest.Mock };
-  let permissions: { assert: jest.Mock };
+  let permissions: { assert: jest.Mock; roleOf: jest.Mock };
   let inviteLinks: { findOrCreateForEmail: jest.Mock };
   let email: { sendMail: jest.Mock };
   let realtimeEvents: { emit: jest.Mock };
@@ -59,6 +59,7 @@ describe('InvitationsService', () => {
           name: 'La Forêt Ancienne',
         }),
       ),
+      roleOf: jest.fn().mockResolvedValue(null),
     };
     inviteLinks = {
       findOrCreateForEmail: jest.fn().mockResolvedValue({ token: 'tok123' }),
@@ -560,6 +561,63 @@ describe('InvitationsService', () => {
     const result = await service.inviteByEmail('p1', 'mj1', 'inconnu@example.com');
 
     expect(result).toEqual({ ok: false });
+  });
+
+  it('revue de sécurité : adresse d’un membre déjà présent → même réponse { ok: true }, rien écrit ni envoyé', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1' });
+    permissions.roleOf.mockResolvedValue('player');
+
+    await expect(service.inviteByEmail('p1', 'mj1', 'membre@example.com')).resolves.toEqual({
+      ok: true,
+    });
+    expect(prisma.invitation.upsert).not.toHaveBeenCalled();
+    expect(email.sendMail).not.toHaveBeenCalled();
+  });
+
+  it('revue de sécurité : sa propre adresse → { ok: true } silencieux (plus de 400 révélateur)', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'mj1' });
+    await expect(service.inviteByEmail('p1', 'mj1', 'moi@example.com')).resolves.toEqual({
+      ok: true,
+    });
+    expect(prisma.invitation.upsert).not.toHaveBeenCalled();
+  });
+
+  it('revue de sécurité : l’invitation par e-mail mémorise l’adresse saisie', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'ami@example.com' });
+    prisma.membership.findUnique.mockResolvedValue(null);
+    prisma.invitation.upsert.mockResolvedValue({ id: 'inv1' });
+
+    await service.inviteByEmail('p1', 'mj1', 'ami@example.com');
+
+    expect(callArg(prisma.invitation.upsert)).toMatchObject({
+      create: { invitedEmail: 'ami@example.com' },
+      update: { invitedEmail: 'ami@example.com' },
+    });
+  });
+
+  it('revue de sécurité : listForPartie masque le compte d’une invitation par e-mail non acceptée', async () => {
+    const invitee = { id: 'u1', pseudo: 'alice', displayName: 'Alice' };
+    prisma.invitation.findMany.mockResolvedValue([
+      { id: 'a', status: 'PENDING', invitedEmail: 'ami@example.com', inviteeUserId: 'u1', invitee },
+      {
+        id: 'b',
+        status: 'ACCEPTED',
+        invitedEmail: 'ami@example.com',
+        inviteeUserId: 'u1',
+        invitee,
+      },
+      { id: 'c', status: 'PENDING', invitedEmail: null, inviteeUserId: 'u1', invitee },
+    ]);
+
+    const list = await service.listForPartie('p1', 'mj1');
+
+    expect(list[0]).toMatchObject({
+      invitedEmail: 'ami@example.com',
+      inviteeUserId: null,
+      invitee: null,
+    });
+    expect(list[1].invitee).toEqual(invitee);
+    expect(list[2].invitee).toEqual(invitee);
   });
 
   it('inviteByEmail : normalise la casse/espaces avant recherche, dédoublonnage et envoi', async () => {

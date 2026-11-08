@@ -66,8 +66,35 @@ export function detectImageMime(buffer: Buffer): DetectedImageMime | null {
  * `{ animated: true }` passée) — acceptable ici car un portrait/une couverture est attendu comme
  * une image statique.
  */
-export async function stripImageMetadata(buffer: Buffer): Promise<Buffer> {
-  return sharp(buffer).autoOrient().toBuffer();
+export async function stripImageMetadata(
+  buffer: Buffer,
+  options: { maxDimension?: number } = {},
+): Promise<Buffer> {
+  const image = openImage(buffer).autoOrient();
+  // Optionnel : ramène le plus grand côté à `maxDimension` (jamais d'agrandissement). Les portraits n'ont
+  // aucune raison d'être stockés en 6000 px — et l'export PDF de la fiche les redécode à chaque fois.
+  if (options.maxDimension) {
+    image.resize({
+      width: options.maxDimension,
+      height: options.maxDimension,
+      fit: 'inside',
+      withoutEnlargement: true,
+    });
+  }
+  return image.toBuffer();
+}
+
+/**
+ * Nombre maximal de pixels qu'on accepte de DÉCODER. Une image de 5 Mo peut déclarer des dimensions
+ * énormes (PNG très compressible : 20 000 × 20 000 px tiennent dans quelques Mo) et réclamer plus d'1 Go
+ * de mémoire au décodage — le défaut de sharp (~268 Mpx) le laisse passer. 50 Mpx couvre toute photo de
+ * téléphone qui tient dans la limite de 5 Mo.
+ */
+export const MAX_IMAGE_INPUT_PIXELS = 50_000_000;
+
+/** Point d'entrée UNIQUE vers sharp pour une image envoyée par un utilisateur : plafond de pixels. */
+export function openImage(buffer: Buffer): sharp.Sharp {
+  return sharp(buffer, { limitInputPixels: MAX_IMAGE_INPUT_PIXELS });
 }
 
 export function extensionForImageMime(mime: DetectedImageMime): string {

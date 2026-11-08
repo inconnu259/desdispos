@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 const NARRATIVE_FIELDS = [
   'sex',
@@ -14,8 +14,10 @@ export class UpdateNarrativeFieldDto {
   @IsIn(NARRATIVE_FIELDS)
   field!: (typeof NARRATIVE_FIELDS)[number];
 
-  // Cf. SetSheetFieldDto (Story 6.6) : @IsOptional() enregistre la propriété dans les métadonnées
-  // class-validator (évite le rejet whitelist) sans imposer de forme — accepte null pour vider un champ.
+  // null (ou absent) vide le champ ; sinon un texte borné. Avant la revue de sécurité 2026-11, n'importe
+  // quel JSON (objet, tableau, chaîne géante) était accepté et stocké dans la fiche.
   @IsOptional()
-  value: unknown;
+  @IsString()
+  @MaxLength(5000)
+  value?: string | null;
 }

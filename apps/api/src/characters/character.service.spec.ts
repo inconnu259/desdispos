@@ -466,6 +466,50 @@ describe('CharacterService', () => {
     );
   });
 
+  describe('create() — revue de sécurité : sheetData filtré', () => {
+    beforeEach(() => {
+      permissions.assert.mockImplementation(
+        grantByOwner({ id: 'p1', ownerId: 'mj1', gameSystemId: 'ryuutama' }),
+      );
+      (validate as jest.Mock).mockReturnValue({ valid: true, errors: [] });
+      (computeDerived as jest.Mock).mockReturnValue({});
+      prisma.character.create.mockResolvedValue(makeCharacter());
+    });
+
+    it('retire les levelUps et toute clé inconnue avant écriture', async () => {
+      await service.create('p1', 'u1', {
+        gameSystemId: 'ryuutama',
+        sheetData: {
+          ...validSheet(),
+          levelUps: [{ level: 2, pvAllocated: 3, peAllocated: 0, capabilities: [] }],
+          xp: 99999,
+          pirate: { bombe: true },
+        },
+      });
+
+      const written = writtenData(prisma.character.create) as unknown as Record<string, unknown>;
+      expect(written.sheetData).not.toHaveProperty('levelUps');
+      expect(written.sheetData).not.toHaveProperty('xp');
+      expect(written.sheetData).not.toHaveProperty('pirate');
+      expect(written.sheetData).toMatchObject(validSheet());
+    });
+
+    it.each([
+      ['texte narratif trop long', { narrative: { motivation: 'x'.repeat(5001) } }],
+      ['champ narratif non textuel', { narrative: { motivation: { a: 1 } } }],
+      ['champ narratif inconnu', { narrative: { secret: 'x' } }],
+      ['objet fétiche géant', { fetiqueObject: 'x'.repeat(501) }],
+    ])('refuse (400) : %s', async (_label, extra) => {
+      await expect(
+        service.create('p1', 'u1', {
+          gameSystemId: 'ryuutama',
+          sheetData: { ...validSheet(), ...extra },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.character.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('startingEquipment (Story 26.1)', () => {
     it('sélection valide, total ≤ 1000 Po → personnage créé, equipment.* peuplé avec id/addedBy serveur, startingEquipment absent du sheetData persisté', async () => {
       permissions.assert.mockImplementation(
@@ -1441,7 +1485,7 @@ describe('CharacterService', () => {
 
       await service.updatePortrait('char1', 'u1', makeMulterFile(), null);
 
-      expect(stripImageMetadata).toHaveBeenCalledWith(JPEG_BUFFER);
+      expect(stripImageMetadata).toHaveBeenCalledWith(JPEG_BUFFER, { maxDimension: 1024 });
       expect(writeFile).toHaveBeenCalledWith(expect.stringContaining('fixed-uuid.jpg'), cleaned);
     });
 

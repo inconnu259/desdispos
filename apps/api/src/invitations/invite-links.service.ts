@@ -17,6 +17,7 @@ import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realt
 import { CreateInviteLinkDto } from './dto/create-invite-link.dto';
 
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // +7 jours
+const MAX_TTL_MS = 90 * 24 * 60 * 60 * 1000; // plafond d'expiration (revue de sécurité)
 
 @Injectable()
 export class InviteLinksService {
@@ -40,6 +41,10 @@ export class InviteLinksService {
       : new Date(Date.now() + DEFAULT_TTL_MS);
     if (expiresAt.getTime() <= Date.now()) {
       throw new BadRequestException("La date d'expiration doit être dans le futur.");
+    }
+    // Un lien qui traîne dans une conversation ne doit pas ouvrir la porte indéfiniment.
+    if (expiresAt.getTime() > Date.now() + MAX_TTL_MS) {
+      throw new BadRequestException("Un lien d'invitation expire au plus tard dans 90 jours.");
     }
     const token = randomBytes(32).toString('base64url');
     return this.prisma.inviteLink.create({
@@ -102,6 +107,28 @@ export class InviteLinksService {
     // rejoint par lien. En plus des émissions ci-dessus, jamais en remplacement.
     await this.parties.notifyPartieSignalsChanged(link.partieId, link.partie.ownerId);
     return { ok: true, partieId: link.partieId };
+  }
+
+  /**
+   * Contrôle préalable à une inscription, AVANT de créer quoi que ce soit : lien existant et valide, partie
+   * encore ouverte, et — pour un lien émis vers une adresse précise (invitation par e-mail) — inscription
+   * avec CETTE adresse. Sans ce dernier point, un lien transféré ou intercepté ouvrait un compte à n'importe
+   * qui. Mêmes codes que `consumeLink` (404 lien inconnu, 403 lien inutilisable).
+   */
+  async assertUsableForRegistration(token: string, email: string): Promise<void> {
+    const link = await this.prisma.inviteLink.findUnique({
+      where: { token },
+      include: { partie: { select: { id: true, kind: true, closedAt: true, gameSystemId: true } } },
+    });
+    if (!link) throw new NotFoundException('Lien invalide');
+    const status = this.linkStatus(link);
+    if (!status.valid) throw new ForbiddenException(status.reason);
+    if (link.targetEmail && link.targetEmail !== email) {
+      throw new ForbiddenException(
+        "Ce lien d'invitation a été envoyé à une autre adresse : inscrivez-vous avec l'adresse qui l'a reçu.",
+      );
+    }
+    await this.events.assertIsolatedOpen(link.partie);
   }
 
   /**

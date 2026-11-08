@@ -36,6 +36,16 @@ import { SetInfosPratiquesDto } from './dto/set-infos-pratiques.dto';
 import { SetResumeFinDto } from './dto/set-resume-fin.dto';
 
 const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024;
+// Plafonds du formulaire multipart : UN fichier et quelques champs texte courts. Sans eux, Multer accepte un
+// nombre illimité de champs (jusqu'à 1 Mo chacun), lus en mémoire AVANT tout contrôle de droits.
+const DOCUMENT_UPLOAD_LIMITS = {
+  fileSize: MAX_DOCUMENT_SIZE,
+  files: 1,
+  fields: 5,
+  parts: 6,
+  fieldSize: 16 * 1024,
+  fieldNameSize: 100,
+};
 
 function sanitizeHeaderFilename(name: string): string {
   return name.replace(/[\r\n"]/g, '');
@@ -217,7 +227,7 @@ export class ScenariosController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: MAX_DOCUMENT_SIZE },
+      limits: DOCUMENT_UPLOAD_LIMITS,
     }),
   )
   uploadDocument(

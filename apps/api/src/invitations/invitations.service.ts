@@ -36,7 +36,14 @@ export class InvitationsService {
 
   /** Le MJ (JDR) ou l'administrateur (ralliement) invite un utilisateur déjà inscrit. Idempotent :
    *  ré-invite ranime une invitation close. */
-  async invite(partieId: string, inviterId: string, inviteeUserId: string) {
+  async invite(
+    partieId: string,
+    inviterId: string,
+    inviteeUserId: string,
+    // Adresse saisie quand l'invitation part d'un e-mail (inviteByEmail) : masque l'invité dans la liste
+    // de l'invitant jusqu'à l'acceptation. Une invitation par pseudo la remet à null (le pseudo est connu).
+    invitedEmail: string | null = null,
+  ) {
     // MJ uniquement (JDR) ; administrateur uniquement (ralliement, Story 39.3).
     const { partie } = await this.permissions.assert(inviterId, 'INVITATION_CREATE', { partieId });
     // Story 41.4 : plus d'invitation à une soirée terminée.
@@ -62,8 +69,8 @@ export class InvitationsService {
 
     const invitation = await this.prisma.invitation.upsert({
       where: { partieId_inviteeUserId: { partieId, inviteeUserId } },
-      create: { partieId, inviterId, inviteeUserId },
-      update: { status: 'PENDING', inviterId, respondedAt: null },
+      create: { partieId, inviterId, inviteeUserId, invitedEmail },
+      update: { status: 'PENDING', inviterId, respondedAt: null, invitedEmail },
     });
     this.realtimeEvents.emit(userTopic(inviteeUserId));
     // Story 41.3 : l'invité d'une soirée isolée en est prévenu par e-mail (jamais bloquant) ; les autres
@@ -94,7 +101,13 @@ export class InvitationsService {
         this.events.invitationNotice(partie.id),
       ]);
       let dateLine = 'date à fixer';
-      if (notice?.startDate) dateLine = formatSessionSpan(notice.startDate, notice.startSlot, notice.endDate, notice.endSlot);
+      if (notice?.startDate)
+        dateLine = formatSessionSpan(
+          notice.startDate,
+          notice.startSlot,
+          notice.endDate,
+          notice.endSlot,
+        );
       else if (notice?.deadline) {
         dateLine = `date à voter jusqu'au ${formatSessionDate(notice.deadline, null)}`;
       }
@@ -122,14 +135,23 @@ export class InvitationsService {
    * Invitations émises pour une partie (vue MJ). L'invité est identifié par `pseudo` et `displayName`,
    * jamais par son e-mail (P9-AD-2) : tout utilisateur peut créer un groupe et y inviter n'importe quel
    * compte trouvé par pseudo — renvoyer l'adresse en ferait un moyen de lire celle de n'importe qui.
+   *
+   * Sens inverse (revue de sécurité 2026-11) : une invitation partie d'une ADRESSE n'affiche que cette
+   * adresse tant qu'elle n'est pas acceptée — sinon inviter une adresse suffisait à lire le pseudo du
+   * compte qu'elle désigne. Une fois acceptée, l'invité est membre : son pseudo est de toute façon visible.
    */
   async listForPartie(partieId: string, mjId: string) {
     await this.permissions.assert(mjId, 'INVITATION_READ', { partieId });
-    return this.prisma.invitation.findMany({
+    const invitations = await this.prisma.invitation.findMany({
       where: { partieId },
       orderBy: { createdAt: 'desc' },
       include: { invitee: { select: { id: true, pseudo: true, displayName: true } } },
     });
+    return invitations.map((inv) =>
+      inv.invitedEmail && inv.status !== 'ACCEPTED'
+        ? { ...inv, inviteeUserId: null, invitee: null }
+        : inv,
+    );
   }
 
   /** Invitations PENDING reçues par l'utilisateur courant (→ dashboard joueur). */
@@ -229,8 +251,14 @@ export class InvitationsService {
     const isSoiree = partie.kind === 'ONE_SHOT' && familyOf(partie.gameSystemId) === 'ralliement';
     let link: string;
     if (user) {
+      // Revue de sécurité 2026-11 : réponse IDENTIQUE que l'adresse ait un compte ou non, membre ou non
+      // (avant, un 409 « déjà membre » ou un 400 « vous-même » disait à qui appartenait l'adresse). Un
+      // membre déjà là, le propriétaire ou l'invitant lui-même : succès silencieux, rien n'est envoyé.
+      const alreadyIn =
+        user.id === inviterId || (await this.permissions.roleOf(partieId, user.id)) !== null;
+      if (alreadyIn) return { ok: true };
       // Story 41.3 : pour une soirée, `invite()` envoie lui-même l'e-mail n° 2 (une seule fois).
-      await this.invite(partieId, inviterId, user.id);
+      await this.invite(partieId, inviterId, user.id, email);
       if (isSoiree) return { ok: true };
       link = `${origin}/`;
     } else {

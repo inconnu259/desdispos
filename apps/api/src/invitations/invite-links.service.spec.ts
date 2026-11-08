@@ -221,6 +221,46 @@ describe('InviteLinksService', () => {
   });
 
   // Story 39.3 : un ralliement parle en termes neutres (ni « MJ » ni « partie »).
+  describe('assertUsableForRegistration (revue de sécurité)', () => {
+    const link = (over: Record<string, unknown> = {}) => ({
+      id: 'l1',
+      token: 'tok',
+      revoked: false,
+      expiresAt: future(),
+      maxUses: null,
+      usesCount: 0,
+      targetEmail: null,
+      partie: { id: 'p1', kind: 'CAMPAGNE', closedAt: null, gameSystemId: 'ryuutama' },
+      ...over,
+    });
+
+    it('lien inconnu → 404 ; lien expiré → 403', async () => {
+      prisma.inviteLink.findUnique.mockResolvedValue(null);
+      await expect(service.assertUsableForRegistration('x', 'a@b.c')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      prisma.inviteLink.findUnique.mockResolvedValue(link({ expiresAt: past() }));
+      await expect(service.assertUsableForRegistration('tok', 'a@b.c')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('lien émis vers une adresse : refusé pour une autre adresse, accepté pour celle-ci', async () => {
+      prisma.inviteLink.findUnique.mockResolvedValue(link({ targetEmail: 'invite@b.c' }));
+      await expect(service.assertUsableForRegistration('tok', 'autre@b.c')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await expect(
+        service.assertUsableForRegistration('tok', 'invite@b.c'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('lien de groupe (sans adresse) : toute adresse', async () => {
+      prisma.inviteLink.findUnique.mockResolvedValue(link());
+      await expect(service.assertUsableForRegistration('tok', 'qui@b.c')).resolves.toBeUndefined();
+    });
+  });
+
   describe('consumeLink — ralliement (Story 39.3)', () => {
     const groupLink = {
       id: 'l1',

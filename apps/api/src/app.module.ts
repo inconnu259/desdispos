@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { UploadsModule } from './uploads/uploads.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -60,6 +61,8 @@ import { PortsModule } from './ports/ports.module';
     BoardGamesModule,
     // Story 37.8 : lie les ports de la couche 1 à leurs implémentations (module global).
     PortsModule,
+    // Revue de sécurité 2026-11 : balayage des fichiers envoyés devenus orphelins.
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

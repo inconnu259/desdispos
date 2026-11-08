@@ -250,6 +250,9 @@ model Invitation {
   status        InvitationStatus @default(PENDING)
   createdAt     DateTime         @default(now())
   respondedAt   DateTime?
+  /// Adresse saisie par l'invitant quand l'invitation part d'un e-mail (et non d'un pseudo) : tant
+  /// qu'elle n'est pas acceptée, l'invitant voit cette adresse, jamais le compte qu'elle désigne.
+  invitedEmail  String?
 
   @@unique([partieId, inviteeUserId])
 }

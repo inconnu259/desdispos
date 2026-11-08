@@ -52,16 +52,80 @@ import type { UpdateNarrativeFieldDto } from './dto/update-narrative-field.dto';
 import type { PortraitCropDataDto } from './dto/portrait-crop-data.dto';
 import {
   detectImageMime,
-  extractUploadFilename,
   mimeForExtension,
   stripImageMetadata,
   unlinkUploadFile,
   writeUploadFile,
   type DetectedImageMime,
 } from '../common/image-upload.util';
-import { UPLOADS_ROOT } from '../common/uploads-root';
+import { PORTRAITS_DIR, PORTRAITS_URL_PREFIX, extractPortraitFilename } from './portrait-paths';
 import { publicWebOrigin } from '../config/env';
 
+/** Clés qu'un joueur peut fournir à la création (cf. `RyuutamaSheetData`) — tout le reste est retiré. */
+const CREATION_SHEET_KEYS: ReadonlySet<string> = new Set([
+  'classId',
+  'specialtyTypeId',
+  'typeId',
+  'attributes',
+  'weaponId',
+  'customWeapon',
+  'fetiqueObject',
+  'equipment',
+  'narrative',
+  'classChoices',
+  'classCapabilities',
+  'magicSeason',
+  'knownRitualSpells',
+]);
+const NARRATIVE_MAX_LENGTH = 5000;
+const FETICHE_MAX_LENGTH = 500;
+const NARRATIVE_FIELDS: ReadonlySet<string> = new Set([
+  'sex',
+  'age',
+  'physicalTraits',
+  'homeTown',
+  'motivation',
+  'name',
+  'personality',
+]);
+
+/**
+ * Revue de sécurité 2026-11 : `sheetData` arrivait tel quel en base à la création. Un joueur pouvait y
+ * glisser des `levelUps` (personnage créé niveau 11, PV/PE gonflés, sans passer par la montée de niveau)
+ * ou n'importe quelle donnée. Liste blanche des clés de création (les `levelUps` n'en font pas partie :
+ * ils ne naissent que par `applyLevelUp`), textes narratifs et objet fétiche bornés. Modifie en place.
+ */
+function sanitizeCreationSheet(sheetData: RyuutamaSheetData): void {
+  const raw = sheetData as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!CREATION_SHEET_KEYS.has(key)) delete raw[key];
+  }
+  if (sheetData.fetiqueObject !== undefined) {
+    if (
+      typeof sheetData.fetiqueObject !== 'string' ||
+      sheetData.fetiqueObject.length > FETICHE_MAX_LENGTH
+    ) {
+      throw new BadRequestException(
+        `L'objet fétiche doit être un texte de ${FETICHE_MAX_LENGTH} caractères au plus.`,
+      );
+    }
+  }
+  if (sheetData.narrative === undefined) return;
+  const narrative = sheetData.narrative as unknown;
+  if (typeof narrative !== 'object' || narrative === null || Array.isArray(narrative)) {
+    throw new BadRequestException('narrative doit être un objet.');
+  }
+  for (const [field, value] of Object.entries(narrative)) {
+    if (!NARRATIVE_FIELDS.has(field)) {
+      throw new BadRequestException(`Champ narratif inconnu : ${field}`);
+    }
+    if (value !== null && (typeof value !== 'string' || value.length > NARRATIVE_MAX_LENGTH)) {
+      throw new BadRequestException(
+        `Le champ narratif « ${field} » doit être un texte de ${NARRATIVE_MAX_LENGTH} caractères au plus.`,
+      );
+    }
+  }
+}
 /**
  * Mapping type de capacité (`CapabilityType`) → clé de contenu seedé (`GameSystemService`
  * `CONTENT_TYPES`) permettant de valider `params.key` à l'application d'une montée de niveau.
@@ -92,17 +156,12 @@ function resolveContentLabel(
 
 const INVALID_PORTRAIT_IMAGE_MESSAGE = "Le fichier fourni n'est pas une image JPEG/PNG/WEBP valide";
 
-export const PORTRAITS_DIR = join(UPLOADS_ROOT, 'portraits');
-export const PORTRAITS_URL_PREFIX = '/uploads/portraits/';
-
-/**
- * Un `portraitUrl` corrompu (édité manuellement, migration ratée) ne doit jamais atteindre
- * `unlink`/`readFile` avec un chemin non validé — défense en profondeur contre un path traversal
- * (AD-17, `extractUploadFilename` générique paramétré par le préfixe du domaine portrait).
- */
-export function extractPortraitFilename(portraitUrl: string | null): string | null {
-  return extractUploadFilename(portraitUrl, PORTRAITS_URL_PREFIX);
-}
+/** Plus grand côté d'un portrait stocké (px) : largement assez pour la fiche et son export PDF. */
+const PORTRAIT_MAX_DIMENSION = 1024;
+// Emplacement des portraits : module à part, pour que PartiesService (que ce service importe) puisse
+// effacer les portraits d'une partie supprimée sans dépendance circulaire. Ré-exportés ici pour les
+// importeurs existants.
+export { PORTRAITS_DIR, PORTRAITS_URL_PREFIX, extractPortraitFilename } from './portrait-paths';
 
 /**
  * Lit les octets d'un portrait déjà stocké, avec son mime réel (déduit de son extension — jamais
@@ -265,6 +324,7 @@ export class CharacterService {
       })),
     };
     delete sheetData.startingEquipment;
+    sanitizeCreationSheet(sheetData);
 
     const result = validate(sheetData, 'strict', catalog);
     if (!result.valid) {
@@ -568,7 +628,9 @@ export class CharacterService {
     }
     let cleanedBuffer: Buffer;
     try {
-      cleanedBuffer = await stripImageMetadata(file.buffer);
+      cleanedBuffer = await stripImageMetadata(file.buffer, {
+        maxDimension: PORTRAIT_MAX_DIMENSION,
+      });
     } catch (err) {
       this.logger.warn(
         `Échec du nettoyage EXIF (sharp) sur un portrait uploadé : ${err instanceof Error ? err.message : String(err)}`,

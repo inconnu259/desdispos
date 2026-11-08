@@ -9,7 +9,6 @@ import {
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import sharp from 'sharp';
 import type { Partie, Prisma } from '@prisma/client';
 import type {
   AggregatedSlotDto,
@@ -56,6 +55,7 @@ import { RealtimeEventsService, partieTopic, userTopic } from '../realtime/realt
 import {
   detectImageMime,
   extractUploadFilename,
+  openImage,
   stripImageMetadata,
   unlinkUploadFile,
   type DetectedImageMime,
@@ -1347,7 +1347,7 @@ export class PartiesService implements PartieSignalsPort {
         const { width, height } = COVER_DIMENSIONS[mode];
         // Rapports très différents entre le mode grand (≈2,6/1) et moyen/liste (1/1) : recadrage
         // au centre plutôt que déformation (Décisions de la story).
-        const resized = await sharp(cleanedBuffer)
+        const resized = await openImage(cleanedBuffer)
           .resize({ width, height, fit: 'cover', position: 'centre' })
           .webp()
           .toBuffer();

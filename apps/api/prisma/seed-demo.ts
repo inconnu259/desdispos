@@ -100,9 +100,25 @@ function computeDerived(sheetData: RyuutamaSheetData) {
  * expiré et ses options révolues, donc l'écran de vote intestable.
  *
  * ─── Ce que couvre le jeu de données ───
- * 7 comptes aux préférences volontairement toutes différentes (thème, tris, modes d'affichage,
- * masquage des parties terminées) pour qu'aucun réglage ne reste à sa valeur par défaut. Huit
- * Parties : une ONE_SHOT clôturée, une CAMPAGNE_LINEAIRE en cours, une CAMPAGNE_EPISODIQUE, une
+ * 9 comptes aux préférences volontairement toutes différentes (thème, tris, modes d'affichage,
+ * masquage des parties terminées, rappel « Dispos à déclarer ») pour qu'aucun réglage ne reste à sa
+ * valeur par défaut — dont 2 comptes « mode soirée seulement » (Gaspard, Hélène).
+ *
+ * Mode soirée (famille `ralliement`, paliers 10 à 10.5) : deux groupes et cinq rencontres isolées.
+ * · « Les Joueurs du Jeudi » (Bob, Alice co-admin, MaitreJeu simple membre) : trois conjonctions
+ *   passées (compteur « Qui reçoit »), une à venir à places limitées avec place réservée en attente,
+ *   jeux apportés (doublon ×2), jeu écarté par l'hôte et Envies, une conjonction COMPLÈTE en plage de
+ *   2 créneaux, un sondage « tous les membres » à réponses partielles dont l'échéance est DEMAIN
+ *   (relance de la veille), un week-end en plage longue (6 créneaux) et une conjonction annulée ;
+ *   invitation en attente (Hélène) et lien d'invitation ouvert.
+ * · « Ludo du Quartier » (Gaspard) : aucun événement.
+ * · Rencontres isolées : à venir avec jeux apportés, sondage ouvert, « à dater » (ni date ni
+ *   sondage, invitation en attente), terminée et retirée de sa liste par Alice, annulée.
+ * · Ludothèques : six comptes, doublons entre personnes, noms accentués, un jeu sans champ
+ *   facultatif ; Faustine et Hélène sans aucun jeu.
+ * Toutes les `nextSession*` sont recalculées en fin de script (`recalculerProchaineSeance`).
+ *
+ * JDR — huit Parties : une ONE_SHOT clôturée, une CAMPAGNE_LINEAIRE en cours, une CAMPAGNE_EPISODIQUE, une
  * seconde CAMPAGNE_LINEAIRE déjà bien avancée (« Les Annales de Brume », onze scénarios joués) et
  * quatre MJ'd par Diane (compte mixte MJ + joueuse) : une jamais commencée, une ONE_SHOT dont la
  * séance tombe dans moins de 24 h (rappel e-mail), une ONE_SHOT SANS aucun membre et une
@@ -172,6 +188,8 @@ function computeDerived(sheetData: RyuutamaSheetData) {
  *   minimale classe/type/attributs/arme (seule la magie des types Magie est renseignée) ;
  * · aucune couverture de Partie ni aucun portrait de personnage : ce sont des fichiers à écrire
  *   dans `uploads/`, que ce script n'écrit pas ;
+ * · aucune fenêtre de l'automate masquée (`SlotWindowHidden`, Story 46.4) : sa clé doit recopier
+ *   une fenêtre réellement servie par l'automate, que ce script ne calcule pas — à tester à la main ;
  * · aucun Homme Dragon n'a d'avatar : il suppose un fichier téléversé, que ce script n'écrit pas ;
  * · les niveaux 3 et 4 d'un Homme Dragon ne sont pas figés (voir ci-dessus : reproductibles par
  *   dissociation).
@@ -255,6 +273,7 @@ interface UserPrefs {
   charactersSort?: string;
   mustResetPassword?: boolean;
   calendarLayersSetAt?: Date | null;
+  availabilityReminder?: boolean;
 }
 
 /**
@@ -334,6 +353,271 @@ async function createHommeDragon(userId: string, sheetData: HommeDragonSheetData
       sheetData: sheetData as unknown as Prisma.InputJsonObject,
     },
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Copies locales de règles de `@master-jdr/shared` (package ESM, non importable par ce script CJS)
+// — à resynchroniser si elles bougent là-bas.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Slot = 'MORNING' | 'AFTERNOON' | 'EVENING';
+const SLOT_CHAIN: readonly Slot[] = ['MORNING', 'AFTERNOON', 'EVENING'];
+
+/** Copie de `spanEnd()` (Story 47.1) : fin d'une plage de `durationSlots` créneaux enchaînés
+ *  (`MORNING → AFTERNOON → EVENING → MORNING` du lendemain), départ compris. */
+function spanEnd(start: Date, slot: Slot, durationSlots: number): { endDate: Date; endSlot: Slot } {
+  const index = SLOT_CHAIN.indexOf(slot) + durationSlots - 1;
+  const endDate = new Date(start);
+  endDate.setUTCDate(endDate.getUTCDate() + Math.floor(index / SLOT_CHAIN.length));
+  return { endDate, endSlot: SLOT_CHAIN[index % SLOT_CHAIN.length] };
+}
+
+/** Champs de plage d'une séance datée : début, fin calculée, durée. */
+function plage(start: Date, slot: Slot, durationSlots = 1) {
+  return {
+    startDate: start,
+    startSlot: slot,
+    ...spanEnd(start, slot, durationSlots),
+    durationSlots,
+  };
+}
+
+/** Copie de `boardGameNameKey()` (Story 48.1) : clé normalisée d'un nom de jeu. */
+function boardGameNameKey(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{Cf}/gu, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+/** Premier jour J+n (n ≥ `fromOffset`) qui tombe un `weekday` (0 = dimanche … 6 = samedi). */
+function nextWeekdayOffset(weekday: number, fromOffset: number): number {
+  let offset = fromOffset;
+  while (day(offset).getUTCDay() !== weekday) offset++;
+  return offset;
+}
+
+/**
+ * Miroir de `EventsService.recomputeNextSession()` (Story 37.8 / 47.2) : `nextSession*` d'une partie =
+ * la séance visible la plus proche dont la FIN n'est pas passée — brouillons cachés et événements
+ * annulés exclus. Appelé pour chaque partie à la fin du seed : aucune valeur posée à la main.
+ */
+async function recalculerProchaineSeance(partieId: string): Promise<void> {
+  const seances = await prisma.seance.findMany({
+    where: {
+      AND: [
+        { event: { partieId, cancelledAt: null } },
+        {
+          NOT: {
+            event: {
+              scenario: {
+                is: { status: 'BROUILLON', event: { partie: { kind: { not: 'ONE_SHOT' } } } },
+              },
+            },
+          },
+        },
+      ],
+    },
+    select: { startDate: true, startSlot: true, endDate: true, endSlot: true },
+  });
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  const nearest =
+    seances
+      .filter((s) => s.startDate !== null)
+      .map((s) => ({
+        date: s.startDate!,
+        slot: s.startSlot ?? null,
+        end: s.endDate ?? s.startDate!,
+        endSlot: s.endDate ? (s.endSlot ?? null) : (s.startSlot ?? null),
+      }))
+      .filter((c) => c.end.getTime() >= startOfToday.getTime())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())[0] ?? null;
+  await prisma.partie.update({
+    where: { id: partieId },
+    data: {
+      nextSessionDate: nearest?.date ?? null,
+      nextSessionSlot: nearest?.slot ?? null,
+      nextSessionEndDate: nearest?.end ?? null,
+      nextSessionEndSlot: nearest?.endSlot ?? null,
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mode soirée (famille `ralliement`) et Ludothèque
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Identifiant du système de la famille `ralliement` (registre `GAME_SYSTEMS`, sans ligne `GameSystem`). */
+const RALLIEMENT_ID = 'ralliement';
+
+/**
+ * Crée un ralliement comme `PartiesService.create()` : le créateur est propriétaire ET membre `ADMIN` ;
+ * les autres membres sont `MEMBER` sauf ceux listés dans `admins` (admins multiples, épic 39). Une
+ * rencontre isolée (`ONE_SHOT`) reçoit son événement unique (titre = nom de la partie, hôte = créateur)
+ * et une séance non datée, SANS `Scenario` ; un groupe (`CAMPAGNE_EPISODIQUE`) n'a aucun événement.
+ */
+async function createRalliement(args: {
+  name: string;
+  kind: 'ONE_SHOT' | 'CAMPAGNE_EPISODIQUE';
+  description?: string;
+  ownerId: string;
+  members: string[];
+  admins?: string[];
+  createdAt: Date;
+}): Promise<{ partieId: string; eventId: string | null; seanceId: string | null }> {
+  const partie = await prisma.partie.create({
+    data: {
+      name: args.name,
+      kind: args.kind,
+      gameSystemId: RALLIEMENT_ID,
+      description: args.description ?? null,
+      ownerId: args.ownerId,
+      createdAt: args.createdAt,
+    },
+  });
+  const admins = new Set(args.admins ?? []);
+  await prisma.membership.createMany({
+    data: [
+      { userId: args.ownerId, partieId: partie.id, role: 'ADMIN', joinedAt: args.createdAt },
+      ...args.members.map((userId, i) => ({
+        userId,
+        partieId: partie.id,
+        role: admins.has(userId) ? ('ADMIN' as const) : ('MEMBER' as const),
+        joinedAt: new Date(args.createdAt.getTime() + (i + 1) * 3_600_000),
+      })),
+    ],
+  });
+  if (args.kind !== 'ONE_SHOT') return { partieId: partie.id, eventId: null, seanceId: null };
+  const event = await prisma.event.create({
+    data: {
+      partieId: partie.id,
+      title: args.name,
+      ownerId: args.ownerId,
+      createdAt: args.createdAt,
+      seances: { create: {} },
+    },
+    include: { seances: true },
+  });
+  return { partieId: partie.id, eventId: event.id, seanceId: event.seances[0].id };
+}
+
+/** Sondage de dates d'un événement de ralliement, écrit comme `PollService.createInTx` : ouvert,
+ *  échéance à la fin du jour `deadlineOffset` (UTC), au moins deux créneaux. Renvoie les options
+ *  dans l'ordre fourni. */
+async function createGroupPoll(
+  partieId: string,
+  hostId: string,
+  options: { offset: number; slot: Slot }[],
+  deadlineOffset: number,
+) {
+  const poll = await prisma.sessionPoll.create({
+    data: {
+      partieId,
+      createdById: hostId,
+      status: 'OPEN',
+      expiresAt: new Date(day(deadlineOffset + 1).getTime() - 1),
+      createdAt: at(-3, 10),
+    },
+  });
+  const created: { id: string }[] = [];
+  for (const o of options) {
+    created.push(
+      await prisma.pollOption.create({
+        data: { pollId: poll.id, date: day(o.offset), slot: o.slot },
+      }),
+    );
+  }
+  return { poll, options: created };
+}
+
+/**
+ * Conjonction d'un groupe (épic 40) écrite comme `EventsService.createInTx` : l'hôte est le
+ * propriétaire de l'événement (il occupe une place SANS ligne d'inscription), `capacity` null =
+ * « Tous les membres ». Soit `date` (date fixée, plage de `durationSlots` créneaux), soit `poll`
+ * (sondage : séance sans date). Les inscriptions sont `CONFIRMED`, `reserved` sont `RESERVED`.
+ */
+async function createConjonction(args: {
+  partieId: string;
+  hostId: string;
+  title: string;
+  date?: { offset: number; slot: Slot };
+  durationSlots?: number;
+  pollId?: string;
+  capacity?: number | null;
+  lieu?: string;
+  heureRdv?: string;
+  notePratique?: string;
+  confirmed?: string[];
+  reserved?: string[];
+  createdAt: Date;
+  cancelledAt?: Date;
+}): Promise<{ eventId: string; seanceId: string }> {
+  const durationSlots = args.durationSlots ?? 1;
+  const event = await prisma.event.create({
+    data: {
+      partieId: args.partieId,
+      title: args.title,
+      ownerId: args.hostId,
+      createdAt: args.createdAt,
+      cancelledAt: args.cancelledAt ?? null,
+    },
+  });
+  const seance = await prisma.seance.create({
+    data: {
+      eventId: event.id,
+      ...(args.pollId ? { pollId: args.pollId } : {}),
+      ...(args.date
+        ? plage(day(args.date.offset), args.date.slot, durationSlots)
+        : { durationSlots }),
+      inscriptionMax: args.capacity ?? null,
+      lieu: args.lieu ?? null,
+      heureRdv: args.heureRdv ?? null,
+      notePratique: args.notePratique ?? null,
+      createdAt: args.createdAt,
+    },
+  });
+  const rows = [
+    ...(args.confirmed ?? []).map((userId) => ({ userId, status: 'CONFIRMED' as const })),
+    ...(args.reserved ?? []).map((userId) => ({ userId, status: 'RESERVED' as const })),
+  ];
+  if (rows.length > 0) {
+    await prisma.inscription.createMany({
+      data: rows.map((r, i) => ({
+        seanceId: seance.id,
+        userId: r.userId,
+        status: r.status,
+        createdAt: new Date(args.createdAt.getTime() + (i + 1) * 60_000),
+      })),
+    });
+  }
+  return { eventId: event.id, seanceId: seance.id };
+}
+
+/** Ludothèque d'une personne (Story 48.1) : renvoie les jeux par nom, pour les apports et écarts. */
+async function createLudotheque(
+  ownerId: string,
+  games: { name: string; minPlayers?: number; maxPlayers?: number; durationMin?: number }[],
+): Promise<Map<string, { id: string; nameKey: string }>> {
+  const byName = new Map<string, { id: string; nameKey: string }>();
+  for (const g of games) {
+    const nameKey = boardGameNameKey(g.name);
+    const created = await prisma.boardGame.create({
+      data: {
+        ownerId,
+        name: g.name,
+        nameKey,
+        minPlayers: g.minPlayers ?? null,
+        maxPlayers: g.maxPlayers ?? null,
+        durationMin: g.durationMin ?? null,
+      },
+    });
+    byName.set(g.name, { id: created.id, nameKey });
+  }
+  return byName;
 }
 
 /** Séquence de remise à zéro complète, répétée dans chaque message d'abandon du script. */
@@ -469,6 +753,20 @@ async function main() {
   const faustine = await createUser('faustine@example.com', 'Faustine', {
     theme: 'atelier-cuivre',
     partiesSort: 'urgence',
+  });
+  // Mode soirée seulement (aucune partie de JDR) : administrateur du second groupe, Ludothèque fournie.
+  // Rappel « Dispos à déclarer » coupé (Story 52.4) : il n'a aucune déclaration, il le verrait sinon —
+  // contrepoint à MaitreJeu, sans déclaration non plus, qui le voit.
+  const gaspard = await createUser('gaspard@example.com', 'Gaspard', {
+    theme: 'atelier-cuivre',
+    partiesSort: 'date',
+    availabilityReminder: false,
+  });
+  // Mode soirée seulement : invitée (en attente) dans le premier groupe, hôte d'une soirée à dater,
+  // Ludothèque VIDE.
+  const helene = await createUser('helene@example.com', 'Hélène', {
+    theme: 'foret-ancienne',
+    partiesViewMode: 'compact',
   });
 
   // ─── Couches de calendrier (AD-16) ──────────────────────────────────────────
@@ -1067,14 +1365,10 @@ async function main() {
       // AD-23 : seconde aventure de Suisen — Alice et Bob y retrouvent les voyageurs du Naufrage.
       hommeDragonId: suisen.id,
       createdAt: at(-50),
-      // Prochaine séance matérialisée, comme le fait `EventsService.recalculateNextSession()` :
-      // la date la plus proche dans le futur parmi les séances (début de leur plage, Story 37.4),
-      // ici « Le Mystère de l'Auberge » (J+10) — « Le Secret du Phare » (J+12) vient après. Ces
-      // plages n'ont pas de créneau → `nextSessionSlot` reste null. Le rappel de la veille est porté par
-      // chaque séance (`Seance.reminderSentAt`, null ici) : il n'est dû que dans les 24 h
-      // précédant la séance (`NotificationsService`).
-      nextSessionDate: at(10),
-      nextSessionSlot: null,
+      // Prochaine séance : recalculée en fin de script (`recalculerProchaineSeance`) → « Le Mystère
+      // de l'Auberge » (J+10) ; « Le Secret du Phare » (J+12) vient après. Ces plages n'ont pas de
+      // créneau → `nextSessionSlot` null. Le rappel de la veille est porté par chaque séance
+      // (`Seance.reminderSentAt`, null ici) : il n'est dû que dans les 24 h précédant la séance.
     },
   });
   await prisma.membership.createMany({
@@ -1345,7 +1639,7 @@ async function main() {
   // Aventure de Kaien : ses onze scénarios `PASSE`, ajoutés à celui de « La Route des
   // Lanternes », font 12 → niveau 5 PAR CUMUL (aucune des deux aventures n'y arrive seule).
   // Chaque scénario porte une séance minimale (`eventId` + plage sans créneau), tous dans
-  // le passé et sans scénario COURANT : une campagne à l'arrêt entre deux chapitres.
+  // le passé et sans scénario COURANT ; le chapitre 12, à venir, est une journée JDR (plage longue).
   console.log('→ Partie CAMPAGNE_LINEAIRE (Les Annales de Brume)...');
   const annales = await prisma.partie.create({
     data: {
@@ -1384,15 +1678,74 @@ async function main() {
       data: { eventId: scenario.id, startDate: at(jour), endDate: at(jour) },
     });
   }
+  // Chapitre 12 : une JOURNÉE JDR (Palier 10.4, épic 47 — plages longues). Le vote, clos, portait
+  // une durée de 3 créneaux : chaque option couvrait matin → soir ; l'option choisie (J+30) fixe la
+  // séance sur toute la plage. A_VENIR, pas PASSE : le niveau de Kaien n'en dépend pas.
+  const annalesPoll = await prisma.sessionPoll.create({
+    data: {
+      partieId: annales.id,
+      createdById: mj.id,
+      status: 'CLOSED',
+      chosenDate: day(30),
+      chosenSlot: 'MORNING',
+      createdAt: at(-15),
+    },
+  });
+  const annalesOptions = await Promise.all(
+    [30, 37].map((offset) =>
+      prisma.pollOption.create({
+        data: { pollId: annalesPoll.id, date: day(offset), slot: 'MORNING' },
+      }),
+    ),
+  );
+  await prisma.pollVote.createMany({
+    data: [
+      { pollId: annalesPoll.id, optionId: annalesOptions[0].id, userId: alice.id, answer: 'YES' },
+      { pollId: annalesPoll.id, optionId: annalesOptions[1].id, userId: alice.id, answer: 'NO' },
+      { pollId: annalesPoll.id, optionId: annalesOptions[0].id, userId: diane.id, answer: 'YES' },
+      { pollId: annalesPoll.id, optionId: annalesOptions[1].id, userId: diane.id, answer: 'YES' },
+      {
+        pollId: annalesPoll.id,
+        optionId: annalesOptions[0].id,
+        userId: faustine.id,
+        answer: 'MAYBE',
+      },
+      {
+        pollId: annalesPoll.id,
+        optionId: annalesOptions[1].id,
+        userId: faustine.id,
+        answer: 'YES',
+      },
+    ],
+  });
+  const annales12 = await createScenario({
+    data: {
+      partieId: annales.id,
+      title: 'Annales de Brume — Chapitre 12 : La Journée des Brumes',
+      description: 'Une journée entière pour traverser la brume, du lever au coucher.',
+      status: 'A_VENIR',
+      dureeHeures: 9,
+      dureeSeances: 1,
+    },
+  });
+  await prisma.seance.create({
+    data: {
+      eventId: annales12.id,
+      pollId: annalesPoll.id,
+      ...plage(day(30), 'MORNING', 3),
+      heureRdv: '10:00',
+      lieu: 'Salle des fêtes de Verchamp',
+      notePratique: 'Repas tiré du sac à midi, pause goûter vers 16 h.',
+    },
+  });
 
   // ─── Partie 6 : ONE_SHOT dont la séance tombe dans moins de 24 h (MJ : Diane) ──────
   // Sert à tester le rappel e-mail (`NotificationsService`, cron horaire) : le premier passage après
   // ce seed envoie « session-reminder » au MJ et aux membres (visible dans Mailpit,
   // http://localhost:8025) puis pose `reminderSentAt` sur la séance. La date est MINUIT UTC de
   // demain (`day(1)`) : quelle que soit l'heure du seed, elle est strictement dans les 24 h à venir
-  // (`now ≤ date ≤ now + 24 h`). `nextSessionDate`/`Slot` = date et créneau du vote clôturé, comme
-  // le recalcule `EventsService.recalculateNextSession()` ; `Seance.reminderSentAt` reste null
-  // (Story 37.9) = rappel pas encore envoyé.
+  // (`now ≤ date ≤ now + 24 h`). `nextSession*` est recalculé en fin de script ;
+  // `Seance.reminderSentAt` reste null (Story 37.9) = rappel pas encore envoyé.
   console.log('→ Partie ONE_SHOT (séance dans moins de 24 h)...');
   const maree = await prisma.partie.create({
     data: {
@@ -1402,8 +1755,6 @@ async function main() {
       description: 'Un one-shot de bord de mer : la marée monte demain soir.',
       ownerId: diane.id,
       createdAt: at(-12),
-      nextSessionDate: day(1),
-      nextSessionSlot: 'EVENING',
     },
   });
   await prisma.membership.createMany({
@@ -1521,8 +1872,6 @@ async function main() {
       description: 'Une campagne Draconis héritée : le système ne propose pas encore de fiche.',
       ownerId: diane.id,
       createdAt: at(-20),
-      nextSessionDate: day(21),
-      nextSessionSlot: 'EVENING',
     },
   });
   await prisma.membership.createMany({
@@ -1567,6 +1916,397 @@ async function main() {
       endSlot: 'EVENING',
       heureRdv: '19:00',
       lieu: 'Chez Diane',
+    },
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODE SOIRÉE (famille `ralliement`, paliers 10 à 10.5)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ─── Ludothèques (épic 48) ──────────────────────────────────────────────────
+  // Doublons volontaires entre personnes (Codenames : Alice et Bob ; Dixit : Alice et Diane) pour le
+  // « ×N » des jeux d'une soirée et la vue agrégée du groupe ; noms accentués (clé normalisée) ; un jeu
+  // sans aucun champ facultatif (MaitreJeu) ; Faustine et Hélène n'ont AUCUN jeu (état vide).
+  console.log('→ Ludothèques...');
+  const ludoAlice = await createLudotheque(alice.id, [
+    { name: 'Codenames', minPlayers: 2, maxPlayers: 8, durationMin: 15 },
+    { name: 'Dixit', minPlayers: 3, maxPlayers: 6, durationMin: 30 },
+    { name: 'Les Aventuriers du Rail', minPlayers: 2, maxPlayers: 5, durationMin: 45 },
+    { name: 'Patchwork', minPlayers: 2, maxPlayers: 2, durationMin: 30 },
+  ]);
+  const ludoBob = await createLudotheque(bob.id, [
+    { name: 'Codenames', minPlayers: 4, maxPlayers: 8, durationMin: 15 },
+    { name: '7 Wonders', minPlayers: 3, maxPlayers: 7, durationMin: 30 },
+    { name: 'Skull', minPlayers: 3, maxPlayers: 6, durationMin: 20 },
+  ]);
+  const ludoChloe = await createLudotheque(chloe.id, [
+    { name: 'Azul', minPlayers: 2, maxPlayers: 4, durationMin: 40 },
+    { name: 'Wingspan', minPlayers: 1, maxPlayers: 5, durationMin: 70 },
+    { name: "Time's Up", minPlayers: 4, maxPlayers: 12, durationMin: 45 },
+  ]);
+  const ludoDiane = await createLudotheque(diane.id, [
+    { name: 'Les Loups-Garous de Thiercelieux', minPlayers: 8, maxPlayers: 18, durationMin: 30 },
+    { name: 'Unlock!', minPlayers: 1, maxPlayers: 6, durationMin: 60 },
+    { name: 'Dixit', minPlayers: 3, maxPlayers: 8 },
+  ]);
+  await createLudotheque(mj.id, [
+    { name: 'Gloomhaven', minPlayers: 1, maxPlayers: 4, durationMin: 120 },
+    { name: 'Le Jeu de la Ficelle' }, // aucun champ facultatif
+  ]);
+  await createLudotheque(gaspard.id, [
+    { name: 'Catan', minPlayers: 3, maxPlayers: 4, durationMin: 75 },
+    { name: 'Carcassonne', minPlayers: 2, maxPlayers: 5, durationMin: 35 },
+    { name: 'Splendor', minPlayers: 2, maxPlayers: 4, durationMin: 30 },
+  ]);
+  const game = (ludo: Map<string, { id: string; nameKey: string }>, name: string) => {
+    const g = ludo.get(name);
+    if (!g) throw new Error(`Jeu de démo introuvable : ${name}`);
+    return g;
+  };
+
+  // ─── Groupe 1 : « Les Joueurs du Jeudi » (épics 39, 40, 42, 49, 50) ──────────
+  // Bob l'a créé (ADMIN), Alice est aussi ADMIN (admins multiples), MaitreJeu y est simple membre :
+  // le même compte est MJ ailleurs. Conjonctions dans tous les états : trois passées (compteur « Qui
+  // reçoit » : Bob 2, Alice 1), une à venir avec places limitées + place réservée en attente + jeux
+  // apportés/écartés/envies, une COMPLÈTE, un sondage ouvert dont l'échéance est DEMAIN (relance de la
+  // veille, Story 40.7), un week-end en plage longue et une annulée.
+  console.log('→ Mode soirée : groupe « Les Joueurs du Jeudi »...');
+  const jeudi = await createRalliement({
+    name: 'Les Joueurs du Jeudi',
+    kind: 'CAMPAGNE_EPISODIQUE',
+    description: 'Le groupe de jeux de société du jeudi soir — et des week-ends quand on peut.',
+    ownerId: bob.id,
+    members: [alice.id, chloe.id, diane.id, faustine.id, mj.id],
+    admins: [alice.id],
+    createdAt: at(-90),
+  });
+  await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: bob.id,
+    title: 'Soirée de rentrée',
+    date: { offset: -56, slot: 'EVENING' },
+    lieu: 'Chez Bob',
+    heureRdv: '20:00',
+    confirmed: [alice.id, diane.id],
+    createdAt: at(-63),
+  });
+  await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: alice.id,
+    title: 'Tournoi de Codenames',
+    date: { offset: -35, slot: 'EVENING' },
+    lieu: 'Chez Alice',
+    heureRdv: '20:30',
+    confirmed: [bob.id, diane.id, mj.id],
+    createdAt: at(-45),
+  });
+  await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: bob.id,
+    title: "Soirée jeux d'ambiance",
+    date: { offset: -14, slot: 'EVENING' },
+    capacity: 4,
+    lieu: 'Chez Bob',
+    confirmed: [alice.id, chloe.id],
+    createdAt: at(-20),
+  });
+  // À venir, 5 places : l'hôte + 2 confirmés + 1 réservée (Diane, en attente d'acceptation) → une
+  // place libre. Une place réservée n'est PAS une participation : Diane n'apporte rien.
+  const soireeAlice = await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: alice.id,
+    title: 'Soirée jeux chez Alice',
+    date: { offset: 6, slot: 'EVENING' },
+    capacity: 5,
+    lieu: 'Chez Alice, 3e étage',
+    heureRdv: '20:00',
+    notePratique: 'Chacun apporte une boisson, Alice s’occupe des pizzas.',
+    confirmed: [bob.id, chloe.id],
+    reserved: [diane.id],
+    createdAt: at(-4, 18),
+  });
+  await prisma.eventGameBring.createMany({
+    data: [
+      // Codenames de Bob = doublon de celui d'Alice (hôte) → « ×2 » dans les jeux de la soirée.
+      { eventId: soireeAlice.eventId, boardGameId: game(ludoBob, 'Codenames').id, userId: bob.id },
+      { eventId: soireeAlice.eventId, boardGameId: game(ludoBob, '7 Wonders').id, userId: bob.id },
+      { eventId: soireeAlice.eventId, boardGameId: game(ludoChloe, 'Azul').id, userId: chloe.id },
+    ],
+  });
+  // L'hôte écarte un de ses jeux pour ce soir seulement (Story 49.4) : il reste dans sa Ludothèque.
+  await prisma.eventGameExcluded.create({
+    data: {
+      eventId: soireeAlice.eventId,
+      boardGameId: game(ludoAlice, 'Les Aventuriers du Rail').id,
+    },
+  });
+  // Envies (Story 49.5) : par NOM, uniquement sur des jeux présents sur place (jeux de l'hôte non
+  // écartés + jeux apportés). Deux personnes sur « codenames » → envie partagée.
+  await prisma.eventGameEnvy.createMany({
+    data: [
+      {
+        eventId: soireeAlice.eventId,
+        userId: chloe.id,
+        nameKey: game(ludoAlice, 'Codenames').nameKey,
+      },
+      {
+        eventId: soireeAlice.eventId,
+        userId: bob.id,
+        nameKey: game(ludoAlice, 'Codenames').nameKey,
+      },
+      { eventId: soireeAlice.eventId, userId: chloe.id, nameKey: game(ludoAlice, 'Dixit').nameKey },
+      {
+        eventId: soireeAlice.eventId,
+        userId: alice.id,
+        nameKey: game(ludoBob, '7 Wonders').nameKey,
+      },
+    ],
+  });
+  // COMPLÈTE : 3 places = l'hôte (MaitreJeu) + 2 confirmés → le bouton « Je viens » est fermé. Plage
+  // de 2 créneaux (après-midi + soir).
+  await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: mj.id,
+    title: 'Campagne Gloomhaven — scénario 3',
+    date: { offset: 13, slot: 'AFTERNOON' },
+    durationSlots: 2,
+    capacity: 3,
+    lieu: 'Chez MaitreJeu',
+    heureRdv: '15:00',
+    confirmed: [alice.id, diane.id],
+    createdAt: at(-6, 21),
+  });
+  // Sondage OUVERT, « Tous les membres » (votants = tous les membres) : réponses partielles — Diane
+  // (hôte) et Bob ont tout rempli, Alice une seule option, Chloe/Faustine/MaitreJeu rien. Échéance =
+  // fin de DEMAIN → la relance de la veille (`relanceSentAt` null) part au prochain passage du cron.
+  const jeudiPoll = await createGroupPoll(
+    jeudi.partieId,
+    diane.id,
+    [
+      { offset: 8, slot: 'EVENING' },
+      { offset: 9, slot: 'EVENING' },
+      { offset: 15, slot: 'AFTERNOON' },
+    ],
+    1,
+  );
+  await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: diane.id,
+    title: 'Soirée Loups-Garous — on choisit la date',
+    pollId: jeudiPoll.poll.id,
+    lieu: 'Chez Diane',
+    createdAt: at(-3, 10),
+  });
+  const [jo1, jo2, jo3] = jeudiPoll.options;
+  await prisma.pollVote.createMany({
+    data: [
+      { pollId: jeudiPoll.poll.id, optionId: jo1.id, userId: diane.id, answer: 'YES' },
+      { pollId: jeudiPoll.poll.id, optionId: jo2.id, userId: diane.id, answer: 'YES' },
+      { pollId: jeudiPoll.poll.id, optionId: jo3.id, userId: diane.id, answer: 'MAYBE' },
+      { pollId: jeudiPoll.poll.id, optionId: jo1.id, userId: bob.id, answer: 'YES' },
+      { pollId: jeudiPoll.poll.id, optionId: jo2.id, userId: bob.id, answer: 'NO' },
+      { pollId: jeudiPoll.poll.id, optionId: jo3.id, userId: bob.id, answer: 'YES' },
+      { pollId: jeudiPoll.poll.id, optionId: jo1.id, userId: alice.id, answer: 'MAYBE' },
+    ],
+  });
+  // Week-end au gîte : PLAGE LONGUE (épic 47) du vendredi soir au dimanche après-midi = 6 créneaux.
+  const vendredi = nextWeekdayOffset(5, 18);
+  const gite = await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: chloe.id,
+    title: 'Week-end jeux au gîte',
+    date: { offset: vendredi, slot: 'EVENING' },
+    durationSlots: 6,
+    capacity: 6,
+    lieu: 'Gîte des Trois Chênes',
+    heureRdv: '19:00',
+    notePratique: 'Draps fournis. Covoiturage depuis la gare à 18 h.',
+    confirmed: [bob.id, alice.id],
+    reserved: [faustine.id],
+    createdAt: at(-8, 12),
+  });
+  await prisma.eventGameBring.createMany({
+    data: [
+      { eventId: gite.eventId, boardGameId: game(ludoAlice, 'Patchwork').id, userId: alice.id },
+      { eventId: gite.eventId, boardGameId: game(ludoBob, 'Skull').id, userId: bob.id },
+    ],
+  });
+  // ANNULÉE (Story 42.1) : définitive, hors prochaine date et hors calendriers.
+  await createConjonction({
+    partieId: jeudi.partieId,
+    hostId: faustine.id,
+    title: 'Soirée Unlock (annulée)',
+    date: { offset: 3, slot: 'EVENING' },
+    lieu: 'Chez Faustine',
+    confirmed: [chloe.id],
+    createdAt: at(-10),
+    cancelledAt: at(-1, 18),
+  });
+
+  // ─── Groupe 2 : « Ludo du Quartier » — aucun événement (état vide) ───────────
+  console.log('→ Mode soirée : groupe « Ludo du Quartier »...');
+  const quartier = await createRalliement({
+    name: 'Ludo du Quartier',
+    kind: 'CAMPAGNE_EPISODIQUE',
+    description: 'Tout juste créé : personne n’a encore proposé de conjonction.',
+    ownerId: gaspard.id,
+    members: [helene.id, faustine.id],
+    createdAt: at(-7),
+  });
+
+  // ─── Rencontres isolées (« soirées », épic 41) ──────────────────────────────
+  console.log('→ Mode soirée : rencontres isolées...');
+  // À venir, date fixée, plage de 2 créneaux. Participants = tous les membres (l'hôte compris).
+  const anniv = await createRalliement({
+    name: 'Anniversaire de Chloe',
+    kind: 'ONE_SHOT',
+    description: 'Soirée jeux surprise pour les 30 ans de Chloe — chut !',
+    ownerId: chloe.id,
+    members: [alice.id, bob.id, diane.id],
+    createdAt: at(-10),
+  });
+  await prisma.seance.update({
+    where: { id: anniv.seanceId! },
+    data: {
+      ...plage(day(4), 'AFTERNOON', 2),
+      lieu: 'Chez Chloe',
+      heureRdv: '16:00',
+      notePratique: 'Gâteau prévu, venez avec vos jeux préférés.',
+    },
+  });
+  await prisma.eventGameBring.createMany({
+    data: [
+      // Dixit apporté par Alice ET par Diane → doublon de deux apporteurs.
+      { eventId: anniv.eventId!, boardGameId: game(ludoAlice, 'Dixit').id, userId: alice.id },
+      { eventId: anniv.eventId!, boardGameId: game(ludoDiane, 'Dixit').id, userId: diane.id },
+      {
+        eventId: anniv.eventId!,
+        boardGameId: game(ludoDiane, 'Les Loups-Garous de Thiercelieux').id,
+        userId: diane.id,
+      },
+    ],
+  });
+  await prisma.eventGameEnvy.createMany({
+    data: [
+      { eventId: anniv.eventId!, userId: bob.id, nameKey: game(ludoAlice, 'Dixit').nameKey },
+      { eventId: anniv.eventId!, userId: bob.id, nameKey: game(ludoChloe, "Time's Up").nameKey },
+    ],
+  });
+
+  // Sondage OUVERT sur une soirée isolée (date pas encore fixée) : Bob n'a pas répondu.
+  const raclette = await createRalliement({
+    name: 'Soirée raclette',
+    kind: 'ONE_SHOT',
+    ownerId: alice.id,
+    members: [bob.id, gaspard.id, mj.id],
+    createdAt: at(-5),
+  });
+  const raclettePoll = await createGroupPoll(
+    raclette.partieId,
+    alice.id,
+    [
+      { offset: 11, slot: 'EVENING' },
+      { offset: 12, slot: 'EVENING' },
+      { offset: 18, slot: 'EVENING' },
+    ],
+    9,
+  );
+  await prisma.seance.update({
+    where: { id: raclette.seanceId! },
+    data: { pollId: raclettePoll.poll.id, lieu: 'Chez Alice' },
+  });
+  const [ro1, ro2, ro3] = raclettePoll.options;
+  await prisma.pollVote.createMany({
+    data: [
+      { pollId: raclettePoll.poll.id, optionId: ro1.id, userId: alice.id, answer: 'YES' },
+      { pollId: raclettePoll.poll.id, optionId: ro2.id, userId: alice.id, answer: 'YES' },
+      { pollId: raclettePoll.poll.id, optionId: ro3.id, userId: alice.id, answer: 'NO' },
+      { pollId: raclettePoll.poll.id, optionId: ro1.id, userId: gaspard.id, answer: 'NO' },
+      { pollId: raclettePoll.poll.id, optionId: ro2.id, userId: gaspard.id, answer: 'YES' },
+      { pollId: raclettePoll.poll.id, optionId: ro3.id, userId: gaspard.id, answer: 'YES' },
+      { pollId: raclettePoll.poll.id, optionId: ro1.id, userId: mj.id, answer: 'YES' },
+      { pollId: raclettePoll.poll.id, optionId: ro2.id, userId: mj.id, answer: 'MAYBE' },
+      { pollId: raclettePoll.poll.id, optionId: ro3.id, userId: mj.id, answer: 'NO' },
+    ],
+  });
+
+  // « À dater » : ni date ni sondage (`isDatableSeance`) — l'hôte doit la compléter.
+  const aDater = await createRalliement({
+    name: 'Soirée jeux à organiser',
+    kind: 'ONE_SHOT',
+    ownerId: helene.id,
+    members: [gaspard.id],
+    createdAt: at(-1, 9),
+  });
+
+  // TERMINÉE (date passée, Story 41.4), retirée de sa liste par Alice (Story 42.5) — Bob et Chloe la
+  // voient encore.
+  const crepes = await createRalliement({
+    name: 'Soirée crêpes',
+    kind: 'ONE_SHOT',
+    ownerId: bob.id,
+    members: [alice.id, chloe.id],
+    createdAt: at(-20),
+  });
+  await prisma.seance.update({
+    where: { id: crepes.seanceId! },
+    data: { ...plage(day(-10), 'EVENING'), lieu: 'Chez Bob', heureRdv: '19:30' },
+  });
+  await prisma.partieHidden.create({ data: { userId: alice.id, partieId: crepes.partieId } });
+
+  // ANNULÉE (Story 42.2) : son événement unique porte `cancelledAt`.
+  const karaoke = await createRalliement({
+    name: 'Soirée karaoké',
+    kind: 'ONE_SHOT',
+    ownerId: diane.id,
+    members: [bob.id, helene.id],
+    createdAt: at(-9),
+  });
+  await prisma.seance.update({
+    where: { id: karaoke.seanceId! },
+    data: { ...plage(day(7), 'EVENING'), lieu: 'Bar Le Micro' },
+  });
+  await prisma.event.update({
+    where: { id: karaoke.eventId! },
+    data: { cancelledAt: at(-2, 21) },
+  });
+
+  // Favoris côté soirée.
+  await prisma.partieFavorite.createMany({
+    data: [
+      { userId: bob.id, partieId: jeudi.partieId },
+      { userId: gaspard.id, partieId: quartier.partieId },
+    ],
+  });
+
+  // Invitations et lien côté soirée : Hélène invitée (en attente) dans le groupe 1, Diane invitée à
+  // la soirée à dater d'Hélène ; lien ouvert du groupe 1 créé par Alice (admin).
+  await prisma.invitation.createMany({
+    data: [
+      {
+        partieId: jeudi.partieId,
+        inviterId: bob.id,
+        inviteeUserId: helene.id,
+        status: 'PENDING',
+        createdAt: at(-1, 20),
+      },
+      {
+        partieId: aDater.partieId,
+        inviterId: helene.id,
+        inviteeUserId: diane.id,
+        status: 'PENDING',
+        createdAt: at(-1, 8),
+      },
+    ],
+  });
+  const groupLinkToken = randomUUID();
+  await prisma.inviteLink.create({
+    data: {
+      token: groupLinkToken,
+      partieId: jeudi.partieId,
+      createdById: alice.id,
+      maxUses: 3,
+      expiresAt: at(7, 23),
     },
   });
 
@@ -1715,32 +2455,55 @@ async function main() {
     },
   });
 
+  // ─── Prochaine séance de chaque partie (miroir d'`EventsService`, jamais posée à la main) ───
+  console.log('→ Prochaines séances...');
+  const toutes = await prisma.partie.findMany({ select: { id: true } });
+  for (const p of toutes) await recalculerProchaineSeance(p.id);
+
   console.log('✓ Données de démo créées.');
   console.log(`\n  Comptes (mot de passe commun) : ${DEMO_PASSWORD}`);
   console.log(
     '    - mj-demo@example.com   pseudo « MaitreJeu » · MJ de 4 Parties · 3 Hommes Dragons',
   );
   console.log(
-    '    - alice@example.com     masque les Parties terminées · favori : La Route des Lanternes',
+    '                            membre du groupe « Les Joueurs du Jeudi » · rappel « Dispos à déclarer » visible',
   );
   console.log(
-    '    - bob@example.com       indisponibilité archivée · favori : Chroniques de la Guilde',
+    '    - alice@example.com     masque les Parties terminées · admin du groupe · hôte d’une soirée',
+  );
+  console.log(
+    '    - bob@example.com       indisponibilité archivée · créateur du groupe « Les Joueurs du Jeudi »',
   );
   console.log("    - chloe@example.com     thème jamais choisi · n'a pas voté au sondage ouvert");
+  console.log('                            hôte du week-end au gîte et de son anniversaire');
   console.log(
     '    - diane@example.com     MJ de 4 Parties (2 ONE_SHOT dont 1 sans membre, 1 Draconis)',
   );
-  console.log('                            ET joueuse ailleurs');
+  console.log('                            ET joueuse ailleurs · place réservée en attente');
   console.log('    - erwan@example.com     ⚠ mustResetPassword · invitation en attente');
   console.log('    - faustine@example.com  membre sans personnage · invitation refusée');
   console.log(
-    '\n  Parties : 8 (dont « Les Annales de Brume », 11 scénarios joués, MJ : MaitreJeu)',
+    '    - gaspard@example.com   mode soirée seul · admin « Ludo du Quartier » · rappel coupé',
+  );
+  console.log('    - helene@example.com    mode soirée seul · invitée au groupe · Ludothèque vide');
+  console.log(
+    '\n  Parties JDR : 8 (dont « Les Annales de Brume », 11 scénarios joués + une journée JDR à venir)',
   );
   console.log('    - La Marée du Lendemain : séance dans moins de 24 h → rappel e-mail (Mailpit)');
   console.log('    - La Veillée des Absents : aucun membre · vote OUVERT expiré');
   console.log(
     '    - Les Cendres de Nacre : Draconis, système sans module (état hérité, non créable)',
   );
+  console.log('  Mode soirée : 2 groupes, 5 rencontres isolées, 6 Ludothèques');
+  console.log(
+    '    - Les Joueurs du Jeudi : 3 conjonctions passées, 1 avec place réservée + jeux, 1 complète,',
+  );
+  console.log('      1 sondage à échéance DEMAIN (relance), 1 week-end en plage longue, 1 annulée');
+  console.log('    - Ludo du Quartier : aucun événement');
+  console.log(
+    '    - Soirées : anniversaire (à venir), raclette (sondage), à organiser, crêpes (terminée), karaoké (annulée)',
+  );
+  console.log(`    - Lien d'invitation du groupe : ${WEB_ORIGIN}/join/${groupLinkToken}`);
   console.log('  Hommes Dragons (compte MaitreJeu) :');
   console.log(
     "    - Suisen  niveau 2 · 2 aventures (Naufrage de l'Aurore, Chroniques de la Guilde)",

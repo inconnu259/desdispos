@@ -2,7 +2,7 @@ import { PDFDocument } from 'pdf-lib';
 import {
   detectDocumentMime,
   extensionForDocumentMime,
-  isStructurallyValidPdf,
+  hasValidPdfEnvelope,
   isValidDocumentFilename,
   mimeForExtension,
 } from './document-mime.util';
@@ -34,21 +34,49 @@ describe('detectDocumentMime', () => {
   });
 });
 
-describe('isStructurallyValidPdf', () => {
+describe('hasValidPdfEnvelope', () => {
   it('accepte un PDF réellement structuré (généré par pdf-lib lui-même)', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();
     const buffer = Buffer.from(await doc.save());
-    await expect(isStructurallyValidPdf(buffer)).resolves.toBe(true);
+    expect(hasValidPdfEnvelope(buffer)).toBe(true);
   });
 
-  it('rejette un buffer avec l’en-tête %PDF- valide mais un contenu arbitraire non structuré (load() seul ne suffit pas)', async () => {
+  it('accepte des octets parasites après le dernier %%EOF', () => {
+    expect(hasValidPdfEnvelope(Buffer.from('%PDF-1.7\n1 0 obj\n%%EOF\r\n\n  '))).toBe(true);
+  });
+
+  it('rejette un fichier tronqué (pas de %%EOF en fin de fichier)', () => {
     const buffer = Buffer.from('%PDF-1.4\n' + 'garbage'.repeat(500));
-    await expect(isStructurallyValidPdf(buffer)).resolves.toBe(false);
+    expect(hasValidPdfEnvelope(buffer)).toBe(false);
   });
 
-  it('rejette un buffer vide', async () => {
-    await expect(isStructurallyValidPdf(Buffer.alloc(0))).resolves.toBe(false);
+  it('rejette un %%EOF enfoui loin de la fin (binaire quelconque préfixé de %PDF-)', () => {
+    const buffer = Buffer.concat([Buffer.from('%PDF-1.4\n%%EOF\n'), Buffer.alloc(4096, 0x41)]);
+    expect(hasValidPdfEnvelope(buffer)).toBe(false);
+  });
+
+  it('rejette une version d’en-tête absurde et un buffer vide', () => {
+    expect(hasValidPdfEnvelope(Buffer.from('%PDF-x\n%%EOF'))).toBe(false);
+    expect(hasValidPdfEnvelope(Buffer.alloc(0))).toBe(false);
+  });
+
+  it('non-régression DoS : un arbre de pages en graphe partagé est traité en temps constant', () => {
+    // 40 niveaux de nœuds /Pages citant chacun DEUX fois le même enfant : 2^40 visites pour un parcours
+    // naïf (celui de pdf-lib), ce qui gelait l'API. L'enveloppe ne regarde que l'en-tête et la fin.
+    const objects = ['1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj'];
+    for (let i = 2; i < 42; i++) {
+      objects.push(
+        `${i} 0 obj << /Type /Pages /Kids [${i + 1} 0 R ${i + 1} 0 R] /Count 2 >> endobj`,
+      );
+    }
+    objects.push('42 0 obj << /Type /Page >> endobj');
+    const buffer = Buffer.from(
+      `%PDF-1.7\n${objects.join('\n')}\ntrailer << /Root 1 0 R >>\n%%EOF\n`,
+    );
+    const start = performance.now();
+    expect(hasValidPdfEnvelope(buffer)).toBe(true);
+    expect(performance.now() - start).toBeLessThan(50);
   });
 });
 

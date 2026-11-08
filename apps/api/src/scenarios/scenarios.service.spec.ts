@@ -9,7 +9,7 @@ import { Prisma } from '@prisma/client';
 
 jest.mock('./document-mime.util', () => ({
   detectDocumentMime: jest.fn(),
-  isStructurallyValidPdf: jest.fn(),
+  hasValidPdfEnvelope: jest.fn(),
 }));
 jest.mock('./document-storage.util', () => ({
   writeDocumentFile: jest.fn(),
@@ -26,7 +26,7 @@ jest.mock('@master-jdr/game-rules', () => ({
   LEVEL_TABLE: [],
 }));
 
-import { detectDocumentMime, isStructurallyValidPdf } from './document-mime.util';
+import { detectDocumentMime, hasValidPdfEnvelope } from './document-mime.util';
 import { deleteDocumentFile, readDocumentFile, writeDocumentFile } from './document-storage.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PartiesService } from '../parties/parties.service';
@@ -256,9 +256,9 @@ describe('ScenariosService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     // Défaut : la plupart des tests uploadDocument() mockent detectDocumentMime → 'application/pdf'
-    // sans porter sur la validation structurelle elle-même — sans ce défaut, isStructurallyValidPdf
+    // sans porter sur la validation structurelle elle-même — sans ce défaut, hasValidPdfEnvelope
     // (jest.fn() nu, non mocké explicitement) résoudrait `undefined`, faussement falsy.
-    (isStructurallyValidPdf as jest.Mock).mockResolvedValue(true);
+    (hasValidPdfEnvelope as jest.Mock).mockReturnValue(true);
     prisma = makePrisma();
     parties = makeParties();
     permissions = makePermissions();
@@ -845,10 +845,10 @@ describe('ScenariosService', () => {
       expect(prisma.scenarioDocument.create).not.toHaveBeenCalled();
     });
 
-    it('PDF détecté par signature magique mais structurellement invalide → rejet, aucune écriture (Story 16.1 AC1)', async () => {
+    it('PDF détecté par signature magique mais enveloppe invalide (tronqué) → rejet, aucune écriture (Story 16.1 AC1)', async () => {
       permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       (detectDocumentMime as jest.Mock).mockReturnValue('application/pdf');
-      (isStructurallyValidPdf as jest.Mock).mockResolvedValue(false);
+      (hasValidPdfEnvelope as jest.Mock).mockReturnValue(false);
 
       await expect(service.uploadDocument('p1', 'mj1', makeFile())).rejects.toThrow(
         BadRequestException,
@@ -857,7 +857,7 @@ describe('ScenariosService', () => {
       expect(prisma.scenarioDocument.create).not.toHaveBeenCalled();
     });
 
-    it('fichier texte détecté → isStructurallyValidPdf jamais appelé, upload réussit (Story 16.1 AC3, non-régression texte)', async () => {
+    it('fichier texte détecté → hasValidPdfEnvelope jamais appelé, upload réussit (Story 16.1 AC3, non-régression texte)', async () => {
       permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       (detectDocumentMime as jest.Mock).mockReturnValue('text/plain');
       (writeDocumentFile as jest.Mock).mockResolvedValue('uuid.txt');
@@ -872,7 +872,7 @@ describe('ScenariosService', () => {
 
       const result = await service.uploadDocument('p1', 'mj1', makeFile());
 
-      expect(isStructurallyValidPdf).not.toHaveBeenCalled();
+      expect(hasValidPdfEnvelope).not.toHaveBeenCalled();
       expect(result.scenarioId).toBeNull();
     });
 

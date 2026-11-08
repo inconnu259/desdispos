@@ -44,7 +44,7 @@ import { PollService } from '../poll/poll.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { CreateScenarioDto } from './dto/create-scenario.dto';
 import { UpdateScenarioDto } from './dto/update-scenario.dto';
-import { detectDocumentMime, isStructurallyValidPdf } from './document-mime.util';
+import { detectDocumentMime, hasValidPdfEnvelope } from './document-mime.util';
 import { deleteDocumentFile, readDocumentFile, writeDocumentFile } from './document-storage.util';
 
 /** Un participant ou un membre tel que renvoyé par la lecture en lot `findPasseForParties`. */
@@ -229,10 +229,8 @@ export class ScenariosService {
     if (!mime) {
       throw new BadRequestException("Le fichier fourni n'est pas un PDF ou un texte valide");
     }
-    if (mime === 'application/pdf' && !(await isStructurallyValidPdf(file.buffer))) {
-      throw new BadRequestException(
-        'Le fichier PDF fourni est corrompu ou structurellement invalide',
-      );
+    if (mime === 'application/pdf' && !hasValidPdfEnvelope(file.buffer)) {
+      throw new BadRequestException('Le fichier PDF fourni est tronqué ou invalide');
     }
 
     const filename = await writeDocumentFile(file.buffer, mime);

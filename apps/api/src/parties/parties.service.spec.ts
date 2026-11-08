@@ -3320,6 +3320,10 @@ describe('PartiesService', () => {
     // Câblage réel PartiesService + AvailabilityService (pas de mock sur avail) : vérifie que la
     // production appelle bien getActiveDeclarationsWithSeances et que la dérivation traverse
     // effectivement jusqu'aux deux vues (AC3, AC6), sans identité de la Partie tierce (AC3).
+    //
+    // Jour de la séance RELATIF à aujourd'hui (J+30, UTC) : l'indisponibilité dérivée d'une séance expire à
+    // la fin de son jour, une date figée finissait donc par tomber dans le passé (statut `UNKNOWN`).
+    const SEANCE_DAY = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
     const partieA = {
       id: 'A',
       name: 'Partie A',
@@ -3366,7 +3370,7 @@ describe('PartiesService', () => {
           findMany: jest.fn().mockResolvedValue([
             {
               id: 'seanceB1',
-              startDate: new Date('2026-09-20T00:00:00Z'),
+              startDate: new Date(`${SEANCE_DAY}T00:00:00Z`),
               startSlot: 'EVENING',
               inscriptions: [],
               event: { partieId: 'B' },
@@ -3404,8 +3408,8 @@ describe('PartiesService', () => {
         'A',
         'mjA',
         8,
-        '2026-09-20',
-        '2026-09-20',
+        SEANCE_DAY,
+        SEANCE_DAY,
       )) as AvailableSlotDto[];
       const eveningMj = mjResults.find((r) => r.slot === 'EVENING')!;
       expect(eveningMj.members.find((m) => m.userId === 'u1')!.status).toBe('UNAVAILABLE');
@@ -3417,15 +3421,15 @@ describe('PartiesService', () => {
         'A',
         'u1',
         8,
-        '2026-09-20',
-        '2026-09-20',
+        SEANCE_DAY,
+        SEANCE_DAY,
       )) as AggregatedSlotDto[];
       const eveningPlayer = playerResults.find((r) => r.slot === 'EVENING')!;
       expect(eveningPlayer.unavailable).toBeGreaterThanOrEqual(1);
 
       // AC6 : getHeatmap (pas seulement la branche non-MJ de getAvailableSlots) doit s'accorder
       // avec la vue MJ sur le même créneau, sans nommer la Partie B non plus.
-      const heatmap = await svc.getHeatmap('A', 'u1', '2026-09-20', '2026-09-20');
+      const heatmap = await svc.getHeatmap('A', 'u1', SEANCE_DAY, SEANCE_DAY);
       const eveningHeatmap = heatmap.find((r) => r.slot === 'EVENING')!;
       expect(eveningHeatmap.unavailable).toBeGreaterThanOrEqual(1);
       expect(JSON.stringify(heatmap)).not.toContain('mjB');

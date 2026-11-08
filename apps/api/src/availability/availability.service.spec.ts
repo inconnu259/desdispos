@@ -156,8 +156,8 @@ function makeMockPrisma() {
   );
 
   // Story 36.4 : la résolution « Remplacer » expire les déclarations en conflit À L'INTÉRIEUR de
-  // la transaction du lot (create() le fait hors transaction — ce n'est pas le modèle à suivre).
-  // Le client transactionnel doit donc exposer updateMany, ce qui n'était pas le cas avant.
+  // la transaction (lot comme création unitaire, depuis que « Remplacer » découpe). Le client
+  // transactionnel doit donc exposer updateMany.
   const tx: MockTxClient = {
     availabilityDeclaration: {
       create: mockCreate,
@@ -1034,8 +1034,10 @@ describe('AvailabilityService.createBatch', () => {
   });
 
   // Revue de code Story 36.4 : dans le même lot, un item `overwrite` et un item `keep`
-  // ciblent la MÊME déclaration persistée. Décision retenue : `overwrite` prime — la
-  // déclaration sera expirée au commit, le `keep` ne doit donc PAS creuser de trou à son sujet.
+  // ciblent la MÊME déclaration persistée. Décision retenue : `overwrite` prime sur ce qu'il
+  // couvre. Depuis que « Remplacer » découpe, l'existante n'est retirée QUE sur le créneau
+  // remplacé : ses pièces restantes existent au commit, et c'est autour d'elles — pas autour de
+  // l'existante expirée — que le `keep` creuse son trou.
   it('« overwrite » prime sur « keep » quand deux items du lot recouvrent la MÊME déclaration persistée', async () => {
     mockFindMany.mockResolvedValue([
       makePrismaDecl({
@@ -1071,12 +1073,107 @@ describe('AvailabilityService.createBatch', () => {
 
     const result = await service.createBatch(USER_ID, items);
 
-    // La déclaration partagée est expirée (overwrite gagne)...
+    // La déclaration partagée est expirée (overwrite gagne sur le matin du 8)...
     expect(updateManyWhere(mockUpdateMany).id.in).toEqual(['ex-partagee']);
-    // ...et l'item « keep » n'a PAS creusé de trou à son sujet : 1 pièce pour l'item A +
-    // 1 SEULE pièce continue pour l'item B (sans la correction, B produirait 2 pièces
-    // séparées par un trou injustifié autour du 8 juillet → 3 au total).
-    expect(result.created).toHaveLength(2);
+    const created = (result.created as Array<Record<string, unknown>>).map((c) => ({
+      kind: c.kind,
+      slot: c.slot,
+      startDate: (c.startDate as Date).toISOString().slice(0, 10),
+      endDate: (c.endDate as Date).toISOString().slice(0, 10),
+    }));
+    expect(created).toEqual(
+      expect.arrayContaining([
+        // ...ses autres créneaux du 8 restent indisponibles (découpe de la journée entière)...
+        { kind: 'UNAVAILABLE', slot: 'AFTERNOON', startDate: '2026-07-08', endDate: '2026-07-08' },
+        { kind: 'UNAVAILABLE', slot: 'EVENING', startDate: '2026-07-08', endDate: '2026-07-08' },
+        // ...l'item A remplace le matin du 8...
+        { kind: 'AVAILABLE', slot: 'MORNING', startDate: '2026-07-08', endDate: '2026-07-08' },
+        // ...et l'item B « keep » s'écarte des pièces restantes : deux pièces autour du 8.
+        { kind: 'AVAILABLE', slot: 'FULL_DAY', startDate: '2026-07-06', endDate: '2026-07-07' },
+        { kind: 'AVAILABLE', slot: 'FULL_DAY', startDate: '2026-07-09', endDate: '2026-07-10' },
+      ]),
+    );
+    expect(created).toHaveLength(5);
+  });
+
+  // « Remplacer » découpe la déclaration remplacée au lieu de l'effacer entière (bug relevé en
+  // test manuel : remplacer le 11 d'une dispo du 11 au 13 effaçait aussi le 12 et le 13).
+  it('« overwrite » sur un seul jour d’une ponctuelle de plusieurs jours → les autres jours restent', async () => {
+    mockFindMany.mockResolvedValue([
+      makePrismaDecl({
+        id: 'dispo-11-13',
+        kind: 'AVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'AFTERNOON',
+        startDate: new Date('2026-11-11T00:00:00Z'),
+        endDate: new Date('2026-11-13T00:00:00Z'),
+      }),
+    ]);
+
+    const result = await service.createBatch(USER_ID, [
+      item({
+        kind: 'UNAVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'AFTERNOON',
+        startDate: '2026-11-11',
+        endDate: '2026-11-11',
+        conflictResolution: 'overwrite',
+      }),
+    ]);
+
+    expect(updateManyWhere(mockUpdateMany).id.in).toEqual(['dispo-11-13']);
+    const created = (result.created as Array<Record<string, unknown>>).map((c) => [
+      c.kind,
+      (c.startDate as Date).toISOString().slice(0, 10),
+      (c.endDate as Date).toISOString().slice(0, 10),
+    ]);
+    expect(created).toEqual(
+      expect.arrayContaining([
+        ['AVAILABLE', '2026-11-12', '2026-11-13'],
+        ['UNAVAILABLE', '2026-11-11', '2026-11-11'],
+      ]),
+    );
+    expect(created).toHaveLength(2);
+  });
+
+  it('deux « overwrite » du lot sur la MÊME déclaration → découpée une seule fois, autour des deux', async () => {
+    mockFindMany.mockResolvedValue([
+      makePrismaDecl({
+        id: 'dispo-10-14',
+        kind: 'AVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'EVENING',
+        startDate: new Date('2026-11-10T00:00:00Z'),
+        endDate: new Date('2026-11-14T00:00:00Z'),
+      }),
+    ]);
+    const indispo = (day: string) =>
+      item({
+        kind: 'UNAVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'EVENING',
+        startDate: day,
+        endDate: day,
+        conflictResolution: 'overwrite',
+      });
+
+    const result = await service.createBatch(USER_ID, [indispo('2026-11-11'), indispo('2026-11-13')]);
+
+    const remaining = (result.created as Array<Record<string, unknown>>)
+      .filter((c) => c.kind === 'AVAILABLE')
+      .map((c) => [
+        (c.startDate as Date).toISOString().slice(0, 10),
+        (c.endDate as Date).toISOString().slice(0, 10),
+      ]);
+    expect(remaining).toEqual([
+      ['2026-11-10', '2026-11-10'],
+      ['2026-11-12', '2026-11-12'],
+      ['2026-11-14', '2026-11-14'],
+    ]);
   });
 
   it('conflit interne au lot (FULL_DAY vs MORNING, kinds opposés, même jour) → 409, aucune création', async () => {

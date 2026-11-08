@@ -26,6 +26,7 @@ import { ACTIVE_PARTIES_PORT, type ActivePartiesPort } from './ports/active-part
 import { OCCUPIED_SPANS_PORT, type OccupiedSpansPort } from './ports/occupied-spans.port';
 import { OWN_EVENTS_PORT, type OwnEventsPort } from './ports/own-events.port';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
+import { remainderAfterOverwrite } from './overwrite-split';
 
 export interface SplitOccurrenceModifyDto {
   kind: AvailKind;
@@ -150,10 +151,25 @@ export class AvailabilityService {
     }
 
     if (dto.conflictResolution === 'overwrite' && conflicts.length > 0) {
-      await this.prisma.availabilityDeclaration.updateMany({
-        where: { id: { in: conflicts.map((c) => c.id) }, userId },
-        data: { expiresAt: new Date() },
+      // Remplacer : chaque déclaration en conflit est expirée puis recréée SANS ce que couvre la nouvelle
+      // (`remainderAfterOverwrite`) — remplacer un jour ne doit pas effacer les autres. Une seule transaction.
+      const replacing = this.batchItemAsExisting(dto);
+      const remainders = conflicts.flatMap((c) => remainderAfterOverwrite(userId, c, [replacing]));
+      const created = await this.prisma.$transaction(async (tx) => {
+        await tx.availabilityDeclaration.updateMany({
+          where: { id: { in: conflicts.map((c) => c.id) }, userId },
+          data: { expiresAt: new Date() },
+        });
+        const results: object[] = [
+          await tx.availabilityDeclaration.create({ data: this.toCreateData(userId, dto) }),
+        ];
+        for (const data of remainders) {
+          results.push(await tx.availabilityDeclaration.create({ data }));
+        }
+        return results;
       });
+      await this.emitForUser(userId);
+      return { created };
     }
 
     if (dto.conflictResolution === 'keep' && conflicts.length > 0) {
@@ -168,18 +184,24 @@ export class AvailabilityService {
   }
 
   private doCreate(userId: string, dto: CreateAvailabilityDto) {
-    return this.prisma.availabilityDeclaration.create({
-      data: {
-        userId,
-        kind: dto.kind,
-        recurKind: dto.recurKind,
-        dayOfWeek: dto.dayOfWeek ?? null,
-        slot: dto.slot,
-        startDate: dto.startDate ? new Date(dto.startDate + 'T00:00:00Z') : null,
-        endDate: dto.endDate ? new Date(dto.endDate + 'T00:00:00Z') : null,
-        expiresAt: new Date(dto.expiresAt),
-      },
-    });
+    return this.prisma.availabilityDeclaration.create({ data: this.toCreateData(userId, dto) });
+  }
+
+  /** `data` de création d'une déclaration saisie (DTO unitaire ou élément de lot, dates en `YYYY-MM-DD`). */
+  private toCreateData(
+    userId: string,
+    dto: CreateAvailabilityDto | CreateAvailabilityBatchItem,
+  ): AvailabilityCreateData {
+    return {
+      userId,
+      kind: dto.kind,
+      recurKind: dto.recurKind,
+      dayOfWeek: dto.dayOfWeek ?? null,
+      slot: dto.slot,
+      startDate: dto.startDate ? new Date(dto.startDate + 'T00:00:00Z') : null,
+      endDate: dto.endDate ? new Date(dto.endDate + 'T00:00:00Z') : null,
+      expiresAt: new Date(dto.expiresAt),
+    };
   }
 
   /** Trouve les déclarations actives dont le kind, le slot et la plage de dates
@@ -219,7 +241,9 @@ export class AvailabilityService {
 
   /** Représente un élément de lot sous la forme Date attendue par conflictPredicate/
    *  dateRangesConflict côté "existing" (les items de lot portent des dates en string). */
-  private batchItemAsExisting(item: CreateAvailabilityBatchItem) {
+  private batchItemAsExisting(
+    item: CreateAvailabilityBatchItem | CreateAvailabilityDto,
+  ): DeclarationLike {
     return {
       kind: item.kind,
       slot: item.slot,
@@ -275,8 +299,8 @@ export class AvailabilityService {
    *  Deux invariants NON renversés :
    *  - un conflit INTERNE au lot reste irrésoluble (AC14) : aucun des deux items n'est
    *    « l'existant », « Remplacer » n'y a aucun sens ;
-   *  - create() n'est toujours PAS le modèle d'atomicité (story 30.2, encadré n°2) : il
-   *    expire les conflits HORS transaction. Ici l'expiration est dans la transaction.
+   *  - l'expiration des conflits remplacés et la création de leurs pièces restantes sont
+   *    dans la transaction (create() fait de même depuis que « Remplacer » découpe).
    *
    *  ⚠️ `created` n'a PAS de correspondance positionnelle garantie avec `items` : un item
    *  résolu `keep` peut produire 0 à N pièces (découpe), quand tout autre item en produit
@@ -347,40 +371,47 @@ export class AvailabilityService {
     // trous » des items `keep`. Sans ça, un item `keep` recouvrant la MÊME déclaration
     // persistée qu'un item `overwrite` du même lot creuserait un trou autour d'une ligne qui
     // n'existera plus au commit (revue de code Story 36.4 — l'`overwrite` prime).
-    const toExpire: string[] = [];
+    // Remplacer : n'expire que MES déclarations persistées. Une indisponibilité dérivée d'une
+    // séance n'est jamais lue ici (AD-9, jamais persistée), elle survit donc structurellement —
+    // il n'y a rien à coder pour cela (AC4/AC5). Chaque déclaration remplacée est recréée sans
+    // ce que couvrent ses remplaçants (`remainderAfterOverwrite`) : remplacer un jour n'efface plus
+    // les autres. Les remplaçants d'une même déclaration sont REGROUPÉS — la découper une fois par
+    // remplaçant recréerait les jours retirés par les autres.
+    const replacersById = new Map<string, DeclarationLike[]>();
     items.forEach((item, index) => {
-      if (item.conflictResolution === 'overwrite') {
-        // Remplacer : n'expire que MES déclarations persistées. Une indisponibilité dérivée
-        // d'une séance n'est jamais lue ici (AD-9, jamais persistée), elle survit donc
-        // structurellement — il n'y a rien à coder pour cela (AC4/AC5).
-        toExpire.push(...conflictsByIndex[index].map((c) => c.id));
+      if (item.conflictResolution !== 'overwrite') return;
+      for (const conflict of conflictsByIndex[index]) {
+        const list = replacersById.get(conflict.id) ?? [];
+        list.push(this.batchItemAsExisting(item));
+        replacersById.set(conflict.id, list);
       }
     });
+    const toExpire = [...replacersById.keys()];
     const expiredIds = new Set(toExpire);
+    const activeById = new Map(active.map((a) => [a.id, a]));
+    const remainders = [...replacersById].flatMap(([id, replacers]) =>
+      remainderAfterOverwrite(userId, activeById.get(id)!, replacers),
+    );
 
-    const toCreate: AvailabilityCreateData[] = [];
+    const toCreate: AvailabilityCreateData[] = [...remainders];
     items.forEach((item, index) => {
       const conflicts = conflictsByIndex[index];
       if (item.conflictResolution === 'keep' && conflicts.length > 0) {
         // Conserver : l'existant gagne, le créneau est créé « à trous » autour de lui — la
         // découpe de la story 1.7, appliquée dans le lot par la MÊME fonction (AC6).
-        // On exclut les conflits déjà voués à l'expiration par un AUTRE item `overwrite` du
-        // lot : ils n'existeront plus au commit, un trou à leur sujet serait injustifié.
-        const stillActive = conflicts.filter((c) => !expiredIds.has(c.id));
+        // Une déclaration expirée par un AUTRE item `overwrite` du lot n'existera plus au commit :
+        // ce sont alors ses pièces restantes qui comptent, le trou se creuse autour d'elles.
+        const stillActive: ConflictRow[] = [
+          ...conflicts.filter((c) => !expiredIds.has(c.id)),
+          ...remainders
+            .filter((r) => this.conflictPredicate(r, item))
+            .map((r, i) => ({ ...r, id: `remainder-${i}` })),
+        ];
         toCreate.push(...this.buildHolePieces(userId, item, stillActive));
         return;
       }
-      // `overwrite` : l'expiration a déjà été collectée dans la première passe ci-dessus.
-      toCreate.push({
-        userId,
-        kind: item.kind,
-        recurKind: item.recurKind,
-        dayOfWeek: item.dayOfWeek ?? null,
-        slot: item.slot,
-        startDate: item.startDate ? new Date(item.startDate + 'T00:00:00Z') : null,
-        endDate: item.endDate ? new Date(item.endDate + 'T00:00:00Z') : null,
-        expiresAt: new Date(item.expiresAt),
-      });
+      // `overwrite` : l'expiration et les pièces restantes ont été calculées ci-dessus.
+      toCreate.push(this.toCreateData(userId, item));
     });
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -821,7 +852,9 @@ export class AvailabilityService {
     // importer) ; les bornes se lisent comme celles de `getMyCalendar`, début et fin de journée UTC.
     const now = new Date();
     const today = now.toISOString().substring(0, 10);
-    const lastDay = new Date(Date.parse(`${today}T00:00:00.000Z`) + (AVAILABILITY_REMINDER_DAYS - 1) * 86_400_000)
+    const lastDay = new Date(
+      Date.parse(`${today}T00:00:00.000Z`) + (AVAILABILITY_REMINDER_DAYS - 1) * 86_400_000,
+    )
       .toISOString()
       .substring(0, 10);
     const fromMs = this.parseDateOnly(today, false);

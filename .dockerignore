@@ -5,5 +5,11 @@
 .git
 .gitignore
 **/.env
+**/.env.*
 .idea
 docs
+apps/api/uploads
+graphify-out
+_bmad
+_bmad-output
+.claude

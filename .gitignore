@@ -12,6 +12,7 @@ apps/web/.angular/
 .env
 .env.*
 !.env.dev
+!.env.prod.example
 
 # Tests / coverage
 coverage/

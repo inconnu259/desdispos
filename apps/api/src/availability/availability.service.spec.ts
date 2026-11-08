@@ -666,6 +666,77 @@ describe('AvailabilityService.create — conflict detection', () => {
     expect(result.created.length).toBeGreaterThanOrEqual(1);
     expect(mockUpdateMany).not.toHaveBeenCalled();
   });
+
+  /** Pièces créées : [début, fin] en `YYYY-MM-DD` (null = sans borne). */
+  const pieceBounds = (created: unknown[]) =>
+    (created as Array<{ startDate: Date | null; endDate: Date | null }>).map((p) => [
+      p.startDate?.toISOString().slice(0, 10) ?? null,
+      p.endDate?.toISOString().slice(0, 10) ?? null,
+    ]);
+  const punctualConflict = (id: string, from: string, to: string) =>
+    makePrismaDecl({
+      id,
+      kind: 'UNAVAILABLE',
+      recurKind: 'PUNCTUAL',
+      dayOfWeek: null,
+      startDate: new Date(`${from}T00:00:00Z`),
+      endDate: new Date(`${to}T00:00:00Z`),
+    });
+
+  // Régression : les pièces s'arrêtaient 7 jours avant le début du conflit. Contre une indispo du samedi 14
+  // au mercredi 18, une série du lundi perdait le lundi 9, qui n'est pas en conflit.
+  it('keep + RECURRING : conflit qui ne commence pas le jour de la série → l’occurrence précédente reste', async () => {
+    mockFindMany.mockResolvedValue([punctualConflict('c-sam-mer', '2026-11-14', '2026-11-18')]);
+    const result = (await service.create(USER_ID, {
+      ...baseDto,
+      dayOfWeek: 1,
+      startDate: '2026-11-02',
+      conflictResolution: 'keep',
+    })) as { created: unknown[] };
+
+    expect(pieceBounds(result.created)).toEqual([
+      ['2026-11-02', '2026-11-13'], // lundis 2 et 9
+      ['2026-11-19', null], // à partir du lundi 23
+    ]);
+  });
+
+  it('keep + RECURRING : une pièce sans aucune occurrence de la série n’est pas créée', async () => {
+    // Série du lundi ; conflits du samedi 7 au lundi 9 et du jeudi 12 au lundi 16 → entre les deux, le mardi
+    // 10 et le mercredi 11 ne portent aucun lundi.
+    mockFindMany.mockResolvedValue([
+      punctualConflict('c-sam-lun', '2026-11-07', '2026-11-09'),
+      punctualConflict('c-jeu-lun', '2026-11-12', '2026-11-16'),
+    ]);
+    const result = (await service.create(USER_ID, {
+      ...baseDto,
+      dayOfWeek: 1,
+      startDate: '2026-11-02',
+      conflictResolution: 'keep',
+    })) as { created: unknown[] };
+
+    expect(pieceBounds(result.created)).toEqual([
+      ['2026-11-02', '2026-11-06'],
+      ['2026-11-17', null],
+    ]);
+  });
+
+  it('keep + RECURRING : conflits qui se chevauchent → la reprise suit le plus tardif', async () => {
+    mockFindMany.mockResolvedValue([
+      punctualConflict('c-long', '2026-11-09', '2026-11-30'),
+      punctualConflict('c-court', '2026-11-16', '2026-11-16'),
+    ]);
+    const result = (await service.create(USER_ID, {
+      ...baseDto,
+      dayOfWeek: 1,
+      startDate: '2026-11-02',
+      conflictResolution: 'keep',
+    })) as { created: unknown[] };
+
+    expect(pieceBounds(result.created)).toEqual([
+      ['2026-11-02', '2026-11-08'],
+      ['2026-12-01', null],
+    ]);
+  });
 });
 
 // ─── createBatch — écriture groupée (Story 30.2) ─────────────────────────────
@@ -1161,7 +1232,10 @@ describe('AvailabilityService.createBatch', () => {
         conflictResolution: 'overwrite',
       });
 
-    const result = await service.createBatch(USER_ID, [indispo('2026-11-11'), indispo('2026-11-13')]);
+    const result = await service.createBatch(USER_ID, [
+      indispo('2026-11-11'),
+      indispo('2026-11-13'),
+    ]);
 
     const remaining = (result.created as Array<Record<string, unknown>>)
       .filter((c) => c.kind === 'AVAILABLE')
@@ -2588,9 +2662,13 @@ describe('AvailabilityService.reminderDue (Story 52.4)', () => {
     const lastDayPlusOne = [punctual('2026-07-29')];
 
     jest.setSystemTime(new Date('2026-07-01T23:59:59Z'));
-    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(true);
+    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(
+      true,
+    );
 
     jest.setSystemTime(new Date('2026-07-02T00:00:01Z'));
-    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(false);
+    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(
+      false,
+    );
   });
 });

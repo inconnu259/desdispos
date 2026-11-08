@@ -470,11 +470,13 @@ export class AvailabilityService {
     const MS_7D = 7 * MS_1D;
 
     if (dto.recurKind === 'RECURRING') {
-      // Construit les plages exclues : [start, end] pour chaque conflit.
+      // Construit les plages exclues : [start, end] pour chaque conflit, en jours UTC.
       // Pour RECURRING sans endDate : expiresAt borne la série (pas startDate → évite intervalle zéro-largeur).
+      const floorDay = (d: Date) =>
+        new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       const excluded: Array<{ start: Date; end: Date }> = conflicts.map((c) => ({
-        start: c.startDate ?? new Date(0),
-        end: c.endDate ?? c.expiresAt,
+        start: c.startDate ? floorDay(c.startDate) : new Date(0),
+        end: floorDay(c.endDate ?? c.expiresAt),
       }));
       excluded.sort((a, b) => a.start.getTime() - b.start.getTime());
 
@@ -483,14 +485,26 @@ export class AvailabilityService {
       const pieces: Array<{ startDate: Date | null; endDate: Date | null }> = [];
       let currentStart = dtoStart;
 
+      // Les pièces s'arrêtent la VEILLE du conflit et reprennent le LENDEMAIN de sa fin. Avant, elles
+      // s'arrêtaient 7 jours avant son début : quand le conflit ne commençait pas le jour de la série
+      // (indispo du samedi au mercredi contre une série du lundi), l'occurrence juste avant lui était
+      // perdue sans être en conflit. Une pièce qui ne contient aucune occurrence n'est pas créée.
       for (const { start: excStart, end: excEnd } of excluded) {
-        const pieceEnd = new Date(excStart.getTime() - MS_7D);
-        if (!currentStart || currentStart <= pieceEnd) {
+        const pieceEnd = new Date(excStart.getTime() - MS_1D);
+        if (
+          (!currentStart || currentStart <= pieceEnd) &&
+          (!currentStart || this.hasWeekdayInRange(currentStart, pieceEnd, dto.dayOfWeek!))
+        ) {
           pieces.push({ startDate: currentStart, endDate: pieceEnd });
         }
-        currentStart = new Date(excEnd.getTime() + MS_7D);
+        // Des conflits qui se chevauchent : la reprise ne recule jamais.
+        const resume = new Date(excEnd.getTime() + MS_1D);
+        if (!currentStart || resume > currentStart) currentStart = resume;
       }
-      if (!currentStart || currentStart <= dtoExpires) {
+      if (
+        (!currentStart || currentStart <= dtoExpires) &&
+        (!currentStart || this.hasWeekdayInRange(currentStart, dtoExpires, dto.dayOfWeek!))
+      ) {
         pieces.push({ startDate: currentStart, endDate: null });
       }
 

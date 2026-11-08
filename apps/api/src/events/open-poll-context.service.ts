@@ -4,7 +4,7 @@ import { PermissionService } from '../permissions/permission.service';
 import type { OpenPollContext, OpenPollContextPort } from '../poll/ports/open-poll-context.port';
 import { PrismaService } from '../prisma/prisma.service';
 import { eligibleVoters } from './eligible-voters';
-import { EventsService, isRalliementGroup } from './events.service';
+import { EventsService } from './events.service';
 
 /**
  * Story 44.2 (AD-15) — ce que `poll/` ne peut pas lire d'un sondage ouvert : sa séance et son titre, le statut
@@ -12,7 +12,7 @@ import { EventsService, isRalliementGroup } from './events.service';
  * éligibles (la définition unique `eligibleVoters`). Implémente `OpenPollContextPort`, lié par `PortsModule`.
  *
  * Lectures groupées, en nombre FIXE quel que soit le nombre de sondages : les séances (avec événement, partie
- * et inscriptions), les membres des groupes qui accueillent « tous les membres », l'avancement des parties
+ * et inscriptions), les membres des groupes et soirées qui accueillent « tous les membres », l'avancement des parties
  * (`EventsService.progressByPartieIds`) et les droits (`PermissionService.organizerCan`).
  */
 @Injectable()
@@ -46,11 +46,17 @@ export class OpenPollContextService implements OpenPollContextPort {
     if (seances.length === 0) return result;
 
     const parties = [...new Map(seances.map((s) => [s.event.partie.id, s.event.partie])).values()];
-    // Les membres d'un groupe ne sont lus que pour les conjonctions qui accueillent « tous les membres ».
+    // Les membres ne sont lus que pour les événements de ralliement qui accueillent « tous les membres » :
+    // conjonction d'un groupe sans places limitées, ET soirée isolée (toujours sans capacité). Restreindre
+    // cette lecture aux seuls groupes réduisait les votants d'une soirée isolée à son hôte : ses invités
+    // étaient « non votants » dans le calendrier.
     const wantMembers = [
       ...new Set(
         seances
-          .filter((s) => isRalliementGroup(s.event.partie) && s.inscriptionMax === null)
+          .filter(
+            (s) =>
+              familyOf(s.event.partie.gameSystemId) === 'ralliement' && s.inscriptionMax === null,
+          )
           .map((s) => s.event.partie.id),
       ),
     ];

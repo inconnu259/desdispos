@@ -30,3 +30,6 @@ graphify-out/
 apps/api/uploads/
 # Fichier temporaire d'écriture de la config MCP par WebStorm
 .mcp.json.tmp
+
+# Sauvegardes de production (docker/backup.sh) — contiennent toute la base, jamais committées
+backups/

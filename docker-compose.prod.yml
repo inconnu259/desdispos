@@ -8,8 +8,18 @@
 # SORTANTE de cloudflared vers Cloudflare). Seul `web` est publié, sur 127.0.0.1, pour le test local.
 name: desdispos
 
+# Rotation des journaux de chaque conteneur : par défaut Docker les garde sans limite de taille, ce qui
+# finit par remplir la carte SD d'un Pi. 3 fichiers de 10 Mo par conteneur au plus.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '3'
+
 services:
   db:
+    <<: *logging
     image: postgres:17-alpine
     restart: unless-stopped
     env_file: [.env.prod]
@@ -22,6 +32,7 @@ services:
       retries: 12
 
   api:
+    <<: *logging
     image: desdispos-api:local
     build:
       context: .
@@ -40,6 +51,7 @@ services:
         condition: service_healthy
 
   web:
+    <<: *logging
     image: desdispos-web:local
     build:
       context: .
@@ -54,6 +66,7 @@ services:
   # cette image tierce ne doit pas recevoir les secrets de l'application (.env.prod).
   # Épingler une version précise (ou un digest) une fois le tunnel validé.
   cloudflared:
+    <<: *logging
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     command: tunnel --no-autoupdate run

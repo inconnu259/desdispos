@@ -57,10 +57,49 @@ git pull
 docker compose -f docker-compose.prod.yml --profile tunnel up -d --build
 ```
 
+## Journaux
+
+Chaque conteneur garde au plus 3 fichiers de 10 Mo (`x-logging` dans `docker-compose.prod.yml`) :
+la carte SD ne se remplit pas. Lire : `docker compose -f docker-compose.prod.yml logs -f api`.
+
+## Sauvegardes
+
+`docker/backup.sh` sauvegarde la base (`pg_dump`, format custom) et le volume `uploads` (portraits,
+couvertures, documents) dans `./backups/<date>/`, vérifie que les deux sont relisibles, écrit leurs
+empreintes (`SHA256SUMS`) et supprime les sauvegardes de plus de 14 jours.
+
+```bash
+docker/backup.sh
+BACKUP_DIR=/mnt/ssd/backups KEEP_DAYS=30 docker/backup.sh   # autre dossier, autre rétention
+```
+
+**Chaque nuit** (`crontab -e` sur le Pi, chemin du dépôt à adapter) :
+
+```cron
+0 3 * * * cd /home/pi/master-jdr && docker/backup.sh >> backups/backup.log 2>&1
+```
+
+⚠️ **Copier les sauvegardes HORS du Pi** (disque externe, autre machine, stockage distant via
+`rsync`/`rclone`) : une sauvegarde restée sur la carte SD meurt avec elle. Le dossier contient toute
+la base (e-mails, hash de mots de passe) : le chiffrer s'il quitte la maison.
+
+### Restaurer
+
+À **tester au moins une fois** avant d'en avoir besoin. Remplace la base et les fichiers actuels.
+
+```bash
+B=backups/2026-11-09_030000                      # sauvegarde choisie
+(cd "$B" && sha256sum -c SHA256SUMS)             # copie intacte ?
+docker compose -f docker-compose.prod.yml stop web api
+docker compose -f docker-compose.prod.yml exec -T db \
+  sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < "$B/db.dump"
+docker compose -f docker-compose.prod.yml run --rm --no-deps -T api \
+  sh -c 'find /app/apps/api/uploads -mindepth 1 -delete && tar -xzf - -C /app/apps/api' < "$B/uploads.tgz"
+docker compose -f docker-compose.prod.yml start api web
+```
+
 ## À mettre en place (pas encore fait)
 
-- **Sauvegardes** : base (`docker compose -f docker-compose.prod.yml exec db pg_dump -U <user> <db>`)
-  et volume `uploads` (portraits, couvertures, documents), copiées hors du Pi, avec un test de
-  restauration.
+- **Copie hors du Pi** des sauvegardes (voir ci-dessus), automatisée.
 - **Épingler** l'image `cloudflared` sur une version précise une fois le tunnel validé.
 - **Scan des images** (Trivy) et détection de secrets (Gitleaks) en CI — cf. `docs/security.md`.

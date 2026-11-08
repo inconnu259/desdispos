@@ -47,8 +47,23 @@ const DOCUMENT_UPLOAD_LIMITS = {
   fieldNameSize: 100,
 };
 
-function sanitizeHeaderFilename(name: string): string {
-  return name.replace(/[\r\n"]/g, '');
+/**
+ * En-tête `Content-Disposition` d'un document téléchargé. `originalName` vient du client
+ * (file.originalname) : jamais interpolé tel quel dans un en-tête HTTP.
+ * - caractères de contrôle (dont CR/LF : injection d'en-tête), guillemets, `\`, `/` retirés ;
+ * - extension IMPOSÉE par le type réel du fichier (`.pdf` / `.txt`) : un nom `regles.hta` ou `.bat` ne
+ *   doit pas faire ouvrir un contenu PDF/texte avec une application dangereuse ;
+ * - `filename` ASCII de repli + `filename*` UTF-8 (RFC 5987) pour les noms accentués.
+ */
+export function documentContentDisposition(originalName: string, mime: string): string {
+  const extension = mime === 'application/pdf' ? '.pdf' : '.txt';
+  // eslint-disable-next-line no-control-regex -- retrait volontaire des caractères de contrôle
+  const cleaned = originalName.replace(/[\x00-\x1f\x7f"\\/]/g, '').trim();
+  const dot = cleaned.lastIndexOf('.');
+  const base = (dot > 0 ? cleaned.slice(0, dot) : cleaned).slice(0, 150) || 'document';
+  const filename = `${base}${extension}`;
+  const asciiFallback = filename.replace(/[^\x20-\x7e]/g, '_');
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 @UseGuards(AuthenticatedGuard)
@@ -269,9 +284,7 @@ export class ScenariosController {
     );
     return new StreamableFile(buffer, {
       type: mime,
-      // originalName vient du client (file.originalname) : jamais interpolé tel quel dans un
-      // en-tête HTTP — CR/LF et guillemets retirés pour empêcher une injection d'en-tête.
-      disposition: `attachment; filename="${sanitizeHeaderFilename(originalName)}"`,
+      disposition: documentContentDisposition(originalName, mime),
     });
   }
 }

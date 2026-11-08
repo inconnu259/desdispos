@@ -1,8 +1,10 @@
-import { IsNotEmpty, IsNotEmptyObject, IsString } from 'class-validator';
+import { IsNotEmpty, IsNotEmptyObject, IsString, MaxLength } from 'class-validator';
+import { MaxJsonSize } from '../../common/dto/max-json-size.validator';
 
 export class CreateCharacterDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50)
   gameSystemId: string;
 
   /**
@@ -11,5 +13,6 @@ export class CreateCharacterDto {
    * propre) — pas besoin d'un validateur custom pour ça.
    */
   @IsNotEmptyObject()
+  @MaxJsonSize(50_000)
   sheetData: Record<string, unknown>;
 }

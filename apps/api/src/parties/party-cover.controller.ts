@@ -72,7 +72,9 @@ export class PartyCoverController {
     // Cache-busting : le jeton de version (déjà porté par l'URL via le paramètre `v` que le front
     // ajoute, cf. `PartieDto.coverImageVersion`) suffit à invalider le cache navigateur après un
     // remplacement. L'ETag ci-dessous permet en plus une revalidation conditionnelle efficace.
-    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    // `private` : la couverture est réservée aux membres connectés — un cache partagé (proxy, CDN) ne
+    // doit jamais la garder et la resservir à d'autres.
+    res.set('Cache-Control', 'private, max-age=31536000, immutable');
     res.set('ETag', `"${file.version}-${query.mode}"`);
     return new StreamableFile(file.buffer, { type: file.mime });
   }

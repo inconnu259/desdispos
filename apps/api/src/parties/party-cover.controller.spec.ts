@@ -168,6 +168,8 @@ describe('PartyCoverController — pipeline HTTP réel (Story 29.12, Task 9)', (
       .expect(200);
 
     expect(res.headers['cache-control']).toContain('immutable');
+    // Revue de sécurité : réservée aux membres connectés, jamais gardée par un cache partagé.
+    expect(res.headers['cache-control']).toMatch(/^private/);
     expect(res.headers['etag']).toBeDefined();
   });
 });

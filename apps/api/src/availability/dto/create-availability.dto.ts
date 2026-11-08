@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -47,6 +48,7 @@ export class CreateAvailabilityDto {
   /** ID de la déclaration en cours de remplacement — exclue du check de conflits. */
   @IsOptional()
   @IsString()
+  @MaxLength(64)
   replacingId?: string;
 
   /** Résolution choisie par l'utilisateur après détection d'un conflit. */

@@ -14,6 +14,7 @@ const RACES = ['DRAGON_VERT', 'DRAGON_BLEU', 'DRAGON_ROUGE', 'DRAGON_NOIR'] as c
 export class ArtefactDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   key!: string;
 
   @IsOptional()

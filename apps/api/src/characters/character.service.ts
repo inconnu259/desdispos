@@ -1618,6 +1618,12 @@ export class CharacterService {
     };
   }
 
+  /**
+   * Garde de TOUTES les modifications réservées au propriétaire de la fiche (portrait, niveau, inventaire,
+   * notes…). Revue de sécurité 2026-11 : le propriétaire doit aussi être ENCORE membre de la partie — un
+   * joueur retiré gardait sinon la main sur sa fiche (et en notifiait la partie). Ses lectures (fiche,
+   * export PDF, notes) ne passent pas par ici et lui restent ouvertes : sa fiche passe en lecture seule.
+   */
   private async getOwnCharacterOrThrow(id: string, userId: string) {
     const character = await this.prisma.character.findUnique({
       where: { id },
@@ -1626,6 +1632,11 @@ export class CharacterService {
     if (character.userId !== userId) {
       throw new ForbiddenException(
         'Seul le propriétaire du personnage peut effectuer cette action',
+      );
+    }
+    if ((await this.permissions.roleOf(character.partieId, userId)) === null) {
+      throw new ForbiddenException(
+        "Vous ne faites plus partie de cette partie : votre fiche n'est plus modifiable.",
       );
     }
     return character;
@@ -1647,6 +1658,29 @@ export class CharacterService {
       this.logger.warn(`Échec de suppression du portrait ${filename}`, e as Error);
     }
   }
+}
+
+/**
+ * Champs qui TRAHISSENT un champ verrouillé (revue de sécurité 2026-11) : cacher `classId` ne servait à
+ * rien si `classChoices` (propres à chaque classe), `classCapabilities` (Climatophile → météomancien) ou
+ * `specialtyTypeId` (artisan) restaient visibles ; de même `magicSeason`/`knownRitualSpells` pour le type
+ * (magie), et les `levelUps`, dont les capacités nomment des attributs, classes et types. Masqués avec
+ * leur source ; le niveau reste visible (`toDto` le lit sur la fiche non masquée).
+ */
+const REVEALING_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  classId: ['classChoices', 'classCapabilities', 'specialtyTypeId', 'levelUps'],
+  typeId: ['magicSeason', 'knownRitualSpells', 'levelUps'],
+  attributes: ['levelUps'],
+};
+
+function withRevealingFields(lockedPaths: ReadonlySet<string>): ReadonlySet<string> {
+  if (lockedPaths.size === 0) return lockedPaths;
+  const expanded = new Set(lockedPaths);
+  for (const path of lockedPaths) {
+    const root = path.split('.')[0];
+    for (const field of REVEALING_FIELDS[root] ?? []) expanded.add(field);
+  }
+  return expanded;
 }
 
 /**
@@ -1724,7 +1758,10 @@ function toDto(
   // `sheetData`/`derived` sont des colonnes JSON : Prisma les rend en `JsonValue`, sans forme
   // garantie. La relecture vers les types du contrat se fait ici, au seul point de sortie.
   const rawSheetData = (character.sheetData ?? {}) as SheetData;
-  const { sheetData, removedPaths } = applyVisibilityMask(rawSheetData, lockedPaths);
+  const { sheetData, removedPaths } = applyVisibilityMask(
+    rawSheetData,
+    withRevealingFields(lockedPaths),
+  );
   const derivedLocked = locksDerivedDependency(lockedPaths);
   return {
     id: character.id,
@@ -1752,7 +1789,8 @@ function toDto(
     // Niveau réellement appliqué (nombre de montées de niveau validées + 1), PAS le niveau
     // potentiel dérivé de l'xp (`levelForXp`) — sinon la fiche afficherait un niveau non encore
     // acquis tant que le joueur n'a pas traité son `LevelUpBanner` (cf. `pendingLevels`).
-    level: 1 + ((sheetData as { levelUps?: unknown[] }).levelUps?.length ?? 0),
+    // Lu sur la fiche NON masquée : le niveau reste visible même quand les `levelUps` sont cachés.
+    level: 1 + ((rawSheetData as { levelUps?: unknown[] }).levelUps?.length ?? 0),
     journalAutoAssociate: character.journalAutoAssociate ?? false,
     hiddenFields: derivedLocked ? [...removedPaths, 'derived'] : removedPaths,
   };

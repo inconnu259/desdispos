@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import type { DaySlot } from '@master-jdr/shared';
@@ -30,6 +31,7 @@ export class CreatePollDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   scenarioRef?: string | null;
 
   /** Story 45.4 — fin du vote : un jour `YYYY-MM-DD` (la validité calendaire et le passé sont vérifiés par le service). */

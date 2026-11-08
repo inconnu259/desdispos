@@ -846,6 +846,37 @@ describe('CharacterService', () => {
       expect(JSON.parse(JSON.stringify(result)).sheetData).not.toHaveProperty('classId');
     });
 
+    it('revue de sécurité : classId verrouillé → les champs qui le trahissent sont masqués aussi, le niveau reste', async () => {
+      prisma.character.findUnique.mockResolvedValue(
+        makeCharacter({
+          sheetData: {
+            ...validSheet(),
+            classChoices: { metier: 'guerisseur:soins' },
+            classCapabilities: [{ type: 'climat', params: { landscape: 'plaine' } }],
+            levelUps: [{ level: 2, pvAllocated: 2, peAllocated: 1, capabilities: [] }],
+          },
+        }),
+      );
+      permissions.assert.mockImplementation(
+        grantByOwner({ id: 'p1', ownerId: 'mj1', gameSystemId: 'ryuutama' }),
+      );
+      prisma.partieVisibilityLock.findMany.mockResolvedValue([
+        { fieldKey: 'classId', subField: null },
+      ]);
+
+      const result = await service.findOne('char1', 'joueur-tiers');
+
+      expect(result.sheetData).not.toHaveProperty('classChoices');
+      expect(result.sheetData).not.toHaveProperty('classCapabilities');
+      expect(result.sheetData).not.toHaveProperty('levelUps');
+      expect(result.hiddenFields).toEqual(
+        expect.arrayContaining(['classId', 'classChoices', 'classCapabilities', 'levelUps']),
+      );
+      expect(result.level).toBe(2);
+      // `derived` ne dépend pas de la classe : il reste visible.
+      expect(result.derived).toEqual(makeCharacter().derived);
+    });
+
     it('sous-champ verrouillé (attributes.AGI) : derived retiré en entier, seul AGI absent des autres sous-champs', async () => {
       prisma.character.findUnique.mockResolvedValue(makeCharacter());
       permissions.assert.mockImplementation(
@@ -1574,6 +1605,20 @@ describe('CharacterService', () => {
   });
 
   describe('removePortrait()', () => {
+    it('revue de sécurité : joueur retiré de la partie → 403, fiche intacte (lecture seule)', async () => {
+      prisma.character.findUnique.mockResolvedValue(
+        makeCharacter({ portraitUrl: `/uploads/portraits/${OLD_PORTRAIT_UUID}.jpg` }),
+      );
+      permissions.roleOf.mockResolvedValue(null);
+
+      await expect(service.removePortrait('char1', 'u1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(permissions.roleOf).toHaveBeenCalledWith('p1', 'u1');
+      expect(prisma.character.updateMany).not.toHaveBeenCalled();
+      expect(unlink).not.toHaveBeenCalled();
+    });
+
     it('propriétaire avec portrait existant → supprime le fichier et met portraitUrl/portraitCropData à null', async () => {
       const character = makeCharacter({
         portraitUrl: `/uploads/portraits/${OLD_PORTRAIT_UUID}.jpg`,

@@ -121,6 +121,7 @@ export class CreateEventDto implements CreateEventPayload {
   @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsInt({ message: 'Le nombre de places doit être un entier' })
   @Min(2, { message: 'Des places limitées en comptent au moins 2, hôte compris' })
+  @Max(1000, { message: 'Pas plus de 1000 places' })
   capacity?: number | null;
 
   /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. Absente = 1 à la création, inchangée à la

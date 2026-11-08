@@ -15,7 +15,7 @@ jest.mock('@master-jdr/game-rules', () => ({
 }));
 
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
-import { ScenariosController } from './scenarios.controller';
+import { ScenariosController, documentContentDisposition } from './scenarios.controller';
 import { ScenariosService } from './scenarios.service';
 
 function makeScenariosService() {
@@ -168,7 +168,13 @@ describe('ScenariosController', () => {
       { date: '2026-08-08T00:00:00.000Z', slot: 'EVENING' as const },
     ];
     await controller.createSeancePoll('seance1', user, { options, durationSlots: 6 });
-    expect(scenarios.createSeancePoll).toHaveBeenCalledWith('seance1', 'mj1', options, undefined, 6);
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith(
+      'seance1',
+      'mj1',
+      options,
+      undefined,
+      6,
+    );
   });
 
   it('resetSeanceDate() route seanceId/user vers ScenariosService.resetSeanceDate', async () => {
@@ -261,7 +267,27 @@ describe('ScenariosController', () => {
     const result = await controller.downloadDocument('d1', user);
     const { disposition } = result.getHeaders();
     expect(disposition).not.toMatch(/[\r\n]/);
-    expect(disposition).toBe('attachment; filename="x.pdfX-Injected: evil"');
+    expect(disposition).toBe(`attachment; filename="x.pdf"; filename*=UTF-8''x.pdf`);
+  });
+
+  it.each([
+    [
+      'extension dangereuse remplacée par le type réel',
+      'regles.hta',
+      'application/pdf',
+      'regles.pdf',
+    ],
+    ['nom sans extension', 'notes', 'text/plain', 'notes.txt'],
+    ['séparateurs de chemin retirés', '..\\..\\x/y.pdf', 'application/pdf', '....xy.pdf'],
+    ['nom vide', '"', 'text/plain', 'document.txt'],
+  ])('documentContentDisposition : %s', (_label, name, mime, expected) => {
+    expect(documentContentDisposition(name, mime)).toContain(`filename="${expected}"`);
+  });
+
+  it('documentContentDisposition : nom accentué → repli ASCII + filename* UTF-8', () => {
+    expect(documentContentDisposition('Scénario é.pdf', 'application/pdf')).toBe(
+      `attachment; filename="Sc_nario _.pdf"; filename*=UTF-8''${encodeURIComponent('Scénario é.pdf')}`,
+    );
   });
 
   describe('upload de document — pipeline HTTP réel (multer + ParseFilePipe)', () => {

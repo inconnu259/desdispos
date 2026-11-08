@@ -1,4 +1,5 @@
 import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { MaxJsonSize } from '../../common/dto/max-json-size.validator';
 
 export class SetSheetFieldDto {
   @IsString()
@@ -16,5 +17,6 @@ export class SetSheetFieldDto {
   // `null` en plus d'`undefined` (contrairement à l'attente), ce qui aurait empêché le MJ de vider
   // un champ optionnel (ex. fetiqueObject).
   @IsOptional()
+  @MaxJsonSize(10_000)
   value: unknown;
 }

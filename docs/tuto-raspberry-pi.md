@@ -44,7 +44,7 @@ Deux portes très différentes, choisies pour tes contraintes :
 - **Aucun port à ouvrir sur la box**, pour rien : le tunnel Cloudflare et Tailscale sont tous deux des
   connexions *sortantes* du Pi. Ton IP personnelle reste cachée.
 - **Le certificat HTTPS est fourni et renouvelé par Cloudflare**, automatiquement.
-- **SSH sert uniquement à administrer le Pi** depuis ton réseau local. (Attention à la confusion :
+- **SSH sert uniquement à administrer le Pi**, depuis la maison ou via Tailscale. (Attention à la confusion :
   le « certificat » du site est un certificat **TLS/HTTPS** ; SSH, lui, fonctionne avec une **paire de
   clés** — deux choses différentes, toutes deux couvertes plus bas.)
 

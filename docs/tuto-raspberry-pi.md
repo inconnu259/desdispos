@@ -1,26 +1,48 @@
-# Tuto — Installer Dés Dispos sur un Raspberry Pi 4, pas à pas
+# Tuto — Un Raspberry Pi 4 serveur maison : Dés Dispos, Home Assistant, fichiers et vidéos
 
-> Ce tuto part de zéro : du matériel à acheter jusqu'au site accessible en `https://` depuis Internet.
-> Pas d'écran ni de clavier pour le Pi : tout se fait depuis ton PC, puis en SSH.
+> Ce tuto part de zéro : du matériel à acheter jusqu'au site accessible en `https://` depuis Internet,
+> puis Home Assistant et un partage de fichiers et de vidéos, accessibles à la maison et — pour tes seuls
+> appareils — depuis l'extérieur. Pas d'écran ni de clavier pour le Pi : tout se fait depuis ton PC, en SSH.
 > Mémo technique (architecture, sauvegardes, mises à jour) : [`deploiement.md`](deploiement.md).
 >
 > ❓ Les écrans de Raspberry Pi Imager et du tableau de bord Cloudflare changent régulièrement : les
 > noms de menus ci-dessous peuvent varier légèrement, la logique reste la même.
 
+## Sommaire
+
+1. **Partie 1 — Matériel** : étape 1
+2. **Partie 2 — Le système** (installation sans écran, SSH, pare-feu, Docker) : étapes 2 à 6
+3. **Partie 3 — Le site Dés Dispos**, public sur Internet : étapes 7 à 13
+4. **Partie 4 — Accès privé depuis l'extérieur (Tailscale)** : étape 14
+5. **Partie 5 — Home Assistant** : étape 15
+6. **Partie 6 — Fichiers et vidéos** (partage réseau, Jellyfin) : étapes 16 et 17
+7. **Récapitulatif des accès**, au quotidien, dépannage
+
 ## Vue d'ensemble
 
 ```
-Internet ──HTTPS──▶ Cloudflare ◀──connexion SORTANTE── cloudflared ─┐
-                    (certificat,                                    │  sur le Pi
-                     adresse jdr.exemple.fr)        nginx ◀─────────┘  (Docker)
-                                                      │
-                                                     API ── PostgreSQL
-
-Ton PC ──SSH (réseau de la maison uniquement)──▶ Pi
+                        ┌──────────────────────── Raspberry Pi ─────────────────────────┐
+Internet (tout le monde)│                                                               │
+  ──HTTPS──▶ Cloudflare ◀── tunnel sortant ── cloudflared ──▶ nginx ──▶ API ──▶ Postgres │  le SITE, seul public
+                        │                                                               │
+Tes appareils, partout  │                                                               │
+  ──Tailscale (chiffré)─┼──▶ Home Assistant :8123   Partage de fichiers   Jellyfin :8096 │  PRIVÉ : tes appareils
+                        │                                                               │
+Réseau de la maison     │                                                               │
+  ──Wi-Fi / Ethernet────┼──▶ les mêmes services + SSH                                   │
+                        └───────────────────────────────────────────────────────────────┘
 ```
 
-- **Aucun port à ouvrir sur la box** : c'est le Pi qui appelle Cloudflare, pas l'inverse. Ton IP
-  personnelle reste cachée.
+Deux portes très différentes, choisies pour tes contraintes :
+
+| | Le site Dés Dispos | Home Assistant, fichiers, vidéos, SSH |
+|---|---|---|
+| **Qui peut y accéder** | N'importe qui sur Internet (puis les comptes du site) | **Seulement tes appareils**, un par un |
+| **Comment** | Cloudflare Tunnel, adresse `https://jdr.exemple.fr` | À la maison : réseau local. Dehors : **Tailscale** (réseau privé) |
+| **Visible publiquement** | Oui | **Non** : rien n'est exposé sur Internet |
+
+- **Aucun port à ouvrir sur la box**, pour rien : le tunnel Cloudflare et Tailscale sont tous deux des
+  connexions *sortantes* du Pi. Ton IP personnelle reste cachée.
 - **Le certificat HTTPS est fourni et renouvelé par Cloudflare**, automatiquement.
 - **SSH sert uniquement à administrer le Pi** depuis ton réseau local. (Attention à la confusion :
   le « certificat » du site est un certificat **TLS/HTTPS** ; SSH, lui, fonctionne avec une **paire de
@@ -28,24 +50,30 @@ Ton PC ──SSH (réseau de la maison uniquement)──▶ Pi
 
 ---
 
+# Partie 1 — Matériel
+
 ## Étape 1 — Le matériel
 
 | Élément | Recommandation | Pourquoi |
 |---|---|---|
-| **Raspberry Pi 4** | **4 Go de RAM ou plus** (2 Go : possible, voir étape 6) | Construire le front Angular demande de la mémoire |
+| **Raspberry Pi 4** | **4 Go minimum, 8 Go conseillés** avec Home Assistant et Jellyfin (2 Go : le site seul, voir étape 6) | Le site, sa base, Home Assistant et Jellyfin tournent ensemble ; construire le front Angular demande aussi de la mémoire |
 | **Alimentation** | **Officielle, USB-C 5 V / 3 A** | Une alimentation faible fait décrocher le SSD → base corrompue |
-| **SSD** | **120 à 250 Go** (le site + des années de sauvegardes tiennent dans quelques Go) | Bien plus fiable et rapide qu'une carte SD pour une base de données |
+| **SSD (système)** | **250 Go** suffisent pour le système, le site, Home Assistant et les sauvegardes | Bien plus fiable et rapide qu'une carte SD pour une base de données |
+| **Disque pour les fichiers et vidéos** (si tu en as beaucoup) | Un **disque dur externe 3,5" avec sa propre alimentation** (1 à 4 To), ou un SSD système plus grand (1 To) | Les vidéos prennent vite des centaines de Go. Un disque 2,5" alimenté par le Pi **en plus** du SSD dépasse ce que les ports USB fournissent (1,2 A au total) : prendre un disque alimenté, ou un hub USB alimenté |
 | **Liaison SSD** | **SSD SATA 2,5" + adaptateur USB 3.0 → SATA à puce ASMedia** (ex. StarTech USB3S2SAT3CB), ou un **SSD externe USB** prêt à l'emploi (Samsung T7, Crucial X6…) | Le Pi 4 n'a pas de port M.2 : le SSD passe forcément par l'USB. Éviter les adaptateurs à puce JMicron d'entrée de gamme (déconnexions, lenteurs) |
 | **Câble Ethernet** | Recommandé (un câble RJ45 vers la box) | Un serveur en Wi-Fi décroche plus souvent. Le Wi-Fi reste possible (configurable à l'étape 3) |
 | **Boîtier** | Avec dissipateur ou petit ventilateur | Le Pi 4 chauffe et ralentit pendant les builds |
 | **Carte micro-SD** (celle que tu as) | Seulement pour l'étape 2, si besoin | Mise à jour du programme de démarrage du Pi |
 | **Nom de domaine** | Environ 5 à 15 €/an (ex. `exemple.fr`) | L'adresse sympathique du site ; Cloudflare doit gérer ses DNS (étape 9) |
 | **Un autre support pour les sauvegardes** | Disque externe, autre PC, stockage distant | Une sauvegarde restée sur le Pi meurt avec lui |
+| **(Selon tes appareils domotiques)** Dongle Zigbee / Z-Wave USB | Seulement si tes appareils parlent Zigbee ou Z-Wave | Le Wi-Fi et le Bluetooth sont gérés par le Pi lui-même. Brancher le dongle via une **rallonge USB** (le port USB 3.0 voisin le brouille) |
 
 **Sur le Pi 4** : 2 ports **USB 3.0 bleus** (→ le SSD), 2 ports USB 2.0 noirs, 1 port **USB-C qui sert
 uniquement à l'alimentation**, 2 micro-HDMI (inutiles ici), 1 port Ethernet.
 
 ---
+
+# Partie 2 — Le système
 
 ## Étape 2 — (Si besoin) Autoriser le Pi à démarrer sur USB
 
@@ -194,11 +222,19 @@ docker compose version
 
 > ⚠️ Être dans le groupe `docker` équivaut à être administrateur du Pi : réserve-le à ton compte.
 
+> ⚠️ **Docker et le pare-feu** : un port publié par Docker (`ports: - '8096:8096'`) **contourne `ufw`**
+> (Docker écrit ses propres règles réseau) — il serait joignable de tout le réseau, quoi que dise `ufw`.
+> D'où deux règles suivies dans ce tuto : les conteneurs du site ne publient que sur `127.0.0.1`, et
+> Home Assistant et Jellyfin tournent en **réseau hôte** (`network_mode: host`), où `ufw` s'applique
+> normalement.
+
 **Pi à 2 Go de RAM seulement** : la construction du front risque de manquer de mémoire. Vérifie avec
 `free -h` ; si la ligne *Swap* est inférieure à 2 Go, augmente la mémoire d'échange (swap) avant
 l'étape 10 — la méthode dépend de la version de Raspberry Pi OS ❓ (voir la documentation officielle).
 
 ---
+
+# Partie 3 — Le site Dés Dispos (public)
 
 ## Étape 7 — Récupérer le site
 
@@ -362,6 +398,335 @@ Puis **copie régulièrement `~/desdispos/backups` hors du Pi**, et fais **une r
 
 ---
 
+# Partie 4 — Accès privé depuis l'extérieur : Tailscale
+
+## Étape 14 — Un réseau privé pour tes seuls appareils
+
+**Le principe.** Tailscale crée un réseau privé chiffré (un VPN « maillé », basé sur WireGuard) entre
+**tes** appareils : le Pi, ton téléphone, ton PC. Où que tu sois, ton téléphone joint le Pi comme s'il
+était à la maison — mais **personne d'autre** ne le peut, et **rien n'est exposé sur Internet** : aucun
+port ouvert sur la box, aucune adresse publique pour Home Assistant ou tes fichiers.
+
+C'est la réponse à « très restrictif sur l'accès des appareils » : chaque appareil doit être **ajouté
+explicitement** à ton réseau Tailscale, et des règles (étape 14.3) disent lequel a le droit de joindre quoi.
+
+**Coût** : l'offre *Personal* est gratuite pour un usage non commercial (en 2026 : jusqu'à 6
+utilisateurs, appareils illimités ❓ — vérifier sur https://tailscale.com/pricing).
+
+> **Pourquoi pas le tunnel Cloudflare, comme pour le site ?** Il est fait pour publier un service à
+> **tout le monde**. On peut le restreindre avec Cloudflare Access, mais l'application mobile Home
+> Assistant gère mal la page de connexion d'Access, et un partage de fichiers réseau (SMB) ne passe pas
+> par un tunnel web. Tailscale protège tout d'un coup, appareil par appareil. (Alternative 100 %
+> auto-hébergée : WireGuard seul — mais il faut alors ouvrir un port UDP sur la box.)
+
+### 14.1 Installer Tailscale sur le Pi
+
+Procédure officielle pour Linux : https://tailscale.com/download/linux (elle ajoute le dépôt `apt` de
+Tailscale, ce qui garde le paquet à jour avec le reste du système). Puis :
+
+```bash
+sudo tailscale up
+```
+
+La commande affiche un lien : ouvre-le sur ton PC, connecte-toi (compte Google, Microsoft, GitHub…) et
+approuve le Pi. Vérifie :
+
+```bash
+tailscale ip -4          # l'adresse du Pi dans ton réseau privé, du type 100.x.y.z
+```
+
+Dans la console Tailscale (https://login.tailscale.com/admin/machines) : renomme la machine `desdispos`
+et, dans son menu, **désactive l'expiration de la clé** (*Disable key expiry*) — sinon le Pi sort du
+réseau au bout de quelques mois et tu perds l'accès à distance.
+
+### 14.2 Ajouter tes appareils
+
+Installe l'application **Tailscale** sur ton téléphone et ton PC, connecte-toi avec **le même compte**.
+Grâce à **MagicDNS** (activé par défaut), le Pi est joignable par son nom, `desdispos`, depuis n'importe
+quel appareil du réseau Tailscale.
+
+Test : sur ton téléphone **en 4G** (Wi-Fi coupé), Tailscale actif, tu pourras ouvrir
+`http://desdispos:8123` une fois Home Assistant installé (étape 15).
+
+### 14.3 (Recommandé) Restreindre qui joint quoi
+
+Par défaut, tous les appareils de ton compte Tailscale peuvent se joindre entre eux. Pour être strict,
+la console → **Access controls** accepte des règles. Exemple : seuls ton téléphone et ton PC (marqués
+`tag:perso`) joignent le Pi (`tag:serveur`), et seulement sur SSH, Home Assistant, Jellyfin et le
+partage de fichiers :
+
+```json
+{
+  "tagOwners": {
+    "tag:perso": ["autogroup:admin"],
+    "tag:serveur": ["autogroup:admin"]
+  },
+  "grants": [
+    {
+      "src": ["tag:perso"],
+      "dst": ["tag:serveur"],
+      "ip": ["tcp:22", "tcp:8123", "tcp:8096", "tcp:445"]
+    }
+  ]
+}
+```
+
+Puis, dans la liste des machines (*Edit ACL tags*), attribue `tag:serveur` au Pi et `tag:perso` à ton
+téléphone et ton PC. Un nouvel appareil, même connecté à ton compte, ne joindra rien tant qu'il n'a pas
+ce tag. Active aussi **Device approval** (*Settings*) : tout nouvel appareil doit être approuvé à la main.
+
+❓ La syntaxe des règles évolue : l'éditeur de la console la valide avant d'enregistrer, fie-toi à lui.
+⚠️ Si tu te verrouilles dehors, ce n'est pas grave : à la maison, le réseau local fonctionne toujours.
+
+### 14.4 Ouvrir le pare-feu du Pi au réseau Tailscale
+
+```bash
+sudo ufw allow in on tailscale0
+```
+
+Le trafic Tailscale arrive par l'interface `tailscale0` : il a déjà passé les règles de l'étape 14.3, le
+Pi l'accepte. Le reste d'Internet n'atteint toujours rien.
+
+---
+
+# Partie 5 — Home Assistant
+
+## Étape 15 — Installer Home Assistant (version « Container »)
+
+**Quelle version ?** *Home Assistant OS* veut le Pi **pour lui seul** (c'est un système complet) :
+incompatible avec le site. On installe donc **Home Assistant Container**, dans Docker, à côté du reste.
+Différence pratique : pas de « boutique d'add-ons » intégrée (un add-on n'est qu'un autre conteneur, à
+installer soi-même si besoin). Toutes les **intégrations** (lampes, prises, capteurs, box, TV…) restent
+disponibles.
+
+### 15.1 Lancer Home Assistant
+
+```bash
+mkdir -p ~/homeassistant && cd ~/homeassistant
+nano compose.yml
+```
+
+```yaml
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    # Réseau hôte : nécessaire à la découverte automatique des appareils (mDNS) ; et ufw s'y applique.
+    network_mode: host
+    # Accès au matériel (Bluetooth, dongle Zigbee…) — recommandé par la documentation officielle.
+    privileged: true
+    environment:
+      TZ: Europe/Paris
+    volumes:
+      - ./config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+```
+
+```bash
+docker compose up -d
+docker compose logs -f        # Ctrl+C une fois le démarrage terminé
+```
+
+Référence : https://www.home-assistant.io/installation/raspberrypi-other (procédure officielle, à
+consulter en cas de doute — c'est elle qui fait foi).
+
+### 15.2 Ouvrir l'accès sur le Pi
+
+Home Assistant écoute sur le port **8123**. Autorise le réseau de la maison (Tailscale l'est déjà depuis
+l'étape 14.4) :
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 8123 proto tcp
+```
+
+Les conteneurs du site, eux, n'y ont pas accès : leur réseau Docker n'est pas dans les plages autorisées.
+Même en cas de faille dans le site, la domotique reste hors de portée.
+
+### 15.3 Premier lancement
+
+Depuis ton PC à la maison : `http://desdispos.local:8123`. Crée le compte propriétaire, puis :
+- **Profil → Sécurité → Authentification multifacteur** : active-la (code dans une appli comme Aegis ou
+  Google Authenticator). Ce compte pilote la maison : il mérite un second facteur.
+- Les appareils détectés apparaissent dans *Paramètres → Appareils et services*.
+
+### 15.4 Depuis l'extérieur
+
+Tailscale actif sur le téléphone, ouvre **`http://desdispos:8123`** — ou, dans l'**application
+Home Assistant**, ajoute un serveur avec cette adresse. Le trafic est chiffré par Tailscale de bout en
+bout ; rien n'est publié sur Internet.
+
+> **Et accessible à tous sur Internet, sans Tailscale ?** Possible (Cloudflare Tunnel vers le port 8123,
+> plus les réglages `use_x_forwarded_for` / `trusted_proxies` de Home Assistant), ou avec l'abonnement
+> officiel *Home Assistant Cloud* (environ 6,50 €/mois ❓). Déconseillé ici : une page de connexion de
+> domotique exposée au monde entier, pour un usage qui se limite à tes appareils.
+
+### 15.5 Mises à jour et sauvegardes
+
+```bash
+cd ~/homeassistant && docker compose pull && docker compose up -d
+```
+
+Sauvegardes : *Paramètres → Système → Sauvegardes* crée une archive dans
+`~/homeassistant/config/backups/` — à copier hors du Pi avec celles du site.
+
+---
+
+# Partie 6 — Fichiers et vidéos
+
+## Étape 16 — Le disque de stockage et le partage réseau
+
+**Le principe.** Un dossier du Pi (ou un disque entier) est partagé sur le réseau avec **Samba** (le
+protocole des dossiers partagés Windows, « SMB ») : il apparaît dans l'Explorateur Windows, le Finder,
+et les applis de fichiers des téléphones. Accessible à la maison, et depuis l'extérieur **via Tailscale
+seulement**.
+
+> ⛔ **Ne jamais exposer un partage SMB directement sur Internet** (aucun port 445 ouvert sur la box) :
+> c'est l'une des portes d'entrée les plus attaquées qui soient. Tailscale suffit.
+
+### 16.1 (Si disque séparé) Préparer le disque
+
+⚠️ **Le formatage efface tout le disque.** Vérifie trois fois son nom avant.
+
+```bash
+lsblk -o NAME,SIZE,MODEL,MOUNTPOINT      # repère le nouveau disque, ex. sdb (le SSD système est en général sda)
+```
+
+S'il n'a pas encore de partition, crée-en une avec `sudo fdisk /dev/sdb` (`g` table GPT, `n` nouvelle
+partition en acceptant les valeurs par défaut, `w` écrire). Puis :
+
+```bash
+sudo mkfs.ext4 -L stockage /dev/sdb1
+sudo mkdir -p /srv/stockage
+sudo blkid /dev/sdb1                     # note la valeur UUID="…"
+sudo nano /etc/fstab
+```
+
+Ajoute cette ligne (avec ton UUID). `nofail` évite que le Pi refuse de démarrer si le disque est
+débranché :
+
+```
+UUID=ton-uuid  /srv/stockage  ext4  defaults,nofail  0  2
+```
+
+```bash
+sudo systemctl daemon-reload && sudo mount -a && df -h /srv/stockage
+```
+
+Sans disque séparé, un simple `sudo mkdir -p /srv/stockage` sur le SSD suffit. Dans les deux cas :
+
+```bash
+sudo mkdir -p /srv/stockage/documents /srv/stockage/videos
+sudo chown -R $USER:$USER /srv/stockage
+```
+
+### 16.2 Installer et configurer Samba
+
+```bash
+sudo apt install -y samba
+sudo smbpasswd -a $USER          # mot de passe du partage : choisis-en un solide
+sudo nano /etc/samba/smb.conf
+```
+
+Dans la section `[global]`, ajoute :
+
+```ini
+   # Seulement le réseau de la maison et le réseau Tailscale, en SMB récent, jamais en invité.
+   hosts allow = 127.0.0.1 192.168.1.0/24 100.64.0.0/10
+   hosts deny = 0.0.0.0/0
+   server min protocol = SMB2_10
+   smb encrypt = desired
+   map to guest = never
+```
+
+Et, tout à la fin du fichier, le partage (`jdr` = ton utilisateur) :
+
+```ini
+[stockage]
+   path = /srv/stockage
+   valid users = jdr
+   read only = no
+   browseable = yes
+```
+
+Pour d'autres personnes de la maison : crée-leur un compte (`sudo adduser --no-create-home --shell /usr/sbin/nologin prenom`, puis
+`sudo smbpasswd -a prenom`) et un second partage, par exemple les vidéos en `read only = yes`.
+
+```bash
+testparm -s >/dev/null && sudo systemctl restart smbd
+sudo ufw allow from 192.168.1.0/24 to any app Samba
+```
+
+### 16.3 Y accéder
+
+| Depuis | Adresse (à la maison) | Via Tailscale |
+|---|---|---|
+| Windows (Explorateur) | `\\desdispos.local\stockage` | `\\desdispos\stockage` |
+| macOS (Finder → Aller → Se connecter au serveur) | `smb://desdispos.local/stockage` | `smb://desdispos/stockage` |
+| Android | Appli de fichiers avec SMB (ex. *Material Files*), ou **VLC** pour lire les vidéos | idem, Tailscale actif |
+| iPhone | App **Fichiers** → *Se connecter au serveur* → `smb://desdispos.local` | `smb://desdispos` |
+
+Identifiant : ton utilisateur (`jdr`) et le mot de passe défini avec `smbpasswd`.
+
+## Étape 17 — (Optionnel) Jellyfin : une vraie médiathèque pour les vidéos
+
+Le partage suffit pour lire une vidéo avec VLC. **Jellyfin** ajoute une médiathèque : affiches, reprise
+de lecture, applis TV, téléphone et navigateur.
+
+```bash
+mkdir -p ~/jellyfin && cd ~/jellyfin
+nano compose.yml
+```
+
+```yaml
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    # Réseau hôte : ufw s'applique (un port publié par Docker le contournerait).
+    network_mode: host
+    volumes:
+      - ./config:/config
+      - ./cache:/cache
+      - /srv/stockage/videos:/media/videos:ro      # lecture seule : Jellyfin ne touche pas à tes vidéos
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+```
+
+```bash
+docker compose up -d
+sudo ufw allow from 192.168.1.0/24 to any port 8096 proto tcp
+```
+
+Ensuite `http://desdispos.local:8096` à la maison (`http://desdispos:8096` via Tailscale) : crée le
+compte administrateur, ajoute la bibliothèque `/media/videos`.
+
+⚠️ **Limite du Pi 4** : il lit très bien une vidéo **telle quelle** (« lecture directe »), mais
+**convertir** une vidéo à la volée (transcodage) le met vite à genoux — au mieux un flux 1080p, pas de
+4K ❓. Préfère des vidéos dans un format lu nativement par tes appareils (MP4 / H.264).
+
+---
+
+## Récapitulatif des accès
+
+| Service | À la maison | Depuis l'extérieur | Qui |
+|---|---|---|---|
+| **Site Dés Dispos** | `https://jdr.exemple.fr` | `https://jdr.exemple.fr` | Tout le monde (comptes du site ; + Cloudflare Access si activé) |
+| **Home Assistant** | `http://desdispos.local:8123` | `http://desdispos:8123` (Tailscale) | Tes appareils autorisés + compte HA (2FA) |
+| **Fichiers (SMB)** | `\\desdispos.local\stockage` | `\\desdispos\stockage` (Tailscale) | Tes appareils autorisés + utilisateurs Samba |
+| **Jellyfin** | `http://desdispos.local:8096` | `http://desdispos:8096` (Tailscale) | Tes appareils autorisés + comptes Jellyfin |
+| **SSH (administration)** | `ssh jdr@desdispos.local` | `ssh jdr@desdispos` (Tailscale) | Ta clé SSH uniquement |
+
+Sur la box : **toujours aucun port ouvert**. Seul le site est visible publiquement.
+
+---
+
 ## Au quotidien
 
 | Je veux… | Commande (sur le Pi, dans `~/desdispos`) |
@@ -372,6 +737,9 @@ Puis **copie régulièrement `~/desdispos/backups` hors du Pi**, et fais **une r
 | Arrêter / relancer le site | `docker compose -f docker-compose.prod.yml --profile tunnel stop` / `start` |
 | Mettre à jour le Pi | `sudo apt update && sudo apt full-upgrade -y` (automatique pour la sécurité) |
 | Faire de la place (vieilles images) | `docker image prune -f` |
+| Mettre à jour Home Assistant / Jellyfin | `cd ~/homeassistant` (ou `~/jellyfin`) puis `docker compose pull && docker compose up -d` |
+| Voir les appareils de mon réseau Tailscale | `tailscale status` |
+| Vérifier le pare-feu | `sudo ufw status numbered` |
 
 ---
 
@@ -386,4 +754,8 @@ Puis **copie régulièrement `~/desdispos/backups` hors du Pi**, et fais **une r
 | Le site répond « 502 Bad Gateway » sur Internet | Le tunnel tourne mais pas nginx : `ps` ; vérifier que le service du tunnel vise bien `web:8080` |
 | « Origine de la requête refusée » à la connexion | `WEB_ORIGIN` ne correspond pas exactement à l'adresse du site (`https://`, pas de `/` final) |
 | Les e-mails n'arrivent pas | Dossier spam ; enregistrements SPF/DKIM dans Cloudflare ; journaux de l'API |
-| Disque USB qui « disparaît » | Alimentation trop faible ou adaptateur JMicron : changer d'adaptateur / d'alimentation |
+| Disque USB qui « disparaît » | Alimentation trop faible ou adaptateur JMicron : changer d'adaptateur / d'alimentation ; disque de stockage 2,5" en plus du SSD → hub USB alimenté |
+| Home Assistant injoignable à la maison | `docker compose logs` dans `~/homeassistant` ; règle `ufw` du port 8123 ; plage `192.168.1.0/24` adaptée à ta box ? |
+| Rien ne répond via Tailscale | Appli Tailscale active sur le téléphone ? `tailscale status` sur le Pi ; règles *Access controls* (tags) ; clé du Pi expirée (étape 14.1) |
+| Le partage SMB refuse la connexion | `testparm -s` ; utilisateur créé avec `smbpasswd -a` ; `hosts allow` ; règle `ufw` Samba |
+| Jellyfin saccade | Transcodage en cours : préférer des fichiers MP4/H.264 lus directement |

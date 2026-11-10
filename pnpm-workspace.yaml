@@ -14,6 +14,15 @@ allowBuilds:
   prisma: true
   unrs-resolver: true
 
+# Correctifs de sécurité imposés à TOUTES les copies d'un paquet, y compris les dépendances
+# indirectes — sans quoi relever la seule dépendance directe laisse la copie vulnérable aux
+# appelants indirects.
+overrides:
+  # handlebars < 4.7.10 : injection JavaScript à la compilation de gabarits (avis critiques).
+  # La copie tirée par @nestjs-modules/mailer est celle qui rend les e-mails de l'application ;
+  # ts-jest en tire une troisième. Retrait possible quand ces deux amonts exigent >= 4.7.10.
+  handlebars: ^4.7.10
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Vulnérabilités écartées de `pnpm audit` — voir docs/security.md § Dépendances
 # ─────────────────────────────────────────────────────────────────────────────

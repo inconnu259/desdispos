@@ -131,6 +131,11 @@ export class Harness {
     );
 
     await app.init();
+    // Une écoute unique, sur un port éphémère de la boucle locale (`app.close()` la referme). Sans elle,
+    // supertest ouvre puis REFERME un port à chaque requête : des requêtes parallèles (`Promise.all` de
+    // `createUser`) se marchaient dessus — la première à finir fermait le port pendant qu'une autre s'y
+    // connectait (`connect ECONNRESET` intermittent en CI, Story 43.2).
+    await app.listen(0, '127.0.0.1');
 
     // Les tâches planifiées (rappel horaire) ne doivent pas tourner en parallèle des tests : le
     // rappel est déclenché explicitement par la suite qui le caractérise.

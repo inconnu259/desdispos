@@ -22,6 +22,17 @@ overrides:
   # La copie tirée par @nestjs-modules/mailer est celle qui rend les e-mails de l'application ;
   # ts-jest en tire une troisième. Retrait possible quand ces deux amonts exigent >= 4.7.10.
   handlebars: ^4.7.10
+  # proxy-addr < 2.0.8 : usurpation d'IP par adresse IPv6 projetée IPv4 sur un sous-réseau de
+  # confiance (avis critique). Tiré par Express, alors que l'API active `trust proxy` en production :
+  # risque de contourner la limitation de débit fondée sur l'IP. Reste dans la plage ^2.0.7 d'Express.
+  proxy-addr: ^2.0.8
+  # body-parser < 2.4.0 : déni de service par octets en trop après un corps compressé. Tiré par
+  # Express ; reste dans sa plage ^2.2.1.
+  body-parser: ^2.4.0
+  # multer < 2.5.0 : dénis de service à l'envoi de fichiers. @nestjs/platform-express l'épingle en
+  # 2.2.0 exactement : la surcharge l'en sort (version mineure, envois couverts par les tests).
+  # Retrait possible quand @nestjs/platform-express épinglera >= 2.5.0.
+  multer: ^2.5.0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Vulnérabilités écartées de `pnpm audit` — voir docs/security.md § Dépendances

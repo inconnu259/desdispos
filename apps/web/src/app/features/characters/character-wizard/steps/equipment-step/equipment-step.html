@@ -1,5 +1,9 @@
 <div class="equipment-step">
-  <div class="equipment-step__mode-toggle" role="radiogroup" aria-label="Choisir un mode d'équipement">
+  <div
+    class="equipment-step__mode-toggle"
+    role="radiogroup"
+    [attr.aria-label]="theme.tone()['characters_wizard.equipment_mode_aria']"
+  >
     <button
       type="button"
       class="equipment-step__mode-button"
@@ -8,7 +12,7 @@
       [attr.aria-checked]="mode() === 'kit'"
       (click)="selectMode('kit')"
     >
-      Nécessaire pré-fait
+      {{ theme.tone()['characters_wizard.equipment_mode_kit'] }}
     </button>
     <button
       type="button"
@@ -18,7 +22,7 @@
       [attr.aria-checked]="mode() === 'shopping'"
       (click)="selectMode('shopping')"
     >
-      Achat libre
+      {{ theme.tone()['characters_wizard.equipment_mode_shopping'] }}
     </button>
   </div>
 
@@ -30,7 +34,16 @@
           <ul>
             @for (line of pkg.items; track line.itemKey) {
               <li>
-                {{ line.quantity }}× {{ labelFor(line.itemKey) }}
+                {{ line.quantity }}×
+                @if (helpByKey(line.itemKey); as h) {
+                  <button
+                    type="button"
+                    class="equipment-step__detail-trigger"
+                    (click)="detail.openContent(h, $event)"
+                  >{{ labelFor(line.itemKey) }}</button>
+                } @else {
+                  {{ labelFor(line.itemKey) }}
+                }
               </li>
             }
           </ul>
@@ -41,35 +54,131 @@
 
   @if (mode() === 'shopping') {
     <div class="equipment-step__shopping">
-      <p class="equipment-step__budget" [class.equipment-step__budget--over]="overBudget()">
-        Budget : {{ totalSpent() }} / {{ budgetGold }} Po
-        @if (overBudget()) {
-          — dépassement de {{ totalSpent() - budgetGold }} Po
-        }
-      </p>
-
-      <ul class="equipment-step__catalog">
-        @for (item of itemEntries(); track item.key) {
-          <li class="equipment-step__catalog-item">
-            <span>{{ item.label }} — {{ item.priceGold }} Po</span>
-            <button type="button" (click)="addItem(item.key)">Ajouter</button>
-          </li>
-        }
-      </ul>
-
-      @if (selectedLines().length > 0) {
-        <div class="equipment-step__cart">
-          <h3>Panier</h3>
-          <ul>
-            @for (line of selectedLines(); track line.key) {
-              <li class="equipment-step__cart-line">
-                <span>{{ line.quantity }}× {{ line.entry.label }} ({{ line.entry.priceGold * line.quantity }} Po)</span>
-                <button type="button" (click)="removeItem(line.key)">Retirer</button>
-              </li>
-            }
-          </ul>
+      <div class="equipment-step__gauge" [class.equipment-step__gauge--over]="overBudget()">
+        <p class="equipment-step__budget" [class.equipment-step__budget--over]="overBudget()">
+          {{ budgetText() }}
+          @if (overBudget()) {
+            {{ overBudgetText() }}
+          }
+        </p>
+        <div class="equipment-step__gauge-track" aria-hidden="true">
+          <div class="equipment-step__gauge-fill" [style.width.%]="budgetPercent()"></div>
         </div>
+      </div>
+
+      <input
+        type="search"
+        class="equipment-step__search"
+        [attr.aria-label]="theme.tone()['character.equipment_search_label']"
+        [placeholder]="theme.tone()['character.equipment_search_placeholder']"
+        [value]="search()"
+        (input)="onSearch($any($event.target).value)"
+      />
+
+      @if (hasNoResult()) {
+        <p class="equipment-step__no-result" role="status">
+          {{ theme.tone()['character.equipment_search_empty'] }}
+        </p>
+      }
+
+      <!-- Filtre : tout le catalogue, ou seulement ce qu'on a déjà pris (remplace l'ancien panier). -->
+      <div
+        class="equipment-step__filters"
+        role="group"
+        [attr.aria-label]="theme.tone()['characters_wizard.equipment_filter_aria']"
+      >
+        <button
+          type="button"
+          class="equipment-step__filter"
+          [class.equipment-step__filter--on]="view() === 'all'"
+          [attr.aria-pressed]="view() === 'all'"
+          (click)="setView('all')"
+        >{{ theme.tone()['character.equipment_filter_all'] }}</button>
+        <button
+          type="button"
+          class="equipment-step__filter"
+          [class.equipment-step__filter--on]="view() === 'mine'"
+          [attr.aria-pressed]="view() === 'mine'"
+          (click)="setView('mine')"
+        >{{ theme.tone()['character.equipment_filter_mine'] }} · {{ mineCount() }}</button>
+      </div>
+
+      @for (group of groups(); track group.nature) {
+        <section class="equipment-step__catalog-group">
+          <h3 class="equipment-step__group-title">
+            <button
+              type="button"
+              class="equipment-step__group-toggle"
+              [attr.aria-expanded]="isGroupOpen(group.nature)"
+              [attr.aria-label]="groupLabel(group.title, group.items.length)"
+              (click)="toggleGroup(group.nature)"
+            >
+              <span><b>{{ group.title }}</b> · {{ group.items.length }}</span>
+              <app-icon
+                class="equipment-step__chevron"
+                [class.equipment-step__chevron--closed]="!isGroupOpen(group.nature)"
+                name="deplier"
+              />
+            </button>
+          </h3>
+          @if (isGroupOpen(group.nature)) {
+            <ul class="equipment-step__catalog">
+              @for (item of group.items; track item.key) {
+                <li
+                  class="equipment-step__catalog-item"
+                  [class.equipment-step__catalog-item--on]="qtyOf(item.key) > 0"
+                >
+                  <span>
+                    @if (itemHelp(item); as h) {
+                      <button
+                        type="button"
+                        class="equipment-step__detail-trigger"
+                        (click)="detail.openContent(h, $event)"
+                      >{{ item.label }}</button>
+                    } @else {
+                      {{ item.label }}
+                    }
+                    <span class="equipment-step__price">— {{ item.priceGold }} Po</span>
+                  </span>
+                  @if (qtyOf(item.key) > 0) {
+                    <!-- Objet pris : « Ajouter » devient un compteur − ×n + (− à ×1 le retire). -->
+                    <span class="equipment-step__stepper">
+                      <button
+                        type="button"
+                        class="equipment-step__step-btn"
+                        [attr.aria-label]="qtyLabel('less', item.label)"
+                        (click)="removeItem(item.key)"
+                      >−</button>
+                      <span class="equipment-step__qty" aria-live="polite">×{{ qtyOf(item.key) }}</span>
+                      <button
+                        type="button"
+                        class="equipment-step__step-btn"
+                        [attr.aria-label]="qtyLabel('more', item.label)"
+                        (click)="addItem(item.key)"
+                      >+</button>
+                    </span>
+                  } @else {
+                    <button type="button" class="equipment-step__add" (click)="addItem(item.key)">
+                      {{ theme.tone()['common.ajouter'] }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
       }
     </div>
+  }
+
+  @if (detail.selected(); as d) {
+    <app-detail-surface
+      [title]="d.title"
+      [body]="d.body"
+      [rows]="d.rows ?? []"
+      [narrative]="d.narrative ?? ''"
+      [openToken]="detail.openToken()"
+      (closed)="detail.close()"
+    />
   }
 </div>

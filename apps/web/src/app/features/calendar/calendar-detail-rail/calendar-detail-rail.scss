@@ -1,7 +1,7 @@
 /* Story 36.1 — rail de détail.
    Valeurs reprises du contrat d'UI (mockups/contrat-ui-calendrier.html, CSS `.rail`).
-   Aucun slug de thème n'est ciblé : tout passe par les tokens, pour rester neutre au renommage
-   `medieval-steampunk` → `atelier-cuivre` prévu à l'épic 35. */
+   Aucun slug de thème n'est ciblé : tout passe par les tokens, pour rester neutre aux
+   renommages de thème (ex. `medieval-steampunk` → `atelier-cuivre`, épic 35). */
 
 .rail {
   margin-top: 8px;
@@ -51,14 +51,7 @@
 }
 
 .ic {
-  flex: 0 0 13px;
-  width: 13px;
-  height: 13px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  --app-icon-size: 13px;
   color: var(--jdr-text-muted);
 }
 

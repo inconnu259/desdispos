@@ -3,6 +3,9 @@ import { vi } from 'vitest';
 import type { CharacterNoteDto } from '@master-jdr/shared';
 import { NotesJournal } from './notes-journal';
 import { CharacterService } from '../../../../core/characters/character.service';
+import { TONE_MAP } from '../../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function makeNote(overrides: Partial<CharacterNoteDto> = {}): CharacterNoteDto {
   return {
@@ -118,9 +121,7 @@ describe('NotesJournal', () => {
     await comp.submitAdd();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain(
-      "Le journal n'a pas pu être mis à jour. Réessayez.",
-    );
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['evolution.notes_error']);
   });
 
   it('erreur réseau (toggle) affiche le message inline', async () => {
@@ -134,9 +135,7 @@ describe('NotesJournal', () => {
     await comp.toggleShare(makeNote());
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain(
-      "Le journal n'a pas pu être mis à jour. Réessayez.",
-    );
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['evolution.notes_error']);
   });
 
   it('une note ajoutée avec succès après un échec de chargement initial redevient visible (corrige loadError non réinitialisé, revue de code Story 6.5)', async () => {
@@ -157,5 +156,44 @@ describe('NotesJournal', () => {
     const entries = fixture.nativeElement.querySelectorAll('.notes-journal__entry');
     expect(entries.length).toBe(1);
     expect(entries[0].textContent).toContain('Nouvelle note');
+  });
+
+  it('propriétaire : le bouton de partage porte cadenas-ouvert (partagée) / cadenas-ferme (privée), deux noms différents', async () => {
+    const notes = [makeNote({ id: 'n1', shared: true }), makeNote({ id: 'n2', shared: false })];
+    const fixture = await createComponent({ getNotes: vi.fn().mockResolvedValue(notes) }, true);
+
+    const toggles = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.notes-journal__share-toggle'),
+    ) as HTMLButtonElement[];
+    const names = toggles.map((t) => t.querySelector('app-icon')?.getAttribute('data-icon'));
+    expect(names).toEqual(['cadenas-ouvert', 'cadenas-ferme']);
+    expect(names[0]).not.toBe(names[1]);
+    // Le nom du bouton reste son aria-label d'état ; l'icône, à côté du texte, est décorative.
+    expect(toggles[0].getAttribute('aria-label')).toBe(
+      GRIMOIRE_TONE['evolution.note_shared_label'],
+    );
+    expect(toggles[1].getAttribute('aria-label')).toBe(
+      GRIMOIRE_TONE['evolution.note_private_label'],
+    );
+    expect(toggles[0].querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(toggles[0].textContent).not.toContain('🔓');
+  });
+
+  it('lecteur : l’icône seule porte le nom de l’état, pas son conteneur', async () => {
+    const notes = [makeNote({ id: 'n1', shared: true }), makeNote({ id: 'n2', shared: false })];
+    const fixture = await createComponent({ getNotes: vi.fn().mockResolvedValue(notes) }, false);
+
+    const indicators = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.notes-journal__share-indicator'),
+    ) as HTMLElement[];
+    expect(indicators.map((i) => i.querySelector('app-icon')?.getAttribute('data-icon'))).toEqual([
+      'cadenas-ouvert',
+      'cadenas-ferme',
+    ]);
+    expect(indicators.map((i) => i.querySelector('svg')?.getAttribute('aria-label'))).toEqual([
+      GRIMOIRE_TONE['evolution.note_shared_label'],
+      GRIMOIRE_TONE['evolution.note_private_label'],
+    ]);
+    expect(indicators[0].hasAttribute('aria-label')).toBe(false);
   });
 });

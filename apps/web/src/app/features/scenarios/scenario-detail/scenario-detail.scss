@@ -2,3 +2,13 @@
   color: var(--mat-sys-error, #b00020);
   padding: 1rem;
 }
+
+.scenario-detail__back {
+  /* Pictogramme <app-icon> décoratif à côté du libellé : 18px, aligné au texte. */
+  --app-icon-size: 18px;
+
+  app-icon {
+    vertical-align: middle;
+    margin-inline-end: 0.25rem;
+  }
+}

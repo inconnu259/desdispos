@@ -1,0 +1,86 @@
+/* Story 32.3 — DESIGN.md §7.1, StatusBadge. Quatre teintes, jamais une cinquième ; le libellé est
+   toujours présent, la teinte le double.
+
+   Les valeurs reprennent à l'identique celles arbitrées par la vue Agenda (`agenda-badge.utils` /
+   `calendar-agenda-view.scss`, story 36.11) : mêmes tokens, mêmes opacités, même invariant de
+   contraste écrit d'avance dans `styles.scss` au-dessus de `.theme-grimoire-emeraude`. Rien n'est
+   redéfini ici, tout est appliqué. */
+.status-badge {
+  display: inline-block;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 1px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.status-badge--todo {
+  color: var(--jdr-status-todo, #f0a030);
+  border-color: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 45%, transparent);
+  background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 16%, transparent);
+}
+
+.status-badge--live {
+  color: var(--jdr-status-live, #3fd4ff);
+  border-color: color-mix(in srgb, var(--jdr-status-live, #3fd4ff) 45%, transparent);
+  background: color-mix(in srgb, var(--jdr-status-live, #3fd4ff) 15%, transparent);
+}
+
+/* Badge « done » : le texte prend `--jdr-text-muted`, JAMAIS `--jdr-status-done` — texte et fond
+   seraient alors de la même famille et le badge deviendrait illisible. Fond à 12 % (et pas 26 %) :
+   écart mesuré et assumé par la story 36.11, `status-done` étant plus CLAIR que la surface dans
+   les trois thèmes. */
+.status-badge--done {
+  color: var(--jdr-text-muted, #9b8fb0);
+  border-color: var(--jdr-status-done, #5a5a6a);
+  background: color-mix(in srgb, var(--jdr-status-done, #5a5a6a) 12%, transparent);
+}
+
+/* Story 42.1 : badge « annulé » — le rouge de l'irréversible/annulé (`--color-unavailable`), toujours doublé
+   du mot « Annulée » et d'un contour plein : jamais la couleur seule. */
+.status-badge--cancelled {
+  color: var(--color-cancelled-text, #f26a5c);
+  border-color: var(--color-unavailable, #e74c3c);
+  background: color-mix(in srgb, var(--color-unavailable, #e74c3c) 14%, transparent);
+  font-weight: 600;
+}
+
+/* L'imminence est une INTENSITÉ, jamais une cinquième couleur : une seule teinte, trois densités
+   de remplissage. Le signal reste donc perceptible sans distinguer les couleurs (P-1). */
+.status-badge--soon {
+  color: var(--jdr-status-soon, #ff7ad9);
+  border-color: color-mix(in srgb, var(--jdr-status-soon, #ff7ad9) 45%, transparent);
+  background: transparent;
+}
+
+.status-badge--near {
+  background: color-mix(in srgb, var(--jdr-status-soon, #ff7ad9) 15%, transparent);
+}
+
+/* Palier imminent : badge PLEIN, texte sur fond primaire du thème — jamais du blanc, qui tombe à
+   2,3-3,2:1 sur une teinte claire (DESIGN.md §7.1). */
+.status-badge--imminent {
+  background: var(--jdr-status-soon, #ff7ad9);
+  border-color: var(--jdr-status-soon, #ff7ad9);
+  color: var(--jdr-bg, #0d0a14);
+  font-weight: 600;
+}
+
+/* Brouillon : traitement de FORME, pas de teinte (MJ seul — le masquage anti-spoil est fait en
+   amont, par `ScenarioTimeline.buildNodes()`). Contour tireté + texte atténué : identifiable en
+   niveaux de gris, sans percevoir finement les couleurs. */
+.status-badge--draft {
+  color: var(--jdr-text-muted, #9b8fb0);
+  border-color: var(--jdr-text-muted, #9b8fb0);
+  border-style: dashed;
+  background: transparent;
+}
+
+/* 🚨 Ce composant n'introduit AUCUNE animation ni transition — donc rien à couper sous
+   `prefers-reduced-motion: reduce`, et aucune information n'en dépend. C'est volontaire : le
+   palier imminent se signale par un badge plein en poids 600 (DESIGN.md §7.1) et par son libellé
+   humain (« ce soir »), exactement comme `.agenda-badge--imminent`. Une pulsation propre à cette
+   surface aurait fait clignoter le même état ici et pas dans l'Agenda. Toute animation ajoutée
+   plus tard doit rétablir un bloc `@media (prefers-reduced-motion: reduce)`. */

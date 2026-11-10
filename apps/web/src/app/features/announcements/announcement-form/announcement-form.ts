@@ -91,7 +91,7 @@ export class AnnouncementFormComponent implements OnInit {
         this.selectedScenarioId.set(null);
       }
     } catch {
-      this.error.set('Impossible de charger les scénarios. Réessayez.');
+      this.error.set(this.theme.tone()['common.impossible_de_charger_les_scenarios_reessayez']);
     }
   }
 
@@ -113,7 +113,7 @@ export class AnnouncementFormComponent implements OnInit {
       // Revue de code : un échec de create() (ex. 400 backend, panne réseau) laissait une promesse
       // rejetée non gérée, sans retour utilisateur — le texte/la sélection sont volontairement
       // conservés (pas de reset) pour permettre une nouvelle tentative sans ressaisie.
-      this.error.set('Impossible de publier l’annonce. Réessayez.');
+      this.error.set(this.theme.tone()['announcement.publish_error']);
     } finally {
       this.publishing.set(false);
     }

@@ -10,6 +10,7 @@ import type {
   PartieKind,
   ScenarioDto,
 } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { CharacterService } from '../../../core/characters/character.service';
@@ -52,6 +53,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   imports: [
     MatDialogModule,
     MatButtonModule,
+    AppIcon,
     ScenarioStatusBadge,
     CharacterSummaryCard,
     SeanceList,
@@ -190,7 +192,7 @@ export class ScenarioReadDialog implements OnInit {
       try {
         this.ownNotes.set(await this.characterSvc.getNotes(owner.id));
       } catch {
-        this.journalError.set('Impossible de charger votre journal.');
+        this.journalError.set(this.theme.tone()['scenarios.read_journal_load_error']);
       }
     }
 
@@ -209,7 +211,7 @@ export class ScenarioReadDialog implements OnInit {
       this.scenario.set(await this.scenarios.participate(this.scenario().id));
     } catch (err) {
       this.participantError.set(
-        extractErrorMessage(err, 'Impossible de participer à ce scénario.'),
+        extractErrorMessage(err, this.theme.tone()['scenarios.read_participate_error']),
       );
     } finally {
       this.participatePending.set(false);
@@ -230,7 +232,9 @@ export class ScenarioReadDialog implements OnInit {
       const updated = await this.characterSvc.setJournalAutoAssociate(owner.id, value);
       this.characters.update((list) => list.map((c) => (c.id === updated.id ? updated : c)));
     } catch (err) {
-      this.journalError.set(extractErrorMessage(err, 'Impossible de modifier ce réglage.'));
+      this.journalError.set(
+        extractErrorMessage(err, this.theme.tone()['scenarios.read_setting_error']),
+      );
     }
   }
 
@@ -248,7 +252,7 @@ export class ScenarioReadDialog implements OnInit {
       this.ownNotes.update((list) => list.map((n) => (n.id === updated.id ? updated : n)));
     } catch (err) {
       this.journalError.set(
-        extractErrorMessage(err, 'Impossible de modifier la visibilité de cette note.'),
+        extractErrorMessage(err, this.theme.tone()['scenarios.read_note_visibility_error']),
       );
     }
   }
@@ -268,13 +272,28 @@ export class ScenarioReadDialog implements OnInit {
       this.ownNotes.update((list) => list.map((n) => (n.id === updated.id ? updated : n)));
     } catch (err) {
       this.journalError.set(
-        extractErrorMessage(err, 'Impossible de mettre à jour cette association.'),
+        extractErrorMessage(err, this.theme.tone()['scenarios.read_note_association_error']),
       );
     }
   }
 
   protected close(): void {
     this.dialogRef.close();
+  }
+
+  /** Libellé du bouton MJ : « Modifier » si un résumé de fin existe déjà, « Rédiger » sinon. */
+  protected resumeButtonLabel(): string {
+    const key = this.scenario().resumeFin
+      ? 'scenarios.read_resume_edit'
+      : 'scenarios.read_resume_write';
+    return this.theme.tone()[key];
+  }
+
+  /** Étiquette d'accessibilité du cadenas : l'état courant de la note (partagée ou privée). */
+  protected noteShareLabel(shared: boolean): string {
+    return this.theme.tone()[
+      shared ? 'scenarios.read_note_shared_aria' : 'scenarios.read_note_private_aria'
+    ];
   }
 
   // Story 8.5 : seul chemin de navigation MJ → ScenarioEditor pour un scénario PASSE (fix revue de

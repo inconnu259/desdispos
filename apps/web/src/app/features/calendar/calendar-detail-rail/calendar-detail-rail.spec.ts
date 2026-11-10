@@ -6,6 +6,10 @@ import type { CalendarLayerKey } from '@master-jdr/shared';
 import { CalendarDetailRail } from './calendar-detail-rail';
 import type { AgendaEntry } from '../calendar-agenda-view/calendar-agenda-view';
 import { type DayDetail, buildDayDetail } from '../day-detail.utils';
+import { TONE_MAP } from '../../../core/theme/tones';
+import { fillTone } from '../../../core/theme/tone-format';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const ALL_LAYERS: CalendarLayerKey[] = [
   'mes-indisponibilites',
@@ -87,7 +91,9 @@ describe('CalendarDetailRail — structure', () => {
     const detail = buildDayDetail('2026-08-20', [], ALL_LAYERS, [], NOW);
     const fixture = await createRail(detail);
 
-    expect(fixture.nativeElement.textContent).toContain('Rien de prévu');
+    expect(fixture.nativeElement.textContent).toContain(
+      GRIMOIRE_TONE['calendar.rail_status_unknown'],
+    );
   });
 
   it('affiche le libellé du jour', async () => {
@@ -126,9 +132,17 @@ describe('CalendarDetailRail — accessibilité', () => {
     const detail = buildDayDetail('2026-08-20', [], ALL_LAYERS, [], NOW);
     const fixture = await createRail(detail);
 
-    const icons = fixture.nativeElement.querySelectorAll('svg.ic');
+    const icons = fixture.nativeElement.querySelectorAll('app-icon.ic');
     expect(icons.length).toBeGreaterThan(0);
-    for (const icon of icons) expect(icon.getAttribute('aria-hidden')).toBe('true');
+    for (const icon of icons) {
+      expect(icon.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
+      expect(icon.querySelector('svg')!.getAttribute('aria-label')).toBeNull();
+    }
+    expect(Array.from(icons).map((i: any) => i.getAttribute('data-icon'))).toEqual([
+      'matin',
+      'apres-midi',
+      'soir',
+    ]);
   });
 
   it('écrit l’état en toutes lettres, jamais par la seule couleur (AC8)', async () => {
@@ -166,7 +180,9 @@ describe('CalendarDetailRail — AC11 : activer une ligne ouvre le scénario', (
     const fixture = await createRail(detail);
 
     const button = fixture.nativeElement.querySelector('button.v--action');
-    expect(button.getAttribute('aria-label')).toBe('Ouvrir le scénario Le Convoi du Nord');
+    expect(button.getAttribute('aria-label')).toBe(
+      fillTone(GRIMOIRE_TONE['common.ouvrir_le_scenario_label'], { label: 'Le Convoi du Nord' }),
+    );
   });
 
   it('émet la cible du scénario au clic', async () => {
@@ -216,7 +232,7 @@ describe('CalendarDetailRail — état sans détail', () => {
     const fixture = await createRail(null);
 
     expect(fixture.nativeElement.querySelector('.rail')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Aucun jour à détailler');
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['calendar.rail_empty']);
   });
 });
 
@@ -318,7 +334,11 @@ describe('CalendarDetailRail — piste de participation (Story 36.6)', () => {
     const detail = buildDayDetail('2026-08-20', [VOTE], ALL_LAYERS, [], NOW);
     const fixture = await createRail(detail);
 
-    expect(fixture.nativeElement.textContent).toContain('tu as dit oui');
+    expect(fixture.nativeElement.textContent).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.util_answer_mine'], {
+        answer: GRIMOIRE_TONE['calendar.util_answer_yes'],
+      }),
+    );
   });
 
   it('couche de votes éteinte : la piste disparaît avec le libellé', async () => {
@@ -351,7 +371,9 @@ describe('CalendarDetailRail — le chemin CLAVIER vers le sélecteur de répons
 
     const btn = fixture.nativeElement.querySelector('button.v--vote');
     expect(btn).toBeTruthy();
-    expect(btn.getAttribute('aria-label')).toContain('Répondre au vote');
+    expect(btn.getAttribute('aria-label')).toContain(
+      GRIMOIRE_TONE['common.repondre_au_vote_label'].split(' — ')[0],
+    );
   });
 
   it('AC7 — l’activer signale l’option, avec le bouton pour ancre', async () => {
@@ -374,6 +396,27 @@ describe('CalendarDetailRail — le chemin CLAVIER vers le sélecteur de répons
     expect(emitted[0].date.getDate()).toBe(20);
   });
 
+  it('Story 47.5 — l’activer signale TOUTES les plages du vote qui couvrent le créneau', async () => {
+    const other: AgendaEntry = {
+      ...VOTE,
+      key: 'poll-p1-o2',
+      date: '2026-08-19',
+      slot: 'EVENING',
+      endDate: '2026-08-20',
+      endSlot: 'AFTERNOON',
+      vote: { ...VOTE.vote!, optionId: 'o2' },
+    };
+    const detail = buildDayDetail('2026-08-20', [VOTE, other], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const emitted: any[] = [];
+    fixture.componentInstance.voteOptionActivated.subscribe((e: any) => emitted.push(e));
+
+    (fixture.nativeElement.querySelector('button.v--vote') as HTMLElement).click();
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].lines.map((l: any) => l.vote.optionId).sort()).toEqual(['o1', 'o2']);
+  });
+
   it('AC12 — sans participation servie, la ligne de vote n’est pas activable', async () => {
     // Dégradation honnête héritée de la 36.6 : pas d'agrégats ⇒ pas de piste, donc pas de
     // sélecteur non plus. Une ligne cliquable qui ne saurait pas quoi ouvrir serait un piège.
@@ -382,7 +425,7 @@ describe('CalendarDetailRail — le chemin CLAVIER vers le sélecteur de répons
     const fixture = await createRail(detail);
 
     expect(fixture.nativeElement.querySelector('button.v--vote')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('vote de date');
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['common.vote_de_date']);
   });
 });
 
@@ -487,5 +530,53 @@ describe('CalendarDetailRail — la disponibilité du groupe (Story 36.8)', () =
     );
 
     expect((fixture.nativeElement as HTMLElement).querySelector('.grp')).toBeNull();
+  });
+});
+
+describe('CalendarDetailRail — une plage jour par jour (Story 47.3)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const WEEKEND: AgendaEntry = {
+    ...SEANCE,
+    key: 'seance-w',
+    date: '2026-11-06',
+    slot: 'EVENING',
+    endDate: '2026-11-08',
+    endSlot: 'AFTERNOON',
+    label: 'Week-end jeux',
+  };
+
+  it('le premier jour écrit la plage, sans « (suite) »', async () => {
+    const detail = buildDayDetail('2026-11-06', [WEEKEND], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('ven. 6 nov. soir → dim. 8 nov. après-midi');
+    expect(text).not.toContain('(suite)');
+  });
+
+  it('les jours suivants écrivent « (suite) » et la plage, sur chaque créneau couvert', async () => {
+    const detail = buildDayDetail('2026-11-07', [WEEKEND], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const lines = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.m--span'));
+    expect(lines).toHaveLength(3);
+    for (const line of lines) {
+      expect(line.textContent).toContain('(suite)');
+      expect(line.textContent).toContain('ven. 6 nov. soir → dim. 8 nov. après-midi');
+    }
+  });
+
+  it('la ligne activable annonce la plage entière', async () => {
+    const detail = buildDayDetail('2026-11-07', [WEEKEND], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button.v--action');
+    expect(button?.getAttribute('aria-label')).toContain(
+      'du vendredi 6 soir au dimanche 8 après-midi',
+    );
+  });
+
+  it('un créneau seul : aucune ligne de plage', async () => {
+    const detail = buildDayDetail('2026-08-20', [SEANCE], ALL_LAYERS, [], NOW);
+    const fixture = await createRail(detail);
+    expect((fixture.nativeElement as HTMLElement).querySelector('.m--span')).toBeNull();
   });
 });

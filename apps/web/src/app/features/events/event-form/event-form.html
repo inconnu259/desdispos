@@ -1,0 +1,327 @@
+<!-- Story 40.1 / 40.2 : champs d'une conjonction, partagés par la création et la modification. -->
+<form class="ec" novalidate (ngSubmit)="submitted.emit()">
+  <!-- Nom* -->
+  <mat-form-field appearance="outline" class="ec__full">
+    <mat-label>{{ theme.tone()['partie.ralliement_event_name_label'] }}</mat-label>
+    <input
+      matInput
+      name="title"
+      class="ec__name"
+      required
+      maxlength="120"
+      [ngModel]="title()"
+      (ngModelChange)="title.set($event)"
+    />
+  </mat-form-field>
+
+  <!-- Date : fixée | sondage (Story 40.5). À la modification, le mode de la conjonction est figé. -->
+  <div class="ec__field">
+    <span class="ec__label" [id]="uid + '-date-mode'">{{
+      theme.tone()['partie.ralliement_event_date_label']
+    }}</span>
+    <mat-button-toggle-group
+      class="ec__toggle ec__date-mode"
+      [value]="mode()"
+      (change)="setMode($event.value)"
+      [attr.aria-labelledby]="uid + '-date-mode'"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="fixed" [disabled]="modeLocked() && mode() !== 'fixed'">{{
+        theme.tone()['partie.ralliement_event_date_fixed']
+      }}</mat-button-toggle>
+      <mat-button-toggle value="poll" [disabled]="modeLocked() && mode() !== 'poll'">{{
+        theme.tone()['partie.ralliement_event_date_poll']
+      }}</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
+  @if (mode() === 'fixed') {
+    <div class="ec__row">
+      <div class="ec__field">
+        <label class="ec__label" [for]="uid + '-day'">{{
+          theme.tone()['partie.ralliement_event_day_label']
+        }}</label>
+        <input
+          [id]="uid + '-day'"
+          class="ec__input ec__day"
+          type="date"
+          lang="fr"
+          required
+          [attr.min]="todayKey"
+          [value]="day()"
+          (input)="day.set($any($event.target).value)"
+        />
+      </div>
+      <div class="ec__field">
+        <span class="ec__label" [id]="uid + '-slot'">{{
+          theme.tone()['partie.ralliement_event_slot_label']
+        }}</span>
+        <mat-button-toggle-group
+          class="ec__toggle ec__slot"
+          [value]="slot()"
+          (change)="slot.set($event.value)"
+          [attr.aria-labelledby]="uid + '-slot'"
+          hideSingleSelectionIndicator
+        >
+          @for (s of slots; track s) {
+            <mat-button-toggle [value]="s">{{ slotLabels[s] }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+      </div>
+    </div>
+  } @else {
+    <!-- Story 40.5 : les créneaux candidats se placent ici, dans la fenêtre (pas de calendrier). Le
+         nombre et la plage des créneaux sont écrits ; chaque pastille se retire. -->
+    <div class="ec__poll">
+      <span class="ec__label" [id]="uid + '-poll-slots'">{{
+        theme.tone()['partie.ralliement_event_poll_slots_label']
+      }}</span>
+      @if (canPickInCalendar()) {
+        <!-- Story 40.5b : choisir les créneaux sur la grille du groupe ; le brouillon fait l'aller-retour. -->
+        <button type="button" class="ec__poll-calendar-btn" (click)="composeRequested.emit()">
+          {{ theme.tone()['partie.ralliement_event_poll_calendar_btn'] }}
+        </button>
+      }
+      <div class="ec__row ec__poll-add">
+        <div class="ec__field">
+          <label class="ec__label" [for]="uid + '-poll-day'">{{
+            theme.tone()['partie.ralliement_event_day_label']
+          }}</label>
+          <input
+            [id]="uid + '-poll-day'"
+            class="ec__input ec__poll-day"
+            type="date"
+            lang="fr"
+            [attr.min]="todayKey"
+            [value]="pollDay()"
+            (input)="pollDay.set($any($event.target).value)"
+          />
+        </div>
+        <div class="ec__field">
+          <span class="ec__label" [id]="uid + '-poll-slot'">{{
+            theme.tone()['partie.ralliement_event_slot_label']
+          }}</span>
+          <mat-button-toggle-group
+            class="ec__toggle ec__poll-slot"
+            [value]="pollSlot()"
+            (change)="pollSlot.set($event.value)"
+            [attr.aria-labelledby]="uid + '-poll-slot'"
+            hideSingleSelectionIndicator
+          >
+            @for (s of slots; track s) {
+              <mat-button-toggle [value]="s">{{ slotLabels[s] }}</mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="ec__poll-add-btn"
+        [disabled]="!canAddSlot()"
+        (click)="addSlot()"
+      >
+        {{ theme.tone()['partie.ralliement_event_poll_add_btn'] }}
+      </button>
+
+      @if (pollSummary(); as summary) {
+        <p class="ec__poll-summary" role="status">{{ summary }}</p>
+        <ul class="ec__chips ec__poll-chips" [attr.aria-labelledby]="uid + '-poll-slots'">
+          @for (o of pollOptions(); track o.date + o.slot) {
+            <li>
+              <span class="ec__chip ec__chip--slot">
+                <span class="ec__chip-label">{{ slotLabel(o) }}</span>
+                <button
+                  type="button"
+                  class="ec__chip-remove"
+                  [attr.aria-label]="slotRemoveAria(o)"
+                  (click)="removeSlot(o)"
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
+              </span>
+            </li>
+          }
+        </ul>
+      }
+      @if (!enoughSlots()) {
+        <span class="ec__places-hint ec__poll-min">{{
+          theme.tone()['partie.ralliement_event_poll_min_hint']
+        }}</span>
+      }
+      @if (modeLocked()) {
+        <span class="ec__places-hint ec__poll-remove-hint">{{
+          theme.tone()['partie.ralliement_event_poll_remove_hint']
+        }}</span>
+      }
+
+      <div class="ec__field ec__poll-deadline-field">
+        <label class="ec__label" [for]="uid + '-poll-deadline'">{{
+          theme.tone()['partie.ralliement_event_poll_deadline_label']
+        }}</label>
+        <input
+          [id]="uid + '-poll-deadline'"
+          class="ec__input ec__poll-deadline"
+          type="date"
+          lang="fr"
+          required
+          [attr.min]="deadlineMin()"
+          [value]="pollDeadline()"
+          (input)="pollDeadline.set($any($event.target).value)"
+        />
+      </div>
+    </div>
+  }
+
+  <!-- Story 47.1 : la durée du rendez-vous (créneaux enchaînés), à la création comme à la modification. -->
+  <div class="ec__field ec__duration">
+    <app-duration-stepper
+      [(value)]="durationSlots"
+      [start]="durationStart()"
+      [readonly]="durationLocked()"
+    />
+  </div>
+
+  <div class="ec__row">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ theme.tone()['partie.ralliement_event_place_label'] }}</mat-label>
+      <input
+        matInput
+        name="lieu"
+        class="ec__place"
+        maxlength="80"
+        [ngModel]="lieu()"
+        (ngModelChange)="lieu.set($event)"
+      />
+    </mat-form-field>
+    <div class="ec__field">
+      <label class="ec__label" [for]="uid + '-time'">{{
+        theme.tone()['partie.ralliement_event_time_label']
+      }}</label>
+      <!-- Le widget natif rend déjà « HH:MM » : une ÉTIQUETTE, rien ne la parse en aval. -->
+      <input
+        [id]="uid + '-time'"
+        class="ec__input ec__time"
+        type="time"
+        [value]="heureRdv()"
+        (input)="heureRdv.set($any($event.target).value)"
+      />
+    </div>
+  </div>
+
+  <mat-form-field appearance="outline" class="ec__full">
+    <mat-label>{{ theme.tone()['partie.ralliement_event_note_label'] }}</mat-label>
+    <textarea
+      matInput
+      name="notePratique"
+      class="ec__note"
+      rows="2"
+      maxlength="200"
+      [ngModel]="notePratique()"
+      (ngModelChange)="notePratique.set($event)"
+    ></textarea>
+  </mat-form-field>
+
+  <!-- Participation -->
+  @if (soiree()) {
+    <!-- Story 41.2 : une soirée se fait sur invitation, sans limite — lecture seule, on invite ensuite
+         depuis l'onglet des invitations. -->
+    <div class="ec__field ec__participation-readonly">
+      <span class="ec__label">{{ theme.tone()['partie.ralliement_event_participation_label'] }}</span>
+      <p class="ec__places-hint">{{ theme.tone()['partie.ralliement_soiree_participation_form'] }}</p>
+    </div>
+  } @else {
+  <div class="ec__field">
+    <span class="ec__label" [id]="uid + '-participation'">{{
+      theme.tone()['partie.ralliement_event_participation_label']
+    }}</span>
+    <mat-button-toggle-group
+      class="ec__toggle ec__participation"
+      [value]="participation()"
+      (change)="setParticipation($event.value)"
+      [attr.aria-labelledby]="uid + '-participation'"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="all">{{
+        theme.tone()['partie.ralliement_event_participation_all']
+      }}</mat-button-toggle>
+      <mat-button-toggle value="limited">{{
+        theme.tone()['partie.ralliement_event_participation_limited']
+      }}</mat-button-toggle>
+    </mat-button-toggle-group>
+    @if (participation() === 'limited') {
+      <div class="ec__places">
+        <div class="ec__stepper">
+          <button
+            type="button"
+            class="ec__step ec__step--less"
+            [disabled]="places() <= minPlaces()"
+            [attr.aria-label]="theme.tone()['partie.ralliement_event_places_less']"
+            (click)="decrement()"
+          >
+            −
+          </button>
+          <input
+            class="ec__places-count"
+            type="number"
+            inputmode="numeric"
+            [attr.min]="minPlaces()"
+            [attr.aria-label]="theme.tone()['partie.ralliement_event_places_count_aria']"
+            [value]="places()"
+            (change)="setPlaces($any($event.target))"
+          />
+          <button
+            type="button"
+            class="ec__step ec__step--more"
+            [attr.aria-label]="theme.tone()['partie.ralliement_event_places_more']"
+            (click)="increment()"
+          >
+            +
+          </button>
+        </div>
+        <span class="ec__places-hint">{{
+          theme.tone()['partie.ralliement_event_places_hint']
+        }}</span>
+      </div>
+    }
+  </div>
+
+  }
+
+  <!-- Story 40.4 : réserver une place à des membres (création, places limitées). Pastilles à cocher ;
+       l'état coché est écrit (coche + aria-pressed), jamais porté par la couleur seule. -->
+  @if (canReserve()) {
+    <div class="ec__field ec__reserve">
+      <span class="ec__label" [id]="uid + '-reserve'">{{
+        theme.tone()['partie.ralliement_event_reserve_label']
+      }}</span>
+      @if (candidates().length === 0) {
+        <span class="ec__places-hint ec__reserve-none">{{
+          theme.tone()['partie.ralliement_event_reserve_none']
+        }}</span>
+      } @else {
+        <ul class="ec__chips" [attr.aria-labelledby]="uid + '-reserve'">
+          @for (m of candidates(); track m.userId) {
+            <li>
+              <button
+                type="button"
+                class="ec__chip"
+                [class.ec__chip--on]="isReserved(m.userId)"
+                [attr.aria-pressed]="isReserved(m.userId)"
+                [attr.aria-label]="chipAria(m)"
+                [disabled]="chipDisabled(m.userId)"
+                (click)="toggleReserved(m.userId)"
+              >
+                @if (isReserved(m.userId)) {
+                  <app-icon name="valider" />
+                }{{ m.displayName }}
+              </button>
+            </li>
+          }
+        </ul>
+        <span class="ec__places-hint ec__reserve-hint">{{
+          theme.tone()['partie.ralliement_event_reserve_hint']
+        }}</span>
+      }
+    </div>
+  }
+</form>

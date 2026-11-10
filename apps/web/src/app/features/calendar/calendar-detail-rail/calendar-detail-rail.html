@@ -4,7 +4,7 @@
   class="rail"
   [class.rail--loading]="loading()"
   role="region"
-  aria-label="Détail du jour"
+  [attr.aria-label]="theme.tone()['common.detail_du_jour']"
   aria-live="polite"
 >
   @if (detail(); as d) {
@@ -16,20 +16,13 @@
         <span class="w">
           @switch (s.slot) {
             @case ('MORNING') {
-              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 5v3M5.6 9.6l2 2M18.4 9.6l-2 2M3 18h18M7 18a5 5 0 0 1 10 0" />
-              </svg>
+              <app-icon class="ic" name="matin" />
             }
             @case ('AFTERNOON') {
-              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="4.2" />
-                <path d="M12 3v2M12 19v2M3 12h2M19 12h2" />
-              </svg>
+              <app-icon class="ic" name="apres-midi" />
             }
             @case ('EVENING') {
-              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 14.5A7.5 7.5 0 0 1 9.5 4a7.5 7.5 0 1 0 10.5 10.5z" />
-              </svg>
+              <app-icon class="ic" name="soir" />
             }
           }
           <span class="w-label">{{ s.label }}</span>
@@ -46,6 +39,9 @@
             (click)="onActivate(s)"
           >
             <b>{{ s.seanceLabel }}</b>
+            @if (spanLine(s); as line) {
+              <span class="m m--span">{{ line }}</span>
+            }
             <!-- Story 36.5 — le rail est la surface la plus riche : il demande le niveau
                  complet, contrairement à la bande. Interpolation seule (AC9). -->
             @if (seanceInfo(s)) {
@@ -55,6 +51,9 @@
         } @else if (s.seanceLabel) {
           <span class="v">
             <b>{{ s.seanceLabel }}</b>
+            @if (spanLine(s); as line) {
+              <span class="m m--span">{{ line }}</span>
+            }
             @if (seanceInfo(s)) {
               <span class="m">{{ seanceInfo(s) }}</span>
             }
@@ -72,7 +71,7 @@
             (click)="onVoteActivate(s, $event)"
           >
             <b>{{ s.pollLabel }}</b
-            ><span class="m"> · vote de date</span>
+            ><span class="m"> {{ theme.tone()['common.vote_de_date'] }}</span>
             <!-- Story 36.6 — le rail est la surface la plus riche : il porte la piste, son
                  compteur ET ma réponse en toutes lettres, à TOUTES les largeurs (AC4, AC5). -->
             <app-poll-track class="rail-track track-lg" [vote]="s.pollVote" />
@@ -80,7 +79,7 @@
         } @else if (s.pollLabel) {
           <span class="v">
             <b>{{ s.pollLabel }}</b
-            ><span class="m"> · vote de date</span>
+            ><span class="m"> {{ theme.tone()['common.vote_de_date'] }}</span>
           </span>
         } @else {
           <!-- Jamais la couleur seule : l'état est écrit en toutes lettres (AC8). -->
@@ -116,7 +115,9 @@
       </div>
     }
   } @else {
-    <div class="dl">Détail du jour</div>
-    <div class="it"><span class="v empty">Aucun jour à détailler</span></div>
+    <div class="dl">{{ theme.tone()['common.detail_du_jour'] }}</div>
+    <div class="it">
+      <span class="v empty">{{ theme.tone()['calendar.rail_empty'] }}</span>
+    </div>
   }
 </div>

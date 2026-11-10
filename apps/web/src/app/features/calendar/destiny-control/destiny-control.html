@@ -3,34 +3,37 @@
   <div class="destiny">
     <button
       type="button"
+      #chip
       class="destiny__chip"
       [class.destiny__chip--active]="active()"
-      [attr.aria-pressed]="active()"
-      (click)="toggled.emit()"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="listOpen()"
+      (click)="listRequested.emit()"
     >
-      <span class="destiny__glyph" aria-hidden="true">✦</span>{{ chipLabel() }}
+      <app-icon class="destiny__glyph" name="destinee" />{{ chipLabel() }}
     </button>
 
-    <!-- AC2 : la navigation n'existe qu'à partir de DEUX votes ouverts (EXPERIENCE.md:575). Un
-         seul vote n'a pas de « suivant », et des chevrons inertes mentiraient sur ce qui existe. -->
-    @if (active() && polls().length > 1) {
+    <!-- ⚠️ Story 44.4 — les chevrons parcourent les CRÉNEAUX du vote actif, plus les votes (on change de vote par
+         la liste). Ils n'existent qu'à partir de DEUX créneaux : un seul n'a pas de « suivant », et des
+         chevrons inertes mentiraient sur ce qui existe. -->
+    @if (active() && slotCount() > 1) {
       <span class="destiny__nav">
         <button
           type="button"
           class="destiny__arrow"
-          aria-label="Vote précédent"
+          [attr.aria-label]="theme.tone()['calendar.destiny_prev_aria']"
           (click)="prevRequested.emit()"
         >
-          ‹
+          <app-icon name="precedent" />
         </button>
-        <span class="destiny__pos">{{ position() }} / {{ polls().length }}</span>
+        <span class="destiny__pos">{{ slotPosition() }} / {{ slotCount() }}</span>
         <button
           type="button"
           class="destiny__arrow"
-          aria-label="Vote suivant"
+          [attr.aria-label]="theme.tone()['calendar.destiny_next_aria']"
           (click)="nextRequested.emit()"
         >
-          ›
+          <app-icon name="suivant" />
         </button>
       </span>
     }

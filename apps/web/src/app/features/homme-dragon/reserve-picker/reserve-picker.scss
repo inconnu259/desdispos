@@ -1,0 +1,390 @@
+// Story 33.6 — fenêtre de choix d'un souffle (DESIGN.md §7 du delta, planche P3-P6). Les styles de
+// la coquille (voile, panneau, en-tête/pied épinglés) sont ceux de `DetailSurface`. Aucun token de
+// thème ajouté ; teinte de race = gemme + liséré seulement, le texte reste en `on-surface`.
+@use '../race-tint' as *;
+
+.race-vert {
+  @include race-tint(vert);
+}
+.race-bleu {
+  @include race-tint(bleu);
+}
+.race-rouge {
+  @include race-tint(rouge);
+}
+.race-noir {
+  @include race-tint(noir);
+}
+
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.rp {
+  &__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+  }
+
+  &__title {
+    flex: 1 1 150px;
+    min-width: 0;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  &__count {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  &__seg {
+    display: inline-flex;
+    gap: 4px;
+
+    i {
+      display: block;
+      width: 28px;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--mat-sys-outline-variant);
+    }
+
+    .rp__seg-on {
+      background: var(--mat-sys-primary);
+    }
+  }
+
+  &__rule,
+  &__note {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant);
+
+    strong {
+      color: var(--mat-sys-on-surface);
+    }
+  }
+
+  &__group {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__cat-h {
+    margin: 0;
+  }
+
+  &__cat-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 0.25rem;
+    border: 0;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    background: transparent;
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  // Chevron de repli : ouvert, `deplier` vers le bas ; fermé, le même pictogramme pivoté de −90°.
+  &__chevron {
+    flex: 0 0 auto;
+    --app-icon-size: 16px;
+    color: var(--mat-sys-on-surface-variant);
+    transition: transform 0.15s ease;
+  }
+
+  &__chevron--closed {
+    transform: rotate(-90deg);
+  }
+
+  &__cat-btn[aria-expanded='false'] &__cat-name {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  // Raison du repli, écrite à pleine intensité (même vocabulaire que sur les lignes).
+  &__why {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--mat-sys-on-surface);
+  }
+
+  &__badge {
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding: 0 7px;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__panel {
+    padding: 0.5rem 0 0.375rem;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  &__sub {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin: 0.5rem 0 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  &__gem {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, var(--hl, rgba(255, 255, 255, 0.85)) 0%, transparent 40%),
+      conic-gradient(from 200deg, var(--g1, #888), var(--g2, #ccc), var(--g1, #888));
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+  }
+
+  // Ligne de souffle : un <button> natif pleine largeur (Entrée / Espace = consulter).
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 56px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 10px;
+    background: var(--mat-sys-surface-container-highest, transparent);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    // Consultée : contour 2px + pastille pleine, jamais l'accent seul.
+    &--sel {
+      border-color: var(--mat-sys-on-surface);
+      box-shadow: inset 0 0 0 1px var(--mat-sys-on-surface);
+      background: color-mix(in srgb, var(--mat-sys-primary) 16%, transparent);
+    }
+
+    // Grisée : consultable, non plaçable. Seul le NOM est atténué (≥ .6), jamais la pastille de
+    // coût ni la raison.
+    &--off {
+      background: transparent;
+      cursor: not-allowed;
+    }
+
+    &--off .rp__name {
+      opacity: 0.6;
+    }
+  }
+
+  &__txt {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__l1 {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  // Description sur 2 lignes (jamais une ellipse mono-ligne) ; le texte complet est dans le pied.
+  &__l2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    margin-top: 2px;
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__reason {
+    color: var(--mat-sys-on-surface);
+  }
+
+  &__l2.rp__reason {
+    display: block;
+    overflow: visible;
+  }
+
+  &__mark {
+    padding: 1px 6px;
+    border: 1px solid var(--mat-sys-primary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface);
+  }
+
+  &__radio {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--mat-sys-on-surface);
+  }
+
+  // Zone de détail (pied épinglé) : sa description défile seule.
+  &__dhead {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__ddesc {
+    margin: 0.5rem 0 0.375rem;
+    max-height: min(9rem, 20dvh);
+    overflow-y: auto;
+    font-size: 0.8125rem;
+  }
+
+  &__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px;
+    border: 1px solid var(--h, var(--mat-sys-on-surface-variant));
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  &__btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &--primary {
+      flex: 1 1 auto;
+      border-color: transparent;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+    }
+
+    // Inactif mais visible : reste focalisable, sa raison est liée par aria-describedby.
+    &--primary[aria-disabled='true'] {
+      border-color: var(--mat-sys-outline);
+      background: transparent;
+      color: var(--mat-sys-on-surface-variant);
+      cursor: not-allowed;
+    }
+  }
+}
+
+.stat-pill {
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--mat-sys-secondary-container, #e0dbef);
+  color: var(--mat-sys-on-secondary-container, #2a1a4a);
+}
+
+// Très petit écran en hauteur (320 × 256) : titre, compteur et zone de détail compacts — la barre
+// segmentée est décorative et disparaît, la description du pied se limite à 2 lignes (elle défile).
+@media (max-height: 420px) {
+  .rp {
+    &__head {
+      gap: 0;
+    }
+
+    &__title {
+      font-size: 0.8125rem;
+    }
+
+    &__count {
+      font-size: 0.75rem;
+    }
+
+    &__seg {
+      display: none;
+    }
+
+    &__rule {
+      margin-bottom: 0.25rem;
+    }
+
+    &__row {
+      min-height: 48px;
+      padding: 0.25rem 0.5rem;
+    }
+
+    &__ddesc {
+      margin: 0.125rem 0;
+      max-height: 2.4rem;
+      font-size: 0.75rem;
+    }
+
+    &__note {
+      margin-bottom: 0.25rem;
+    }
+  }
+}

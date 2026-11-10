@@ -6,10 +6,15 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import type { ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDto, SeanceDto, SessionPollDto } from '@master-jdr/shared';
 import { ScenarioTimeline } from './scenario-timeline';
+import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { ScenarioReadDialog } from '../scenario-read-dialog/scenario-read-dialog';
+import { TONE_MAP } from '../../../core/theme/tones';
+import { fillTone } from '../../../core/theme/tone-format';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function makeScenario(overrides: Partial<ScenarioDto>): ScenarioDto {
   return {
@@ -61,6 +66,7 @@ async function createComponent(
     providers: [
       provideAnimationsAsync(),
       { provide: ScenariosService, useValue: scenariosSvc },
+      { provide: AuthService, useValue: { currentUser: signal({ id: 'u1' }) } },
       { provide: MatDialog, useValue: dialog },
       { provide: Router, useValue: router },
       { provide: BreakpointObserver, useValue: makeBreakpointObserver(desktop) },
@@ -170,6 +176,33 @@ describe('ScenarioTimeline', () => {
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith(
       expect.objectContaining({ inline: 'center', behavior: 'smooth' }),
     );
+  });
+
+  it('AC7 + `prefers-reduced-motion` : le défilement devient instantané, jamais « smooth »', async () => {
+    const { fixture } = await createComponent([PASSE, A_VENIR], { desktop: true });
+    const comp = fixture.componentInstance as unknown as { onNodeFocus: (i: number) => void };
+    (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();
+    // Cet environnement jsdom n'expose même pas `matchMedia` (d'où la garde `typeof` côté
+    // composant) : sans ce stub, la branche « mouvement réduit » n'est jamais exercée.
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: () => ({ matches: true }) as MediaQueryList,
+    });
+
+    try {
+      comp.onNodeFocus(0);
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith(
+        expect.objectContaining({ inline: 'center', behavior: 'auto' }),
+      );
+    } finally {
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: original,
+      });
+    }
   });
 
   it('fondus : visibles selon la position de scroll (mesures mockées, jsdom n’a pas de vrai layout)', async () => {
@@ -320,6 +353,38 @@ describe('ScenarioTimeline', () => {
     ).toBe(false);
   });
 
+  // Story 32.3 — le badge partagé s'affiche sur la chronologie sans rien changer au masquage
+  // anti-spoil, qui reste entièrement porté par `buildNodes()`.
+  describe('Badges d’état (Story 32.3)', () => {
+    function badgeTexts(fixture: { nativeElement: HTMLElement }): string[] {
+      return [...fixture.nativeElement.querySelectorAll('.status-badge')].map((n) =>
+        (n.textContent ?? '').trim(),
+      );
+    }
+
+    it('MJ → un badge par scénario, « Brouillon » compris, et « Courant » jamais « En cours »', async () => {
+      const { fixture } = await createComponent([A_VENIR, BROUILLON, COURANT_1, PASSE], {
+        isMj: true,
+      });
+      const texts = badgeTexts(fixture);
+      expect(texts).toContain('Brouillon');
+      expect(texts).toContain('À venir');
+      expect(texts).toContain('Courant');
+      expect(texts).toContain('Passé');
+      expect(texts).not.toContain('En cours');
+    });
+
+    it('🚨 joueur → AUCUN badge « Brouillon », ni le moindre badge en trop', async () => {
+      const { fixture } = await createComponent([A_VENIR, BROUILLON, COURANT_1, PASSE]);
+      const texts = badgeTexts(fixture);
+      expect(texts).not.toContain('Brouillon');
+      // Rien ne doit trahir l'existence du brouillon : pas même un badge vide ou un espace
+      // réservé. Trois scénarios visibles = trois badges, jamais quatre.
+      expect(texts.length).toBe(3);
+      expect(fixture.nativeElement.querySelector('.status-badge--draft')).toBeNull();
+    });
+  });
+
   it('MJ + clic sur un BROUILLON → navigue vers la fiche d’édition, n’ouvre pas ScenarioReadDialog', async () => {
     const { fixture, dialog, router } = await createComponent([BROUILLON], { isMj: true });
     const comp = fixture.componentInstance as any;
@@ -455,6 +520,7 @@ describe('ScenarioTimeline', () => {
       providers: [
         provideAnimationsAsync(),
         { provide: ScenariosService, useValue: scenariosSvc },
+        { provide: AuthService, useValue: { currentUser: signal({ id: 'u1' }) } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
@@ -475,7 +541,7 @@ describe('ScenarioTimeline', () => {
 
     const button = fixture.nativeElement.querySelector('.error button');
     expect(button).toBeTruthy();
-    expect(button.textContent).toContain('Réessayer');
+    expect(button.textContent).toContain(GRIMOIRE_TONE['common.reessayer']);
 
     scenariosSvc.listAll.mockResolvedValue([PASSE]);
     button.click();
@@ -598,13 +664,21 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            endDate: '2026-08-15T00:00:00.000Z',
+            endSlot: 'AFTERNOON',
+            durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-avec-seances',
+            // Story 32.3 — date effective à la racine du DTO ; ici elle double `poll.chosenDate`,
+            // comme le fait le serveur.
+            dateValidee: '2026-08-15T00:00:00.000Z',
+            slotValidee: 'AFTERNOON',
             compteRendu: null,
             heureRdv: null,
             lieu: null,
             notePratique: null,
             createdAt: '2026-07-01T00:00:00.000Z',
+            can: { propose: false, edit: false, choose: false, extend: false },
             poll: {
               id: 'poll1',
               partieId: 'p1',
@@ -615,6 +689,7 @@ describe('ScenarioTimeline', () => {
               chosenSlot: 'AFTERNOON',
               // Story 36.6 — effectif de la troupe (MJ + membres).
               membersCount: 4,
+              durationSlots: 1,
               options: [],
             },
           },
@@ -625,24 +700,83 @@ describe('ScenarioTimeline', () => {
       expect(fixture.nativeElement.textContent).toContain('août');
     });
 
+    it("Story 47.3 : une séance sur plusieurs jours s'écrit « début → fin » sur la carte", async () => {
+      const scenario = makeScenario({
+        id: 's-plage',
+        status: 'COURANT',
+        seances: [
+          {
+            endDate: '2026-11-08T00:00:00.000Z',
+            endSlot: 'AFTERNOON',
+            durationSlots: 6,
+            id: 'seance1',
+            scenarioId: 's-plage',
+            dateValidee: '2026-11-06T00:00:00.000Z',
+            slotValidee: 'EVENING',
+            compteRendu: null,
+            heureRdv: null,
+            lieu: null,
+            notePratique: null,
+            createdAt: '2026-07-01T00:00:00.000Z',
+            can: { propose: false, edit: false, choose: false, extend: false },
+          },
+        ],
+      });
+      const { fixture } = await createComponent([scenario]);
+      const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+      expect(text).toMatch(/6 nov\.? → 8 nov\.?/);
+    });
+
+    it('Story 47.3 : fin le même jour que le début → une seule date, sans flèche', async () => {
+      const scenario = makeScenario({
+        id: 's-un-jour',
+        status: 'COURANT',
+        seances: [
+          {
+            endDate: '2026-11-06T00:00:00.000Z',
+            endSlot: 'EVENING',
+            durationSlots: 1,
+            id: 'seance1',
+            scenarioId: 's-un-jour',
+            dateValidee: '2026-11-06T00:00:00.000Z',
+            slotValidee: 'EVENING',
+            compteRendu: null,
+            heureRdv: null,
+            lieu: null,
+            notePratique: null,
+            createdAt: '2026-07-01T00:00:00.000Z',
+            can: { propose: false, edit: false, choose: false, extend: false },
+          },
+        ],
+      });
+      const { fixture } = await createComponent([scenario]);
+      expect(fixture.nativeElement.textContent).not.toContain('→');
+    });
+
     it('scénario avec séance non datée → "Date à définir" affiché', async () => {
       const scenarioWithSeances = makeScenario({
         id: 's-non-datee',
         status: 'COURANT',
         seances: [
           {
+            endDate: null,
+            endSlot: null,
+            durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-non-datee',
+            dateValidee: null,
+            slotValidee: null,
             compteRendu: null,
             heureRdv: null,
             lieu: null,
             notePratique: null,
             createdAt: '2026-07-01T00:00:00.000Z',
+            can: { propose: false, edit: false, choose: false, extend: false },
           },
         ],
       });
       const { fixture } = await createComponent([scenarioWithSeances]);
-      expect(fixture.nativeElement.textContent).toContain('Date à définir');
+      expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['common.date_a_definir']);
     });
 
     it('scénario sans séance → aucune liste .card-seances affichée', async () => {
@@ -657,18 +791,683 @@ describe('ScenarioTimeline', () => {
         status: 'COURANT',
         seances: [
           {
+            endDate: null,
+            endSlot: null,
+            durationSlots: 1,
             id: 'seance1',
             scenarioId: 's-mobile',
+            dateValidee: null,
+            slotValidee: null,
             compteRendu: null,
             heureRdv: null,
             lieu: null,
             notePratique: null,
             createdAt: '2026-07-01T00:00:00.000Z',
+            can: { propose: false, edit: false, choose: false, extend: false },
           },
         ],
       });
       const { fixture } = await createComponent([scenarioWithSeances], { desktop: false });
       expect(fixture.nativeElement.querySelector('.card-seances')).toBeTruthy();
+    });
+  });
+
+  // -- Story 32.4 -- refonte de la chronologie ----------------------------------------------
+  // Une assertion par ligne de la matrice d'E/S. Les dates des fixtures sont volontairement tres
+  // loin dans le passe (2020) ou dans le futur (2099) : aucun de ces tests ne doit basculer le jour
+  // ou l'horloge rattrape une date figee.
+  describe('Story 32.4 - noeud ancre, dates et compteur', () => {
+    function makeSeance(
+      id: string,
+      scenarioId: string,
+      iso: string | null,
+      extra: Partial<SeanceDto> = {},
+    ): SeanceDto {
+      return {
+        id,
+        scenarioId,
+        dateValidee: iso,
+        slotValidee: null,
+        compteRendu: null,
+        heureRdv: null,
+        lieu: null,
+        notePratique: null,
+        createdAt: '2020-01-01T00:00:00.000Z',
+        durationSlots: 1,
+        endDate: iso,
+        endSlot: null,
+        can: { propose: false, edit: false, choose: false, extend: false },
+        ...extra,
+      };
+    }
+
+    /** Les espaces insecables produits par `Intl` ne doivent pas faire echouer une comparaison. */
+    function normalize(text: string): string {
+      return text
+        .replace(/[\u00a0\u202f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    /** Les membres exerces ici sont `protected` : la forme structurelle evite un `any` nu. */
+    interface TimelineInternals {
+      nodes: () => { key: string; scenarios: ScenarioDto[] }[];
+      visibleCount: () => number;
+      nodeDateLabel: (node: { key: string; scenarios: ScenarioDto[] }) => string;
+    }
+
+    function instance(fixture: { componentInstance: unknown }): TimelineInternals {
+      return fixture.componentInstance as unknown as TimelineInternals;
+    }
+
+    function firstNode(fixture: { componentInstance: unknown }) {
+      return instance(fixture).nodes()[0];
+    }
+
+    function nodeKeys(fixture: { componentInstance: unknown }): string[] {
+      return instance(fixture)
+        .nodes()
+        .map((n) => n.key);
+    }
+
+    function countText(fixture: { nativeElement: HTMLElement }): string {
+      return normalize(
+        fixture.nativeElement.querySelector('.timeline-header__count')?.textContent ?? '',
+      );
+    }
+
+    const PASSE_DEUX_DATES = makeScenario({
+      id: 'passe-2',
+      status: 'PASSE',
+      title: "L'Auberge du Corbeau",
+      createdAt: '2020-05-01T00:00:00.000Z',
+      seances: [
+        makeSeance('sa', 'passe-2', '2020-06-12T00:00:00.000Z', { compteRendu: 'Tout est dit.' }),
+        makeSeance('sb', 'passe-2', '2020-07-03T00:00:00.000Z'),
+      ],
+    });
+    const PASSE_UNE_DATE = makeScenario({
+      id: 'passe-1',
+      status: 'PASSE',
+      createdAt: '2020-05-01T00:00:00.000Z',
+      seances: [makeSeance('sc', 'passe-1', '2020-06-12T00:00:00.000Z')],
+    });
+    const COURANT_DATE = makeScenario({
+      id: 'courant-date',
+      status: 'COURANT',
+      title: 'La Route des Cendres',
+      createdAt: '2020-05-01T00:00:00.000Z',
+      seances: [makeSeance('sd', 'courant-date', '2020-07-24T00:00:00.000Z')],
+    });
+    const A_VENIR_DATE = makeScenario({
+      id: 'a-venir-date',
+      status: 'A_VENIR',
+      title: 'Le Col de Vellombre',
+      createdAt: '2020-05-01T00:00:00.000Z',
+      seances: [makeSeance('se', 'a-venir-date', '2099-09-02T00:00:00.000Z')],
+    });
+
+    it('matrice - noeud PASSE a deux dates : plage « 12 juin — 3 juil. »', async () => {
+      const { fixture } = await createComponent([PASSE_DEUX_DATES]);
+      expect(normalize(instance(fixture).nodeDateLabel(firstNode(fixture)))).toBe(
+        '12 juin — 3 juil.',
+      );
+      expect(normalize(fixture.nativeElement.querySelector('.node__date').textContent)).toBe(
+        '12 juin — 3 juil.',
+      );
+    });
+
+    it('matrice - noeud PASSE a une seule date : la date seule, aucune plage inventee', async () => {
+      const { fixture } = await createComponent([PASSE_UNE_DATE]);
+      expect(normalize(instance(fixture).nodeDateLabel(firstNode(fixture)))).toBe('12 juin');
+    });
+
+    it('matrice - noeud COURANT : « depuis le 24 juil. »', async () => {
+      const { fixture } = await createComponent([COURANT_DATE]);
+      expect(normalize(instance(fixture).nodeDateLabel(firstNode(fixture)))).toBe(
+        'depuis le 24 juil.',
+      );
+    });
+
+    it('matrice - noeud A_VENIR : « a partir du 2 sept. »', async () => {
+      const { fixture } = await createComponent([A_VENIR_DATE]);
+      expect(normalize(instance(fixture).nodeDateLabel(firstNode(fixture)))).toBe(
+        'à partir du 2 sept.',
+      );
+    });
+
+    it('matrice - noeud sans aucune date : « Non planifie », ordonne sur createdAt', async () => {
+      const { fixture } = await createComponent([A_VENIR, PASSE]);
+      expect(nodeKeys(fixture)).toEqual(['passe', 'a-venir']);
+      expect(normalize(instance(fixture).nodeDateLabel(firstNode(fixture)))).toBe(
+        GRIMOIRE_TONE['scenarios.timeline_not_planned'],
+      );
+    });
+
+    it("la cle d'ordre est la premiere date EFFECTIVE, pas createdAt", async () => {
+      const creeEnPremierJoueEnDernier = makeScenario({
+        id: 'tard',
+        status: 'A_VENIR',
+        createdAt: '2020-01-01T00:00:00.000Z',
+        seances: [makeSeance('s-tard', 'tard', '2099-12-01T00:00:00.000Z')],
+      });
+      const creeEnDernierJoueEnPremier = makeScenario({
+        id: 'tot',
+        status: 'A_VENIR',
+        createdAt: '2020-12-31T00:00:00.000Z',
+        seances: [makeSeance('s-tot', 'tot', '2099-01-05T00:00:00.000Z')],
+      });
+      const { fixture } = await createComponent([
+        creeEnPremierJoueEnDernier,
+        creeEnDernierJoueEnPremier,
+      ]);
+      expect(nodeKeys(fixture)).toEqual(['tot', 'tard']);
+    });
+
+    it('un noeud non planifie se range APRES tous les noeuds dates, quel que soit son createdAt', async () => {
+      // Le piege : `createdAt` n'est pas comparable a une date de seance. Ce scenario non planifie
+      // est le plus ANCIEN de la liste ; il doit malgre tout fermer la ligne.
+      const nonPlanifieAncien = makeScenario({
+        id: 'non-planifie-vieux',
+        status: 'A_VENIR',
+        createdAt: '2020-01-01T00:00:00.000Z',
+      });
+      const nonPlanifieRecent = makeScenario({
+        id: 'non-planifie-recent',
+        status: 'A_VENIR',
+        createdAt: '2020-06-01T00:00:00.000Z',
+      });
+      const { fixture } = await createComponent([
+        nonPlanifieRecent,
+        A_VENIR_DATE,
+        nonPlanifieAncien,
+      ]);
+      expect(nodeKeys(fixture)).toEqual([
+        'a-venir-date',
+        'non-planifie-vieux',
+        'non-planifie-recent',
+      ]);
+    });
+
+    it('matrice - noeud COURANT dont la premiere date est encore A VENIR : « a partir du »', async () => {
+      const courantPasEncoreJoue = makeScenario({
+        id: 'courant-futur',
+        status: 'COURANT',
+        createdAt: '2020-05-01T00:00:00.000Z',
+        seances: [makeSeance('sg', 'courant-futur', '2099-09-02T00:00:00.000Z')],
+      });
+      const { fixture } = await createComponent([courantPasEncoreJoue]);
+      expect(normalize(instance(fixture).nodeDateLabel(firstNode(fixture)))).toBe(
+        'à partir du 2 sept.',
+      );
+    });
+
+    // 🚨 La seule raison d'injecter `AuthService` ici : l'etat d'une seance depend du LECTEUR. Ces
+    // deux cas l'epinglent — meme vote, meme jour, deux libelles selon que l'utilisateur injecte
+    // (`u1`) a repondu ou non.
+    describe("l'etat de seance depend du lecteur (justification d'AuthService)", () => {
+      function pollOuvert(vote: boolean): SessionPollDto {
+        return {
+          id: 'poll-ouvert',
+          partieId: 'p1',
+          status: 'OPEN',
+          scenarioRef: null,
+          expiresAt: null,
+          chosenDate: null,
+          chosenSlot: null,
+          membersCount: 3,
+          durationSlots: 1,
+          options: [
+            {
+              id: 'opt1',
+              date: '2099-10-10T00:00:00.000Z',
+              slot: 'EVENING',
+              votes: vote ? [{ userId: 'u1', pseudo: 'u1', displayName: 'U1', answer: 'YES' }] : [],
+            },
+          ],
+        };
+      }
+
+      function scenarioAvecVote(vote: boolean): ScenarioDto {
+        return makeScenario({
+          id: 'vote',
+          status: 'A_VENIR',
+          seances: [makeSeance('sv', 'vote', null, { poll: pollOuvert(vote) })],
+        });
+      }
+
+      it('vote ouvert non repondu par le lecteur -> « Vote en cours » (badge impersonnel, story 53.1)', async () => {
+        const { fixture } = await createComponent([scenarioAvecVote(false)]);
+        expect(
+          normalize(
+            fixture.nativeElement.querySelector('.card-seances__row .status-badge').textContent,
+          ),
+        ).toBe('Vote en cours');
+      });
+
+      it('le MEME vote, une fois repondu par le lecteur -> le meme « Vote en cours » (badge impersonnel)', async () => {
+        const { fixture } = await createComponent([scenarioAvecVote(true)]);
+        expect(
+          normalize(
+            fixture.nativeElement.querySelector('.card-seances__row .status-badge').textContent,
+          ),
+        ).toBe('Vote en cours');
+      });
+    });
+
+    // -- Story 53.3 -- « Ma situation » sur chaque seance de la chronologie ------------------------
+    // Le lecteur injecte est `u1`. Une ligne = libelle « Ma situation » + pastille partagee ; la
+    // valeur vient de `seanceSituation()`, ces tests n'en rejouent pas la matrice, ils epinglent le
+    // CABLAGE (une ligne par seance, la bonne valeur, rien pour `null`, MJ et brouillons).
+    describe('Story 53.3 - « Ma situation » par seance', () => {
+      function pollWith(
+        status: 'OPEN' | 'CLOSED',
+        answered: boolean,
+        extra: Partial<SessionPollDto> = {},
+      ): SessionPollDto {
+        return {
+          id: 'poll-1',
+          partieId: 'p1',
+          status,
+          scenarioRef: null,
+          expiresAt: null,
+          chosenDate: null,
+          chosenSlot: null,
+          membersCount: 3,
+          durationSlots: 1,
+          options: [
+            {
+              id: 'opt1',
+              date: '2099-10-10T00:00:00.000Z',
+              slot: 'EVENING',
+              votes: answered
+                ? [{ userId: 'u1', pseudo: 'u1', displayName: 'U1', answer: 'YES' }]
+                : [],
+            },
+          ],
+          ...extra,
+        };
+      }
+
+      const INSCRIPTION_FUTURE = (inscrits: { userId: string; pseudo: string }[]) => ({
+        min: 1,
+        max: 4,
+        inscrits,
+        dateValidee: '2099-10-10T00:00:00.000Z',
+      });
+
+      function single(seance: SeanceDto, status: ScenarioDto['status'] = 'A_VENIR'): ScenarioDto {
+        return makeScenario({ id: seance.scenarioId, status, seances: [seance] });
+      }
+
+      /** Le texte de la ligne « Ma situation » de la N-ieme seance rendue, ou `null` si absente. */
+      function situationOf(fixture: { nativeElement: HTMLElement }, index = 0) {
+        const row = fixture.nativeElement.querySelectorAll('.card-seances__row')[index];
+        const line = row.querySelector('.situation-line');
+        if (!line) return null;
+        return {
+          label: normalize(line.querySelector('.situation-line__label')?.textContent ?? ''),
+          pill: normalize(line.querySelector('.situation-pill')?.textContent ?? ''),
+        };
+      }
+
+      it('vote ouvert non repondu -> « Ma situation » + « Vote à faire »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', false) })),
+        ]);
+        expect(situationOf(fixture)).toEqual({ label: 'Ma situation', pill: 'Vote à faire' });
+      });
+
+      it('vote ouvert repondu -> « J’ai voté »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', true) })),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('J’ai voté');
+      });
+
+      it('seance datee a venir -> « Je participe »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', '2099-10-10T00:00:00.000Z')),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('Je participe');
+      });
+
+      it('seance datee passee -> « J’y étais »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', '2020-06-12T00:00:00.000Z'), 'PASSE'),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('J’y étais');
+      });
+
+      it('inscription ouverte, lecteur inscrit -> « Je participe » ; non inscrit -> « Pas inscrit·e »', async () => {
+        const inscrit = await createComponent([
+          single(
+            makeSeance('s1', 'sc', '2099-10-10T00:00:00.000Z', {
+              inscription: INSCRIPTION_FUTURE([{ userId: 'u1', pseudo: 'u1' }]),
+            }),
+          ),
+        ]);
+        expect(situationOf(inscrit.fixture)?.pill).toBe('Je participe');
+        TestBed.resetTestingModule();
+
+        const pasInscrit = await createComponent([
+          single(
+            makeSeance('s1', 'sc', '2099-10-10T00:00:00.000Z', {
+              inscription: INSCRIPTION_FUTURE([]),
+            }),
+          ),
+        ]);
+        expect(situationOf(pasInscrit.fixture)?.pill).toBe('Pas inscrit·e');
+      });
+
+      it('inscription passee, lecteur non inscrit -> aucune ligne', async () => {
+        const { fixture } = await createComponent([
+          single(
+            makeSeance('s1', 'sc', '2020-06-12T00:00:00.000Z', {
+              inscription: {
+                min: 1,
+                max: 4,
+                inscrits: [],
+                dateValidee: '2020-06-12T00:00:00.000Z',
+              },
+            }),
+            'PASSE',
+          ),
+        ]);
+        expect(situationOf(fixture)).toBeNull();
+      });
+
+      it('seance sans date ni vote -> aucune ligne, le badge seul', async () => {
+        const { fixture } = await createComponent([single(makeSeance('s1', 'sc', null))]);
+        expect(situationOf(fixture)).toBeNull();
+        expect(
+          fixture.nativeElement.querySelector('.card-seances__row .status-badge'),
+        ).toBeTruthy();
+      });
+
+      it('vote clos non repondu et sans date -> aucune ligne', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('CLOSED', false) })),
+        ]);
+        expect(situationOf(fixture)).toBeNull();
+      });
+
+      it('MJ : « Je mène » sur chaque seance, brouillon compris', async () => {
+        const brouillon = single(
+          makeSeance('sb', 'brouillon', null, { poll: pollWith('OPEN', false) }),
+          'BROUILLON',
+        );
+        const publie = makeScenario({
+          id: 'publie',
+          status: 'A_VENIR',
+          createdAt: '2026-07-10T00:00:00.000Z',
+          seances: [makeSeance('sp', 'publie', null)],
+        });
+        const { fixture } = await createComponent([brouillon, publie], { isMj: true });
+        const pills = [
+          ...fixture.nativeElement.querySelectorAll('.card-seances__row .situation-pill'),
+        ].map((p: Element) => normalize(p.textContent ?? ''));
+        expect(pills).toEqual(['Je mène', 'Je mène']);
+        expect(fixture.nativeElement.querySelector('.node__dot--draft')).toBeTruthy();
+      });
+
+      it('joueur : le brouillon reste masque, aucune pastille ne le trahit', async () => {
+        const brouillon = single(
+          makeSeance('sb', 'brouillon', '2099-10-10T00:00:00.000Z'),
+          'BROUILLON',
+        );
+        const { fixture } = await createComponent([brouillon]);
+        expect(fixture.nativeElement.querySelector('.card-seances__row')).toBeNull();
+        expect(fixture.nativeElement.querySelector('.situation-pill')).toBeNull();
+      });
+
+      it('une carte de chapitre n’a pas de ligne a elle : une ligne par seance, dans sa seance', async () => {
+        const chapitre = makeScenario({
+          id: 'deux',
+          status: 'A_VENIR',
+          seances: [
+            makeSeance('s1', 'deux', '2099-10-10T00:00:00.000Z'),
+            makeSeance('s2', 'deux', '2099-10-17T00:00:00.000Z'),
+          ],
+        });
+        const { fixture } = await createComponent([chapitre]);
+        const lines = fixture.nativeElement.querySelectorAll('.situation-line');
+        expect(lines).toHaveLength(2);
+        for (const line of lines) {
+          expect(line.closest('.card-seances__row')).toBeTruthy();
+        }
+        expect(fixture.nativeElement.querySelector('.card > .situation-line')).toBeNull();
+      });
+
+      it('texte seul : aucun element interactif dans la ligne, jamais « Réponds au vote »', async () => {
+        const { fixture } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', false) })),
+        ]);
+        const line = fixture.nativeElement.querySelector('.situation-line') as HTMLElement;
+        expect(line.querySelector('button, a, input, [role="button"], [tabindex]')).toBeNull();
+        expect(fixture.nativeElement.textContent).not.toContain('Réponds au vote');
+      });
+
+      it('apres un changed() qui apporte la reponse du lecteur, la pastille passe a « J’ai voté »', async () => {
+        const { fixture, scenariosSvc } = await createComponent([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', false) })),
+        ]);
+        expect(situationOf(fixture)?.pill).toBe('Vote à faire');
+
+        scenariosSvc.listAll.mockResolvedValue([
+          single(makeSeance('s1', 'sc', null, { poll: pollWith('OPEN', true) })),
+        ]);
+        scenariosSvc.changed.set({ partieId: 'p1' });
+        fixture.detectChanges();
+        for (let i = 0; i < 10; i++) {
+          await Promise.resolve();
+          fixture.detectChanges();
+        }
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(situationOf(fixture)?.pill).toBe('J’ai voté');
+      });
+    });
+
+    it('matrice - plusieurs COURANT : un seul noeud empile, une seule pastille `live`', async () => {
+      const { fixture } = await createComponent([PASSE, COURANT_1, COURANT_2]);
+      const courantNode = instance(fixture)
+        .nodes()
+        .find((n) => n.scenarios.some((sc) => sc.status === 'COURANT'));
+      expect(courantNode?.scenarios).toHaveLength(2);
+      expect(fixture.nativeElement.querySelectorAll('.node__dot--live')).toHaveLength(1);
+      expect(fixture.nativeElement.querySelectorAll('.node')).toHaveLength(2);
+    });
+
+    it("matrice - seances d'un noeud : « Seance N · date » + badge d'etat partage", async () => {
+      const { fixture } = await createComponent([PASSE_DEUX_DATES]);
+      const rows = [...fixture.nativeElement.querySelectorAll('.card-seances__row')];
+      expect(rows).toHaveLength(2);
+      expect(normalize(rows[0].querySelector('.card-seances__label').textContent)).toBe(
+        'Séance 1 · 12 juin',
+      );
+      expect(normalize(rows[1].querySelector('.card-seances__label').textContent)).toBe(
+        'Séance 2 · 3 juil.',
+      );
+      // Badge DERIVE, jamais servi : compte rendu present -> « Jouee » ; absent sur une date
+      // passee -> « A debriefer ». Aucun libelle n'est ecrit dans ce gabarit.
+      expect(normalize(rows[0].querySelector('.status-badge').textContent)).toBe('Jouée');
+      expect(normalize(rows[1].querySelector('.status-badge').textContent)).toBe('À débriefer');
+    });
+
+    it('matrice - seance sans date : « Date a definir », badge « A planifier »', async () => {
+      const sansDate = makeScenario({
+        id: 'sans-date',
+        status: 'A_VENIR',
+        seances: [makeSeance('sf', 'sans-date', null)],
+      });
+      const { fixture } = await createComponent([sansDate]);
+      const row = fixture.nativeElement.querySelector('.card-seances__row');
+      expect(normalize(row.querySelector('.card-seances__label').textContent)).toBe(
+        `Séance 1 · ${GRIMOIRE_TONE['common.date_a_definir']}`,
+      );
+      expect(normalize(row.querySelector('.status-badge').textContent)).toBe('À planifier');
+    });
+
+    it('matrice - joueur : aucun noeud brouillon, aucun espace, compteur = scenarios publies', async () => {
+      const { fixture } = await createComponent([A_VENIR, BROUILLON, PASSE, COURANT_1]);
+      expect(fixture.nativeElement.querySelector('.node__dot--draft')).toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('.node')).toHaveLength(3);
+      expect(countText(fixture)).toBe(
+        fillTone(GRIMOIRE_TONE['scenarios.timeline_count_many'], { n: 3 }),
+      );
+      expect(fixture.nativeElement.textContent).not.toContain('Brouillon');
+    });
+
+    it('matrice - MJ sur la MEME partie : noeud brouillon tirete, compteur superieur', async () => {
+      const { fixture } = await createComponent([A_VENIR, BROUILLON, PASSE, COURANT_1], {
+        isMj: true,
+      });
+      expect(fixture.nativeElement.querySelector('.node__dot--draft')).toBeTruthy();
+      expect(fixture.nativeElement.querySelectorAll('.node')).toHaveLength(4);
+      expect(countText(fixture)).toBe(
+        fillTone(GRIMOIRE_TONE['scenarios.timeline_count_many'], { n: 4 }),
+      );
+      expect(fixture.nativeElement.textContent).toContain('Brouillon');
+    });
+
+    it('le compteur se derive des noeuds rendus (singulier au singulier)', async () => {
+      const { fixture } = await createComponent([PASSE]);
+      expect(instance(fixture).visibleCount()).toBe(1);
+      expect(countText(fixture)).toBe(
+        fillTone(GRIMOIRE_TONE['scenarios.timeline_count_one'], { n: 1 }),
+      );
+    });
+
+    it('matrice - aucun scenario visible : etat vide explicite, aucune ligne orpheline', async () => {
+      const { fixture } = await createComponent([]);
+      expect(fixture.nativeElement.querySelector('.empty')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.node')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.track')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.timeline-mobile')).toBeNull();
+    });
+
+    it("🚨 rien ne s'affiche tant que le premier chargement n'a pas tranche", async () => {
+      // Un en-tete « 0 scenario » et un « Aucun scenario pour l'instant. » rendus pendant la
+      // requete affirmeraient un vide qui n'est pas encore connu.
+      let resolveListAll!: (value: ScenarioDto[]) => void;
+      const scenariosSvc = {
+        listAll: vi.fn().mockReturnValue(
+          new Promise<ScenarioDto[]>((resolve) => {
+            resolveListAll = resolve;
+          }),
+        ),
+        changed: signal<{ partieId: string } | null>(null),
+      };
+      await TestBed.configureTestingModule({
+        imports: [ScenarioTimeline],
+        providers: [
+          provideAnimationsAsync(),
+          { provide: ScenariosService, useValue: scenariosSvc },
+          { provide: AuthService, useValue: { currentUser: signal({ id: 'u1' }) } },
+          { provide: MatDialog, useValue: { open: vi.fn() } },
+          { provide: Router, useValue: { navigate: vi.fn() } },
+          { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(ScenarioTimeline);
+      fixture.componentRef.setInput('partieId', 'p1');
+      fixture.componentRef.setInput('partieKind', 'CAMPAGNE_LINEAIRE');
+      fixture.detectChanges();
+      await Promise.resolve();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.timeline-header')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.empty')).toBeNull();
+
+      resolveListAll([]);
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+        fixture.detectChanges();
+      }
+
+      expect(fixture.nativeElement.querySelector('.empty')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.timeline-header')).toBeTruthy();
+    });
+
+    it('un joueur seul devant un brouillon ne voit ni noeud, ni compteur trompeur', async () => {
+      const { fixture } = await createComponent([BROUILLON]);
+      expect(fixture.nativeElement.querySelector('.empty')).toBeTruthy();
+      expect(countText(fixture)).toBe(
+        fillTone(GRIMOIRE_TONE['scenarios.timeline_count_one'], { n: 0 }),
+      );
+    });
+
+    it('matrice - echec de chargement : message + « Reessayer », aucun en-tete ni ligne', async () => {
+      const scenariosSvc = {
+        listAll: vi.fn().mockRejectedValue(new Error('reseau')),
+        changed: signal<{ partieId: string } | null>(null),
+      };
+      await TestBed.configureTestingModule({
+        imports: [ScenarioTimeline],
+        providers: [
+          provideAnimationsAsync(),
+          { provide: ScenariosService, useValue: scenariosSvc },
+          { provide: AuthService, useValue: { currentUser: signal({ id: 'u1' }) } },
+          { provide: MatDialog, useValue: { open: vi.fn() } },
+          { provide: Router, useValue: { navigate: vi.fn() } },
+          { provide: BreakpointObserver, useValue: makeBreakpointObserver(true) },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(ScenarioTimeline);
+      fixture.componentRef.setInput('partieId', 'p1');
+      fixture.componentRef.setInput('partieKind', 'CAMPAGNE_LINEAIRE');
+      fixture.detectChanges();
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+        fixture.detectChanges();
+      }
+
+      expect(fixture.nativeElement.querySelector('.error')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.error button').textContent).toContain(
+        GRIMOIRE_TONE['common.reessayer'],
+      );
+      expect(fixture.nativeElement.querySelector('.timeline-header')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.node')).toBeNull();
+    });
+
+    // Le contenu du noeud est ecrit UNE fois et projete dans les deux orientations : ces deux tests
+    // verifient que la bascule de largeur ne fait perdre ni la pastille, ni la plage de dates, ni
+    // les seances. (Un seul `it` par orientation : TestBed ne se reconfigure pas deux fois.)
+    it('bascule de largeur - desktop : pastille, plage de dates et seances rendues', async () => {
+      const { fixture } = await createComponent([PASSE_DEUX_DATES], { desktop: true });
+      expect(fixture.nativeElement.querySelector('.timeline-desktop')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.node__dot--done')).toBeTruthy();
+      expect(normalize(fixture.nativeElement.querySelector('.node__date').textContent)).toBe(
+        '12 juin — 3 juil.',
+      );
+      expect(fixture.nativeElement.querySelectorAll('.card-seances__row')).toHaveLength(2);
+    });
+
+    it('bascule de largeur - mobile : le MEME contenu de noeud, aucune perte', async () => {
+      const { fixture } = await createComponent([PASSE_DEUX_DATES], { desktop: false });
+      expect(fixture.nativeElement.querySelector('.timeline-mobile')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.node__dot--done')).toBeTruthy();
+      expect(normalize(fixture.nativeElement.querySelector('.node__date').textContent)).toBe(
+        '12 juin — 3 juil.',
+      );
+      expect(fixture.nativeElement.querySelectorAll('.card-seances__row')).toHaveLength(2);
+    });
+
+    it("un changement d'etat arrive par le signal temps reel se voit sur la pastille", async () => {
+      const { fixture, scenariosSvc } = await createComponent([COURANT_DATE]);
+      expect(fixture.nativeElement.querySelector('.node__dot--live')).toBeTruthy();
+
+      scenariosSvc.listAll.mockResolvedValue([{ ...COURANT_DATE, status: 'PASSE' }]);
+      scenariosSvc.changed.set({ partieId: 'p1' });
+      fixture.detectChanges();
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+        fixture.detectChanges();
+      }
+
+      expect(fixture.nativeElement.querySelector('.node__dot--live')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.node__dot--done')).toBeTruthy();
     });
   });
 });

@@ -1,0 +1,87 @@
+/* Story 40.2 — pastille de participant (contrat UX : DESIGN §7.7). Avatar 26 px, écu d'admin 14 px à
+   l'angle, filet accent-1 pour la personne connectée. L'état est TOUJOURS écrit (« vous », « Admin ») :
+   jamais la couleur, le filet ou le pictogramme seuls. Aucune animation. */
+:host {
+  display: inline-block;
+}
+
+.pc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  font-size: 0.8125rem;
+}
+
+.pc--self {
+  border: 2px solid var(--jdr-accent-1, var(--mat-sys-primary));
+  padding: 2px 9px 2px 3px;
+}
+
+.pc__avatar {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--mat-sys-secondary-container, #3a3a4a);
+  color: var(--mat-sys-on-secondary-container, inherit);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pc__shield {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  --app-icon-size: 14px;
+  color: var(--jdr-accent-1, var(--mat-sys-primary));
+}
+
+.pc__name {
+  overflow-wrap: anywhere;
+}
+
+.pc__tag {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.pc__tag--admin {
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+}
+
+/* Story 40.4 — place réservée en attente (vue de l'hôte) : contour pointillé et avatar estompé ; le
+   texte reste à pleine lecture (couleur de surface normale, jamais estompée) et écrit l'état. */
+.pc--pending {
+  border: 2px dotted var(--jdr-text-muted, var(--mat-sys-outline));
+}
+
+.pc__avatar--faded {
+  opacity: 0.5;
+}
+
+.pc__name--pending {
+  color: var(--mat-sys-on-surface);
+}
+
+/* ⚠️ Story 48.3 — la pastille d'un autre participant devenue bouton : même pastille, cible de 44 px. */
+.pc--button {
+  min-height: 44px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}

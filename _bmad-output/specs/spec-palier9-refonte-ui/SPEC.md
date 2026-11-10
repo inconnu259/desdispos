@@ -132,8 +132,8 @@ Une **douleur à corriger**, constatée en testant l'application sur un vrai té
 - **Ouverture de l'inscription libre.** La création de compte reste sur invitation — règle métier, pas défaut d'interface.
 - **Refonte de la direction artistique.**
 - **Nom affiché différent selon la partie.** Écarté : quatrième niveau de nom et règle de priorité à maintenir partout.
-- **Mise en production, hébergement, déploiement.** Palier 10, y compris la reprise des deux aménagements de développement en vigueur.
-- **Contenu homebrew MJ, 2ᵉ système de jeu, carte interactive.** Paliers 11 à 14.
+- **Mise en production, hébergement, déploiement.** Palier 11, y compris la reprise des deux aménagements de développement en vigueur.
+- **Contenu homebrew MJ, 2ᵉ système de jeu, carte interactive.** Paliers 12 à 15.
 
 ## Success signal
 

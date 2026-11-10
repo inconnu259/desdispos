@@ -19,6 +19,7 @@ const user: AuthUser = {
   createdAt: '2026-01-01T00:00:00.000Z',
   theme: 'grimoire-emeraude',
   hideFinishedParties: false,
+  availabilityReminder: true,
   partiesSort: 'urgence',
   partiesViewMode: 'medium',
   charactersViewMode: 'medium',

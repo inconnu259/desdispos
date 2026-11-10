@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="dd-picto-simple-titre">
+  <title id="dd-picto-simple-titre">Dés Dispos : d20 simplifié</title>
+  <style>
+    /*
+      HEXADECIMAUX : aucun dans le dessin. Une seule couleur : currentColor (couleur de texte du contexte).
+      Valeurs d'usage documentees (a poser en CSS, propriete color, sur le conteneur) :
+        Fond sombre neutre   #16151b : logo #f4efe6
+        Fond clair           #f4efe6 : logo #16151b
+        Grimoire Emeraude    fond #0d0a14 : logo #e8e0f0 (--jdr-text)
+        Foret Ancienne       fond #080f0a : logo #d4f0dc (--jdr-text)
+        Atelier Cuivre       fond #1a1008 : logo #f0e6d0 (--jdr-text)
+        Impression           #000000 sur #ffffff, ou #ffffff sur #000000
+      Dans une balise img, currentColor vaut le noir par defaut : pour une autre couleur,
+      incorporer le SVG en ligne (ou l'utiliser comme masque CSS).
+      Aucun identifiant interne hormis celui du titre (prefixe dd-). Ni masque, ni degrade, ni filtre.
+    */
+    .dd-s{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+    .dd-f{fill:currentColor}
+  </style>
+  <!-- Variante simplifiee pour 16 a 32 px : silhouette hexagonale epaissie (trait 5), facette centrale pleine
+       legerement agrandie, SANS coche et SANS aretes interieures. -->
+  <path class="dd-s" stroke-width="5" d="M32 3 L57.11 17.5 L57.11 46.5 L32 61 L6.89 46.5 L6.89 17.5 Z"/>
+  <path class="dd-f" d="M33.04 10.88 L50.81 41.66 A1.2 1.2 0 0 1 49.77 43.46 L14.23 43.46 A1.2 1.2 0 0 1 13.19 41.66 L30.96 10.88 A1.2 1.2 0 0 1 33.04 10.88 Z"/>
+</svg>

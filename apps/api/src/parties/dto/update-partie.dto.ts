@@ -12,6 +12,9 @@ export class UpdatePartieDto {
   @MaxLength(120)
   name?: string;
 
+  // N'atteste que « id connu » — voir le même commentaire dans create-partie.dto.ts. La règle
+  // « a un module » (et « un changement, pas la valeur déjà enregistrée ») vit dans
+  // PartiesService.update() (Story 29.17).
   @IsOptional()
   @IsIn(GAME_SYSTEM_IDS)
   gameSystemId?: string;

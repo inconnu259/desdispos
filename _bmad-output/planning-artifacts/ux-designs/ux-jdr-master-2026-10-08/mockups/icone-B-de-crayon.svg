@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <mask id="b-trou"><rect width="32" height="32" fill="#fff"/><path d="M19.5 28.5 L20.42 24.47 L26.94 17.94 L30.06 21.06 L23.53 27.58 Z" fill="#000" stroke="#000" stroke-width="4.6"/></mask>
+  <g mask="url(#b-trou)">
+    <path d="M14 3.5 L23.96 9.25 V20.75 L14 26.5 L4.04 20.75 V9.25 Z" stroke-width="2"/>
+    <path d="M14 3.5 V7.6 M14 7.6 L23.96 9.25 M14 7.6 L4.04 9.25 M20.4 18.7 L23.96 9.25 M20.4 18.7 L23.96 20.75 M20.4 18.7 L14 26.5 M7.6 18.7 L14 26.5 M7.6 18.7 L4.04 20.75 M7.6 18.7 L4.04 9.25" stroke-width="1.3"/>
+    <path d="M14 7.6 L20.4 18.7 H7.6 Z" fill="currentColor" stroke="none"/>
+  </g>
+  <path d="M19.5 28.5 L20.42 24.47 L26.94 17.94 L30.06 21.06 L23.53 27.58 Z" stroke-width="2"/>
+  <path d="M24.96 19.92 L28.08 23.04" stroke-width="2"/>
+</svg>

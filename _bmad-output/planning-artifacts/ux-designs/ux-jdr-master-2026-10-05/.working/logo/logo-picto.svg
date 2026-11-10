@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="dd-picto-titre">
+  <title id="dd-picto-titre">Dés Dispos : d20 coché</title>
+  <style>
+    /*
+      HEXADECIMAUX : aucun dans le dessin. Une seule couleur : currentColor (couleur de texte du contexte).
+      Valeurs d'usage documentees (a poser en CSS, propriete color, sur le conteneur) :
+        Fond sombre neutre   #16151b : logo #f4efe6
+        Fond clair           #f4efe6 : logo #16151b
+        Grimoire Emeraude    fond #0d0a14 : logo #e8e0f0 (--jdr-text)
+        Foret Ancienne       fond #080f0a : logo #d4f0dc (--jdr-text)
+        Atelier Cuivre       fond #1a1008 : logo #f0e6d0 (--jdr-text)
+        Impression           #000000 sur #ffffff, ou #ffffff sur #000000
+      Dans une balise img, currentColor vaut le noir par defaut : pour une autre couleur,
+      incorporer le SVG en ligne (ou l'utiliser comme masque CSS).
+      Aucun identifiant interne hormis celui du titre (prefixe dd-). Ni masque, ni degrade, ni filtre.
+    */
+    .dd-s{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+    .dd-f{fill:currentColor}
+  </style>
+  <!-- d20 vu de face : contour hexagonal (trait 3.6), aretes interieures (trait 2.2),
+       facette centrale pleine dont la coche de disponibilite est evidee (remplissage evenodd, sans masque). -->
+  <path class="dd-s" stroke-width="3.6" d="M32 2.5 L57.55 17.25 V46.75 L32 61.5 L6.45 46.75 V17.25 Z"/>
+  <path class="dd-s" stroke-width="2.2" d="M32 13 V2.5 M32 13 L57.55 17.25 M32 13 L6.45 17.25 M48.45 41.5 L57.55 17.25 M48.45 41.5 L57.55 46.75 M48.45 41.5 L32 61.5 M15.55 41.5 L32 61.5 M15.55 41.5 L6.45 46.75 M15.55 41.5 L6.45 17.25"/>
+  <path class="dd-f" fill-rule="evenodd" d="M32.87 12.5 L49.32 41 A1 1 0 0 1 48.45 42.5 L15.55 42.5 A1 1 0 0 1 14.68 41 L31.13 12.5 A1 1 0 0 1 32.87 12.5 Z M24.52 35.48 L29.02 39.98 A2.1 2.1 0 0 0 32.12 39.84 L39.82 30.54 A2.1 2.1 0 0 0 36.58 27.86 L30.35 35.38 L27.48 32.52 A2.1 2.1 0 0 0 24.52 35.48 Z"/>
+</svg>

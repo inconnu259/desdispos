@@ -1,0 +1,156 @@
+/* Story 50.1 — onglet des jeux du groupe. Aucun jeton neuf, aucun rouge, aucune image ; colonne de 640 px au
+   plus au-delà de 768 px (DESIGN.md §4). Les cibles tactiles font 44 px. */
+:host {
+  display: block;
+}
+
+.ggt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 0;
+}
+
+.ggt__message {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ggt__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ggt__search {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--mat-sys-outline, currentColor);
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container-high, transparent);
+  color: inherit;
+  font: inherit;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+.ggt__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ggt__chips-label {
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ggt__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid var(--mat-sys-outline, currentColor);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8125rem;
+  /* Pictogramme <app-icon> « effacer » de la puce active (décoratif). */
+  --app-icon-size: 14px;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Puce active : fond accent-1 à 18 % et pictogramme « effacer » — l'état est aussi dit par `aria-pressed`. */
+.ggt__chip--on {
+  border-color: var(--jdr-accent-1, var(--mat-sys-primary));
+  background: color-mix(in srgb, var(--jdr-accent-1, var(--mat-sys-primary)) 18%, transparent);
+  font-weight: 600;
+}
+
+.ggt__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Jusqu'à plusieurs milliers de lignes (20 membres × 300 jeux) : le navigateur saute le rendu de celles qui sont
+   hors écran, sans troncature ni virtualisation. */
+.ggt__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 0;
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
+.ggt__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ggt__measures {
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ggt__owners {
+  flex-basis: 100%;
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ggt__owner {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+.ggt__me {
+  padding: 0 0.25rem;
+}
+
+.ggt__footer {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}

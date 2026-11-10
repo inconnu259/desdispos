@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colonne MJ — Éphémérides</title>
+<style>
+/* Proposition de travail (.working) — Palier 10.4 : colonne MJ sur ordinateur, fenêtres de l'automate actionnables.
+   Gouverné par : EXPERIENCE.md §2.2, §2.3, §5.3, §6 ; DESIGN.md §7.3, §7.4. PRD FR-1 à FR-5.
+   Thème : Grimoire Émeraude. Les spines l'emportent sur cette planche. */
+:root{
+  --bg:#09070f; --surface:#1a1428; --surface-high:#221c35; --surface-top:#2a2340;
+  --accent-1:#7ec8a4; --accent-2:#9b6dff; --text:#e8e0f0; --muted:#9b8fb0; --outline:#6e6383;
+  --todo:#f0a030; --toolbar:#150f20; --compose:#f0a030;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050409;color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px}
+h1{font-size:18px;margin:0 0 4px}
+h2{font-size:15px;margin:28px 0 4px}
+.intro,.sub{color:var(--muted);max-width:1180px;margin:0 0 14px}
+.win{width:1180px;border-radius:12px;border:1px solid #333;background:var(--bg);overflow:hidden}
+.bar{height:34px;background:#1d1a24;display:flex;align-items:center;padding:0 12px;gap:6px}
+.bar i{width:11px;height:11px;border-radius:50%;background:#444;display:block}
+.tb{height:52px;background:var(--toolbar);display:flex;align-items:center;padding:0 18px;gap:12px;font-weight:600}
+.tb .back{color:var(--muted)}
+.wrap{display:flex;gap:18px;padding:14px 18px 18px}
+.main{flex:1}
+.side{flex:0 0 40%;background:var(--surface);border-radius:12px;padding:14px}
+.controls{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.chip{border:1px solid var(--outline);border-radius:999px;padding:5px 12px;font-size:12.5px;white-space:nowrap}
+.btn-o{border:1px solid var(--accent-1);color:var(--accent-1);border-radius:999px;padding:5px 14px;font-size:12.5px;font-weight:600}
+.spring{flex:1}
+.seg{display:flex;border:1px solid var(--outline);border-radius:999px;overflow:hidden;font-size:12px}
+.seg span{padding:4px 10px}.seg .on{background:rgba(126,200,164,.18)}
+.mh{display:flex;justify-content:space-between;font-weight:600;padding:2px 2px 6px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow div{font-size:11px;color:var(--muted);text-align:center}
+.cell{height:74px;background:var(--surface);border-radius:7px;padding:4px 5px;font-size:11px;display:flex;flex-direction:column;gap:2px}
+.cell .b{flex:1;border-radius:3px;background:rgba(255,255,255,.03)}
+.cell.dim{opacity:.28}
+.b.free{background:rgba(126,200,164,.12)}
+.b.sel{outline:2px solid var(--accent-1);outline-offset:-1px;background:rgba(126,200,164,.25)}
+.b.cmp{background:rgba(240,160,48,.14);border:1.5px dashed var(--compose)}
+.rail{margin-top:8px;background:var(--surface);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.rail b{color:var(--text)}
+.composebar{margin-top:8px;display:flex;align-items:center;gap:10px;background:var(--surface-high);border:1px solid var(--compose);border-radius:10px;padding:8px 12px;font-size:13px}
+.composebar .t{flex:1}
+.composebar b{color:var(--text)}
+.pill{border-radius:999px;padding:6px 14px;font-weight:600;font-size:12.5px;border:1px solid var(--outline)}
+.pill.p{background:linear-gradient(135deg,#7ec8a4,#9b6dff);color:#0d0a14;border:none}
+.selbar{margin-top:8px;display:flex;align-items:center;gap:8px;background:var(--surface-top);border-radius:10px;padding:8px 12px;font-size:12.5px;flex-wrap:wrap}
+.seg2{display:flex;border:1px solid var(--outline);border-radius:999px;overflow:hidden}
+.seg2 span{padding:3px 10px}.seg2 .on{background:rgba(126,200,164,.22)}
+.blk{background:var(--surface-high);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--muted);margin-bottom:12px}
+.hdr{display:flex;align-items:center;justify-content:space-between;background:var(--surface-high);border-radius:10px;padding:10px 12px;font-weight:600;min-height:44px}
+.hdr small{color:var(--muted);font-weight:400}
+.arrow{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--outline);font-size:18px;color:var(--text)}
+.dock{flex:0 0 44px;background:var(--surface);border-radius:12px 0 0 12px;display:flex;flex-direction:column;align-items:center;gap:14px;padding:8px 0;margin-right:-18px}
+.dock .vl{writing-mode:vertical-rl;font-weight:600;font-size:12.5px;color:var(--text)}
+.dock .vl small{color:var(--muted);font-weight:400}
+.form{display:flex;gap:8px;align-items:end;margin:10px 0 8px;font-size:12px;color:var(--muted)}
+.form .f{flex:1}
+.form .in{border:1px solid var(--outline);border-radius:8px;padding:6px 8px;color:var(--text);margin-top:3px}
+.card{background:var(--surface-top);border-radius:10px;padding:9px 11px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .d{font-weight:500}
+.card .s{font-size:11.5px;color:var(--muted)}
+.card.sel{outline:2px solid var(--accent-1)}
+.card .acts{display:flex;gap:6px;align-items:center}
+.card .add{background:linear-gradient(135deg,#7ec8a4,#9b6dff);color:#0d0a14;border-radius:999px;padding:5px 12px;font-weight:600;font-size:12px}
+.card .txt{color:var(--accent-1);font-size:12px;padding:5px 6px}
+.card.masked{opacity:.55}
+.foot{font-size:12.5px;color:var(--accent-1);margin-top:8px}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0}
+</style>
+</head>
+<body>
+<h1>Colonne MJ sur ordinateur — Éphémérides actionnables (Grimoire Émeraude)</h1>
+<p class="intro">Trois moments du parcours d'Incon (UJ-1). En haut : il a déplié les Éphémérides et sélectionné une fenêtre. En bas : il a ajouté trois fenêtres au vote, puis sélectionné deux jours du geste des dispos ; le composer accumule. Enfin, il range la colonne en dock pour voir le calendrier en grand. Planche de travail : les spines l'emportent.</p>
+
+<h2>① Fenêtre sélectionnée</h2>
+<p class="sub">La fenêtre est entourée dans la liste et sur la grille ; les autres jours s'estompent (même estompe que la Destinée). Deux actions écrites sur la carte.</p>
+<div class="win">
+  <div class="bar"><i></i><i></i><i></i></div>
+  <div class="tb"><span class="back">←</span> Les Voyageurs du col — Almanach</div>
+  <div class="wrap">
+    <div class="main">
+      <div class="controls"><span class="chip">☰ Affichage</span><span class="btn-o">Proposer des dates</span><span class="spring"></span><span class="seg"><span class="on">Mois</span><span>Semaine</span><span>Agenda</span></span></div>
+      <div class="mh"><span>octobre 2026</span><span>‹ ›</span></div>
+      <div class="dow"><div>lun.</div><div>mar.</div><div>mer.</div><div>jeu.</div><div>ven.</div><div>sam.</div><div>dim.</div></div>
+      <div class="grid">
+        <div class="cell dim">20<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell dim">21<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell dim">22<div class="b"></div><div class="b"></div><div class="b free"></div></div>
+        <div class="cell dim">23<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell dim">24<div class="b"></div><div class="b"></div><div class="b free"></div></div>
+        <div class="cell">25<div class="b"></div><div class="b free"></div><div class="b sel"></div></div>
+        <div class="cell dim">26<div class="b free"></div><div class="b free"></div><div class="b"></div></div>
+        <div class="cell dim">27<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell dim">28<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell dim">29<div class="b"></div><div class="b"></div><div class="b free"></div></div>
+        <div class="cell dim">30<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell dim">31<div class="b"></div><div class="b"></div><div class="b free"></div></div>
+        <div class="cell dim">1<div class="b"></div><div class="b free"></div><div class="b free"></div></div>
+        <div class="cell dim">2<div class="b"></div><div class="b"></div><div class="b"></div></div>
+      </div>
+      <div class="rail"><b>sam. 25 oct.</b> · matin — · après-midi 3/4 libres · <b>soir 4/4 libres</b></div>
+    </div>
+    <div class="side">
+      <div class="blk">Aucun conseil de date en cours.</div>
+      <div class="hdr"><span>Éphémérides · 6</span><span class="arrow" title="Ranger la colonne">›</span></div>
+      <div class="form"><div class="f">Du<div class="in">20/10/2026</div></div><div class="f">Au<div class="in">20/12/2026</div></div><span class="pill">Scruter</span></div>
+      <div class="card"><div><div class="d">mer. 22 oct. · soir</div><div class="s">4 sur 4 libres</div></div></div>
+      <div class="card"><div><div class="d">ven. 24 oct. · soir</div><div class="s">4 sur 4 libres</div></div></div>
+      <div class="card sel"><div><div class="d">sam. 25 oct. · soir</div><div class="s">4 sur 4 libres</div></div><div class="acts"><span class="txt">Masquer</span><span class="add">Ajouter au vote</span></div></div>
+      <div class="card"><div><div class="d">dim. 26 oct. · matin</div><div class="s">4 sur 4 libres</div></div></div>
+      <div class="card"><div><div class="d">mer. 29 oct. · soir</div><div class="s">3 sur 4 libres</div></div></div>
+      <div class="card"><div><div class="d">ven. 31 oct. · soir</div><div class="s">3 sur 4 libres</div></div></div>
+      <div class="foot">Afficher la 1 masquée</div>
+    </div>
+  </div>
+</div>
+<p class="note">Retoucher la carte ou Échap la désélectionne. « Ajouter au vote » ouvre le composer ; ici, un seul rendez-vous est à dater (Chapitre 5), le choix est donc sauté.</p>
+
+<h2>② Composer en cours : fenêtres ajoutées + sélection des jours</h2>
+<p class="sub">Les trois fenêtres ajoutées ont quitté la liste et portent le liseré tireté « désigné pour le vote ». Incon a glissé sur deux jours (jeu. 30 et ven. 31) : la barre des dispos lui fait choisir le moment, et « Ajouter au vote » les cumule.</p>
+<div class="win">
+  <div class="bar"><i></i><i></i><i></i></div>
+  <div class="tb"><span class="back">←</span> Les Voyageurs du col — Almanach</div>
+  <div class="wrap">
+    <div class="main">
+      <div class="controls"><span class="chip">☰ Affichage</span><span class="spring"></span><span class="seg"><span class="on">Mois</span><span>Semaine</span><span>Agenda</span></span></div>
+      <div class="mh"><span>octobre 2026</span><span>‹ ›</span></div>
+      <div class="dow"><div>lun.</div><div>mar.</div><div>mer.</div><div>jeu.</div><div>ven.</div><div>sam.</div><div>dim.</div></div>
+      <div class="grid">
+        <div class="cell">20<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">21<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">22<div class="b"></div><div class="b"></div><div class="b cmp"></div></div>
+        <div class="cell">23<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">24<div class="b"></div><div class="b"></div><div class="b cmp"></div></div>
+        <div class="cell">25<div class="b"></div><div class="b"></div><div class="b cmp"></div></div>
+        <div class="cell">26<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">27<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">28<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">29<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell" style="outline:2px solid var(--accent-2);outline-offset:-2px">30<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell" style="outline:2px solid var(--accent-2);outline-offset:-2px">31<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">1<div class="b"></div><div class="b"></div><div class="b"></div></div>
+        <div class="cell">2<div class="b"></div><div class="b"></div><div class="b"></div></div>
+      </div>
+      <div class="selbar"><b>2 jours sélectionnés</b><span class="seg2"><span>Journée</span><span>Matin</span><span>Après-m.</span><span class="on">Soir</span></span><span class="spring"></span><span class="pill p">Ajouter au vote</span><span class="pill">Retirer</span><span class="pill">Annuler</span></div>
+      <div class="composebar"><span class="t">Pour : <b>Chapitre 5 — La foire aux dragons</b> · 3 fenêtres désignées</span><span class="pill">Annuler</span><span class="pill p">Valider</span></div>
+    </div>
+    <div class="side">
+      <div class="blk">Aucun conseil de date en cours.</div>
+      <div class="hdr"><span>Éphémérides · 3</span><span class="arrow" title="Ranger la colonne">›</span></div>
+      <div class="form"><div class="f">Du<div class="in">20/10/2026</div></div><div class="f">Au<div class="in">20/12/2026</div></div><span class="pill">Scruter</span></div>
+      <div class="card"><div><div class="d">dim. 26 oct. · matin</div><div class="s">4 sur 4 libres</div></div></div>
+      <div class="card"><div><div class="d">mer. 29 oct. · soir</div><div class="s">3 sur 4 libres</div></div></div>
+      <div class="card"><div><div class="d">ven. 31 oct. · soir</div><div class="s">3 sur 4 libres</div></div></div>
+      <div class="foot">Afficher la 1 masquée</div>
+    </div>
+  </div>
+</div>
+<p class="note">« Ajouter au vote » porte le compte à 5 créneaux (3 fenêtres + 2 soirs) ; Valider ouvre alors le vote. Annuler rend les trois fenêtres à la liste. Pendant le composer, « Proposer des dates » disparaît de la ligne de contrôles.</p>
+
+<h2>③ Colonne rangée en dock</h2>
+<p class="sub">La flèche › de l'en-tête range toute la colonne contre le bord droit ; le calendrier reprend toute la largeur. La flèche ‹ du dock la rouvre. Sur téléphone, la colonne étant sous la grille, la liste se replie simplement vers le haut.</p>
+<div class="win">
+  <div class="bar"><i></i><i></i><i></i></div>
+  <div class="tb"><span class="back">←</span> Les Voyageurs du col — Almanach</div>
+  <div class="wrap">
+    <div class="main">
+      <div class="controls"><span class="chip">☰ Affichage</span><span class="btn-o">Proposer des dates</span><span class="spring"></span><span class="seg"><span class="on">Mois</span><span>Semaine</span><span>Agenda</span></span></div>
+      <div class="mh"><span>octobre 2026</span><span>‹ ›</span></div>
+      <div class="dow"><div>lun.</div><div>mar.</div><div>mer.</div><div>jeu.</div><div>ven.</div><div>sam.</div><div>dim.</div></div>
+      <div class="grid"><div class="cell">20<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">21<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">22<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">23<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">24<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">25<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">26<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">27<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">28<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">29<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">30<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">31<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">1<div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cell">2<div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+      <div class="rail"><b>lun. 20 oct.</b> · aucun créneau en cours</div>
+    </div>
+    <div class="dock"><span class="arrow" title="Rouvrir la colonne">‹</span><span class="vl">Éphémérides <small>· 6</small></span></div>
+  </div>
+</div>
+<p class="note">Le dock dit ce qu'il contient (ici les éphémérides et leur nombre ; « ✦ Chapitre 4 » quand c'est le plateau de la destinée). L'état rangé est retenu pour le MJ.</p>
+</body>
+</html>

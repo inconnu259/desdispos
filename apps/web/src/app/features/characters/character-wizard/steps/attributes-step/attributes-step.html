@@ -2,12 +2,13 @@
   <div
     class="attributes-step__patterns"
     role="radiogroup"
-    aria-label="Profil d'attributs"
+    [attr.aria-label]="theme.tone()['characters_wizard.attributes_profile_aria']"
     appRadioGroupNav
   >
     @for (opt of patternOptions(); track opt.key) {
       <app-choice-card
         [option]="opt"
+        align="center"
         [selected]="selectedPatternKey() === opt.key"
         (selectedOption)="selectPattern($event)"
       />
@@ -16,8 +17,7 @@
 
   @if (selectedPatternData(); as pattern) {
     <p class="attributes-step__banner">
-      Patron choisi : <strong>{{ pattern.label }}</strong> — valeurs à distribuer :
-      {{ values().join(', ') }}
+      {{ theme.tone()['characters_wizard.attributes_banner_profile'] }} <strong>{{ pattern.label }}</strong> {{ bannerTail() }}
     </p>
 
     <div class="attributes-step__grid">
@@ -25,15 +25,22 @@
         <div class="attr-slot">
           <span class="attr-slot__label">{{ ATTR_LABELS[attr] }} ({{ attr }})</span>
           <div class="attr-slot__chips">
-            @for (value of values(); track $index) {
+            @for (value of distinctValues(); track value) {
               <button
                 type="button"
                 class="value-chip"
-                [class.value-chip--selected]="isChipSelected(attr, $index)"
-                [disabled]="isChipUsedElsewhere(attr, $index)"
-                [attr.aria-pressed]="isChipSelected(attr, $index)"
-                (click)="selectChip(attr, $index)"
-              >{{ value }}</button>
+                [attr.data-value]="value"
+                [class.value-chip--selected]="isChipSelected(attr, value)"
+                [disabled]="isChipExhausted(attr, value)"
+                [attr.aria-pressed]="isChipSelected(attr, value)"
+                [attr.aria-label]="chipLabel(value)"
+                (click)="selectChip(attr, value)"
+              >
+                {{ value }}
+                @if (showCount(value)) {
+                  <span class="value-chip__count" aria-hidden="true">×{{ remaining(value) }}</span>
+                }
+              </button>
             }
           </div>
         </div>

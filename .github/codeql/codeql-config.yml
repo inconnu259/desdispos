@@ -1,0 +1,7 @@
+# Configuration de l'analyse CodeQL (référencée par .github/workflows/codeql.yml).
+#
+# `_bmad-output/` ne contient que des artefacts de planification (spécifications, maquettes HTML
+# de conception, comptes rendus) : rien n'y est livré ni exécuté par l'application. Les analyser
+# ne produisait que du bruit (ex. une maquette signalée pour un remplacement de chaîne).
+paths-ignore:
+  - _bmad-output/**

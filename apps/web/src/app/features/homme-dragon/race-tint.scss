@@ -1,0 +1,35 @@
+// Palette de teinte par race (DESIGN Homme Dragon §2) — partagée par le parcours de création et la
+// fiche (choix de l'artefact cadeau, Story 33.7) : component-scoped, jamais le thème global.
+// Transmise à `ChoiceCard` par héritage de variables CSS. `--h-text` : teinte du texte d'étiquette,
+// éclaircie pour le rouge et le noir dont `--h` tombe sous 4,5:1 sur les surfaces des 3 thèmes
+// (mesuré : rouge 4,0-4,5:1, noir 2,0-2,2:1 ; les valeurs ci-dessous tiennent ≥ 4,5:1 sur
+// `surface-container` des 3 thèmes). Usage : `@include race-tint(vert)`.
+@mixin race-tint($race) {
+  @if $race == vert {
+    --h: #5fa578;
+    --h-text: #5fa578;
+    --g1: #3f7d54;
+    --g2: #8fd6ab;
+    --glow: rgba(126, 200, 164, 0.2);
+  } @else if $race == bleu {
+    --h: #6a93c2;
+    --h-text: #6a93c2;
+    --g1: #3d6289;
+    --g2: #9cc3e8;
+    --glow: rgba(122, 169, 216, 0.2);
+  } @else if $race == rouge {
+    --h: #c06552;
+    --h-text: #e08a6f;
+    --g1: #7d3226;
+    --g2: #e08a6f;
+    --glow: rgba(224, 120, 90, 0.22);
+  } @else if $race == noir {
+    // Noir : l'identité passe par le reflet de la gemme, pas par la couleur du liséré.
+    --h: #524d5e;
+    --h-text: #b8b2c6;
+    --g1: #0c0b10;
+    --g2: #4a4656;
+    --hl: rgba(255, 255, 255, 0.55);
+    --glow: rgba(255, 255, 255, 0.1);
+  }
+}

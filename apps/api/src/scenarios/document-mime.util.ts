@@ -1,5 +1,3 @@
-import { PDFDocument } from 'pdf-lib';
-
 export type DetectedDocumentMime = 'application/pdf' | 'text/plain';
 
 const MIME_EXTENSION: Record<DetectedDocumentMime, string> = {
@@ -28,24 +26,29 @@ export function detectDocumentMime(buffer: Buffer): DetectedDocumentMime | null 
   return null;
 }
 
+/** Fenêtre de fin de fichier où l'on cherche le marqueur `%%EOF` (des octets parasites après le dernier
+ *  `%%EOF` sont courants : sauts de ligne, signatures de certains logiciels). */
+const PDF_EOF_WINDOW = 1024;
+const PDF_HEADER_RE = /^%PDF-[12]\.\d/;
+
 /**
- * Validation structurelle additionnelle pour un fichier déjà détecté PDF par sa signature
- * magique (AD-6, FR-15). PDFDocument.load() seul est INSUFFISANT — pdf-lib a un parseur de
- * récupération tolérant qui accepte un buffer ne contenant que l'en-tête "%PDF-" suivi de
- * bytes arbitraires (vérifié empiriquement, y compris en essayant l'option
- * `{ throwOnInvalidObject: true }` de load(), qui ne change rien à ce comportement — cette
- * option n'est donc pas utilisée ici, elle ne résout rien). Appeler getPageCount() force la
- * résolution de l'arbre de pages et fait échouer le parsing sur un PDF réellement
- * corrompu/malformé — c'est cette étape qui valide, pas load().
+ * Contrôle d'ENVELOPPE pour un fichier déjà détecté PDF par sa signature magique (AD-6, FR-15) : en-tête
+ * `%PDF-1.x` / `%PDF-2.x` et marqueur `%%EOF` dans les derniers octets — ce qui écarte un fichier tronqué
+ * ou un binaire quelconque préfixé de `%PDF-`. Coût constant, quelle que soit la taille du fichier.
+ *
+ * Volontairement PAS d'analyse complète (l'ancienne version appelait `PDFDocument.load()` +
+ * `getPageCount()`) : pdf-lib parcourt l'arbre de pages sans mémoriser les nœuds déjà vus, si bien qu'un
+ * PDF de quelques Ko dont l'arbre est un graphe partagé (chaque nœud cite plusieurs fois le même enfant)
+ * fait exploser le parcours — et une bombe de décompression dans un flux d'objets fait de même avec la
+ * mémoire. Le calcul étant synchrone, il gelait toute l'API (revue de sécurité 2026-11). Un PDF corrompu
+ * mais bien enveloppé passe désormais : sans conséquence, le serveur ne l'ouvre jamais, il ne fait que le
+ * servir en téléchargement.
  */
-export async function isStructurallyValidPdf(buffer: Buffer): Promise<boolean> {
-  try {
-    const doc = await PDFDocument.load(buffer);
-    doc.getPageCount();
-    return true;
-  } catch {
-    return false;
-  }
+export function hasValidPdfEnvelope(buffer: Buffer): boolean {
+  if (!PDF_HEADER_RE.test(buffer.subarray(0, 8).toString('latin1'))) return false;
+  return buffer
+    .subarray(Math.max(0, buffer.length - PDF_EOF_WINDOW))
+    .includes('%%EOF', 0, 'latin1');
 }
 
 export function extensionForDocumentMime(mime: DetectedDocumentMime): string {

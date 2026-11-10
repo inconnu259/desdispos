@@ -35,3 +35,10 @@
 .list--compact app-character-summary-card:last-child {
   border-bottom: none;
 }
+
+// Échec discret de la lecture des Hommes Dragons (Story 33.5) : les personnages restent affichés.
+.notice {
+  margin-top: 1rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+  font-size: 0.85rem;
+}

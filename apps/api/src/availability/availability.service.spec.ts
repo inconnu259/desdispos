@@ -4,9 +4,15 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot, PartieRole } from '@master-jdr/shared';
 import { AvailabilityService, DeclarationLike } from './availability.service';
+import type { OccupiedSpansPort } from './ports/occupied-spans.port';
+import type { ActivePartiesPort } from './ports/active-parties.port';
+import type { OwnEventsPort } from './ports/own-events.port';
+import { EventsService } from '../events/events.service';
+import type { BoardGamesService } from '../board-games/board-games.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../permissions/permission.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { anyOf, arrayLike, objectLike } from '../common/test-utils/jest-typed';
 
@@ -25,6 +31,38 @@ type MockRealtimeEvents = RealtimeEventsService & { emit: jest.Mock };
 
 function makeMockRealtimeEvents(): MockRealtimeEvents {
   return { emit: jest.fn() } as unknown as MockRealtimeEvents;
+}
+
+/**
+ * Mock du service de permission (Story 37.7) : seul `rolesOf` est lu par `AvailabilityService`
+ * (rôle de l'utilisateur sur chacune de ses parties). Par défaut aucun rôle ; les tests de
+ * `getMyCalendar` le configurent explicitement.
+ */
+type MockPermissions = { rolesOf: jest.Mock };
+
+function makeMockPermissions(roles: Record<string, PartieRole> = {}): MockPermissions {
+  return { rolesOf: jest.fn(() => Promise.resolve(new Map(Object.entries(roles)))) };
+}
+
+/** Le même mock, présenté au constructeur d'`AvailabilityService` sous son type de production. */
+function asPermissionService(mock: MockPermissions = makeMockPermissions()): PermissionService {
+  return mock as unknown as PermissionService;
+}
+
+/**
+ * Story 37.8 : `AvailabilityService` ne connaît que les ports `OccupiedSpansPort`/`OwnEventsPort`.
+ * Les suites de caractérisation (Story 30.5 / 37.1) décrivent un comportement de bout en bout du
+ * calendrier ; elles câblent donc ici les ports sur la vraie implémentation (`EventsService`, qui
+ * lit les mêmes mocks Prisma) — exactement ce que fait `PortsModule` en production — et leurs
+ * attentes restent INCHANGÉES. Les tests « fakes » du bas du fichier isolent, eux, le service.
+ */
+function wirePorts(prisma: unknown): [OccupiedSpansPort, OwnEventsPort, ActivePartiesPort] {
+  const events = new EventsService(
+    prisma as PrismaService,
+    makeMockRealtimeEvents(),
+    {} as unknown as BoardGamesService,
+  );
+  return [events, events, events];
 }
 
 // Dates de référence (UTC) :
@@ -106,7 +144,7 @@ function makeMockPrisma() {
   const mockMembershipFindMany = jest.fn(() => Promise.resolve([] as { partieId: string }[]));
   const mockPartieFindMany = jest.fn(() => Promise.resolve([] as { id: string }[]));
   // AD-9 (Story 30.5) — getSeanceDerivedUnavailability() lit aussi partie.findMany (forme enrichie
-  // kind/mjId/memberships) et seance.findMany : vide par défaut, sans effet sur les tests existants.
+  // kind/ownerId/memberships) et seance.findMany : vide par défaut, sans effet sur les tests existants.
   const mockSeanceFindMany = jest.fn(() => Promise.resolve([] as object[]));
   // GET /me/calendar (AD-18, Story 30.5) — couche `votes-en-cours` : vide par défaut.
   const mockSessionPollFindMany = jest.fn(() => Promise.resolve([] as object[]));
@@ -118,8 +156,8 @@ function makeMockPrisma() {
   );
 
   // Story 36.4 : la résolution « Remplacer » expire les déclarations en conflit À L'INTÉRIEUR de
-  // la transaction du lot (create() le fait hors transaction — ce n'est pas le modèle à suivre).
-  // Le client transactionnel doit donc exposer updateMany, ce qui n'était pas le cas avant.
+  // la transaction (lot comme création unitaire, depuis que « Remplacer » découpe). Le client
+  // transactionnel doit donc exposer updateMany.
   const tx: MockTxClient = {
     availabilityDeclaration: {
       create: mockCreate,
@@ -169,6 +207,8 @@ describe('AvailabilityService.splitOccurrence', () => {
     service = new AvailabilityService(
       mocks.mockPrisma as unknown as PrismaService,
       makeMockRealtimeEvents(),
+      asPermissionService(),
+      ...wirePorts(mocks.mockPrisma),
     );
     mockCreate = mocks.mockCreate;
     mockUpdate = mocks.mockUpdate;
@@ -335,6 +375,8 @@ describe('AvailabilityService.findConflictsForCreate', () => {
     service = new AvailabilityService(
       mocks.mockPrisma as unknown as PrismaService,
       makeMockRealtimeEvents(),
+      asPermissionService(),
+      ...wirePorts(mocks.mockPrisma),
     );
     mockFindMany = mocks.mockFindMany;
   });
@@ -554,6 +596,8 @@ describe('AvailabilityService.create — conflict detection', () => {
     service = new AvailabilityService(
       mocks.mockPrisma as unknown as PrismaService,
       makeMockRealtimeEvents(),
+      asPermissionService(),
+      ...wirePorts(mocks.mockPrisma),
     );
     mockCreate = mocks.mockCreate;
     mockUpdateMany = mocks.mockUpdateMany;
@@ -622,6 +666,77 @@ describe('AvailabilityService.create — conflict detection', () => {
     expect(result.created.length).toBeGreaterThanOrEqual(1);
     expect(mockUpdateMany).not.toHaveBeenCalled();
   });
+
+  /** Pièces créées : [début, fin] en `YYYY-MM-DD` (null = sans borne). */
+  const pieceBounds = (created: unknown[]) =>
+    (created as Array<{ startDate: Date | null; endDate: Date | null }>).map((p) => [
+      p.startDate?.toISOString().slice(0, 10) ?? null,
+      p.endDate?.toISOString().slice(0, 10) ?? null,
+    ]);
+  const punctualConflict = (id: string, from: string, to: string) =>
+    makePrismaDecl({
+      id,
+      kind: 'UNAVAILABLE',
+      recurKind: 'PUNCTUAL',
+      dayOfWeek: null,
+      startDate: new Date(`${from}T00:00:00Z`),
+      endDate: new Date(`${to}T00:00:00Z`),
+    });
+
+  // Régression : les pièces s'arrêtaient 7 jours avant le début du conflit. Contre une indispo du samedi 14
+  // au mercredi 18, une série du lundi perdait le lundi 9, qui n'est pas en conflit.
+  it('keep + RECURRING : conflit qui ne commence pas le jour de la série → l’occurrence précédente reste', async () => {
+    mockFindMany.mockResolvedValue([punctualConflict('c-sam-mer', '2026-11-14', '2026-11-18')]);
+    const result = (await service.create(USER_ID, {
+      ...baseDto,
+      dayOfWeek: 1,
+      startDate: '2026-11-02',
+      conflictResolution: 'keep',
+    })) as { created: unknown[] };
+
+    expect(pieceBounds(result.created)).toEqual([
+      ['2026-11-02', '2026-11-13'], // lundis 2 et 9
+      ['2026-11-19', null], // à partir du lundi 23
+    ]);
+  });
+
+  it('keep + RECURRING : une pièce sans aucune occurrence de la série n’est pas créée', async () => {
+    // Série du lundi ; conflits du samedi 7 au lundi 9 et du jeudi 12 au lundi 16 → entre les deux, le mardi
+    // 10 et le mercredi 11 ne portent aucun lundi.
+    mockFindMany.mockResolvedValue([
+      punctualConflict('c-sam-lun', '2026-11-07', '2026-11-09'),
+      punctualConflict('c-jeu-lun', '2026-11-12', '2026-11-16'),
+    ]);
+    const result = (await service.create(USER_ID, {
+      ...baseDto,
+      dayOfWeek: 1,
+      startDate: '2026-11-02',
+      conflictResolution: 'keep',
+    })) as { created: unknown[] };
+
+    expect(pieceBounds(result.created)).toEqual([
+      ['2026-11-02', '2026-11-06'],
+      ['2026-11-17', null],
+    ]);
+  });
+
+  it('keep + RECURRING : conflits qui se chevauchent → la reprise suit le plus tardif', async () => {
+    mockFindMany.mockResolvedValue([
+      punctualConflict('c-long', '2026-11-09', '2026-11-30'),
+      punctualConflict('c-court', '2026-11-16', '2026-11-16'),
+    ]);
+    const result = (await service.create(USER_ID, {
+      ...baseDto,
+      dayOfWeek: 1,
+      startDate: '2026-11-02',
+      conflictResolution: 'keep',
+    })) as { created: unknown[] };
+
+    expect(pieceBounds(result.created)).toEqual([
+      ['2026-11-02', '2026-11-08'],
+      ['2026-12-01', null],
+    ]);
+  });
 });
 
 // ─── createBatch — écriture groupée (Story 30.2) ─────────────────────────────
@@ -672,6 +787,8 @@ describe('AvailabilityService.createBatch', () => {
     service = new AvailabilityService(
       mocks.mockPrisma as unknown as PrismaService,
       makeMockRealtimeEvents(),
+      asPermissionService(),
+      ...wirePorts(mocks.mockPrisma),
     );
     mockCreate = mocks.mockCreate;
     mockFindMany = mocks.mockFindMany;
@@ -988,8 +1105,10 @@ describe('AvailabilityService.createBatch', () => {
   });
 
   // Revue de code Story 36.4 : dans le même lot, un item `overwrite` et un item `keep`
-  // ciblent la MÊME déclaration persistée. Décision retenue : `overwrite` prime — la
-  // déclaration sera expirée au commit, le `keep` ne doit donc PAS creuser de trou à son sujet.
+  // ciblent la MÊME déclaration persistée. Décision retenue : `overwrite` prime sur ce qu'il
+  // couvre. Depuis que « Remplacer » découpe, l'existante n'est retirée QUE sur le créneau
+  // remplacé : ses pièces restantes existent au commit, et c'est autour d'elles — pas autour de
+  // l'existante expirée — que le `keep` creuse son trou.
   it('« overwrite » prime sur « keep » quand deux items du lot recouvrent la MÊME déclaration persistée', async () => {
     mockFindMany.mockResolvedValue([
       makePrismaDecl({
@@ -1025,12 +1144,110 @@ describe('AvailabilityService.createBatch', () => {
 
     const result = await service.createBatch(USER_ID, items);
 
-    // La déclaration partagée est expirée (overwrite gagne)...
+    // La déclaration partagée est expirée (overwrite gagne sur le matin du 8)...
     expect(updateManyWhere(mockUpdateMany).id.in).toEqual(['ex-partagee']);
-    // ...et l'item « keep » n'a PAS creusé de trou à son sujet : 1 pièce pour l'item A +
-    // 1 SEULE pièce continue pour l'item B (sans la correction, B produirait 2 pièces
-    // séparées par un trou injustifié autour du 8 juillet → 3 au total).
-    expect(result.created).toHaveLength(2);
+    const created = (result.created as Array<Record<string, unknown>>).map((c) => ({
+      kind: c.kind,
+      slot: c.slot,
+      startDate: (c.startDate as Date).toISOString().slice(0, 10),
+      endDate: (c.endDate as Date).toISOString().slice(0, 10),
+    }));
+    expect(created).toEqual(
+      expect.arrayContaining([
+        // ...ses autres créneaux du 8 restent indisponibles (découpe de la journée entière)...
+        { kind: 'UNAVAILABLE', slot: 'AFTERNOON', startDate: '2026-07-08', endDate: '2026-07-08' },
+        { kind: 'UNAVAILABLE', slot: 'EVENING', startDate: '2026-07-08', endDate: '2026-07-08' },
+        // ...l'item A remplace le matin du 8...
+        { kind: 'AVAILABLE', slot: 'MORNING', startDate: '2026-07-08', endDate: '2026-07-08' },
+        // ...et l'item B « keep » s'écarte des pièces restantes : deux pièces autour du 8.
+        { kind: 'AVAILABLE', slot: 'FULL_DAY', startDate: '2026-07-06', endDate: '2026-07-07' },
+        { kind: 'AVAILABLE', slot: 'FULL_DAY', startDate: '2026-07-09', endDate: '2026-07-10' },
+      ]),
+    );
+    expect(created).toHaveLength(5);
+  });
+
+  // « Remplacer » découpe la déclaration remplacée au lieu de l'effacer entière (bug relevé en
+  // test manuel : remplacer le 11 d'une dispo du 11 au 13 effaçait aussi le 12 et le 13).
+  it('« overwrite » sur un seul jour d’une ponctuelle de plusieurs jours → les autres jours restent', async () => {
+    mockFindMany.mockResolvedValue([
+      makePrismaDecl({
+        id: 'dispo-11-13',
+        kind: 'AVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'AFTERNOON',
+        startDate: new Date('2026-11-11T00:00:00Z'),
+        endDate: new Date('2026-11-13T00:00:00Z'),
+      }),
+    ]);
+
+    const result = await service.createBatch(USER_ID, [
+      item({
+        kind: 'UNAVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'AFTERNOON',
+        startDate: '2026-11-11',
+        endDate: '2026-11-11',
+        conflictResolution: 'overwrite',
+      }),
+    ]);
+
+    expect(updateManyWhere(mockUpdateMany).id.in).toEqual(['dispo-11-13']);
+    const created = (result.created as Array<Record<string, unknown>>).map((c) => [
+      c.kind,
+      (c.startDate as Date).toISOString().slice(0, 10),
+      (c.endDate as Date).toISOString().slice(0, 10),
+    ]);
+    expect(created).toEqual(
+      expect.arrayContaining([
+        ['AVAILABLE', '2026-11-12', '2026-11-13'],
+        ['UNAVAILABLE', '2026-11-11', '2026-11-11'],
+      ]),
+    );
+    expect(created).toHaveLength(2);
+  });
+
+  it('deux « overwrite » du lot sur la MÊME déclaration → découpée une seule fois, autour des deux', async () => {
+    mockFindMany.mockResolvedValue([
+      makePrismaDecl({
+        id: 'dispo-10-14',
+        kind: 'AVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'EVENING',
+        startDate: new Date('2026-11-10T00:00:00Z'),
+        endDate: new Date('2026-11-14T00:00:00Z'),
+      }),
+    ]);
+    const indispo = (day: string) =>
+      item({
+        kind: 'UNAVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'EVENING',
+        startDate: day,
+        endDate: day,
+        conflictResolution: 'overwrite',
+      });
+
+    const result = await service.createBatch(USER_ID, [
+      indispo('2026-11-11'),
+      indispo('2026-11-13'),
+    ]);
+
+    const remaining = (result.created as Array<Record<string, unknown>>)
+      .filter((c) => c.kind === 'AVAILABLE')
+      .map((c) => [
+        (c.startDate as Date).toISOString().slice(0, 10),
+        (c.endDate as Date).toISOString().slice(0, 10),
+      ]);
+    expect(remaining).toEqual([
+      ['2026-11-10', '2026-11-10'],
+      ['2026-11-12', '2026-11-12'],
+      ['2026-11-14', '2026-11-14'],
+    ]);
   });
 
   it('conflit interne au lot (FULL_DAY vs MORNING, kinds opposés, même jour) → 409, aucune création', async () => {
@@ -1103,6 +1320,8 @@ describe('AvailabilityService — émission temps réel', () => {
     service = new AvailabilityService(
       mocks.mockPrisma as unknown as PrismaService,
       mockRealtimeEvents,
+      asPermissionService(),
+      ...wirePorts(mocks.mockPrisma),
     );
     mockMembershipFindMany = mocks.mockMembershipFindMany;
     mockPartieFindMany = mocks.mockPartieFindMany;
@@ -1118,7 +1337,9 @@ describe('AvailabilityService — émission temps réel', () => {
 
     await service.create(USER_ID, baseDto);
 
-    expect(mockEmit).toHaveBeenCalledTimes(3);
+    // 3 parties + le canal personnel `user:{id}` (Story 52.4 : le rappel des dispos de l’auteur).
+    expect(mockEmit).toHaveBeenCalledTimes(4);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
     expect(mockEmit).toHaveBeenCalledWith('partie:p2');
     expect(mockEmit).toHaveBeenCalledWith('partie:p3');
@@ -1130,13 +1351,16 @@ describe('AvailabilityService — émission temps réel', () => {
 
     await service.create(USER_ID, baseDto);
 
-    expect(mockEmit).toHaveBeenCalledTimes(1);
+    expect(mockEmit).toHaveBeenCalledTimes(2);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
   });
 
   it('create() sans aucune Partie associée → aucune émission', async () => {
     await service.create(USER_ID, baseDto);
-    expect(mockEmit).not.toHaveBeenCalled();
+    // Story 52.4 : seul le canal personnel `user:{id}` est émis (le rappel des dispos de l’auteur se relit).
+    expect(mockEmit).toHaveBeenCalledTimes(1);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 
   it("deferred-work (2026-08-24) : create() n'échoue PAS si l'émission temps réel lève après le commit — la déclaration a déjà été écrite, un 500 ferait resoumettre une écriture déjà appliquée", async () => {
@@ -1146,6 +1370,25 @@ describe('AvailabilityService — émission temps réel', () => {
     });
 
     await expect(service.create(USER_ID, baseDto)).resolves.toBeDefined();
+  });
+
+  it('Story 52.4 : un échec de la lecture des parties n’empêche pas l’émission user:{id} (le rappel ne reste pas périmé)', async () => {
+    mockMembershipFindMany.mockRejectedValue(new Error('base indisponible'));
+
+    await expect(service.create(USER_ID, baseDto)).resolves.toBeDefined();
+
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
+  });
+
+  it('Story 52.4 : une émission user:{id} qui lève ne prive pas les calendriers de leurs partie:{id}', async () => {
+    mockMembershipFindMany.mockResolvedValue([{ partieId: 'p1' }]);
+    mockEmit.mockImplementation((topic: string) => {
+      if (topic.startsWith('user:')) throw new Error('EventSource down');
+    });
+
+    await expect(service.create(USER_ID, baseDto)).resolves.toBeDefined();
+
+    expect(mockEmit).toHaveBeenCalledWith('partie:p1');
   });
 
   it('createBatch() n’émet partieTopic qu’une seule fois, quelle que soit la taille du lot (AC7)', async () => {
@@ -1159,7 +1402,9 @@ describe('AvailabilityService — émission temps réel', () => {
     ];
     await service.createBatch(USER_ID, items);
 
-    expect(mockEmit).toHaveBeenCalledTimes(2);
+    // 2 parties (une fois chacune) + le canal personnel `user:{id}` (Story 52.4).
+    expect(mockEmit).toHaveBeenCalledTimes(3);
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
     expect(mockEmit).toHaveBeenCalledWith('partie:p2');
   });
@@ -1171,6 +1416,7 @@ describe('AvailabilityService — émission temps réel', () => {
     await service.update(DECL_ID, USER_ID, { kind: 'AVAILABLE' });
 
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 
   it('softDelete() émet partieTopic', async () => {
@@ -1180,6 +1426,7 @@ describe('AvailabilityService — émission temps réel', () => {
     await service.softDelete(DECL_ID, USER_ID);
 
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 
   it('splitOccurrence() émet partieTopic après la transaction', async () => {
@@ -1189,6 +1436,7 @@ describe('AvailabilityService — émission temps réel', () => {
     await service.splitOccurrence(DECL_ID, USER_ID, '2026-07-01', 'delete');
 
     expect(mockEmit).toHaveBeenCalledWith('partie:p1');
+    expect(mockEmit).toHaveBeenCalledWith(`user:${USER_ID}`);
   });
 });
 
@@ -1198,7 +1446,14 @@ describe('AvailabilityService.computeSlotStatus', () => {
   let service: AvailabilityService;
 
   beforeEach(() => {
-    service = new AvailabilityService({} as PrismaService, {} as RealtimeEventsService);
+    service = new AvailabilityService(
+      {} as PrismaService,
+      {} as RealtimeEventsService,
+      {} as PermissionService,
+      {} as OccupiedSpansPort,
+      {} as OwnEventsPort,
+      {} as ActivePartiesPort,
+    );
   });
 
   it('déclaration UNAVAILABLE sur le bon créneau → UNAVAILABLE', () => {
@@ -1333,6 +1588,8 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
     service = new AvailabilityService(
       mocks.mockPrisma as unknown as PrismaService,
       makeMockRealtimeEvents(),
+      asPermissionService(),
+      ...wirePorts(mocks.mockPrisma),
     );
   });
 
@@ -1346,20 +1603,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'ONE_SHOT',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: {
-          chosenDate: new Date('2026-09-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        startDate: new Date('2026-09-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1381,17 +1635,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'CAMPAGNE_LINEAIRE',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: null,
-        dateValidee: new Date('2026-09-11T00:00:00Z'),
+        startDate: new Date('2026-09-11T00:00:00Z'),
+        startSlot: null,
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1404,20 +1658,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'ONE_SHOT',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: {
-          chosenDate: new Date('2026-09-16T00:00:00Z'),
-          chosenSlot: null,
-        },
-        dateValidee: null,
+        startDate: new Date('2026-09-16T00:00:00Z'),
+        startSlot: null,
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1430,17 +1681,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'CAMPAGNE_EPISODIQUE',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }, { userId: 'u2' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: null,
-        dateValidee: new Date('2026-09-12T00:00:00Z'),
+        startDate: new Date('2026-09-12T00:00:00Z'),
+        startSlot: null,
         inscriptions: [{ userId: 'u1' }],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1454,17 +1705,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'CAMPAGNE_EPISODIQUE',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: null,
-        dateValidee: new Date('2026-09-13T00:00:00Z'),
+        startDate: new Date('2026-09-13T00:00:00Z'),
+        startSlot: null,
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1477,17 +1728,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'ONE_SHOT',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: null,
-        dateValidee: null,
+        startDate: null,
+        startSlot: null,
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1511,20 +1762,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'ONE_SHOT',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: {
-          chosenDate: new Date('2026-09-14T00:00:00Z'),
-          chosenSlot: 'AFTERNOON',
-        },
-        dateValidee: null,
+        startDate: new Date('2026-09-14T00:00:00Z'),
+        startSlot: 'AFTERNOON',
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1541,20 +1789,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'ONE_SHOT',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: {
-          chosenDate: new Date('2026-09-15T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        startDate: new Date('2026-09-15T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
         // La séance porte tout ce qu'il ne faut pas laisser passer.
         heureRdv: '20:30',
         lieu: 'chez Marc',
@@ -1582,20 +1827,17 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'ONE_SHOT',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        poll: {
-          chosenDate: new Date('2026-09-15T00:00:00Z'),
-          chosenSlot: 'MORNING',
-        },
-        dateValidee: null,
+        startDate: new Date('2026-09-15T00:00:00Z'),
+        startSlot: 'MORNING',
         inscriptions: [],
-        scenario: { partieId: 'partieB' },
+        event: { partieId: 'partieB' },
       },
     ]);
 
@@ -1610,7 +1852,7 @@ describe('AvailabilityService.getActiveDeclarationsWithSeances (AD-9, Story 30.5
       {
         id: 'partieB',
         kind: 'ONE_SHOT',
-        mjId: 'mjB',
+        ownerId: 'mjB',
         memberships: [{ userId: 'u1' }],
       },
     ]);
@@ -1631,12 +1873,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
   let mockSessionPollFindMany: jest.Mock;
   let mockMembershipGroupBy: jest.Mock;
   let mockDeclFindMany: jest.Mock;
+  let permissions: MockPermissions;
 
+  // Story 37.7 : le rôle de l'utilisateur sur ses parties vient de `PermissionService.rolesOf`.
   const myPartie = {
     id: 'A',
     name: 'Ma Partie',
     kind: 'ONE_SHOT',
-    mjId: 'me',
   };
 
   beforeEach(() => {
@@ -1648,21 +1891,25 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockDeclFindMany = mocks.mockFindMany;
     mockDeclFindMany.mockResolvedValue([]);
     mockPartieFindMany.mockResolvedValue([myPartie]);
+    permissions = makeMockPermissions({ A: 'mj', B: 'mj' });
     service = new AvailabilityService(
       mocks.mockPrisma as unknown as PrismaService,
       makeMockRealtimeEvents(),
+      asPermissionService(permissions),
+      ...wirePorts(mocks.mockPrisma),
     );
   });
 
-  it('renvoie les 5 couches, chacune un tableau vide par défaut (AC1, AC2)', async () => {
+  it('renvoie les 4 couches temporelles, chacune un tableau vide par défaut (AC1, AC2)', async () => {
     const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
     expect(result).toEqual({
       'mes-indisponibilites': [],
       'mes-disponibilites': [],
       'mes-seances': [],
-      'votes-en-cours': [],
       'inscriptions-ouvertes': [],
     });
+    // Story 44.2 : les votes en cours ne sont plus servis ici (`GET /me/open-polls`).
+    expect(result).not.toHaveProperty('votes-en-cours');
   });
 
   it("ne renvoie jamais la clé 'disponibilite-groupe' (AC2, encadré n°2)", async () => {
@@ -1686,16 +1933,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'MORNING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'MORNING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Donjon Oublié' },
+        event: { partieId: 'A', title: 'Le Donjon Oublié' },
       },
     ]);
 
@@ -1709,6 +1953,8 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
         scenarioTitle: 'Le Donjon Oublié',
         date: '2026-10-10',
         slot: 'MORNING',
+        endDate: '2026-10-10',
+        endSlot: 'MORNING',
         // Story 36.5 : toujours présents, à null quand la séance n'en porte pas — le client
         // n'a jamais à distinguer « clé absente » de « valeur vide ».
         heureRdv: null,
@@ -1720,22 +1966,59 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     ]);
   });
 
+  describe('mes-seances — partie épisodique selon mon rôle (Story 37.7)', () => {
+    const episodique = { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE' };
+    const seance = (inscriptions: { userId: string }[]) => ({
+      id: 'seance1',
+      eventId: 'scenario1',
+      startDate: new Date('2026-10-10T00:00:00Z'),
+      startSlot: 'MORNING',
+      inscriptions,
+      inscriptionMin: null,
+      inscriptionMax: null,
+      event: { partieId: 'A', title: 'Le Donjon Oublié' },
+    });
+
+    it('MJ : la séance est la mienne même sans inscription', async () => {
+      mockPartieFindMany.mockResolvedValue([episodique]);
+      mockSeanceFindMany.mockResolvedValue([seance([])]);
+
+      const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
+      expect(result['mes-seances']).toHaveLength(1);
+    });
+
+    it('membre non inscrit : la séance n’est pas la mienne', async () => {
+      permissions.rolesOf.mockResolvedValue(new Map([['A', 'player']]));
+      mockPartieFindMany.mockResolvedValue([episodique]);
+      mockSeanceFindMany.mockResolvedValue([seance([{ userId: 'quelquun-d-autre' }])]);
+
+      const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
+      expect(result['mes-seances']).toEqual([]);
+    });
+
+    it('membre inscrit : la séance est la mienne', async () => {
+      permissions.rolesOf.mockResolvedValue(new Map([['A', 'player']]));
+      mockPartieFindMany.mockResolvedValue([episodique]);
+      mockSeanceFindMany.mockResolvedValue([seance([{ userId: 'me' }])]);
+
+      const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
+      expect(result['mes-seances']).toHaveLength(1);
+    });
+  });
+
   // ─── Informations pratiques (Story 36.5, D-15 amendée) ────────────────────
 
   it('AC6 : les informations pratiques transitent par GET /me/calendar', async () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Convoi du Nord' },
+        event: { partieId: 'A', title: 'Le Convoi du Nord' },
         heureRdv: '20:30',
         lieu: 'chez Marc',
         notePratique: 'pensez aux dés',
@@ -1757,16 +2040,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Convoi du Nord' },
+        event: { partieId: 'A', title: 'Le Convoi du Nord' },
         compteRendu: null,
       },
     ]);
@@ -1782,16 +2062,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Convoi du Nord' },
+        event: { partieId: 'A', title: 'Le Convoi du Nord' },
         compteRendu: '   ',
       },
     ]);
@@ -1807,16 +2084,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Convoi du Nord' },
+        event: { partieId: 'A', title: 'Le Convoi du Nord' },
         compteRendu: 'La troupe a repoussé les maraudeurs.',
       },
     ]);
@@ -1832,16 +2106,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-07-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-07-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Convoi du Nord' },
+        event: { partieId: 'A', title: 'Le Convoi du Nord' },
         compteRendu: null,
       },
     ]);
@@ -1860,16 +2131,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Convoi du Nord' },
+        event: { partieId: 'A', title: 'Le Convoi du Nord' },
         heureRdv: '20:30',
         lieu: 'chez Marc',
         notePratique: null,
@@ -1886,16 +2154,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Les Cendres d’Ashal' },
+        event: { partieId: 'A', title: 'Les Cendres d’Ashal' },
         heureRdv: null,
         lieu: 'en visio',
         notePratique: null,
@@ -1915,16 +2180,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: 'EVENING',
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: 'EVENING',
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Convoi du Nord' },
+        event: { partieId: 'A', title: 'Le Convoi du Nord' },
         heureRdv: '20:30',
         lieu: null,
         notePratique: null,
@@ -1943,16 +2205,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: {
-          chosenDate: new Date('2026-10-10T00:00:00Z'),
-          chosenSlot: null,
-        },
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-10T00:00:00Z'),
+        startSlot: null,
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Donjon Oublié' },
+        event: { partieId: 'A', title: 'Le Donjon Oublié' },
       },
     ]);
 
@@ -1964,13 +2223,13 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: null,
-        dateValidee: new Date('2026-10-11T00:00:00Z'),
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-11T00:00:00Z'),
+        startSlot: null,
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Le Donjon Oublié' },
+        event: { partieId: 'A', title: 'Le Donjon Oublié' },
       },
     ]);
 
@@ -1985,15 +2244,15 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seanceEtrangere',
-        scenarioId: 'scenarioX',
-        poll: null,
-        dateValidee: new Date('2026-10-15T00:00:00Z'),
+        eventId: 'scenarioX',
+        startDate: new Date('2026-10-15T00:00:00Z'),
+        startSlot: null,
         inscriptions: [],
         inscriptionMin: 1,
         inscriptionMax: 4,
         // Partie 'Z' absente de myParties (mocké à [myPartie] seulement) — simule une ligne
         // renvoyée par erreur (défense en profondeur, la requête réelle la filtrerait déjà).
-        scenario: { partieId: 'Z', title: 'Ne devrait jamais apparaître' },
+        event: { partieId: 'Z', title: 'Ne devrait jamais apparaître' },
       },
     ]);
 
@@ -2002,237 +2261,20 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
     expect(result['inscriptions-ouvertes']).toEqual([]);
   });
 
-  it("un SessionPoll d'une partie tierce n'apparaît jamais dans votes-en-cours (AC7, deferred-work — même garde que mes-seances/inscriptions-ouvertes ci-dessus, jusqu'ici sans test dédié)", async () => {
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'pollEtranger',
-        // Partie 'Z' absente de myParties (mocké à [myPartie] seulement) — simule une ligne
-        // renvoyée par erreur (défense en profondeur, la requête réelle la filtrerait déjà).
-        partieId: 'Z',
-        expiresAt: null,
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours']).toEqual([]);
-  });
-
-  it('couche votes-en-cours : sondage OPEN avec une option dans la plage, identité de partie incluse, agrégats et ma réponse (Story 36.6)', async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        expiresAt: new Date('2026-10-15T00:00:00Z'),
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [
-              { userId: 'me', answer: 'YES' },
-              { userId: 'u2', answer: 'YES' },
-              { userId: 'u3', answer: 'MAYBE' },
-            ],
-          },
-          {
-            id: 'o2',
-            date: new Date('2026-11-05T00:00:00Z'),
-            slot: 'MORNING',
-            votes: [{ userId: 'u2', answer: 'NO' }],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours']).toEqual([
-      {
-        pollId: 'poll1',
-        partieId: 'A',
-        partieName: 'Ma Partie',
-        // AC9 — MJ + 3 Membership. Même effectif que `AggregatedSlotDto.total`.
-        membersCount: 4,
-        expiresAt: '2026-10-15T00:00:00.000Z',
-        options: [
-          {
-            optionId: 'o1',
-            date: '2026-10-20',
-            slot: 'EVENING',
-            yes: 2,
-            maybe: 1,
-            no: 0,
-            myAnswer: 'YES',
-          },
-          {
-            optionId: 'o2',
-            date: '2026-11-05',
-            slot: 'MORNING',
-            yes: 0,
-            maybe: 0,
-            no: 1,
-            myAnswer: null,
-          },
-        ],
-      },
-    ]);
-  });
-
-  it("couche votes-en-cours : expiresAt null (sondage créé avant l'introduction du champ) → propagé tel quel, jamais une erreur", async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        expiresAt: null,
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours'][0].expiresAt).toBeNull();
-  });
-
-  it('AC11 — aucune identité de votant tiers ne transite : ni userId, ni pseudo, ni displayName (AD-9/AD-2)', async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [
-              { userId: 'me', answer: 'YES' },
-              { userId: 'secret-user', answer: 'NO' },
-            ],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    const serialized = JSON.stringify(result['votes-en-cours']);
-    expect(serialized).not.toContain('secret-user');
-    expect(serialized).not.toContain('pseudo');
-    expect(serialized).not.toContain('displayName');
-    // Ma propre réponse, elle, est bien là — la seule information nominative autorisée.
-    expect(result['votes-en-cours'][0].options[0].myAnswer).toBe('YES');
-  });
-
-  it("AC11 — l'include des votes ne demande JAMAIS la relation user", async () => {
-    await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    const calls = mockSessionPollFindMany.mock.calls as Array<[{ include: unknown }]>;
-    // Assertion structurelle plutôt qu'une recherche de sous-chaîne (revue de code du 36.6) :
-    // un `not.toContain('user')` ne détecterait pas une relation ajoutée sous une autre clé
-    // (`voter`, `author`, casse différente). Ici, la forme exacte de l'`include` est vérifiée —
-    // `votes: true` et rien de plus, jamais un `include: { user: … }` niché dessous.
-    expect(calls[0][0].include).toEqual({
-      options: { include: { votes: true } },
-    });
-  });
-
-  it("AC9 — une partie absente de l'agrégat de Membership a un effectif de 1 : le MJ, qui vote", async () => {
-    mockMembershipGroupBy.mockResolvedValue([]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours'][0].membersCount).toBe(1);
-  });
-
-  it('une option sans aucune réponse porte trois compteurs à zéro et myAnswer null (jamais undefined)', async () => {
-    mockMembershipGroupBy.mockResolvedValue([{ partieId: 'A', _count: 3 }]);
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-10-20T00:00:00Z'),
-            slot: 'EVENING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours'][0].options[0]).toEqual({
-      optionId: 'o1',
-      date: '2026-10-20',
-      slot: 'EVENING',
-      yes: 0,
-      maybe: 0,
-      no: 0,
-      myAnswer: null,
-    });
-  });
-
-  it('couche votes-en-cours : sondage sans aucune option dans la plage est exclu', async () => {
-    mockSessionPollFindMany.mockResolvedValue([
-      {
-        id: 'poll1',
-        partieId: 'A',
-        options: [
-          {
-            id: 'o1',
-            date: new Date('2026-11-05T00:00:00Z'),
-            slot: 'MORNING',
-            votes: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
-    expect(result['votes-en-cours']).toEqual([]);
-  });
-
   it('couche inscriptions-ouvertes : séance CAMPAGNE_EPISODIQUE sans date validée et à capacité définie, non filtrée par plage', async () => {
     mockPartieFindMany.mockResolvedValue([
-      { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE', mjId: 'me' },
+      { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE' },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: null,
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: null,
+        startSlot: null,
         inscriptions: [{ userId: 'me' }, { userId: 'other' }],
         inscriptionMin: 2,
         inscriptionMax: 5,
-        scenario: { partieId: 'A', title: 'Enquête épisodique' },
+        event: { partieId: 'A', title: 'Enquête épisodique' },
       },
     ]);
 
@@ -2255,18 +2297,18 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
 
   it('couche inscriptions-ouvertes : une séance dont la date est déjà validée est exclue (roster figé)', async () => {
     mockPartieFindMany.mockResolvedValue([
-      { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE', mjId: 'me' },
+      { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE' },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: null,
-        dateValidee: new Date('2026-10-05T00:00:00Z'),
+        eventId: 'scenario1',
+        startDate: new Date('2026-10-05T00:00:00Z'),
+        startSlot: null,
         inscriptions: [],
         inscriptionMin: 2,
         inscriptionMax: 5,
-        scenario: { partieId: 'A', title: 'Enquête épisodique' },
+        event: { partieId: 'A', title: 'Enquête épisodique' },
       },
     ]);
 
@@ -2276,18 +2318,18 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
 
   it('couche inscriptions-ouvertes : une séance sans capacité définie (inscriptionMax null) est exclue', async () => {
     mockPartieFindMany.mockResolvedValue([
-      { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE', mjId: 'me' },
+      { id: 'A', name: 'Ma Partie', kind: 'CAMPAGNE_EPISODIQUE' },
     ]);
     mockSeanceFindMany.mockResolvedValue([
       {
         id: 'seance1',
-        scenarioId: 'scenario1',
-        poll: null,
-        dateValidee: null,
+        eventId: 'scenario1',
+        startDate: null,
+        startSlot: null,
         inscriptions: [],
         inscriptionMin: null,
         inscriptionMax: null,
-        scenario: { partieId: 'A', title: 'Enquête épisodique' },
+        event: { partieId: 'A', title: 'Enquête épisodique' },
       },
     ]);
 
@@ -2332,14 +2374,301 @@ describe('AvailabilityService.getMyCalendar (AD-18, Story 30.5)', () => {
   it('aucune itération par partie : une seule requête pour chaque table, quel que soit le nombre de mes parties (AC1)', async () => {
     mockPartieFindMany.mockResolvedValue([
       myPartie,
-      { id: 'B', name: 'Autre partie', kind: 'ONE_SHOT', mjId: 'me' },
+      { id: 'B', name: 'Autre partie', kind: 'ONE_SHOT' },
     ]);
 
     await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
+    // Les rôles de TOUTES mes parties sont lus en une seule fois (Story 37.7).
+    expect(permissions.rolesOf).toHaveBeenCalledTimes(1);
+    expect(permissions.rolesOf).toHaveBeenCalledWith('me', ['A', 'B']);
     expect(mockSeanceFindMany).toHaveBeenCalledTimes(1);
-    expect(mockSessionPollFindMany).toHaveBeenCalledTimes(1);
-    // Story 36.6, AC12 — l'effectif de la troupe est lui aussi obtenu par UNE seule requête
-    // groupée, jamais un membership.count par partie (AD-3). Garde renforcée, jamais affaiblie.
-    expect(mockMembershipGroupBy).toHaveBeenCalledTimes(1);
+    // Story 44.2 : plus aucune lecture de sondage ni d'effectif dans `GET /me/calendar`.
+    expect(mockSessionPollFindMany).not.toHaveBeenCalled();
+    expect(mockMembershipGroupBy).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Consommation des ports (Story 37.8) ──────────────────────────────────────────────────────
+// Ici le service est isolé de `events/` : seuls des FAUX ports lui répondent. Il prouve qu'il ne
+// connaît que les interfaces de `availability/ports/`.
+
+describe('AvailabilityService — consommation des ports (Story 37.8)', () => {
+  function build(
+    occupied: OccupiedSpansPort = { occupiedSpansOf: jest.fn() },
+    own: OwnEventsPort = { ownEventsOf: jest.fn() },
+    permissions: MockPermissions = makeMockPermissions({ A: 'mj' }),
+  ) {
+    const mocks = makeMockPrisma();
+    mocks.mockFindMany.mockResolvedValue([]);
+    const service = new AvailabilityService(
+      mocks.mockPrisma as unknown as PrismaService,
+      makeMockRealtimeEvents(),
+      asPermissionService(permissions),
+      occupied,
+      own,
+      { hasActivePartie: jest.fn() },
+    );
+    return { service, mocks, permissions };
+  }
+
+  it('habille les plages occupées du port en indisponibilités ponctuelles synthétiques, sans rien d’autre', async () => {
+    const occupiedSpansOf = jest
+      .fn()
+      .mockResolvedValue(
+        new Map([['u1', [{ date: new Date('2026-09-10T00:00:00Z'), slot: 'EVENING' }]]]),
+      );
+    const { service } = build({ occupiedSpansOf });
+
+    const map = await service.getActiveDeclarationsWithSeances(['u1', 'u2']);
+
+    expect(occupiedSpansOf).toHaveBeenCalledWith(['u1', 'u2']);
+    expect(map.get('u1')).toEqual([
+      {
+        kind: 'UNAVAILABLE',
+        recurKind: 'PUNCTUAL',
+        dayOfWeek: null,
+        slot: 'EVENING',
+        startDate: new Date('2026-09-10T00:00:00Z'),
+        endDate: new Date('2026-09-10T00:00:00Z'),
+        expiresAt: new Date('2026-09-10T23:59:59.999Z'),
+      },
+    ]);
+    expect(map.get('u2')).toEqual([]);
+  });
+
+  it('aucune lecture de partie ni de séance par le service lui-même pour les plages occupées', async () => {
+    const { service, mocks } = build({
+      occupiedSpansOf: jest.fn().mockResolvedValue(new Map([['u1', []]])),
+    });
+
+    await service.getActiveDeclarationsWithSeances(['u1']);
+
+    expect(mocks.mockPartieFindMany).not.toHaveBeenCalled();
+    expect(mocks.mockSeanceFindMany).not.toHaveBeenCalled();
+  });
+
+  it('getMyCalendar : mes séances et inscriptions viennent du port ; les rôles sont résolus en lot via le service de permission', async () => {
+    const seanceEntry = {
+      seanceId: 's1',
+      partieId: 'A',
+      partieName: 'Ma Partie',
+      scenarioId: 'e1',
+      scenarioTitle: 'Titre',
+      date: '2026-10-10',
+      slot: 'EVENING' as DaySlot,
+      heureRdv: null,
+      lieu: null,
+      notePratique: null,
+      compteRenduManquant: true,
+    };
+    const ownEventsOf = jest
+      .fn()
+      .mockImplementation(
+        async (
+          userId: string,
+          roles: (ids: string[]) => Promise<ReadonlyMap<string, PartieRole>>,
+        ) => {
+          await roles(['A']);
+          return {
+            parties: [{ id: 'A', name: 'Ma Partie', kind: 'ONE_SHOT' }],
+            seances: [seanceEntry],
+            inscriptionsOuvertes: [],
+          };
+        },
+      );
+    const { service, permissions } = build(undefined, { ownEventsOf });
+
+    const result = await service.getMyCalendar('me', '2026-10-01', '2026-10-31');
+
+    expect(result['mes-seances']).toEqual([seanceEntry]);
+    expect(result['inscriptions-ouvertes']).toEqual([]);
+    expect(ownEventsOf).toHaveBeenCalledWith('me', anyOf(Function), {
+      fromMs: Date.parse('2026-10-01T00:00:00.000Z'),
+      toMs: Date.parse('2026-10-31T23:59:59.999Z'),
+    });
+    expect(permissions.rolesOf).toHaveBeenCalledTimes(1);
+    expect(permissions.rolesOf).toHaveBeenCalledWith('me', ['A']);
+  });
+});
+
+// ─── Story 52.4 — le rappel « Dispos à déclarer » (AD-5) ──────────────────────────────────────────────────
+
+describe('AvailabilityService.reminderDue (Story 52.4)', () => {
+  const FAR_FUTURE = new Date('2027-12-31T00:00:00Z');
+
+  type Decl = {
+    recurKind: 'PUNCTUAL' | 'RECURRING';
+    dayOfWeek: number | null;
+    startDate: Date | null;
+    endDate: Date | null;
+    expiresAt: Date;
+  };
+
+  const punctual = (day: string): Decl => ({
+    recurKind: 'PUNCTUAL',
+    dayOfWeek: null,
+    startDate: new Date(`${day}T00:00:00Z`),
+    endDate: new Date(`${day}T00:00:00Z`),
+    expiresAt: FAR_FUTURE,
+  });
+
+  function build(
+    opts: { preference?: boolean | null; active?: boolean; declarations?: Decl[] } = {},
+  ) {
+    const prisma = {
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue(
+            opts.preference === null ? null : { availabilityReminder: opts.preference ?? true },
+          ),
+      },
+      availabilityDeclaration: { findMany: jest.fn().mockResolvedValue(opts.declarations ?? []) },
+    };
+    const active: ActivePartiesPort = {
+      hasActivePartie: jest.fn().mockResolvedValue(opts.active ?? true),
+    };
+    const service = new AvailabilityService(
+      prisma as unknown as PrismaService,
+      makeMockRealtimeEvents(),
+      asPermissionService(),
+      { occupiedSpansOf: jest.fn() },
+      { ownEventsOf: jest.fn() },
+      active,
+    );
+    return { service, prisma, active };
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-01T10:00:00Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('vrai : préférence active, partie active, aucune déclaration', async () => {
+    const { service } = build();
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('faux : préférence décochée — la partie active n’est même pas lue', async () => {
+    const { service, active } = build({ preference: false });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+    expect(active.hasActivePartie).not.toHaveBeenCalled();
+  });
+
+  it('faux : compte introuvable', async () => {
+    const { service } = build({ preference: null });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('faux : aucune partie active — les déclarations ne sont pas lues', async () => {
+    const { service, prisma } = build({ active: false });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+    expect(prisma.availabilityDeclaration.findMany).not.toHaveBeenCalled();
+  });
+
+  it('lit seulement MES déclarations non expirées (une déclaration expirée ne compte pas)', async () => {
+    const { service, prisma } = build();
+    await service.reminderDue('u1');
+    expect(prisma.availabilityDeclaration.findMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', expiresAt: { gt: new Date('2026-07-01T10:00:00Z') } },
+    });
+  });
+
+  it('faux : une déclaration ponctuelle dans la fenêtre', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-10')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('faux : une déclaration le jour même (aujourd’hui est inclus)', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-01')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('faux : une ponctuelle au dernier jour de la fenêtre (aujourd’hui + 27)', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-28')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('vrai : une ponctuelle le lendemain de ce dernier jour', async () => {
+    const { service } = build({ declarations: [punctual('2026-07-29')] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('faux : une récurrence dont un jour tombe dans la fenêtre', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: null,
+      endDate: null,
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('vrai : une récurrence qui n’atteint pas la fenêtre', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-05-01T00:00:00Z'),
+      endDate: new Date('2026-06-20T00:00:00Z'),
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('vrai : une récurrence qui ne commence qu’après la fenêtre', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-08-15T00:00:00Z'),
+      endDate: null,
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('faux : une récurrence qui commence dans la fenêtre et en couvre un jour', async () => {
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-07-20T00:00:00Z'),
+      endDate: null,
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(false);
+  });
+
+  it('vrai : une récurrence bornée dont le seul jour de semaine retenu tombe hors de la fenêtre', async () => {
+    // Un seul mercredi (08-05) dans sa plage, après la fenêtre qui se termine le 07-28.
+    const recurring: Decl = {
+      recurKind: 'RECURRING',
+      dayOfWeek: 3,
+      startDate: new Date('2026-08-04T00:00:00Z'),
+      endDate: new Date('2026-08-06T00:00:00Z'),
+      expiresAt: FAR_FUTURE,
+    };
+    const { service } = build({ declarations: [recurring] });
+    await expect(service.reminderDue('u1')).resolves.toBe(true);
+  });
+
+  it('la fenêtre glisse d’un jour au passage de minuit UTC', async () => {
+    const lastDayPlusOne = [punctual('2026-07-29')];
+
+    jest.setSystemTime(new Date('2026-07-01T23:59:59Z'));
+    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(
+      true,
+    );
+
+    jest.setSystemTime(new Date('2026-07-02T00:00:01Z'));
+    await expect(build({ declarations: lastDayPlusOne }).service.reminderDue('u1')).resolves.toBe(
+      false,
+    );
   });
 });

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../users/users.module';
 import { InvitationsModule } from '../invitations/invitations.module';
+import { PartiesModule } from '../parties/parties.module';
 import { EmailModule } from '../email/email.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -12,6 +13,7 @@ import { SessionSerializer } from './session.serializer';
   imports: [
     UsersModule,
     InvitationsModule,
+    PartiesModule,
     EmailModule,
     PassportModule.register({ session: true }),
   ],

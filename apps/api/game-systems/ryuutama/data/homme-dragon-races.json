@@ -1,0 +1,75 @@
+[
+  {
+    "key": "DRAGON_VERT",
+    "label": "Dragon vert",
+    "description": "Les hommes-dragons verts ont le goût du voyage et des grandes quêtes. C'est la race la mieux adaptée à un meneur qui débute.",
+    "preferences": [
+      "aventure",
+      "dépaysement",
+      "épopée",
+      "équilibre",
+      "espoir",
+      "liberté",
+      "quête"
+    ]
+  },
+  {
+    "key": "DRAGON_BLEU",
+    "label": "Dragon bleu",
+    "description": "Les hommes-dragons bleus préfèrent les histoires d'amour, d'amitié et les drames sentimentaux. Une race faite pour les meneurs attirés par les relations entre les personnages et les émotions fortes.",
+    "preferences": [
+      "amitié",
+      "amour",
+      "animaux",
+      "échanges",
+      "famille",
+      "fraternité",
+      "gratitude",
+      "jeunesse",
+      "loyauté",
+      "quiétude",
+      "sentiments",
+      "tendresse"
+    ]
+  },
+  {
+    "key": "DRAGON_ROUGE",
+    "label": "Dragon rouge",
+    "description": "Les hommes-dragons rouges aiment les récits de batailles, portés par l'esprit de compétition. Une race indiquée si vous comptez faire la part belle au système de combat.",
+    "preferences": [
+      "bataille",
+      "chasse aux monstres",
+      "compétition",
+      "défi",
+      "effort",
+      "entraînement",
+      "guerre",
+      "héroïsme",
+      "imprévu",
+      "porte-monstre-trésor",
+      "rivalité"
+    ]
+  },
+  {
+    "key": "DRAGON_NOIR",
+    "label": "Dragon noir",
+    "description": "Les hommes-dragons noirs se passionnent pour les histoires sombres, faites de complots, de trahisons et de tragédies. Une race pour meneurs expérimentés : ces scénarios sont exigeants à écrire comme à mener.",
+    "preferences": [
+      "bas-fonds",
+      "beauté",
+      "chaos",
+      "complots",
+      "corruption",
+      "énigmes",
+      "folie",
+      "hasard",
+      "immortalité",
+      "meurtre",
+      "peur",
+      "ruine",
+      "suspense",
+      "tragédie",
+      "trahison"
+    ]
+  }
+]

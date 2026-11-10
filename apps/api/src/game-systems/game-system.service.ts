@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { Prisma } from '@prisma/client';
 import type { GameSystemDto, GameSystemSchemaDto, GameSystemContentDto } from '@master-jdr/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
 import { RYUUTAMA_ID } from './supported-game-systems';
 
 const RYUUTAMA_DATA_DIR = join(process.cwd(), 'game-systems/ryuutama/data');
@@ -106,6 +106,31 @@ const CONTENT_TYPES: ContentTypeSeed[] = [
     label: 'Rôle de groupe',
     file: 'group-roles.json',
   },
+  {
+    key: 'souffle',
+    label: 'Souffle (Homme Dragon)',
+    file: 'souffles.json',
+  },
+  {
+    key: 'hommeDragonRace',
+    label: 'Race (Homme Dragon)',
+    file: 'homme-dragon-races.json',
+  },
+  {
+    key: 'hommeDragonCreationIntro',
+    label: "Texte d'aide de la création (Homme Dragon)",
+    file: 'homme-dragon-creation-intros.json',
+  },
+  {
+    key: 'hommeDragonLevelCapacity',
+    label: 'Capacité de niveau (Homme Dragon)',
+    file: 'homme-dragon-level-capacities.json',
+  },
+  {
+    key: 'souffleRituel',
+    label: 'Souffle rituel (Homme Dragon)',
+    file: 'souffles-rituels.json',
+  },
 ];
 
 @Injectable()
@@ -123,7 +148,7 @@ export class GameSystemService implements OnApplicationBootstrap {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly parties: PartiesService,
+    private readonly permissions: PermissionService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -237,20 +262,59 @@ export class GameSystemService implements OnApplicationBootstrap {
       throw new NotFoundException('Aucun schéma implémenté pour ce système de jeu');
     }
     return {
+      // Story 31.6 : `lockable` déclare, par clé, si le MJ peut la verrouiller (anti-spoil) pour
+      // un lecteur qui n'est ni le propriétaire ni le MJ — propriété DISTINCTE de `fields`
+      // (qui décrit déjà la composition d'une clé objet, ex. `attributes`). `lockableFields`
+      // mirroir `fields` UNIQUEMENT là où `fields` existe déjà (`attributes`) : les autres clés
+      // objet (`customWeapon`/`equipment`/`narrative`) n'ont pas de sous-champs déclarés ici et
+      // restent verrouillables en bloc seulement. Périmètre resserré aux 10 clés déjà déclarées
+      // ci-dessous (décision utilisateur 2026-09-22) — `classChoices`/`classCapabilities`/
+      // `magicSeason`/`knownRitualSpells`/`levelUps` restent hors périmètre (lacune préexistante
+      // du schéma, non traitée ici).
+      // Story 31.7 : `label`/`lockableFieldLabels` reprennent les libellés déjà établis ailleurs
+      // (`creationSteps` ci-dessous, `character-sheet.html`, `wizard-summary.ts` pour
+      // `specialtyTypeId` → "Spécialité") — seuls `customWeapon`/`startingEquipment` n'ont pas
+      // d'équivalent affiché ailleurs et gagnent donc ici leur premier libellé français (décision
+      // utilisateur 2026-09-22, cf. Code Map du spec). Dans tous les cas, l'écran de configuration
+      // des cadenas ne fait qu'afficher ce que ce schéma déclare (AC1, aucune liste en dur).
       sheetSchema: {
-        classId: { type: 'string' },
-        specialtyTypeId: { type: 'string', optional: true },
-        typeId: { type: 'string' },
+        classId: { type: 'string', lockable: true, label: 'Classe' },
+        specialtyTypeId: {
+          type: 'string',
+          optional: true,
+          lockable: true,
+          label: 'Spécialité',
+        },
+        typeId: { type: 'string', lockable: true, label: 'Type' },
         attributes: {
           type: 'object',
           fields: ['AGI', 'ESP', 'INT', 'VIG'],
+          lockable: true,
+          lockableFields: ['AGI', 'ESP', 'INT', 'VIG'],
+          label: 'Attributs',
+          lockableFieldLabels: { AGI: 'AGI', ESP: 'ESP', INT: 'INT', VIG: 'VIG' },
         },
-        weaponId: { type: 'string', optional: true },
-        customWeapon: { type: 'object', optional: true },
-        fetiqueObject: { type: 'string', optional: true },
-        equipment: { type: 'object', optional: true },
-        startingEquipment: { type: 'array', optional: true },
-        narrative: { type: 'object', optional: true },
+        weaponId: { type: 'string', optional: true, lockable: true, label: 'Arme favorite' },
+        customWeapon: {
+          type: 'object',
+          optional: true,
+          lockable: true,
+          label: 'Arme personnalisée',
+        },
+        fetiqueObject: {
+          type: 'string',
+          optional: true,
+          lockable: true,
+          label: 'Objet fétiche',
+        },
+        equipment: { type: 'object', optional: true, lockable: true, label: 'Équipement' },
+        startingEquipment: {
+          type: 'array',
+          optional: true,
+          lockable: true,
+          label: 'Équipement de départ',
+        },
+        narrative: { type: 'object', optional: true, lockable: true, label: 'Narratif' },
       },
       creationSteps: [
         { key: 'classId', label: 'Classe' },
@@ -289,11 +353,11 @@ export class GameSystemService implements OnApplicationBootstrap {
     }
     const asset = REFERENCE_ASSETS[key];
 
-    if (asset.access === 'member') {
-      await this.parties.getViewable(partieId, userId);
-    } else {
-      await this.parties.getOwned(partieId, userId);
-    }
+    await this.permissions.assert(
+      userId,
+      asset.access === 'member' ? 'PARTIE_REFERENCE_ASSET_READ' : 'PARTIE_REFERENCE_ASSET_MJ_READ',
+      { partieId },
+    );
 
     return readFile(join(ASSETS_DIR, asset.file)).catch((e) => {
       this.logger.error(`Échec du chargement de la fiche de référence "${key}" (${asset.file})`, e);

@@ -7,6 +7,11 @@ const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommen
 
 module.exports = defineConfig([
   {
+    // Registre d'icônes produit par scripts/generate-icons.mjs : jamais édité ni reformaté à la main,
+    // sa fraîcheur est vérifiée par `generate-icons.mjs --check` (CI).
+    ignores: ['src/app/core/icons/icon-registry.generated.ts'],
+  },
+  {
     files: ['**/*.ts'],
     extends: [
       eslint.configs.recommended,

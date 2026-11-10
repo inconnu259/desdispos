@@ -44,6 +44,7 @@ export function toAuthUser(user: UserForAuth): AuthUser {
     createdAt: user.createdAt.toISOString(),
     theme: user.theme as Theme | null,
     hideFinishedParties: user.hideFinishedParties,
+    availabilityReminder: user.availabilityReminder,
     partiesSort: user.partiesSort as PartieSort,
     partiesViewMode: user.partiesViewMode as ListViewMode,
     charactersViewMode: user.charactersViewMode as ListViewMode,

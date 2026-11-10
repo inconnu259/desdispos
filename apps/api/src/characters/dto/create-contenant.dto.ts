@@ -1,6 +1,6 @@
 import { Transform } from 'class-transformer';
 import { trimIfString } from '../../common/dto/trim.transform';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateContenantDto {
   @IsString()
@@ -11,6 +11,7 @@ export class CreateContenantDto {
 
   @IsNumber()
   @Min(0)
+  @Max(100_000)
   weight!: number;
 
   @IsOptional()

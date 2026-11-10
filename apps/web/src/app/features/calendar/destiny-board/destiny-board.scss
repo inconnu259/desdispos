@@ -1,0 +1,207 @@
+/* Le plateau de la destinée (Story 44.4). La colonne qui l'enveloppe (largeur, sticky, défilement) vit dans
+   `calendar-view.scss` ; ici, la mise en page du contenu seulement. */
+.destiny-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-sizing: border-box;
+}
+
+.destiny-board__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.destiny-board__glyph {
+  --app-icon-size: 1.1rem;
+  vertical-align: middle;
+  color: var(--jdr-status-todo, inherit);
+}
+
+.destiny-board__subtitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.destiny-board__slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.destiny-board__slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  /* Une cible au doigt : 44 px au moins. */
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  box-sizing: border-box;
+  background: var(--mat-sys-surface-container-high, rgba(255, 255, 255, 0.06));
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--mat-sys-outline, #999);
+  }
+}
+
+/* Le créneau courant : contour de 2 px. */
+.destiny-board__slot--current {
+  border-color: var(--mat-sys-primary, #888);
+}
+
+.destiny-board__slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.destiny-board__slot-label {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.destiny-board__best {
+  font-size: 0.65rem;
+  color: var(--mat-sys-primary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.destiny-board__yes {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+  white-space: nowrap;
+}
+
+/* ⚠️ Story 47.5 — la pire disponibilité d'une plage candidate, sous son nom : texte, sans teinte nouvelle. */
+.destiny-board__availability {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.destiny-board__bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--mat-sys-surface-variant, rgba(255, 255, 255, 0.12));
+  overflow: hidden;
+}
+
+.destiny-board__bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--jdr-status-todo, var(--mat-sys-primary, #888));
+}
+
+.destiny-board__absent {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.destiny-board__who {
+  margin-left: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mat-sys-primary, inherit);
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Story 44.6 — les actions de l'organisateur : des boutons au doigt (44 px), « Fixer la date… » en plein, les
+   autres cernés. */
+.destiny-board__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.destiny-board__fix,
+.destiny-board__extend {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--mat-sys-outline, #888);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.destiny-board__fix {
+  border-color: var(--mat-sys-primary, #888);
+  background: var(--mat-sys-primary, #888);
+  color: var(--mat-sys-on-primary, #fff);
+}
+
+/* Lisible par un lecteur d'écran, invisible à l'œil : l'annonce du créneau courant. */
+.destiny-board__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Story 45.4 — comment rouvrir un vote de JDR terminé. */
+.destiny-board__reopen {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+/* Story 45.6 — « Modifier les dates » (bouton au doigt, filet) et le lien « autre rendez-vous » (un vrai bouton, rendu
+   en texte, 44 px de haut). */
+.destiny-board__modify {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--mat-sys-outline, #888);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.destiny-board__other {
+  display: block;
+  min-height: 44px;
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mat-sys-primary, inherit);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}

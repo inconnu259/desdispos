@@ -1,7 +1,7 @@
 import { ExecutionContext, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 // AccountController -> AccountService -> toDto() (AnnouncementsService, Story 29.13, AD-17) ->
 // transitivement CharacterService -> @master-jdr/game-rules (ESM, non transformé par ts-jest).
@@ -25,6 +25,8 @@ function makeAccountService() {
     addFavorite: jest.fn(),
     removeFavorite: jest.fn(),
     getUnseenAnnouncements: jest.fn(),
+    getDeletionImpact: jest.fn(),
+    deleteAccount: jest.fn(),
     markAnnouncementRead: jest.fn(),
   };
 }
@@ -267,6 +269,14 @@ describe('AccountController', () => {
       expect(account.updateTheme).not.toHaveBeenCalled();
     });
 
+    it('Story 35.1 : l’ancien identifiant `medieval-steampunk` est refusé (400), service jamais appelé', async () => {
+      await request(app.getHttpServer())
+        .patch('/me/theme')
+        .send({ theme: 'medieval-steampunk' })
+        .expect(400);
+      expect(account.updateTheme).not.toHaveBeenCalled();
+    });
+
     it('id glissé dans le corps (même avec un theme valide) → 400 forbidNonWhitelisted, service jamais appelé', async () => {
       account.updateTheme.mockResolvedValue({
         id: 'u1',
@@ -291,13 +301,13 @@ describe('AccountController', () => {
     it('theme valide sans champ superflu → 200', async () => {
       account.updateTheme.mockResolvedValue({
         id: 'u1',
-        theme: 'medieval-steampunk',
+        theme: 'atelier-cuivre',
       });
       await request(app.getHttpServer())
         .patch('/me/theme')
-        .send({ theme: 'medieval-steampunk' })
+        .send({ theme: 'atelier-cuivre' })
         .expect(200);
-      expect(account.updateTheme).toHaveBeenCalledWith('u1', 'medieval-steampunk');
+      expect(account.updateTheme).toHaveBeenCalledWith('u1', 'atelier-cuivre');
     });
 
     it('newPassword < 8 caractères → 400, service jamais appelé', async () => {
@@ -470,5 +480,50 @@ describe('AccountController', () => {
       await request(app.getHttpServer()).put('/me/announcements-read/a1').expect(200);
       expect(account.markAnnouncementRead).toHaveBeenCalledWith('u1', 'a1');
     });
+  });
+
+  it("getDeletionImpact() lit l'id depuis la session (req.user) et ne prend aucun paramètre (Story 43.1)", async () => {
+    const impact = { groups: [], jdrParties: [] };
+    account.getDeletionImpact.mockResolvedValue(impact);
+
+    const req = { user: { id: 'u1' } } as unknown as Request;
+    const result = await controller.getDeletionImpact(req);
+
+    expect(account.getDeletionImpact).toHaveBeenCalledWith('u1');
+    expect(result).toBe(impact);
+  });
+
+  it("deleteAccount() lit l'id depuis la session, passe le mot de passe, ferme la session et retire le cookie (Story 43.2)", async () => {
+    account.deleteAccount.mockResolvedValue({ ok: true });
+    const destroy = jest.fn((cb: () => void) => cb());
+    const clearCookie = jest.fn();
+
+    const req = { user: { id: 'u1' }, session: { destroy } } as unknown as Request;
+    const res = { clearCookie } as unknown as Response;
+    const result = await controller.deleteAccount(req, res, { password: 'secret' });
+
+    expect(account.deleteAccount).toHaveBeenCalledWith('u1', 'secret');
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(clearCookie).toHaveBeenCalledWith('connect.sid');
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("deleteAccount() : mot de passe refusé → la session n'est pas touchée", async () => {
+    account.deleteAccount.mockRejectedValue(new Error('refusé'));
+    const destroy = jest.fn();
+    const clearCookie = jest.fn();
+
+    const req = { user: { id: 'u1' }, session: { destroy } } as unknown as Request;
+    const res = { clearCookie } as unknown as Response;
+    await expect(controller.deleteAccount(req, res, { password: 'faux' })).rejects.toThrow();
+
+    expect(destroy).not.toHaveBeenCalled();
+    expect(clearCookie).not.toHaveBeenCalled();
+  });
+
+  it("deleteAccount() porte le plafond de débit des routes d'authentification : 5 par minute (Story 43.2)", () => {
+    const handler = AccountController.prototype.deleteAccount;
+    expect(Reflect.getMetadata('THROTTLER:LIMITdefault', handler)).toBe(5);
+    expect(Reflect.getMetadata('THROTTLER:TTLdefault', handler)).toBe(60_000);
   });
 });

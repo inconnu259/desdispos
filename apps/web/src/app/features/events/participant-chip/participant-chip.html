@@ -1,0 +1,42 @@
+<ng-template #inner>
+  <span class="pc__avatar" aria-hidden="true">
+    {{ initials() }}
+    @if (participant().isAdmin) {
+      <!-- Pictogramme d'administrateur de 14 px à l'angle de l'avatar : décoratif, le mot « Admin » est écrit à côté. -->
+      <app-icon class="pc__shield" name="role-admin" />
+    }
+  </span>
+  <span class="pc__name">{{ participant().displayName }}</span>
+  @if (self()) {
+    <span class="pc__tag pc__tag--self"
+      >({{ theme.tone()['partie.ralliement_event_participant_self'] }})</span
+    >
+  }
+  @if (participant().isAdmin) {
+    <span class="pc__tag pc__tag--admin">{{ theme.tone()['partie.ralliement_admin_badge'] }}</span>
+  }
+</ng-template>
+
+@if (pending()) {
+  <!-- Place réservée, pas encore acceptée (vue de l'hôte) : pastille pointillée, avatar estompé, état
+       écrit en toutes lettres. -->
+  <span class="pc pc--pending">
+    <span class="pc__avatar pc__avatar--faded" aria-hidden="true">{{ initials() }}</span>
+    <span class="pc__name pc__name--pending">{{ pendingText() }}</span>
+  </span>
+} @else if (opensLibrary()) {
+  <!-- ⚠️ Story 48.3 : le nom d'un autre participant ouvre sa Ludothèque (lecture seule). Même pastille,
+       devenue un bouton de 44 px ; son nom accessible dit ce qu'il ouvre. -->
+  <button
+    type="button"
+    class="pc pc--button"
+    [attr.aria-label]="openAria()"
+    (click)="openLibrary($event)"
+  >
+    <ng-container [ngTemplateOutlet]="inner" />
+  </button>
+} @else {
+  <span class="pc" [class.pc--self]="self()">
+    <ng-container [ngTemplateOutlet]="inner" />
+  </span>
+}

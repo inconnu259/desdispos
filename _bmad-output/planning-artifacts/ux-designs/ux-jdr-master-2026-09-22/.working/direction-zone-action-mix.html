@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Zone Action — mix B/C</title>
+<style>
+  :root {
+    --jdr-bg: #0d0a14;
+    --jdr-surface: #1a1428;
+    --jdr-surface-2: #221c35;
+    --jdr-accent-1: #7ec8a4;
+    --jdr-accent-2: #9b6dff;
+    --jdr-text: #e8e0f0;
+    --jdr-text-muted: #9b8fb0;
+    --jdr-border: #2a2340;
+    --jdr-gradient-cta: linear-gradient(135deg, #7ec8a4, #9b6dff);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: #050308;
+    color: var(--jdr-text);
+    font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+    margin: 0;
+    padding: 2rem;
+  }
+  .direction {
+    max-width: 30rem;
+    background: var(--jdr-bg);
+    border: 1px solid var(--jdr-border);
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.25rem 1.5rem;
+  }
+  .direction__label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--jdr-accent-1); font-weight: 700; margin: 0 0 0.25rem;
+  }
+  .direction__caption {
+    font-size: 0.82rem; color: var(--jdr-text-muted); margin: 0 0 1.25rem; line-height: 1.4;
+  }
+  .zone-title {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--jdr-text-muted); margin: 0 0 0.9rem;
+  }
+  button {
+    font-family: inherit; font-size: 0.85rem; font-weight: 500; border-radius: 0.4rem; cursor: pointer;
+  }
+  .session-card {
+    background: var(--jdr-surface);
+    border-left: 3px solid var(--jdr-accent-2);
+    border-radius: 0.5rem;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1.1rem;
+  }
+  .session-card h4 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--jdr-accent-2); margin: 0 0 0.45rem; font-weight: 700;
+  }
+  .session-card p { margin: 0.3rem 0; font-size: 0.88rem; }
+  .session-card .muted { color: var(--jdr-text-muted); font-size: 0.82rem; }
+  .session-card .btn-flat {
+    margin-top: 0.6rem; background: var(--jdr-accent-1); color: #062018; border: none;
+    padding: 0.55rem 1rem;
+  }
+  .quickbar {
+    display: flex; gap: 0.6rem; flex-wrap: wrap;
+  }
+  .quickbar button {
+    display: flex; align-items: center; gap: 0.45rem;
+    padding: 0.6rem 1rem;
+    background: var(--jdr-surface-2);
+    color: var(--jdr-text);
+    border: 1px solid var(--jdr-border);
+    font-size: 0.85rem;
+  }
+  .quickbar button.primary {
+    background: var(--jdr-gradient-cta);
+    color: #0d0a14;
+    border: none;
+    font-weight: 700;
+  }
+  .quickbar .icon { font-size: 1rem; line-height: 1; }
+</style>
+</head>
+<body>
+  <div class="direction">
+    <p class="direction__label">Direction D — mix B / C (proposé)</p>
+    <p class="direction__caption">Le widget séance garde un traitement « carte » proche de B (contexte le plus riche : date, statut de vote, CTA) mais avec le liseré de couleur de C plutôt qu'un fond neutre — il reste ce qui attire l'œil en premier. XP et annonce, qui n'ont besoin que d'un déclencheur simple, deviennent la barre d'icônes compacte de C juste en dessous : moins de hauteur qu'un encadré chacun, tout en gardant une vraie séparation visuelle avec la séance.</p>
+    <p class="zone-title">Action</p>
+    <div class="session-card">
+      <h4>Prochaine séance</h4>
+      <p class="muted">Aucune séance convoquée.</p>
+      <button class="btn-flat">Consulter l'oracle des créneaux</button>
+    </div>
+    <div class="quickbar">
+      <button class="primary"><span class="icon">✦</span> Distribuer de l'XP</button>
+      <button><span class="icon">✎</span> Proclamer une annonce</button>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Key screen — Étape « Race » du wizard Homme Dragon</title>
+<style>
+/*
+  Gouverne cette planche :
+
+  Memlog (.../ux-jdr-master-2026-09-23/.memlog.md) :
+    - "Découpage en 5 écrans confirmé : 1) Race (choix), 2) Artefact, 3) Identité,
+      4) Vie de l'Homme Dragon, 5) Avatar" → bandeau d'étape 1/5 ici.
+    - "Infos manquantes = texte explicatif ... un texte par OPTION de choix pour expliquer
+      ce que c'est (chaque race) ... le vrai contenu viendra d'autres stories ; on peut le
+      simuler" → sous-titres de race en placeholder explicite, jamais de fausse lore.
+    - "[ASSUMPTION] OUVERT : teinte par race sur les ChoiceCard de l'étape Race — l'utilisateur
+      veut voir un mock avant de trancher" → objet de cette planche : Variante A vs Variante B.
+    - "Trouvaille Material" (rattrapage {radius.input}) → notée ici ; cette étape n'a plus de
+      <select> natif à remplacer, le choix de race passe entièrement par les ChoiceCard.
+
+  Wizard delta ux-jdr-master-2026-08-31 :
+    - DESIGN.md §7.1 ChoiceCard : nom + sous-titre 2 lignes max, sélection = contour + fond
+      accent-2 (inchangé, quelle que soit la variante — le tint de race n'entre jamais en
+      concurrence avec l'état de sélection).
+    - DESIGN.md §4 Layout & Spacing : grille `auto-fill, minmax(140px, 1fr)`, cible tactile 44px,
+      seuil desktop 1024px.
+    - EXPERIENCE.md §7 Accessibility Floor : "information jamais portée par la couleur seule" →
+      Variante A associe systématiquement icône + étiquette texte à la teinte.
+    - EXPERIENCE.md §8 Responsive & Platform : bandeau d'étape, grille de cartes, barre d'actions
+      fixe (Précédent/Suivant) — patron repris tel quel du mock contractuel du wizard perso
+      (mockups/contrat-ui-wizard-creation.html, §1 "Étape Classe").
+
+  Base ux-jdr-master-20260626/DESIGN.md :
+    - §2 Colors (thème grimoire-emeraude) — valeurs alignées sur la source de vérité réelle
+      apps/web/src/styles.scss (.theme-grimoire-emeraude), pas sur le brouillon initial du
+      spine (légers écarts de teinte de texte).
+    - §3 Typography, §4 spacing, §6 Shapes (radius.input = 4px, "Angular Material override").
+
+  Note d'échelle : pour comparer les deux variantes à l'écran, les deux fenêtres desktop sont
+  posées côte à côte à ~1040px chacune (≥ seuil desktop 1024px) plutôt qu'une seule pleine
+  largeur — cette planche est un document de comparaison, pas une capture d'exécution réelle ;
+  en usage, une seule variante occupera la largeur complète du wizard.
+*/
+:root{
+  /* Tokens réels — apps/web/src/styles.scss .theme-grimoire-emeraude (thème par défaut) */
+  --bg:            #0d0a14;
+  --surface:       #1a1428;
+  --surface-high:  #221c35;
+  --accent-1:      #7ec8a4;
+  --accent-1-rgb:  126,200,164;
+  --accent-2:      #9b6dff;
+  --accent-2-rgb:  155,109,255;
+  --text:          #e8e0f0;
+  --text-muted:    #9b8fb0;
+  --gradient-cta:  linear-gradient(135deg,#7ec8a4,#9b6dff);
+  --border-subtle: rgba(255,255,255,.08);
+  --overlay:       rgba(0,0,0,.55);
+
+
+  /* Échelle typographique — DESIGN.md base §3 */
+  --text-sm: 12px; --text-base: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 26px;
+  /* Espacement — §4 */
+  --sp-xs:4px; --sp-sm:8px; --sp-md:12px; --sp-base:16px; --sp-lg:24px; --sp-xl:32px;
+  /* Rayons — §6 */
+  --r-card:10px; --r-badge:6px; --r-input:4px; --r-button:8px; --r-button-cta:10px; --r-panel:12px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:#050308; color:var(--text);
+  font:var(--text-base)/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:var(--sp-xl);
+}
+h1{font-size:var(--text-2xl);margin:0 0 4px;font-weight:700}
+p.lead{color:var(--text-muted);max-width:760px;margin:0 0 var(--sp-lg)}
+.compare{display:flex;gap:var(--sp-xl);align-items:flex-start;overflow-x:auto;padding-bottom:var(--sp-md)}
+.variant{flex:0 0 auto}
+.variant h2{font-size:var(--text-lg);font-weight:600;margin:0 0 4px;color:var(--text)}
+.variant .sub{font-size:var(--text-sm);color:var(--text-muted);margin:0 0 var(--sp-sm);max-width:1040px}
+
+.browser{width:1040px;background:#020103;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.7);border:1px solid #241a30}
+.chrome{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#150f20;border-bottom:1px solid var(--border-subtle)}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot.r{background:#e05252}.dot.y{background:#f0a030}.dot.g{background:#7ec8a4}
+.url{margin-left:10px;flex:1;background:#0d0a14;border:1px solid var(--border-subtle);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text-muted)}
+
+.viewport{background:var(--bg)}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:var(--surface-high);font-weight:600;font-size:13px}
+.nav i{font-style:normal;color:var(--text-muted);width:28px;text-align:center}
+.prog{height:4px;background:#2a2438}
+.prog>div{height:100%;background:var(--gradient-cta)}
+.step-body{padding:var(--sp-lg) var(--sp-xl)}
+.intro{font-style:italic;color:var(--text-muted);margin:0 0 var(--sp-md);font-size:13px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:var(--sp-sm)}
+.cc{
+  position:relative;
+  border:1px solid var(--border-subtle);
+  border-radius:var(--r-card);
+  padding:var(--sp-md) var(--sp-base);
+  background:var(--surface-high);
+  min-height:120px;
+}
+.cc.sel{border-color:var(--accent-2);background:rgba(var(--accent-2-rgb),.16)}
+.cc-head{display:flex;align-items:center;gap:var(--sp-sm);margin-bottom:6px}
+.cc-icon{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex:0 0 auto;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--border-subtle);
+}
+.cc b{font-weight:500;font-size:var(--text-base);display:block}
+.cc .tag{
+  display:inline-block;font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;
+  padding:2px 7px;border-radius:var(--r-badge);border:1px solid var(--border-subtle);color:var(--text-muted);
+  margin-bottom:8px;
+}
+.cc p{margin:0;font-size:var(--text-sm);line-height:1.35;color:var(--text-muted);
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cc .radio{
+  position:absolute;top:12px;right:12px;width:16px;height:16px;border-radius:50%;
+  border:2px solid var(--border-subtle);
+}
+.cc.sel .radio{border-color:var(--accent-2)}
+.cc.sel .radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--accent-2)}
+
+/* Variante A — teinte par race, ITÉRATION 3 (retours utilisateur : "le noir est plutôt gris",
+   "le dragon se confond avec le vert/rouge", "le rouge est trop proche du rose", "juste le
+   contour du logo en couleur, un peu épais ?", "une autre image de dragon ?").
+   Changements : (1) l'émoji 🐉 (glyphe intrinsèquement coloré, illisible sur un fond teinté et
+   incapable de rendre un "noir" crédible) est remplacé par une icône SVG trait fin — sa couleur
+   suit maintenant `currentColor`, donc la race peut réellement la piloter ; (2) le disque d'icône
+   redevient neutre/sombre, SEUL le contour (2px) et le trait SVG (épaissi) portent la couleur —
+   plus de disque plein ; (3) le rouge est repoussé vers une teinte brique/terracotta (canal rouge
+   nettement dominant sur vert/bleu) au lieu d'un rouge délavé qui virait au rose ; (4) le noir
+   est traité en DEUX tons (fond quasi noir + liséré/trait argenté clair) plutôt qu'un gris moyen
+   unique — un ton "obsidienne" ne peut pas se distinguer du fond très sombre de l'appli autrement
+   que par un rehaut clair, comme un vrai dragon noir aux reflets d'écailles. Toujours doublé du
+   texte (nom + étiquette), jamais la couleur seule. */
+.cc[class*="race-"]{border-top:3px solid transparent;padding-top:calc(var(--sp-md) - 3px)}
+.cc[class*="race-"]:not(.sel){
+  background:var(--card-bg, linear-gradient(180deg, var(--wash) 0%, var(--surface-high) 65%));
+  box-shadow:0 0 0 1px var(--hairline, transparent);
+}
+.cc[class*="race-"] .cc-icon{
+  width:36px;height:36px;
+  background:var(--icon-bg, rgba(255,255,255,.04));
+  border:2px solid var(--h);
+  box-shadow:0 0 0 1px var(--hairline, transparent);
+}
+.cc[class*="race-"]:not(.sel){border-top-color:var(--h)}
+.cc[class*="race-"] .tag{font-weight:700;border-width:1px;background:var(--tag-bg);color:var(--tag-ink);border-color:var(--h);box-shadow:0 0 0 1px var(--hairline, transparent)}
+
+.race-vert{--wash:rgba(79,148,104,.18); --h:#4f9468; --tag-bg:#4f9468; --tag-ink:#0d0a14}
+.race-bleu{--wash:rgba(91,126,163,.18); --h:#5b7ea3; --tag-bg:#5b7ea3; --tag-ink:#0d0a14}
+/* Rouge repoussé vers le brique : R nettement > V/B (au lieu de R≈V≈B qui lit comme du rose
+   délavé), toujours plus sourd que --status-unavailable (#e05252). */
+.race-rouge{--wash:rgba(168,67,58,.20); --h:#b5493d; --tag-bg:#a8433a; --tag-ink:#f5e8e4}
+/* Noir, itération 5 — retour utilisateur : même en 2 tons, le noir littéral "ne ressort pas,
+   absence de contour plutôt qu'autre chose" sur le bandeau, l'icône ET le badge. Un noir ne peut
+   pas se rendre visible en s'éclaircissant lui-même (il cesserait d'être noir) : il lui faut un
+   arrière-plan plus clair que lui pour se découper en silhouette. Donc : (1) la carte Dragon Noir
+   seule reçoit un fond neutre distinctement plus clair (--card-bg, un gris graphite chaud, PAS une
+   teinte de race comme les 3 autres — le noir n'a pas de "wash" possible) ; (2) un fin liséré gris
+   clair de 1px (--hairline) cerne bandeau/icône/badge pour une découpe nette, y compris là où le
+   fond de carte reste sombre (coins, bord bas). --h reste un noir quasi littéral, inchangé. */
+.race-noir{
+  --h:#121016; --tag-bg:#121016; --tag-ink:#d8d4e2;
+  --icon-bg:rgba(255,255,255,.16);
+  --card-bg:linear-gradient(180deg,#3a3642 0%,#2c2933 100%);
+  --hairline:rgba(255,255,255,.28);
+}
+
+/* Sélection : le halo accent-2 prend le pas visuellement sur le bandeau de race (contour +
+   fond violets) pour le bandeau du haut ; l'icône et l'étiquette gardent leur teinte de race
+   (l'identité de race reste visible même sur la carte choisie). */
+.cc.sel[class*="race-"]{border-top-color:var(--accent-2)}
+
+/* Variante B — traitement neutre : même icône/étiquette pour toutes, seule la sélection
+   (accent-2) distingue une carte — comportement ChoiceCard actuel du wizard perso. */
+.neutral .cc-icon{background:rgba(255,255,255,.06);color:var(--text-muted)}
+.neutral .tag{color:var(--text-muted)}
+
+.bar{display:flex;gap:var(--sp-sm);padding:var(--sp-sm) var(--sp-xl) var(--sp-lg)}
+.bar div{min-height:44px;padding:0 18px;border-radius:var(--r-button);display:flex;align-items:center;justify-content:center;font-weight:600;border:1px solid var(--border-subtle);font-size:13px}
+.bar .go{background:var(--gradient-cta);color:#0d0a14;border:0;margin-left:auto}
+
+.note{max-width:1040px;font-size:12px;color:var(--text-muted);margin-top:var(--sp-sm)}
+.note b{color:var(--accent-1)}
+</style>
+</head>
+<body>
+
+<h1>Étape « Race » — wizard de création de l'Homme Dragon (1/5)</h1>
+<p class="lead">
+  Comparaison des deux traitements possibles pour la teinte par race (question ouverte du
+  memlog). Contenu réel : les quatre races du catalogue Ryuutama Homme Dragon
+  (Dragon Vert / Bleu / Rouge / Noir). Sous-titres de race en texte de substitution — leur
+  contenu définitif est hors périmètre de cette passe UX.
+</p>
+
+<div class="compare">
+
+  <div class="variant">
+    <h2>Variante A — teinte par race (itération 3)</h2>
+    <p class="sub">
+      Retours utilisateur pris en compte : nouvelle icône SVG trait fin (l'émoji 🐉 se confondait
+      avec les fonds teintés et ne pouvait pas rendre un noir crédible), disque d'icône neutre —
+      seuls le contour (2px) et le trait de l'icône portent la couleur, plus épais qu'avant ;
+      rouge repoussé vers le brique/terracotta (moins de rose) ; noir traité en deux tons, fond
+      quasi noir + liséré argenté clair, plutôt qu'un gris moyen. Toujours doublé du texte
+      (« Vert », « Bleu »…), jamais la couleur seule. La sélection reste le contour/halo
+      <code>accent-2</code> du ChoiceCard standard.
+    </p>
+    <div class="browser">
+      <div class="chrome">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <div class="url">app.jdr-master.local/parties/voie-des-brumes/hommes-dragons/nouveau</div>
+      </div>
+      <div class="viewport">
+        <div class="nav"><i>❮</i><span>Étape 1/5 · Race</span><i>❯</i></div>
+        <div class="prog"><div style="width:20%"></div></div>
+        <div class="step-body">
+          <p class="intro">[Texte d'introduction de l'étape — seedé, inchangé]</p>
+          <div class="grid">
+            <div class="cc race-vert">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Vert</b></div>
+              <span class="tag">Vert</span>
+              <p>Décrit ici ce qui distingue le Dragon Vert des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+            <div class="cc race-bleu sel">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Bleu</b></div>
+              <span class="tag">Bleu</span>
+              <p>Décrit ici ce qui distingue le Dragon Bleu des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+            <div class="cc race-rouge">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Rouge</b></div>
+              <span class="tag">Rouge</span>
+              <p>Décrit ici ce qui distingue le Dragon Rouge des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+            <div class="cc race-noir">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Noir</b></div>
+              <span class="tag">Noir</span>
+              <p>Décrit ici ce qui distingue le Dragon Noir des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+          </div>
+        </div>
+        <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+      </div>
+    </div>
+    <p class="note">Étape sans champ de formulaire natif : le <code>&lt;select&gt;</code> race actuel (<b>homme-dragon-sheet.html</b>) disparaît, remplacé entièrement par ces ChoiceCard.</p>
+  </div>
+
+  <div class="variant">
+    <h2>Variante B — traitement neutre</h2>
+    <p class="sub">
+      Mêmes quatre cartes, même contenu, mais aucune teinte par race : traitement identique à
+      celui des ChoiceCard du wizard de personnage aujourd'hui (icône et étiquette neutres,
+      seule la sélection <code>accent-2</code> distingue une carte).
+    </p>
+    <div class="browser">
+      <div class="chrome">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <div class="url">app.jdr-master.local/parties/voie-des-brumes/hommes-dragons/nouveau</div>
+      </div>
+      <div class="viewport">
+        <div class="nav"><i>❮</i><span>Étape 1/5 · Race</span><i>❯</i></div>
+        <div class="prog"><div style="width:20%"></div></div>
+        <div class="step-body">
+          <p class="intro">[Texte d'introduction de l'étape — seedé, inchangé]</p>
+          <div class="grid neutral">
+            <div class="cc">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Vert</b></div>
+              <span class="tag">Vert</span>
+              <p>Décrit ici ce qui distingue le Dragon Vert des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+            <div class="cc sel">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Bleu</b></div>
+              <span class="tag">Bleu</span>
+              <p>Décrit ici ce qui distingue le Dragon Bleu des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+            <div class="cc">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Rouge</b></div>
+              <span class="tag">Rouge</span>
+              <p>Décrit ici ce qui distingue le Dragon Rouge des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+            <div class="cc">
+              <div class="radio"></div>
+              <div class="cc-head"><span class="cc-icon">🐉</span><b>Dragon Noir</b></div>
+              <span class="tag">Noir</span>
+              <p>Décrit ici ce qui distingue le Dragon Noir des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+            </div>
+          </div>
+        </div>
+        <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+      </div>
+    </div>
+    <p class="note">Traitement identique à celui déjà validé par le wizard perso (aucun token nouveau).</p>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+/* Story 40.1 — fenêtre de création d'une conjonction (contrat UX : creation-conjonction-*). Une
+   colonne sur mobile, deux champs côte à côte dès 600 px (jour + créneau, lieu + heure). Cibles
+   tactiles de 44 px (bascules, compteur). Aucune animation ajoutée. */
+:host {
+  display: contents;
+}
+
+.ec__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.ec__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ec__error {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font-size: 0.875rem;
+}
+
+.ec__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+
+  button {
+    min-height: 44px;
+  }
+}

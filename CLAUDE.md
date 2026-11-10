@@ -60,6 +60,23 @@ Docker nommés (cf. `docker-compose.yml`).
   (voir `docs/checklist.md`) — pas de garde automatisée (lint/CI), vérification humaine/agent à
   chaque ajout.
 
+## Git — dérogation locale, ce dépôt uniquement
+
+La règle git absolue du `CLAUDE.md` global (aucune écriture d'état git sans demande **et**
+autorisation explicites dans le message courant) reste en vigueur ici — **sauf** pour une seule
+opération : `git commit` en local est autorisé sans redemander à chaque fois. Décidé le
+2026-09-21, avec le rappel explicite de l'utilisateur que ça ne s'étend à aucun autre dépôt.
+
+- Toujours interdit sans demande explicite dans le message courant : `push`, `amend`, `rebase`,
+  `reset`, `merge`, `cherry-pick`, `stash`, `tag`, création/suppression de branche — toute la
+  liste du `CLAUDE.md` global reste pleinement applicable, seul `commit` en est sorti.
+- L'identité git de ce dépôt est configurée **en local** (`git config user.name`/`user.email`,
+  sans `--global`) sur `inconnu259 <inconnu259@gmail.com>` — jamais l'identité pro de
+  l'utilisateur, qui reste l'identité globale utilisée sur ses autres dépôts. Ne jamais modifier
+  cette config sans demande explicite.
+- Cette dérogation ne s'applique qu'à ce dépôt. Ne jamais l'inférer ou la proposer pour un autre
+  projet.
+
 ## ⚠️ Rappels à faire à l'utilisateur (il l'a explicitement demandé)
 
 À la **fin de chaque palier** ou avant une **grosse feature**, lui rappeler :
@@ -73,3 +90,13 @@ Source de vérité : `docs/checklist.md`.
 
 - **Context7** (MCP) : doc à jour des libs — l'utiliser **avant d'écrire du code framework-spécifique**
   (Angular/Nest/Prisma évoluent vite).
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

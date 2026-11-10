@@ -4,6 +4,16 @@
   text-align: center;
 }
 
+.sheet__back {
+  /* Pictogramme <app-icon> décoratif à côté du libellé : 18px, aligné au texte. */
+  --app-icon-size: 18px;
+
+  app-icon {
+    vertical-align: middle;
+    margin-inline-end: 0.25rem;
+  }
+}
+
 .sheet__load-error {
   color: var(--mat-sys-error, #c00);
 }
@@ -30,7 +40,12 @@
     color: var(--mat-sys-on-surface-variant, inherit);
     width: 2.25rem;
     height: 2.25rem;
-    font-size: 1.25rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Pictogramme <app-icon> : taille par la variable, plus par font-size. */
+    --app-icon-size: 20px;
     line-height: 1;
     cursor: pointer;
 
@@ -263,6 +278,15 @@
   inset: 0;
   z-index: 199;
   background: rgba(0, 0, 0, 0.45);
+}
+
+// Correctif de revue (session bmad-build, 2026-09-22) : indication qu'une section est masquée par
+// un cadenas de visibilité (Story 31.6/31.7), distincte d'une section vide — même style que
+// `.inventory-tab__empty`.
+.sheet__masked-note {
+  color: var(--mat-sys-on-surface-variant, #888);
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
 // Story 31.2 — déclencheur de la surface de détail (talent/avantage/sort). Reset des styles de

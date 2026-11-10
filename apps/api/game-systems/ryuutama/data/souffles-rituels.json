@@ -1,0 +1,38 @@
+[
+  {
+    "key": "rituel-du-sommeil",
+    "label": "Rituel du sommeil",
+    "ps": 1,
+    "description": "Si un joueur s'endort, son personnage perd (d6 × 100 × niveau) pièces d'or (Po) ; s'il ne peut pas payer, la somme est retenue sur ses primes suivantes."
+  },
+  {
+    "key": "rituel-du-tabou",
+    "label": "Rituel du tabou",
+    "ps": 1,
+    "description": "Pendant la séance, tout personnage qui emploie un mot moderne ou technologique perd 1 PS/PV."
+  },
+  {
+    "key": "rituel-de-l-esprit-des-mots",
+    "label": "Rituel de l'esprit des mots",
+    "ps": 1,
+    "description": "Une fois dans la séance, une phrase dite par un joueur se réalise dans le jeu, de la manière la plus littérale possible."
+  },
+  {
+    "key": "rituel-de-la-guigne",
+    "label": "Rituel de la guigne",
+    "ps": 1,
+    "description": "Quand un voyageur obtient un double 1, il glisse sur une peau de banane et subit 1 point de dégât impossible à éviter. Il peut ensuite se servir de cette peau de banane comme d'un objet, même en combat."
+  },
+  {
+    "key": "rituel-de-l-improvisation",
+    "label": "Rituel de l'improvisation",
+    "ps": 1,
+    "description": "Le meneur doit improviser entièrement le scénario, et les joueurs doivent l'aider de leur mieux à le faire avancer."
+  },
+  {
+    "key": "fete-des-poings",
+    "label": "Fête des poings",
+    "ps": 1,
+    "description": "Le meneur de cette séance, ou de la suivante, est désigné à pierre-papier-ciseaux."
+  }
+]

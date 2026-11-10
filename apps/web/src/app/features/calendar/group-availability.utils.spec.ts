@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { THEMES, TONE_MAP } from '../../core/theme/tones';
 import {
   GROUP_PASTILLE_MAX,
   type GroupAvailability,
@@ -10,7 +11,11 @@ import {
   memberStatusGlyph,
   memberStatusWord,
   showsMemberPastilles,
+  worstAvailability,
 } from './group-availability.utils';
+
+// Thème de référence pour les cas courants ; le bloc « voix par thème » en bas vérifie les autres.
+const tone = TONE_MAP['grimoire-emeraude'];
 
 function member(id: string, status: GroupMember['status']): GroupMember {
   return { userId: id, pseudo: id, displayName: id.toUpperCase(), status };
@@ -88,14 +93,16 @@ describe('showsMemberPastilles (AC4/AC5, Story 36.8)', () => {
 
 describe('groupAriaLabel (AC15, Story 36.8)', () => {
   it('dit toujours les disponibles sur l’effectif', () => {
-    expect(groupAriaLabel(group({ available: 2, unknown: 2 }))).toContain('2 sur 4 disponibles');
+    expect(groupAriaLabel(group({ available: 2, unknown: 2 }), tone)).toContain(
+      '2 sur 4 disponibles',
+    );
   });
 
   it('distingue les deux vides EN TOUTES LETTRES, sans la couleur (AC6 + P-1)', () => {
-    expect(groupAriaLabel(group({ unavailable: 4, total: 4 }))).toContain(
-      'tout le monde est bloqué',
+    expect(groupAriaLabel(group({ unavailable: 4, total: 4 }), tone)).toContain(
+      'tous les compagnons sont empêchés',
     );
-    expect(groupAriaLabel(group({ unknown: 4 }))).toContain("personne ne s'est prononcé");
+    expect(groupAriaLabel(group({ unknown: 4 }), tone)).toContain('nul ne s’est prononcé');
   });
 
   it('nomme les membres et leur statut quand le serveur en a servi (AC7, vue MJ)', () => {
@@ -111,6 +118,7 @@ describe('groupAriaLabel (AC15, Story 36.8)', () => {
           member('carol', 'UNKNOWN'),
         ],
       }),
+      tone,
     );
     expect(label).toContain('ALICE disponible');
     expect(label).toContain('BOB indisponible');
@@ -119,11 +127,11 @@ describe('groupAriaLabel (AC15, Story 36.8)', () => {
 
   it('ne nomme personne quand aucune identité n’est servie (AC3, vue joueur)', () => {
     const counts = { available: 2, unavailable: 1, unknown: 1 };
-    const anonymous = groupAriaLabel(group(counts));
+    const anonymous = groupAriaLabel(group(counts), tone);
     // Assertion d'égalité STRICTE : « ne contient pas tel nom » passerait aussi pour une
     // mauvaise raison (un nom absent de la fixture). Ici, la seule chose que le libellé peut
     // dire, ce sont les nombres.
-    expect(anonymous).toBe('Disponibilité du groupe : 2 sur 4 disponibles — 1 indisponible');
+    expect(anonymous).toBe('Disponibilité de la troupe : 2 sur 4 disponibles — 1 indisponible');
 
     // Et la preuve que c'est bien la donnée qui décide : mêmes compteurs, identités servies.
     const named = groupAriaLabel(
@@ -136,6 +144,7 @@ describe('groupAriaLabel (AC15, Story 36.8)', () => {
           member('dave', 'UNKNOWN'),
         ],
       }),
+      tone,
     );
     expect(named).toContain('ALICE disponible');
     expect(named.startsWith(anonymous)).toBe(true);
@@ -154,9 +163,9 @@ describe('groupCounterLabel (Story 36.8)', () => {
 
 describe('memberStatusWord (Story 36.8)', () => {
   it('écrit les trois statuts en toutes lettres — point unique du vocabulaire', () => {
-    expect(memberStatusWord(member('a', 'AVAILABLE'))).toBe('disponible');
-    expect(memberStatusWord(member('a', 'UNAVAILABLE'))).toBe('indisponible');
-    expect(memberStatusWord(member('a', 'UNKNOWN'))).toBe('sans réponse');
+    expect(memberStatusWord(member('a', 'AVAILABLE'), tone)).toBe('disponible');
+    expect(memberStatusWord(member('a', 'UNAVAILABLE'), tone)).toBe('indisponible');
+    expect(memberStatusWord(member('a', 'UNKNOWN'), tone)).toBe('sans réponse');
   });
 });
 
@@ -165,5 +174,86 @@ describe('memberStatusGlyph (revue de code, Story 36.8)', () => {
     expect(memberStatusGlyph(member('a', 'AVAILABLE'))).toBe('D');
     expect(memberStatusGlyph(member('a', 'UNAVAILABLE'))).toBe('I');
     expect(memberStatusGlyph(member('a', 'UNKNOWN'))).toBe('?');
+  });
+});
+
+// Story 35.3 — les voix divergent : le nom accessible du canal et le mot de statut lisent le ton
+// passé, jamais celui du thème de référence.
+describe('voix par thème — le ton passé est celui qui parle', () => {
+  for (const theme of THEMES) {
+    const t = TONE_MAP[theme];
+
+    it(`${theme} : le nom accessible dit « tout le monde est bloqué » dans la voix du thème`, () => {
+      expect(groupAriaLabel(group({ unavailable: 4, total: 4 }), t)).toContain(
+        t['calendar.util_group_all_blocked'],
+      );
+    });
+
+    it(`${theme} : le statut d'un membre reprend les mots du thème`, () => {
+      expect(memberStatusWord(member('a', 'AVAILABLE'), t)).toBe(
+        t['calendar.week_status_available'],
+      );
+      expect(memberStatusWord(member('a', 'UNKNOWN'), t)).toBe(t['calendar.util_word_no_answer']);
+    });
+  }
+
+  it('le même effectif se dit autrement dans chaque thème', () => {
+    const labels = THEMES.map((theme) =>
+      groupAriaLabel(group({ unavailable: 4, total: 4 }), TONE_MAP[theme]),
+    );
+    expect(new Set(labels).size).toBe(THEMES.length);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 47.5 — la pire disponibilité d’une plage candidate
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('worstAvailability — le plus petit nombre de disponibles sur la plage (Story 47.5)', () => {
+  const cell = (date: string, slot: 'MORNING' | 'AFTERNOON' | 'EVENING', available: number) => ({
+    date,
+    slot,
+    available,
+  });
+  // Vendredi soir → dimanche après-midi : 6 créneaux.
+  const weekend = [
+    cell('2026-11-06', 'EVENING', 5),
+    cell('2026-11-07', 'MORNING', 2),
+    cell('2026-11-07', 'AFTERNOON', 4),
+    cell('2026-11-07', 'EVENING', 6),
+    cell('2026-11-08', 'MORNING', 3),
+    cell('2026-11-08', 'AFTERNOON', 5),
+  ];
+
+  it('6 créneaux, 5, 2, 4… : le pire est 2', () => {
+    expect(worstAvailability(weekend, { date: '2026-11-06', slot: 'EVENING' }, 6)).toBe(2);
+  });
+
+  it('une cellule manquante : pas de chiffre (jamais un chiffre partiel)', () => {
+    const missing = weekend.filter((c) => !(c.date === '2026-11-08' && c.slot === 'AFTERNOON'));
+    expect(worstAvailability(missing, { date: '2026-11-06', slot: 'EVENING' }, 6)).toBeNull();
+  });
+
+  it('une carte vide : pas de chiffre', () => {
+    expect(worstAvailability([], { date: '2026-11-06', slot: 'EVENING' }, 6)).toBeNull();
+  });
+
+  it('une durée invalide : pas de chiffre', () => {
+    expect(worstAvailability(weekend, { date: '2026-11-06', slot: 'EVENING' }, 0)).toBeNull();
+    expect(worstAvailability(weekend, { date: '2026-11-06', slot: 'FULL_DAY' }, 3)).toBeNull();
+  });
+
+  it('un zéro est un chiffre (personne de libre sur toute la plage)', () => {
+    const zero = weekend.map((c) =>
+      c.slot === 'MORNING' && c.date === '2026-11-07' ? cell(c.date, 'MORNING', 0) : c,
+    );
+    expect(worstAvailability(zero, { date: '2026-11-06', slot: 'EVENING' }, 6)).toBe(0);
+  });
+
+  it('accepte une date ISO complète côté carte comme côté départ', () => {
+    const iso = weekend.map((c) => ({ ...c, date: `${c.date}T00:00:00.000Z` }));
+    expect(worstAvailability(iso, { date: '2026-11-06T00:00:00.000Z', slot: 'EVENING' }, 6)).toBe(
+      2,
+    );
   });
 });

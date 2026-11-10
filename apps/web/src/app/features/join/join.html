@@ -1,35 +1,46 @@
-<div class="join-page">
-  <mat-card class="join-card">
+<app-auth-band />
+<main class="auth-page" [attr.aria-labelledby]="notFound() || preview() ? 'auth-title' : null">
+  <mat-card class="auth-card">
+    <!-- Conteneur persistant : « Chargement… » y est annoncé, il existe avant la réponse du serveur -->
+    <div class="auth-status" role="status">
+      @if (!notFound() && !preview()) {
+        <p class="auth-loading">{{ tone()['common.chargement'] }}</p>
+      }
+    </div>
     @if (notFound()) {
-      <mat-card-header><mat-card-title>Lien introuvable</mat-card-title></mat-card-header>
-      <mat-card-content><p>Ce lien d'invitation n'existe pas.</p></mat-card-content>
+      <mat-card-header><h1 matCardTitle id="auth-title" class="auth-title">{{ tone()['join.not_found_title'] }}</h1></mat-card-header>
+      <mat-card-content><p>{{ tone()['join.not_found_text'] }}</p></mat-card-content>
     } @else if (preview(); as pv) {
       <mat-card-header>
-        <mat-card-title>Rejoindre « {{ pv.partieName }} »</mat-card-title>
-        <mat-card-subtitle>{{ system(pv.gameSystemId) }}</mat-card-subtitle>
+        <h1 matCardTitle id="auth-title" class="auth-title">{{ joinTitle(pv.partieName) }}</h1>
       </mat-card-header>
+      <mat-card-subtitle>{{ isGroup() ? tone()['partie.mode_ralliement'] : system(pv.gameSystemId) }}</mat-card-subtitle>
       <mat-card-content>
         @if (!pv.valid) {
-          <p class="error">{{ pv.reason ?? 'Lien invalide.' }}</p>
+          <!-- Présent dès le chargement : texte simple, sans role="alert" -->
+          <p class="error">{{ pv.reason ?? tone()['common.lien_invalide'] }}</p>
         } @else if (loggedIn()) {
-          <p>Tu es connecté en tant que <strong>{{ loggedIn()?.displayName }}</strong>.</p>
+          <p>{{ tone()['join.logged_as'] }} <strong>{{ loggedIn()?.displayName }}</strong>.</p>
           @if (error()) {
-            <p class="error">{{ error() }}</p>
+            <p class="error" role="alert">{{ error() }}</p>
           }
+          <button mat-flat-button class="auth-primary" type="button" (click)="join()">
+            {{ joinLabel() }}
+          </button>
         } @else {
-          <p>Connecte-toi ou crée un compte pour rejoindre cette partie.</p>
+          <p>{{ text('login_or_register') }}</p>
+          <a mat-flat-button class="auth-primary" [routerLink]="['/register']" [queryParams]="{ token }">
+            {{ tone()['common.creer_un_compte'] }}
+          </a>
         }
       </mat-card-content>
-      <mat-card-actions>
-        @if (pv.valid && loggedIn()) {
-          <button mat-flat-button (click)="join()">Rejoindre</button>
-        } @else if (pv.valid) {
-          <a mat-flat-button [routerLink]="['/register']" [queryParams]="{ token }">Créer un compte</a>
-          <a mat-button [routerLink]="['/login']">J'ai déjà un compte</a>
-        }
-      </mat-card-actions>
-    } @else {
-      <mat-card-content><p>Chargement…</p></mat-card-content>
+      @if (pv.valid && !loggedIn()) {
+        <mat-card-actions class="auth-secondary-actions">
+          <a class="auth-secondary-link" [routerLink]="['/login']">{{
+            tone()['common.j_ai_deja_un_compte']
+          }}</a>
+        </mat-card-actions>
+      }
     }
   </mat-card>
-</div>
+</main>

@@ -1,0 +1,45 @@
+.evd__heading {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.evd__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 14px;
+}
+
+.evd__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.evd__input {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 260px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--mat-sys-outline, rgba(127, 127, 127, 0.6));
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.evd__warning {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.evd__error {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--mat-sys-error, #b00020);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}

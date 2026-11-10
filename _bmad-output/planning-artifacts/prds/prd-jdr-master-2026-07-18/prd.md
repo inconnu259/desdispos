@@ -21,7 +21,7 @@ Le projet a livré 5 paliers en avançant vite, avec une revue de code adversari
 
 Pas de nouveau persona — ce palier sert les utilisateurs déjà en place (MJ et joueurs de parties Ryuutama) de deux façons :
 - **Fiabilité perçue** : moins de « rien ne se passe » après un clic, moins d'états visuellement obsolètes après une action d'un autre membre.
-- **Confiance** : posture de sécurité renforcée sur l'authentification et les fichiers uploadés, avant l'ouverture éventuelle à plus d'utilisateurs (Palier 9, durcissement multi-MJ) et la mise en production (Palier 10).
+- **Confiance** : posture de sécurité renforcée sur l'authentification et les fichiers uploadés, avant l'ouverture éventuelle à plus d'utilisateurs (Palier 9, durcissement multi-MJ) et la mise en production (Palier 11).
 
 ## 3. Glossary
 
@@ -126,7 +126,7 @@ L'export PDF équipement (`mapEquipmentToPdfFields`, Story 11.1) mappe désormai
 
 ### 4.3 Durcissement sécurité — authentification & réinitialisation de mot de passe
 
-**Description :** Le flux « mot de passe oublié » (Palier 4, Story 5.4) a été livré avec plusieurs limitations de sécurité explicitement différées faute de nécessité immédiate. Avant l'ouverture à plus d'utilisateurs et la mise en production (Paliers 9-10), ce palier les referme.
+**Description :** Le flux « mot de passe oublié » (Palier 4, Story 5.4) a été livré avec plusieurs limitations de sécurité explicitement différées faute de nécessité immédiate. Avant l'ouverture à plus d'utilisateurs et la mise en production (Paliers 9-11), ce palier les referme.
 
 **Functional Requirements:**
 

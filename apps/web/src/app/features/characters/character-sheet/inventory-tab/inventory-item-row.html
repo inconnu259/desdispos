@@ -10,12 +10,28 @@
     <span class="inventory-item-row__effect">{{ item().effect }}</span>
   }
   @if (item().addedBy === 'mj') {
-    <span class="inventory-item-row__badge">ajouté par le MJ</span>
+    <span class="inventory-item-row__badge">{{
+      theme.tone()['characters_sheet.item_added_by_mj']
+    }}</span>
   }
   @if (editable()) {
-    <button mat-icon-button type="button" aria-label="Modifier l'objet" (click)="edit.emit()">✎</button>
+    <button
+      mat-icon-button
+      type="button"
+      [attr.aria-label]="theme.tone()['characters_sheet.item_edit_aria']"
+      (click)="edit.emit()"
+    >
+      <app-icon name="modifier" />
+    </button>
   }
   @if (removable()) {
-    <button mat-icon-button type="button" aria-label="Supprimer l'objet" (click)="remove.emit()">✕</button>
+    <button
+      mat-icon-button
+      type="button"
+      [attr.aria-label]="theme.tone()['characters_sheet.item_remove_aria']"
+      (click)="remove.emit()"
+    >
+      <app-icon name="supprimer" />
+    </button>
   }
 </div>

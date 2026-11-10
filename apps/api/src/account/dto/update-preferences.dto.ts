@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, ValidateIf } from 'class-validator';
 import {
   CALENDAR_LAYER_KEYS,
   CHARACTER_SORTS,
@@ -18,6 +18,12 @@ export class UpdatePreferencesDto {
   @IsOptional()
   @IsBoolean()
   hideFinishedParties?: boolean;
+
+  /** Story 52.4 (FR-5, AD-5) : « Me rappeler de déclarer mes dispos ». `null` est refusé (400) : la colonne n'est pas
+   *  nullable, et `@IsOptional()` laisserait passer `null` jusqu'à Prisma (500). */
+  @ValidateIf((_o, value) => value !== undefined)
+  @IsBoolean()
+  availabilityReminder?: boolean;
 
   @IsOptional()
   @IsIn(LIST_VIEW_MODES)

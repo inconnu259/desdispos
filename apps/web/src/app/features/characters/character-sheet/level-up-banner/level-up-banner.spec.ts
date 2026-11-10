@@ -1,6 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import type { CharacterDto } from '@master-jdr/shared';
 import { LevelUpBanner } from './level-up-banner';
+import { TONE_MAP } from '../../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function makeCharacter(overrides: Partial<CharacterDto> = {}): CharacterDto {
   return {
@@ -52,7 +55,9 @@ describe('LevelUpBanner', () => {
     expect(live.getAttribute('aria-live')).toBe('polite');
     const banner = fixture.nativeElement.querySelector('.level-up-banner');
     expect(banner).not.toBeNull();
-    expect(banner.textContent).toContain('Niveau 2 disponible');
+    expect(banner.textContent).toContain(
+      GRIMOIRE_TONE['evolution.levelup_banner'].replace('[N]', '2'),
+    );
   });
 
   it('clic sur le CTA émet levelUp', async () => {

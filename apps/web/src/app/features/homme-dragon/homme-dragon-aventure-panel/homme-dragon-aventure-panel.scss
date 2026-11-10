@@ -1,0 +1,49 @@
+.error {
+  color: var(--mat-sys-error, #c00);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant, #888);
+  font-style: italic;
+}
+
+.aventure-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+
+  &__title {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  &__linked {
+    margin: 0;
+  }
+
+  &__link {
+    font-weight: 600;
+    // Cible tactile ≥ 44 px.
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  &__actions,
+  &__associate {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__dissociate,
+  &__create,
+  &__associate-btn {
+    min-height: 44px;
+    align-self: flex-start;
+  }
+}

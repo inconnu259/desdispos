@@ -1,4 +1,5 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import {
   type VoteParticipation,
   answerLabel,
@@ -47,19 +48,28 @@ import {
 export class PollTrack {
   readonly vote = input.required<VoteParticipation>();
 
+  /** Ton du thème actif, passé aux formateurs de libellés (`poll-track.utils`). */
+  private readonly theme = inject(ThemeToneService);
+
   /** Largeurs des trois segments, en pourcentage de l'effectif TOTAL (jamais des répondants). */
   protected readonly segments = computed(() => trackSegments(this.vote()));
 
   /** « 3 / 4 » — toujours calculé, toujours émis (AC4). */
-  protected readonly counter = computed(() => counterLabel(this.vote()));
+  protected readonly counter = computed(() => counterLabel(this.vote(), this.theme.tone()));
 
   /** Ma réponse en toutes lettres, ou `''` quand je n'ai pas répondu (AC5). Les DEUX
    *  formulations sont calculées ; c'est le CSS qui choisit selon la surface — aucune logique de
    *  largeur ici. */
-  protected readonly mineFull = computed(() => answerLabel(this.vote().myAnswer, 'full'));
-  protected readonly mineShort = computed(() => answerLabel(this.vote().myAnswer, 'compact'));
+  protected readonly mineFull = computed(() =>
+    answerLabel(this.vote().myAnswer, 'full', this.theme.tone()),
+  );
+  protected readonly mineShort = computed(() =>
+    answerLabel(this.vote().myAnswer, 'compact', this.theme.tone()),
+  );
 
-  protected readonly ariaLabel = computed(() => participationAriaLabel(this.vote()));
+  protected readonly ariaLabel = computed(() =>
+    participationAriaLabel(this.vote(), this.theme.tone()),
+  );
 
   /** Les pourcentages finissent dans un attribut `style` : ils sont formatés ici, à un seul
    *  endroit, et `trackSegments()` garantit déjà qu'ils sont bornés et jamais `NaN`. Arrondis à

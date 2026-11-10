@@ -98,7 +98,7 @@ describe('bannerParams — déterminisme et indépendance (Story 29.10, AC1, AC2
     const id = makeIds(1)[0];
     expect(bannerParams(id, 'grimoire-emeraude').theme).toBe('grimoire-emeraude');
     expect(bannerParams(id, 'foret-ancienne').theme).toBe('foret-ancienne');
-    expect(bannerParams(id, 'medieval-steampunk').theme).toBe('medieval-steampunk');
+    expect(bannerParams(id, 'atelier-cuivre').theme).toBe('atelier-cuivre');
   });
 });
 
@@ -231,11 +231,11 @@ describe('Invariants de tirage — foret-ancienne (AC6)', () => {
   });
 });
 
-describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
+describe('Invariants de tirage — atelier-cuivre (AC6)', () => {
   it('2 à 6 rouages, tailles STRICTEMENT décroissantes, sur 500 graines', () => {
     const b = BANNER_BOUNDS.steampunk;
     for (const id of SAMPLE) {
-      const params = bannerParams(id, 'medieval-steampunk') as SteampunkBanner;
+      const params = bannerParams(id, 'atelier-cuivre') as SteampunkBanner;
 
       expect(params.gears.length).toBeGreaterThanOrEqual(b.gears.min);
       expect(params.gears.length).toBeLessThanOrEqual(b.gears.max);
@@ -253,7 +253,7 @@ describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
   it('techniques limitées à B, C, E — la technique D est rejetée', () => {
     const used = new Set<string>();
     for (const id of SAMPLE) {
-      const params = bannerParams(id, 'medieval-steampunk') as SteampunkBanner;
+      const params = bannerParams(id, 'atelier-cuivre') as SteampunkBanner;
       for (const gear of params.gears) {
         expect(['B', 'C', 'E']).toContain(gear.technique);
         used.add(gear.technique);
@@ -264,7 +264,7 @@ describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
 
   it('sens alternés le long de la chaîne — deux rouages engrenés ne tournent jamais dans le même sens', () => {
     for (const id of SAMPLE) {
-      const params = bannerParams(id, 'medieval-steampunk') as SteampunkBanner;
+      const params = bannerParams(id, 'atelier-cuivre') as SteampunkBanner;
       for (let i = 1; i < params.gears.length; i++) {
         expect(params.gears[i].reverse).not.toBe(params.gears[i - 1].reverse);
       }
@@ -274,7 +274,7 @@ describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
   it('manomètre toujours présent, 42-46 px, ancré dans un coin haut', () => {
     const b = BANNER_BOUNDS.steampunk;
     for (const id of SAMPLE) {
-      const { gauge } = bannerParams(id, 'medieval-steampunk') as SteampunkBanner;
+      const { gauge } = bannerParams(id, 'atelier-cuivre') as SteampunkBanner;
       expect(gauge.size).toBeGreaterThanOrEqual(b.gaugeSize.min);
       expect(gauge.size).toBeLessThanOrEqual(b.gaugeSize.max);
       expect(['left', 'right']).toContain(gauge.corner);
@@ -284,7 +284,7 @@ describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
 
   it('les deux ancrages du manomètre sont réellement tirés', () => {
     const corners = new Set(
-      SAMPLE.map((id) => (bannerParams(id, 'medieval-steampunk') as SteampunkBanner).gauge.corner),
+      SAMPLE.map((id) => (bannerParams(id, 'atelier-cuivre') as SteampunkBanner).gauge.corner),
     );
     expect(corners).toEqual(new Set(['left', 'right']));
   });
@@ -292,7 +292,7 @@ describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
   it('0 à 3 rivets', () => {
     const b = BANNER_BOUNDS.steampunk;
     for (const id of SAMPLE) {
-      const params = bannerParams(id, 'medieval-steampunk') as SteampunkBanner;
+      const params = bannerParams(id, 'atelier-cuivre') as SteampunkBanner;
       expect(params.rivets.length).toBeGreaterThanOrEqual(b.rivets.min);
       expect(params.rivets.length).toBeLessThanOrEqual(b.rivets.max);
     }
@@ -301,7 +301,7 @@ describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
   // ── LE test qui porte l'AC6 ──────────────────────────────────────────────────
   it('AUCUNE boîte englobante ne pénètre la zone d’exclusion du manomètre, sur 500 graines', () => {
     for (const id of SAMPLE) {
-      const params = bannerParams(id, 'medieval-steampunk') as SteampunkBanner;
+      const params = bannerParams(id, 'atelier-cuivre') as SteampunkBanner;
       const zone = gaugeExclusionZone(params.gauge);
 
       const boxes: BannerRect[] = [
@@ -330,7 +330,7 @@ describe('Invariants de tirage — medieval-steampunk (AC6)', () => {
       height: BANNER_VIEWBOX_HEIGHT,
     };
     for (const id of SAMPLE) {
-      const params = bannerParams(id, 'medieval-steampunk') as SteampunkBanner;
+      const params = bannerParams(id, 'atelier-cuivre') as SteampunkBanner;
       const boxes: BannerRect[] = [
         ...params.gears.map((g) => ({ x: g.x, y: g.y, width: g.size, height: g.size })),
         ...params.rivets.map((r) => ({ x: r.x - 2, y: r.y - 2, width: 4, height: 4 })),

@@ -1,0 +1,46 @@
+<app-detail-surface
+  [title]="theme.tone()['partie.ralliement_event_create_title']"
+  [custom]="true"
+  [hasHeader]="true"
+  [hasFooter]="true"
+  [wide]="true"
+  [portal]="true"
+  [openToken]="1"
+  (closed)="closed.emit()"
+>
+  <h2 detail-header class="ec__title" [id]="uid + '-title'">
+    {{ theme.tone()['partie.ralliement_event_create_title'] }}
+  </h2>
+
+  <app-event-form
+    [members]="members()"
+    [hostId]="hostId()"
+    [soiree]="soiree()"
+    [initialTitle]="initialTitle()"
+    [draft]="draft()"
+    (submitted)="submit()"
+    (composeRequested)="pickInCalendar()"
+  />
+
+
+  <div detail-footer class="ec__footer">
+    @if (error(); as message) {
+      <p class="ec__error" role="alert">{{ message }}</p>
+    }
+    <div class="ec__actions">
+      <button mat-stroked-button type="button" class="ec__cancel" (click)="closed.emit()">
+        {{ theme.tone()['partie.ralliement_event_cancel_btn'] }}
+      </button>
+      <button
+        mat-flat-button
+        type="button"
+        class="ec__submit"
+        [disabled]="!canSubmit()"
+        [attr.aria-busy]="busy()"
+        (click)="submit()"
+      >
+        {{ theme.tone()['partie.ralliement_event_submit_btn'] }}
+      </button>
+    </div>
+  </div>
+</app-detail-surface>

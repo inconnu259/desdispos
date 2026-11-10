@@ -9,8 +9,8 @@ inputDocuments:
   - '_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-08-04/EXPERIENCE.md'
   - '_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-20260626/DESIGN.md'
   - '_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-08-04/mockups/contrat-ui-calendrier.html'
-lastUpdated: '2026-08-17'
-lastChange: "Ajout de l'Epic 36 « Calendrier — lisibilité » (FR-49 → FR-57, D-15 → D-18) et de ses 14 stories, ordonnancé après l'épic 30. Ajout EN PLACE — les épics 1 à 35 sont intacts."
+lastUpdated: '2026-10-04'
+lastChange: "2026-10-04 (sprint change) : épic 33 — story 33.8 prête à planifier (AD-23 faite) : critères d'acceptation réécrits, annotations 33.5 et 33.6 ; FR-59 amendée, D-22 (voir sprint-change-proposal-2026-10-04.md). Précédemment : 2026-10-02 (sprint change) : épic 33 — story 33.6 révisée : une seule réserve de souffles par Homme Dragon, portée par sa fiche (réserve par séance abandonnée), fiche et export PDF de l'Homme Dragon réservés au MJ ; FR-61, D-21, AD-22 (voir sprint-change-proposal-2026-10-02.md). Précédemment : 2026-09-29 (sprint change) : épic 33 — Q-13 corrigée (éveils ≠ souffles), stories 33.6, 33.7, 33.8 ; FR-61 → FR-63, D-21 (voir sprint-change-proposal-2026-09-26.md). Précédemment : 2026-09-20 (sprint change) : épic 29 rouvert — stories 29.15, 29.16, 29.17 ; story 33.5 ; FR-58 → FR-60 (voir sprint-change-proposal-2026-09-20.md). Précédemment : ajout de l'Epic 36 « Calendrier — lisibilité » (FR-49 → FR-57, D-15 → D-18) et de ses 14 stories, ordonnancé après l'épic 30. Ajout EN PLACE — les épics 1 à 35 sont intacts."
 epic36StepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories']
 ---
 
@@ -46,6 +46,12 @@ Ce document décompose en stories implémentables les exigences du Palier 9 — 
 - FR-45 : Modes d'affichage de la liste
 - FR-47 : Identité visuelle d'une partie
 - FR-48 : Navigation principale à quatre destinations
+- FR-58 : Point d'entrée explicite de création d'un personnage — sur la partie, et dans « Personnages »
+- FR-59 : Les Hommes Dragons des MJ figurent dans « Personnages », avec leur création
+- FR-60 : Seuls les systèmes de jeu disposant d'un module peuvent être choisis pour une nouvelle partie
+- FR-61 : Réserve de souffles de l'Homme Dragon, composée sur sa fiche (MJ seul)
+- FR-62 : Capacités de niveau de l'Homme Dragon (artefact cadeau, souffles rituels)
+- FR-63 : Un Homme Dragon pour plusieurs aventures (planifié)
 - FR-13 : Notification éphémère d'annonce à la connexion
 
 **§4.3 — Identité : joueur vs personnage**
@@ -68,8 +74,11 @@ Ce document décompose en stories implémentables les exigences du Palier 9 — 
 
 - FR-24 : Fiche Homme Dragon au niveau des fiches joueur
 - FR-25 : Formulaire de création guidé
-- FR-26 : Souffles propres à chaque race, seedés et affichés sur la fiche
+- FR-26 : Souffles communs et par race, seedés et affichés sur la fiche
 - FR-27 : Export amélioré
+- FR-61 : Réserve de souffles de l'Homme Dragon, composée sur sa fiche
+- FR-62 : Capacités de niveau de l'Homme Dragon
+- FR-63 : Un Homme Dragon pour plusieurs aventures
 
 **§4.6 — Vue de partie, scénarios & chronologie**
 
@@ -155,8 +164,8 @@ Ce document décompose en stories implémentables les exigences du Palier 9 — 
 **À ne pas implémenter**
 
 - **D-12** est d'ampleur nulle : elle figure au PRD pour rester visible, mais ne demande aucun travail tant que son constat tient. `AD-20` en fixe la condition de révision — le jour où l'on voudrait masquer l'identité des autres votants.
-- **D-7 n'est plus d'ampleur nulle.** Requalifiée « Faible — actée » le 2026-08-05 à la résolution de Q-13 : les six souffles seedés sont les **communs**, ceux propres à chaque race manquent entièrement. Elle est portée par la **story 33.2**, qui est à faire.
-- Aucun changement d'environnement, de déploiement ou d'exploitation — propriété du Palier 10.
+- **D-7 n'est plus d'ampleur nulle.** Requalifiée « Faible — actée » le 2026-08-05, **corrigée le 2026-09-25** : les six entrées seedées étaient les **éveils** ; le catalogue manquant était celui de tous les souffles (9 communs, 12 de race), porté par la **story 33.2** (livrée). **D-21** (réserve de souffles, MJ seul) est portée par la **story 33.6**.
+- Aucun changement d'environnement, de déploiement ou d'exploitation — propriété du Palier 11.
 
 ### UX Design Requirements
 
@@ -215,7 +224,7 @@ Chaque exigence est rattachée à la ou aux stories qui la portent.
 | FR-23 | 31.6 · 31.7 | Filtrage serveur, puis écran de configuration |
 | FR-24 | 33.1 | Fiche Homme Dragon |
 | FR-25 | 33.3 | Création guidée |
-| FR-26 | 33.2 | Souffles par race, seedés et affichés |
+| FR-26 | 33.2 | Souffles communs et par race, seedés et affichés |
 | FR-27 | 33.4 | Export amélioré |
 | FR-28 | 32.2 | Vue de partie réorganisée |
 | FR-29 | 32.3 · 32.4 | États, puis chronologie |
@@ -238,6 +247,12 @@ Chaque exigence est rattachée à la ou aux stories qui la portent.
 | FR-46 | 30.4 · 30.5 · 30.6 | Modèle, endpoint, puis interface |
 | FR-47 | 29.10 · 29.12 | Bannière générative, puis image de couverture |
 | FR-48 | 29.3 | Navigation à quatre destinations |
+| FR-58 | 29.15 · 29.16 | Point d'entrée de création d'un personnage |
+| FR-59 | 33.5 | Hommes Dragons dans Personnages |
+| FR-60 | 29.17 | Systèmes jouables seuls proposés |
+| FR-61 | 33.6 | Réserve de souffles |
+| FR-62 | 33.7 | Capacités de niveau |
+| FR-63 | 33.8 | Homme Dragon multi-aventures (AD-23 faite) |
 | *(Q-1)* | 29.14 | Refonte des écrans de création et d'édition de partie |
 
 ### Exigences d'UX sans ancrage FR
@@ -264,7 +279,7 @@ L'utilisateur dispose enfin d'un endroit où vivre : il gère son profil, sécur
 
 L'utilisateur atteint ses parties et ses personnages sans passer par un mode, et voit d'un coup d'œil lesquelles réclament quelque chose de lui. La navigation se restructure en quatre destinations, les listes gagnent leurs modes d'affichage, leurs tris, leurs favoris et leur signalétique d'état.
 
-**FRs covered:** FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13, FR-16, FR-44, FR-45, FR-47, FR-48 · plus la refonte des écrans de création et d'édition de partie (Q-1)
+**FRs covered:** FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13, FR-16, FR-44, FR-45, FR-47, FR-48, FR-58, FR-60 · plus la refonte des écrans de création et d'édition de partie (Q-1)
 
 **Notes d'implémentation :** le plus gros épic du palier, mais un seul écran-famille et un seul jeu de fichiers. Porte `AD-11` (`ModeService` → `MyPartiesService`, câblage SSE conservé à l'identique), `AD-15` (projection explicite de `PartieDto`), `AD-3` (appel unique de signaux), `AD-17` et `AD-19` (image de couverture et bannière générative).
 
@@ -273,6 +288,8 @@ L'utilisateur atteint ses parties et ses personnages sans passer par un mode, et
 **Séquencement à connaître :** la barre de navigation (29.3) livre une destination « Calendrier » qui pointe sur le calendrier **existant** jusqu'à ce que l'épic 30 le refonde. C'est voulu — l'épic 29 ne dépend d'aucun épic suivant.
 
 **Stories 29.4 et 29.5 insérées après correct-course (sprint change, 2026-08-08)**, à l'usage de la barre livrée par 29.3 : le bandeau du haut restait vide sur tous les écrans, et aucun écran ne signalait localement « où je suis, qu'est-ce que je peux faire ici » au-delà des 4 destinations globales. Numérotées 29.4/29.5 pour rester juste après leur prérequis direct (29.3) — les neuf stories suivantes ont glissé d'autant (anciennes 29.4–29.12 → 29.6–29.14). 29.4 pose le mécanisme générique (titre contextuel + sous-navigation locale, appliqué à l'écran Partie qui a déjà la structure d'onglets nécessaire) ; 29.5 l'applique à la fiche personnage, qui n'a aujourd'hui aucune structure de section et doit d'abord être découpée. Aucune des deux ne remplace la barre à 4 destinations (FR-48) : elle reste seule responsable de l'accès global en un geste, la sous-navigation locale s'y ajoute sans jamais la masquer.
+
+**Épic rouvert le 2026-09-20 (sprint change, `sprint-change-proposal-2026-09-20.md`)** : l'usage réel a montré que le point d'entrée de création d'un *personnage* n'était pas évident (une initiale cliquable dans le roster desktop, un onglet sur mobile). 29.17 restreint la création de partie aux systèmes ayant un module (aujourd'hui Ryuutama seul) et pose l'indicateur que lisent 29.15 (bouton explicite sur la partie) et 29.16 (section de création au-dessus de la liste de « Personnages »). Ordre de travail recommandé : **29.17 → 29.15 → 29.16**. La liste de 29.2 reste celle des seuls personnages de l'utilisateur : la section de 29.16 est un bloc distinct, jamais fait de cartes de personnages.
 
 ### Epic 30 : Calendrier
 
@@ -302,9 +319,13 @@ Le contenu d'une partie cesse d'être un fouillis : l'action immédiate, la cons
 
 Le MJ crée et consulte son Homme Dragon avec le même soin qu'une fiche de personnage joueur : formulaire guidé, fiche refondue, export au même niveau.
 
-**FRs covered:** FR-24, FR-25, FR-26, FR-27
+**FRs covered:** FR-24, FR-25, FR-26, FR-27, FR-59, FR-61, FR-62, FR-63
 
-**Notes d'implémentation :** **Q-13 tranchée le 2026-08-05 — l'épic n'est plus bloqué.** Les six souffles seedés sont les communs ; ceux propres à chaque race (vert, bleu, rouge, noir) n'existent nulle part. FR-26 se décompose en deux morceaux portés par la story 33.2 : seeder les souffles par race sur le mécanisme du catalogue d'artefacts, puis présenter ceux dont ce dragon dispose. Aucun suivi de consommation.
+**Notes d'implémentation :** **Q-13 corrigée le 2026-09-25.** Les six entrées seedées sont les **éveils** ; les 21 souffles (9 communs, 12 de race) sont seedés et affichés par la story 33.2. Référence des règles : `docs/dragons.md`. Aucun décompte pendant la séance ; le niveau compte les scénarios `PASSE`.
+
+**Stories 33.6, 33.7 et 33.8 ajoutées le 2026-09-29 (sprint change) ; 33.6 révisée le 2026-10-02** : réserve de souffles de l'Homme Dragon (une seule réserve, composée sur sa fiche, MJ seul ; passe UX faite le 2026-10-02), capacités de niveau (artefact cadeau, souffles rituels), et Homme Dragon multi-aventures (architecture faite le 2026-10-04, AD-23). Ordre : 33.3 → 33.4 → 33.5 → 33.7 → 33.6 → 33.8 (la passe UX de la 33.6 est faite). **La 33.8 casse volontairement le contrat des stories 33.5 à 33.7** (routes par Homme Dragon, `404` au lieu de `403`, plus de `partieId` sur la fiche) : AD-23 en liste les consommateurs.
+
+**Story 33.5 ajoutée le 2026-09-20 (sprint change)** : l'Homme Dragon rejoint « Personnages » et s'y crée, une entrée par aventure. Seule story de l'épic à toucher une lecture API agrégée ; elle ne doit pas figer « un par partie » dans son contrat (un même Homme Dragon réutilisé sur plusieurs aventures est repris par la 33.8).
 
 ### Epic 34 : Entrée dans l'application
 
@@ -1083,6 +1104,123 @@ So that le premier geste que je fais ne soit pas le plus négligé.
 **Then** la question a été reposée à l'utilisateur et l'arbitrage est consigné ici
 **And** aucun champ n'est ajouté ni retiré du modèle sans cette décision
 
+### Story 29.15 : Un bouton clair pour créer son personnage depuis la partie
+
+As a joueur qui rejoint une partie,
+I want un bouton explicite « Créer mon personnage » sur l'écran de la partie,
+So that je sache tout de suite par où commencer, sans deviner qu'une initiale est cliquable.
+
+**Acceptance Criteria:**
+
+**Given** je suis joueur d'une partie dont le système de jeu dispose d'un module, et je n'y ai pas encore de personnage
+**When** j'ouvre le détail de la partie, sur téléphone comme sur ordinateur
+**Then** un bouton « Créer mon personnage » est visible, sans changer d'onglet ni défiler
+**And** il ouvre l'assistant de création de cette partie
+
+**Given** j'ai déjà un personnage sur cette partie
+**When** j'ouvre son détail
+**Then** le bouton n'est pas affiché — il ne mène jamais à un refus « vous avez déjà un personnage »
+
+**Given** la partie utilise un système de jeu sans module (indicateur de la story 29.17)
+**When** j'ouvre son détail
+**Then** aucun bouton de création n'est proposé
+
+**Given** la partie est terminée
+**When** j'ouvre son détail
+**Then** aucun bouton de création n'est proposé — une aventure close n'accueille plus de personnage (arbitré au run UX du 2026-09-21 ; le serveur, lui, ne l'interdit pas)
+
+**Given** je suis MJ de la partie
+**When** j'ouvre son détail
+**Then** aucun bouton de personnage joueur n'est proposé
+**And** l'entrée de création du MJ est celle de son Homme Dragon (story 33.5) — un MJ n'a pas de personnage joueur, et a un Homme Dragon par aventure
+
+**Given** le slot d'initiale du roster sur ordinateur
+**When** il reste affiché
+**Then** il conserve son comportement, mais n'est plus le seul point d'entrée
+
+**Given** le bouton
+**When** il est rendu
+**Then** c'est un vrai lien ou bouton, atteignable au clavier, dont la cible mesure au moins 44 × 44 px
+**And** son libellé vient de la micro-copie de thème, jamais codé en dur
+
+*Règle écrite une seule fois :* « puis-je créer un personnage sur cette partie ? » (non-MJ · aucun personnage · système avec module · partie non terminée) est un prédicat partagé avec la story 29.16.
+
+*Contrat UX :* `ux-designs/ux-jdr-master-2026-09-21/` (DESIGN.md, EXPERIENCE.md, planche `mockups/contrat-ui-entree-creation.html`) — un bloc d'invitation en tête de l'onglet Détails plutôt qu'un simple bouton, libellé thématisé `character.create_cta`, slot du rail conservé avec libellé accessible.
+
+### Story 29.16 : Créer un personnage depuis « Personnages »
+
+As a joueur,
+I want retrouver, en haut de mes personnages, les aventures où il me reste à créer le mien,
+So that la création soit là où je cherche mes personnages.
+
+**Acceptance Criteria:**
+
+**Given** je suis joueur de parties où je n'ai pas encore de personnage, et dont le système dispose d'un module
+**When** j'ouvre « Personnages »
+**Then** une section placée au-dessus de la liste propose une entrée par partie : « Créer un personnage pour *<nom de l'aventure>* »
+
+**Given** une entrée de cette section
+**When** je l'active
+**Then** j'arrive sur l'assistant de création de cette partie
+
+**Given** je n'ai aucune partie sans personnage
+**When** j'ouvre « Personnages »
+**Then** la section n'est pas rendue — jamais un bloc vide
+
+**Given** cette section et la liste
+**When** l'écran s'affiche
+**Then** la section est visuellement distincte et ne contient aucune carte de personnage
+**And** la liste ne contient toujours que mes personnages (story 29.2 inchangée)
+**And** la recherche, le tri et le mode d'affichage de la liste ne la masquent ni ne la réordonnent
+
+**Given** je viens de créer mon personnage sur une partie
+**When** je reviens sur « Personnages »
+**Then** l'entrée de cette partie a disparu et mon personnage figure dans la liste
+
+**Given** une partie dont le système n'a pas de module, qui est terminée, ou dont je suis le MJ
+**When** la section est calculée
+**Then** elle n'y figure pas (sauf, pour le MJ, l'entrée Homme Dragon de la story 33.5)
+
+**Given** cette section
+**When** elle est rendue
+**Then** chaque entrée est un vrai lien, atteignable au clavier, cible d'au moins 44 × 44 px
+**And** elle réutilise le prédicat et la micro-copie de la story 29.15
+
+*Temps réel :* à évaluer à la création de la story (canal `user:{id}`, `docs/checklist.md`) — le minimum requis est le rafraîchissement au retour de navigation.
+
+*Contrat UX :* `ux-designs/ux-jdr-master-2026-09-21/` — section « À forger » au-dessus de la barre de contrôles (hors masquage au défilement), lignes en bordure pointillée (jamais des cartes), trois lignes puis « Voir les N autres », message de liste vide `my_characters.empty_with_entries` quand la section est affichée. ⚠️ amende le contrat du Palier 9 sur ce point (voir EXPERIENCE.md du delta).
+
+### Story 29.17 : Seuls les systèmes jouables sont proposés à la création d'une partie
+
+As a MJ qui crée une partie,
+I want ne choisir qu'un système de jeu que l'application sait réellement faire jouer,
+So that je ne crée pas une partie où personne ne pourra ensuite créer de personnage.
+
+**Acceptance Criteria:**
+
+**Given** le formulaire de création d'une partie
+**When** je choisis le système de jeu
+**Then** seuls les systèmes disposant d'un module sont proposés
+
+**Given** une requête de création de partie portant un système sans module
+**When** l'API la reçoit
+**Then** elle la refuse avec un message explicite — le formulaire n'est pas la seule barrière
+
+**Given** des parties déjà créées sur un système sans module
+**When** je les ouvre
+**Then** elles restent consultables et inchangées, sans migration
+**And** aucune entrée de création de personnage n'y est offerte
+
+**Given** l'indicateur de module sur les systèmes de jeu
+**When** un nouveau système reçoit son module
+**Then** il suffit d'y basculer l'indicateur pour qu'il devienne proposé — aucune autre liste à mettre à jour
+
+**Given** un système sans module
+**When** l'indicateur est lu par les stories 29.15 et 29.16
+**Then** c'est la même source que celle du formulaire et du DTO
+
+*Note :* le message d'erreur explicite du wizard sur un système sans module (correctif séparé, déjà ouvert) reste nécessaire — il protège les parties déjà créées.
+
 ---
 
 ## Epic 30 : Calendrier
@@ -1627,7 +1765,7 @@ So that je sache ce qui a été joué, ce qui se joue et ce qui vient.
 
 Le MJ crée et consulte son Homme Dragon avec le même soin qu'une fiche de personnage joueur, et retrouve en séance les souffles dont son dragon dispose sans rouvrir le livre.
 
-*Q-13 tranchée le 2026-08-05 : les six souffles seedés sont les communs ; ceux propres à chaque race n'existent nulle part dans l'application. Aucun suivi de consommation — la réserve constituée en début de séance est du suivi en jeu, reporté après la mise en production.*
+*Q-13 corrigée le 2026-09-25 : les six entrées seedées sont les éveils ; les 21 souffles (9 communs, 12 de race) sont seedés par la 33.2. Référence des règles : `docs/dragons.md`. Aucun décompte pendant la séance ; la réserve de souffles de l'Homme Dragon, composée une fois sur sa fiche, est portée par la 33.6. Le niveau compte les scénarios `PASSE` (décision du 2026-09-25).*
 
 ### Story 33.1 : Fiche Homme Dragon refondue
 
@@ -1671,6 +1809,7 @@ So that je les utilise sans interrompre la partie pour ouvrir le livre.
 **When** j'ouvre sa fiche
 **Then** j'y vois les souffles communs **et** ceux de sa race
 **And** je n'y vois pas ceux des trois autres races
+**And** à partir du niveau 3, les souffles des trois autres races sont aussi consultables, dans un bloc replié (souffles multicolores)
 
 **Given** un souffle affiché
 **When** je le regarde
@@ -1714,6 +1853,12 @@ So that je comprenne mes choix au lieu de les subir.
 **When** il est enregistré
 **Then** il est en tout point équivalent à celui que produisait l'ancien parcours
 
+**Given** une étape de choix ou un champ du parcours
+**When** il s'affiche
+**Then** son texte vient du catalogue (`homme-dragon-creation-intros.json`, `homme-dragon-races.json` enregistrés dans `CONTENT_TYPES`), préférences de la race comprises
+
+*UX de référence :* `_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-09-23/DESIGN.md` et `EXPERIENCE.md` (passe `bmad-ux` du 2026-09-23) — parcours en 5 écrans (Race, Artefact, Identité, Vie de l'Homme Dragon, Avatar), teinte de race par carte (liséré + gemme + lueur de coin, DESIGN.md §2/§7), rattrapage vers les champs Material déjà prévus par le spine de base. Mocks de référence : `mockups/key-race-step.html`, `mockups/key-identite-step.html`.
+
 ### Story 33.4 : Export PDF au niveau des fiches joueur
 
 As a MJ,
@@ -1728,14 +1873,276 @@ So that ma fiche imprimée soit utilisable à la table.
 
 **Given** les souffles disponibles pour mon dragon
 **When** l'export est produit
-**Then** ils y figurent avec leur coût
+**Then** ils y figurent avec leur coût, lus depuis le catalogue `souffle` (les éveils restent listés à part)
+**And** si une réserve existe (33.6), elle y est imprimée (cases `souffle_1`..`souffle_4`)
 
 **Given** les champs de souffle du modèle de PDF
 **When** ils sont remplis
 **Then** la valeur maximale reflète le niveau de l'Homme Dragon
 **And** aucun champ ne prétend suivre une consommation que l'application ne suit pas
 
----
+### Story 33.5 : Mes Hommes Dragons dans « Personnages »
+
+As a MJ,
+I want retrouver mon Homme Dragon dans « Personnages » et pouvoir l'y créer,
+So that mon dragon soit aussi facile à atteindre que les personnages de mes joueurs.
+
+**Acceptance Criteria:**
+
+**Given** je suis MJ de parties Ryuutama où j'ai créé un Homme Dragon
+**When** j'ouvre « Personnages »
+**Then** chacun apparaît dans la liste, avec la partie dont il provient
+**And** sa nature (Homme Dragon, et non personnage joueur) se lit sans l'ouvrir
+
+**Given** un Homme Dragon listé
+**When** je l'ouvre
+**Then** j'arrive sur sa fiche
+
+**Given** une aventure Ryuutama dont je suis MJ et où je n'ai pas encore d'Homme Dragon (un par aventure — le même dragon utilisé sur plusieurs aventures est hors périmètre)
+**When** j'ouvre « Personnages »
+**Then** la section de création de la story 29.16 propose « Créer un Homme Dragon pour *<nom de l'aventure>* »
+**And** elle m'amène sur le parcours de création de l'Homme Dragon
+
+*Révisé par la 33.8 (AD-23, 2026-10-04) : « un par aventure » n'est plus une règle de modèle. La liste montre un Homme Dragon une seule fois, avec ses aventures ; l'entrée de création reste proposée pour une aventure qui n'en a pas. L'AC de départ est conservé tel quel : il décrit ce qui a été livré.*
+
+**Given** la liste contenant des Hommes Dragons
+**When** j'utilise la recherche, le tri ou le mode d'affichage
+**Then** ils s'appliquent aux Hommes Dragons comme aux personnages
+**And** leur nom suit la convention d'identité de l'épic 28
+
+**Given** une partie dont je ne suis pas le MJ
+**When** « Personnages » est calculé
+**Then** l'Homme Dragon de son MJ n'y figure jamais
+
+### Story 33.6 : Réserve de souffles
+
+As a MJ qui prépare ma séance,
+I want composer sur la fiche de mon Homme Dragon sa réserve de souffles, une seule fois,
+So that elle soit mémorisée et imprimée dans l'export PDF sans que je la refasse à chaque séance.
+
+**Acceptance Criteria:**
+
+**Given** mon Homme Dragon est au niveau 1
+**When** j'ouvre sa fiche
+**Then** la section « Réserve de souffles » affiche seulement la ligne d'information « La réserve de souffles s'ouvre au niveau 2. »
+**And** aucun emplacement, aucun composeur et aucun bouton n'est proposé
+**And** le serveur refuse toute écriture de réserve
+
+**Given** mon Homme Dragon est au niveau N, de 2 à 5
+**When** j'ouvre sa fiche
+**Then** la section « Réserve de souffles » figure dans la colonne gauche, juste avant la carte « Souffles »
+**And** elle affiche N − 1 emplacements numérotés, tous visibles, vides ou remplis, sous le titre « Niveau N · N − 1 emplacements » (au singulier au niveau 2 : « Niveau 2 · 1 emplacement »)
+**And** il n'existe qu'une seule réserve par Homme Dragon : aucune réserve n'est attachée à une séance et aucun écran de séance n'est modifié
+
+**Given** un emplacement vide
+**When** je le touche, choisis un souffle dans la fenêtre « Choisir un souffle pour l'emplacement N » puis valide « Mettre dans l'emplacement N »
+**Then** le souffle occupe cet emplacement, la fenêtre se ferme et la réserve est enregistrée
+**And** un même souffle commun ou de ma race peut occuper plusieurs emplacements, la fenêtre l'indiquant par le repère non bloquant « Déjà dans l'emplacement N »
+**And** sur un emplacement rempli, « Changer » rouvre la fenêtre et le souffle choisi remplace l'ancien
+
+**Given** la fenêtre de choix ouverte
+**When** elle liste les souffles
+**Then** tous les souffles restent listés et consultables, par catégorie repliable (communs par famille, souffles de ma race, souffles des autres races, souffles rituels) : dépliées par défaut, sauf les catégories où rien n'est choisissable, repliées avec leur raison écrite à côté du titre
+**And** les souffles du temps (Passé, Futur) sont grisés avec la raison « Non réservable : souffle du temps », jamais masqués, et le serveur les refuse
+**And** une ligne grisée se consulte (sa description et sa raison s'affichent dans la zone de détail) mais ne se place pas : « Mettre dans l'emplacement N » reste visible, inactif, avec la raison liée
+
+**Given** mon Homme Dragon est au niveau 2
+**When** j'ouvre la fenêtre de choix
+**Then** les souffles des autres races sont grisés avec une raison écrite et aucun ne peut être placé
+
+**Given** mon Homme Dragon est au niveau 3 ou plus
+**When** je place un souffle d'une autre race
+**Then** il n'occupe qu'un seul emplacement et le serveur refuse de le placer une seconde fois
+**And** les autres souffles d'une autre race sont grisés avec la raison « Un seul souffle d'une autre race », et le souffle placé indique « Déjà dans l'emplacement N »
+**And** l'emplacement qui le contient reste modifiable (« Changer », « Retirer »)
+
+**Given** mon Homme Dragon est au niveau 5
+**When** je compose la réserve
+**Then** les souffles rituels peuvent y figurer, sans compter comme souffle d'une autre race
+**And** avant le niveau 5, ils sont grisés avec la raison « Admis dès le niveau 5 » et le serveur les refuse
+
+**Given** une demande d'écriture de la réserve, quel qu'en soit l'auteur
+**When** le serveur la reçoit
+**Then** seul le MJ de la partie est admis, pour Ryuutama uniquement
+**And** le niveau est recalculé côté serveur et toute la composition résultante est revalidée contre les catalogues `souffle` et `souffleRituel` : capacité N − 1, souffles du temps exclus, au plus un souffle d'une autre race (sur un seul emplacement) dès le niveau 3, rituels dès le niveau 5, souffle inconnu du catalogue refusé
+**And** une demande invalide est rejetée sans rien écrire
+**And** la réserve ne peut pas être écrite par la modification générale de la fiche
+
+**Given** un joueur de la partie (membre, non MJ)
+**When** il appelle la lecture de la fiche de l'Homme Dragon (`GET /parties/:id/homme-dragon`)
+**Then** le serveur la refuse (`403`), sans aucune donnée de la fiche ni de la réserve
+
+**Given** un joueur de la partie (membre, non MJ)
+**When** il appelle l'export PDF de la fiche de l'Homme Dragon
+**Then** le serveur le refuse (`403`) et ne produit aucun PDF
+
+*Révisé par la 33.8 (AD-23, 2026-10-04) : la lecture et l'export passent par `/homme-dragons/:id`, gardés par le propriétaire de l'Homme Dragon ; tout autre appelant reçoit `404`, jamais `403` (l'existence ne fuit pas). L'intention — aucun accès d'un joueur — est inchangée.*
+
+**Given** un joueur de la partie
+**When** il parcourt l'application (partie, « Personnages »)
+**Then** il ne voit aucune fiche d'Homme Dragon ni section « Réserve de souffles » (garde web existante conservée)
+**And** le MJ continue de lire et d'exporter sa fiche comme avant, réserve comprise
+
+**Given** je choisis, change ou retire un souffle
+**When** le geste est fait
+**Then** il est enregistré immédiatement, sans bouton « Enregistrer »
+**And** un seul enregistrement est en vol : pendant l'attente, les boutons d'emplacement sont inactifs (`aria-disabled="true"`), la liste est `aria-busy="true"` et la mention devient « Enregistrement… »
+**And** à la réussite, la mention « Enregistrée automatiquement, utilisée pour l'export PDF. » s'affiche sous le titre de la section et la zone de statut annonce « Réserve enregistrée »
+
+**Given** l'enregistrement d'un geste échoue
+**When** l'échec est signalé
+**Then** le message « Impossible d'enregistrer la réserve. Réessayez. » s'affiche (`role="alert"`, ré-annoncé à chaque échec)
+**And** l'emplacement revient à son état précédent : rien n'est vidé ni écrasé
+**And** la mention d'enregistrement est masquée tant que l'erreur est affichée
+
+**Given** un emplacement rempli
+**When** je touche « Retirer »
+**Then** l'emplacement est vidé aussitôt, sans dialogue de confirmation
+**And** un bandeau « <Souffle> retiré de l'emplacement N. » accompagné d'un bouton « Annuler » reste affiché quelques secondes (durée à fixer à l'implémentation, 6 s en valeur d'exemple), le décompte étant suspendu tant que le focus ou le survol est sur le bandeau
+**And** si l'écriture du retrait échoue, l'emplacement revient à son état précédent et aucun bandeau n'apparaît
+
+**Given** le bandeau d'annulation affiché
+**When** j'active « Annuler » (inactif tant que l'écriture du retrait n'est pas terminée)
+**Then** le souffle retourne dans le même emplacement, le bandeau disparaît et la zone de statut annonce « <Souffle> remis dans l'emplacement N »
+**And** si l'annulation échoue, le message d'erreur habituel s'affiche et l'emplacement reste vide
+**And** le bandeau disparaît si l'emplacement est entre-temps occupé, et un nouveau retrait remplace le message (seul le dernier retrait est annulable)
+**And** aucun bouton « Vider la réserve » n'existe
+
+**Given** une réserve composée
+**When** la séance a lieu ou que j'exporte la fiche
+**Then** l'application ne décompte rien : aucun compteur « utilisé » ou « restant », aucun souffle marqué comme consommé
+
+**Given** une réserve composée au niveau N
+**When** mon Homme Dragon passe au niveau N + 1
+**Then** la réserve existante est conservée et le nouvel emplacement apparaît vide
+
+**Given** une réserve contenant un souffle retiré du catalogue
+**When** elle s'affiche
+**Then** la ligne reste lisible, son libellé étant la clé brute
+**And** elle reste retirable, et « Changer » reste possible
+
+**Given** une réserve composée
+**When** j'exporte la fiche en PDF, dans le format éditable comme dans le format 2 pages
+**Then** `souffle_1` à `souffle_4` portent le nom du souffle (sans son coût) de l'emplacement de même numéro
+**And** un emplacement vide, ou une réserve vide, laisse sa case vide
+**And** `nombre_souffles` reste égal à `max(niveau − 1, 0)` et `souffle_actuel` reste vide
+
+**Given** la fenêtre de choix, qui réutilise `DetailSurface`
+**When** `DetailSurface` est étendu (emplacements `header` et `footer` personnalisables, hauteur en `dvh` avec zone sûre, `max-height` propre de la zone de détail, bouton de fermeture de 44 px nommé « Fermer la fenêtre » ou « Fermer la feuille », largeur desktop adaptée par usage, `prefers-reduced-motion` respecté)
+**Then** la fenêtre est utilisable à 320 × 256 px CSS : en-tête et pied compacts, liste défilante visible, zone de détail à défilement propre
+**And** l'extension est rétro-compatible : tous les autres usages de `DetailSurface` sont re-vérifiés (specs relues, passe visuelle mobile et desktop : fermeture à 44 px, focus, mouvement réduit) sans régression
+
+**Given** une navigation au clavier dans la section et la fenêtre
+**When** je place ou change un souffle, je retire un souffle, j'annule la fenêtre (« Annuler », Échap ou ✕) ou j'annule un retrait
+**Then** une fois le rendu terminé, le focus est sur la cible prévue : « Changer » de l'emplacement après un placement ou un changement, « Choisir un souffle » de l'emplacement après un retrait, « Changer » de l'emplacement rétabli après l'annulation d'un retrait, le déclencheur d'origine après « Annuler », Échap ou ✕ ; jamais sur `<body>`
+**And** des tests clavier vérifient chacun de ces cas
+
+**Given** la section et la fenêtre de choix
+**When** je les parcours au clavier ou au lecteur d'écran
+**Then** chaque ligne de souffle est un `<button>` natif tabulable (Entrée ou Espace pour consulter, `aria-pressed` sur la ligne consultée) et chaque ligne grisée est `aria-disabled="true"` tout en restant focalisable
+**And** chaque en-tête de catégorie porte `aria-expanded` et `aria-controls`
+**And** une zone `role="status"` persistante annonce les placements, retraits, annulations et enregistrements
+
+**Given** mon Homme Dragon est au niveau 5
+**When** la carte « Souffles rituels » (33.7) s'affiche
+**Then** elle reste un catalogue de consultation, et sa consigne n'affirme plus « sans réserve ni décompte » : elle indique que ces souffles peuvent être placés dans la réserve, sans décompte
+
+*Décisions du 2026-10-02 (passe UX, `ux-designs/ux-jdr-master-2026-10-01/`) :* une seule réserve par Homme Dragon, sur sa fiche (la réserve par séance et la réserve par défaut du 2026-09-29 sont abandonnées) ; « Vider la réserve » retiré ; annulation temporaire du dernier retrait ; un souffle d'une autre race n'occupe qu'un emplacement ; niveau qui baisse : aucune règle spécifique ; `DetailSurface` étendu de façon rétro-compatible. *Décisions du 2026-09-29 conservées :* réserve visible du MJ seul ; souffles rituels admis dès le niveau 5. *Prérequis :* 33.7 (catalogue des souffles rituels : levé). *Hors AC :* le câblage temps réel multi-appareil de la fiche (signal `changed` / `notifyChanged()` de la partie, `RealtimeService`) est à évaluer à l'implémentation selon `docs/checklist.md`. *Option B2 (2026-10-02) :* la fiche de l'Homme Dragon et son export PDF sont réservés au MJ (la garde de lecture passe de `getViewable` à `getOwned`) ; les specs API qui supposaient la lecture par un membre sont à renverser (sprint change 2026-10-02, §4.9). *À la livraison :* tenir à jour le README du PDF, `docs/dragons.md` et `deferred-work.md`, et renverser les tests qui figent « `souffle_1`..`souffle_4` jamais remplis » (sprint change 2026-10-02, §4.5 et §4.6). *Recommandation :* exprimer les règles de composition (capacité, quota, rituels) en fonctions pures de `packages/game-rules`, partagées par la validation serveur et le grisage web, plutôt que de dupliquer une troisième fois la règle de disponibilité (cf. `deferred-work.md`). *Revues :* mode plan avant la story, puis `/security-review` et `/code-review`.
+
+### Story 33.7 : Capacités de niveau
+
+As a MJ,
+I want voir ce que mon dragon a gagné en montant de niveau et choisir son artefact cadeau,
+So that je sache ce dont il est capable sans rouvrir le livre.
+
+**Acceptance Criteria:**
+
+**Given** mon Homme Dragon au niveau N
+**When** j'ouvre sa fiche
+**Then** les capacités acquises jusqu'au niveau N sont listées avec leur description (catalogue `homme-dragon-level-capacities.json` enregistré dans `CONTENT_TYPES`)
+
+**Given** mon Homme Dragon atteint le niveau 4
+**When** je choisis son artefact cadeau
+**Then** seuls les artefacts des trois autres races me sont proposés
+**And** une fois enregistré, le choix ne peut plus être modifié
+**And** l'artefact cadeau apparaît sur la fiche à côté de l'artefact principal
+
+**Given** mon Homme Dragon atteint le niveau 5
+**When** j'ouvre sa fiche
+**Then** les souffles rituels (catalogue `souffles-rituels.json`, enregistré sous la clé `souffleRituel`) sont consultables, avec leur description et le même coût que les autres souffles (1 PS)
+
+**Given** un Homme Dragon sous le niveau 4
+**When** sa fiche s'affiche
+**Then** aucun choix d'artefact cadeau n'est proposé
+
+### Story 33.8 : Un Homme Dragon pour plusieurs aventures
+
+*Architecture faite le 2026-10-04 (AD-23, spine du Palier 9 ; AD-22 réécrit). Story lourde : migration, routes, front, PDF — la découpe éventuelle se décide à la planification.*
+
+As a MJ,
+I want que mon Homme Dragon suive plusieurs groupes et plusieurs mondes,
+So that son histoire et son niveau reflètent toutes les aventures qu'il a racontées.
+
+**Acceptance Criteria:**
+
+**Given** un Homme Dragon dont je suis propriétaire et une aventure Ryuutama dont je suis MJ, sans Homme Dragon
+**When** je l'associe à cette aventure
+**Then** il y apparaît comme Homme Dragon de cette aventure
+**And** son historique et son niveau cumulent les scénarios `PASSE` de toutes ses aventures, chaque entrée d'historique portant son aventure
+
+**Given** une aventure qui a déjà un Homme Dragon
+**When** j'en associe un autre
+**Then** le serveur refuse (`409`) et ne remplace rien
+**And** je dois d'abord dissocier le premier
+
+**Given** un Homme Dragon associé à une aventure
+**When** je le dissocie
+**Then** l'aventure n'a plus d'Homme Dragon et son niveau est recalculé, il peut baisser
+**And** aucun éveil, artefact cadeau ni souffle de la réserve n'est supprimé : ce qui dépasse le niveau reste lisible et seuls les nouveaux choix sont refusés
+**And** je peux toujours retirer un souffle de la réserve, quel que soit le niveau
+
+**Given** un Homme Dragon qui n'est pas le mien, ou qui n'existe pas
+**When** je le lis, l'écris, l'exporte ou l'associe
+**Then** la réponse est la même (`404`) dans les deux cas, sans aucune donnée
+**And** un joueur de l'aventure n'y a accès ni dans l'application ni par l'API
+
+**Given** un Homme Dragon associé à deux aventures
+**When** j'ouvre « Personnages »
+**Then** il apparaît une seule fois, avec ses deux aventures
+**And** l'ouvrir m'amène sur sa fiche, qui présente les voyageurs protégés **par aventure**
+
+**Given** un Homme Dragon associé à une aventure
+**When** cette aventure est supprimée
+**Then** l'Homme Dragon subsiste, sans aventure, et reste accessible dans « Personnages »
+**And** son niveau est recalculé sur ses aventures restantes
+
+**Given** une aventure portant un Homme Dragon
+**When** son système de jeu change
+**Then** l'Homme Dragon en est dissocié, sans perdre sa fiche
+
+**Given** une aventure Ryuutama sans Homme Dragon
+**When** j'en crée un depuis la section de création
+**Then** il est créé et associé à cette aventure en une seule opération
+**And** deux créations simultanées pour la même aventure ne donnent jamais deux Hommes Dragons associés ni une fiche orpheline
+
+**Given** les fiches existantes (un Homme Dragon par partie)
+**When** le nouveau modèle est livré
+**Then** chacune reste intacte et rattachée à sa partie
+**And** la migration échoue avec une erreur explicite, sans rien choisir au hasard, si deux fiches visent la même partie ou si une fiche resterait sans lien
+
+**Given** une aventure Ryuutama dont je suis MJ, sans Homme Dragon associé
+**When** la liste des parties est calculée
+**Then** le signal « Homme Dragon à créer » s'affiche comme avant, sans requête par partie
+
+**Given** deux écritures simultanées sur la même fiche (la réserve et la modification générale, par exemple)
+**When** elles aboutissent
+**Then** aucune n'écrase l'autre
+
+**Given** ma fiche ouverte
+**When** un scénario de l'une de ses aventures passe en `PASSE`
+**Then** son niveau et son historique se mettent à jour sans que je recharge
+
+*Prérequis levé :* AD-23 (modèle, routes `PUT`/`DELETE /parties/:id/homme-dragon/:hommeDragonId`, fiche sous `/homme-dragons/:id`, temps réel, migration) et AD-22 réécrite. **Contrat du livré cassé volontairement** (33.5 à 33.7) : la liste des consommateurs à mettre à jour est dans AD-23. À vérifier à l'implémentation : l'absence d'interblocage du verrou `FOR NO KEY UPDATE`, et le comportement d'un deuxième onglet ouvert (il ne se rafraîchit pas sur une écriture de fiche, par choix d'AD-23).
 
 ## Epic 34 : Entrée dans l'application
 
@@ -1803,7 +2210,42 @@ So that l'application inspire confiance avant même que j'aie un compte.
 
 **Given** je ne suis pas connecté
 **When** j'ouvre l'un de ces écrans
-**Then** il s'affiche dans le dernier thème connu localement, sans clignotement
+**Then** il s'affiche dans le dernier thème connu localement, ou dans un thème tiré au hasard si aucun n'est connu, sans clignotement
+
+**Given** un formulaire d'authentification invalide
+**When** je le valide
+**Then** chaque champ fautif affiche un message qui nomme la règle
+**And** le focus va au premier champ fautif et rien n'est envoyé
+
+**Given** n'importe quel écran d'authentification
+**When** un lecteur d'écran le parcourt
+**Then** la langue est le français, le titre d'onglet nomme l'écran et la structure comporte un titre dans une zone principale
+**And** les erreurs et les réussites sont annoncées
+
+*L'identité visuelle (bande animée, logo, emblèmes, accroches par thème) est la story 34.4, dessinée par la passe UX `ux-jdr-master-2026-10-05`.*
+
+### Story 34.4 : Identité visuelle « Dés Dispos » des écrans d'authentification
+
+As a visiteur qui ne connaît pas l'application,
+I want comprendre dès l'arrivée qu'il s'agit d'organiser des parties de jeu de rôle entre amis,
+So that je sache où j'arrive avant d'avoir lu quoi que ce soit.
+
+**Acceptance Criteria:**
+
+**Given** n'importe quel écran d'authentification, dans chacun des trois thèmes
+**When** il s'affiche
+**Then** une bande au décor propre au thème, le nom « Dés Dispos », son logo et une accroche propre au thème précèdent la carte
+
+**Given** la bande animée
+**When** je clique ou touche le fond animé
+**Then** l'animation se fige sur place, et un second clic la relance
+**And** avec « réduire les animations » activé, elle reste immobile d'office
+
+**Given** l'application après connexion
+**When** je regarde l'onglet du navigateur
+**Then** le favicon et le nom reflètent « Dés Dispos »
+
+*Spines : `ux-jdr-master-2026-10-05` (`DESIGN.md`, `EXPERIENCE.md` §2 à §4, §11 b). Dépend de la 34.3 (feuille partagée, structure `<main>`). Le bandeau de navigation de l'application (« master-jdr ») reste à arbitrer à la rédaction de la spec.*
 
 ---
 

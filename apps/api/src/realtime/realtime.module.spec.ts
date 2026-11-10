@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing';
 // documenté pour @master-jdr/game-rules (mémoire projet "game-rules ESM jest.mock"), jamais
 // rencontré avant pour @master-jdr/shared car aucun autre spec n'importe le VRAI PartiesModule.
 jest.mock('@master-jdr/shared', () => ({
+  // Réduit à ce que lisent les DTO (`id`, `name`) — pas la forme complète du registre (37.5).
   GAME_SYSTEMS: [{ id: 'ryuutama', name: 'Ryuutama' }],
 }));
 

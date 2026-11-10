@@ -1,0 +1,347 @@
+/* Story 40.2 — fenêtre d'une conjonction (EventDialog, contrat UX : DESIGN §7.7). Colonne unique :
+   situation, fiche, participants. Cibles tactiles de 44 px au pied. État toujours écrit, jamais porté
+   par la couleur seule. Aucune animation ajoutée. */
+:host {
+  display: contents;
+}
+
+.ed__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  /* Place du bouton de fermeture, posé en haut à droite par la surface. */
+  padding-right: 48px;
+}
+
+.ed__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ed__situation {
+  margin: 4px 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--jdr-accent-1, var(--mat-sys-primary));
+  background: color-mix(in srgb, var(--jdr-accent-1, var(--mat-sys-primary)) 8%, transparent);
+}
+
+.ed__situation-label {
+  margin: 0 0 2px;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ed__situation-text {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* Story 40.3 : « S'inscrire » dans le panneau de situation, et « Complet » écrit à sa place. */
+.ed__signup {
+  min-height: 44px;
+  margin: 0 0 8px;
+}
+
+.ed__full {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+/* Story 40.4 : « Accepter » / « Décliner » dans le panneau de situation. */
+.ed__respond {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 8px;
+
+  button {
+    min-height: 44px;
+  }
+}
+
+/* Story 41.4 — rangée de la pastille « Ma situation » d'une soirée (la pastille est partagée, 53.2). */
+.ed__chip-row {
+  margin: 0 0 8px;
+}
+
+.ed__big {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.ed__big--time,
+.ed__big--place {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.ed__section-title {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.ed__sheet,
+.ed__participants,
+.ed__slots {
+  margin-bottom: 16px;
+}
+
+.ed__dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.ed__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 30%) 1fr;
+  gap: 4px 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  font-size: 0.875rem;
+
+  @media (max-width: 519px) {
+    grid-template-columns: 1fr;
+  }
+
+  dt {
+    color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.ed__people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Story 40.4 : une réservation en attente garde son action « Retirer la réservation » à côté. */
+.ed__person {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ed__unreserve {
+  min-height: 44px;
+}
+
+.ed__reserve {
+  margin-bottom: 16px;
+}
+
+.ed__candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.ed__candidate {
+  min-height: 44px;
+  padding: 6px 14px;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+}
+
+.ed__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ed__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ed__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ed__error {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font-size: 0.875rem;
+}
+
+.ed__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+
+  button {
+    min-height: 44px;
+  }
+}
+
+/* Story 40.5 — panneau du sondage de dates. Membre qui n'a pas voté : cadre « à faire » ; hôte : cadre
+   accent. Le texte dit l'état, le cadre le double (jamais la couleur seule). */
+.ed__poll {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.ed__poll--todo {
+  border-color: var(--jdr-status-todo, #f0a030);
+  background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--jdr-status-todo, #f0a030);
+}
+
+.ed__poll--host {
+  border-color: var(--jdr-accent-1, var(--mat-sys-primary));
+  background: color-mix(in srgb, var(--jdr-accent-1, var(--mat-sys-primary)) 8%, transparent);
+}
+
+.ed__poll-text {
+  margin: 0 0 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.ed__poll-line {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+/* Story 40.5b — liens écrits vers le calendrier du groupe, sous le résumé du sondage. */
+.ed__poll-calendar,
+.ed__poll-fix,
+.ed__poll-extend {
+  min-height: 44px;
+  margin: 8px 8px 0 0;
+}
+
+/* Fiche : chaque créneau candidat et le nombre d'inscrits libres. */
+.ed__slot-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ed__slot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  font-size: 0.875rem;
+}
+
+.ed__slot-available {
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+/* Story 41.1 — rendu EN LIGNE (page d'une rencontre isolée) : mêmes blocs, sans la surface de la fenêtre.
+   Pas de bouton de fermeture à dégager dans l'en-tête ; la colonne reste lisible sur grand écran. */
+.ed--inline {
+  display: block;
+  max-width: 900px;
+
+  .ed__head {
+    padding-right: 0;
+    margin-bottom: 12px;
+  }
+
+  /* Description de la soirée, sous le titre : texte libre de l'hôte, retours à la ligne conservés. */
+  .ed__description {
+    margin: 0 0 16px;
+    font-size: 0.9375rem;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Story 42.1 (⚠️ contrat UI) — conjonction annulée : l'état est ÉCRIT en tête (« Annulée », constat), le cadre
+   passe au rouge de l'annulé mais ne porte jamais seul le sens. Aucune action n'est posée dans ce panneau. */
+.ed__situation--cancelled {
+  border-color: var(--color-unavailable, #e74c3c);
+  background: color-mix(in srgb, var(--color-unavailable, #e74c3c) 8%, transparent);
+}
+
+.ed__cancelled {
+  margin-bottom: 12px;
+}
+
+/* « Annuler la conjonction » : action irréversible, contour rouge (le bouton plein est dans la confirmation). */
+.ed__cancel-event {
+  min-height: 44px;
+  color: var(--color-cancelled-text, #f26a5c);
+  --mat-button-outlined-outline-color: var(--color-unavailable, #e74c3c);
+  --mat-button-outlined-label-text-color: var(--color-cancelled-text, #f26a5c);
+}
+
+/* ⚠️ Story 49.1 — bandeau d'onglets « Conjonction » / jeux sur place de la fenêtre. Cibles de 44 px, onglet actif
+   souligné ET en gras (jamais la couleur seule), aucun jeton neuf. */
+.ed__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+}
+
+.ed__tab {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+
+  &[aria-selected='true'] {
+    border-bottom-color: var(--jdr-accent-1, var(--mat-sys-primary));
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}

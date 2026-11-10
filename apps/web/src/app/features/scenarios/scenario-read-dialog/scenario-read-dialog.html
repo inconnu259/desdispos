@@ -2,27 +2,43 @@
 
 <mat-dialog-content>
   @if (isRestricted()) {
-    <p class="a-venir-note">Date à définir.</p>
+    <p class="a-venir-note">{{ theme.tone()['common.date_a_definir_2'] }}</p>
   } @else {
     <app-scenario-status-badge [status]="scenario().status" />
+  }
+
+  <!-- Story 54.1 ⚠️ — les séances viennent juste après le titre (et le badge, ou la note d'un chapitre
+       « à venir » restreint) : c'est elles qui disent quoi faire. `leaving` ferme la fenêtre avant la
+       navigation vers la Destinée, comme `editResume()`. -->
+  <app-seance-list
+    [scenario]="scenario()"
+    [partieId]="scenario().partieId"
+    [isMj]="false"
+    [situationIsMj]="isMj()"
+    [isEpisodique]="isEpisodique()"
+    (seanceLinked)="onSeanceLinked($event)"
+    (leaving)="close()"
+  />
+
+  @if (!isRestricted()) {
     <p class="description">{{ scenario().description }}</p>
     <p class="durations">
       {{ scenario().dureeHeures ?? '—' }} h · {{ scenario().dureeSeances ?? '—' }} séances
     </p>
     @if (isPasse()) {
       <section class="resume">
-        <h3>Résumé de fin</h3>
-        <p>{{ scenario().resumeFin ?? 'Aucun résumé pour l’instant.' }}</p>
+        <h3>{{ theme.tone()['common.resume_de_fin'] }}</h3>
+        <p>{{ scenario().resumeFin ?? theme.tone()['scenarios.read_resume_empty'] }}</p>
         @if (isMj()) {
           <button mat-button type="button" (click)="editResume()">
-            {{ scenario().resumeFin ? 'Modifier le résumé de fin' : 'Rédiger le résumé de fin' }}
+            {{ resumeButtonLabel() }}
           </button>
         }
       </section>
 
       @if (ownCharacter(); as owner) {
         <section class="journal-associe">
-          <h3>Journal associé</h3>
+          <h3>{{ theme.tone()['scenarios.read_journal_title'] }}</h3>
           <label>
             <input
               type="checkbox"
@@ -30,7 +46,7 @@
               [checked]="owner.journalAutoAssociate"
               (change)="toggleAutoAssociate($any($event.target).checked)"
             />
-            Association automatique
+            {{ theme.tone()['scenarios.read_auto_associate'] }}
           </label>
           @if (ownNotes().length > 0) {
             <ul class="own-notes">
@@ -48,21 +64,21 @@
                   <button
                     type="button"
                     class="note-share-toggle"
-                    [attr.aria-label]="note.shared ? 'Note partagée' : 'Note privée'"
+                    [attr.aria-label]="noteShareLabel(note.shared)"
                     (click)="toggleShare(note)"
                   >
-                    {{ note.shared ? '🔓' : '🔒' }}
+                    <app-icon [name]="note.shared ? 'cadenas-ouvert' : 'cadenas-ferme'" />
                   </button>
                   @if (note.scenarioId === scenario().id && !note.shared) {
                     <p class="hint">
-                      Note privée — déverrouillez-la (🔒) pour qu'elle apparaisse dans la rétrospective.
+                      {{ theme.tone()['scenarios.read_note_private_hint'] }}
                     </p>
                   }
                 </li>
               }
             </ul>
           } @else {
-            <p class="hint">Vous n’avez pas encore d’entrée de journal.</p>
+            <p class="hint">{{ theme.tone()['scenarios.read_journal_empty'] }}</p>
           }
           @if (journalError()) {
             <p class="error">{{ journalError() }}</p>
@@ -72,7 +88,7 @@
 
       @if (scenario().retrospectiveNotes?.length) {
         <section class="retrospective-notes">
-          <h3>Journal de la rétrospective</h3>
+          <h3>{{ theme.tone()['scenarios.read_retrospective_title'] }}</h3>
           <ul>
             @for (note of scenario().retrospectiveNotes; track note.id) {
               <li>{{ note.text }}</li>
@@ -84,7 +100,7 @@
 
     @if (canSeeAnnouncements() && scenarioAnnouncements().length > 0) {
       <section class="scenario-announcements">
-        <h3>Annonces</h3>
+        <h3>{{ theme.tone()['common.annonces'] }}</h3>
         @for (a of scenarioAnnouncements(); track a.id) {
           <app-annonce-card
             [announcement]="a"
@@ -99,7 +115,7 @@
 
   @if (isEpisodique()) {
     <section class="participants">
-      <h3>Participants</h3>
+      <h3>{{ theme.tone()['common.participants'] }}</h3>
       @if (participantCharacters().length > 0) {
         @for (c of participantCharacters(); track c.id) {
           <app-character-summary-card [character]="c" />
@@ -114,7 +130,7 @@
                 [pseudo]="p.pseudo"
                 [ambiguous]="isParticipantAmbiguous(p.userId)"
               />
-              <span class="hint">(pas encore de personnage)</span>
+              <span class="hint">{{ theme.tone()['common.pas_encore_de_personnage'] }}</span>
             </li>
           }
         </ul>
@@ -126,7 +142,7 @@
           [disabled]="participatePending()"
           (click)="participate()"
         >
-          Participer à cette enquête
+          {{ theme.tone()['scenarios.read_participate'] }}
         </button>
       }
       @if (participantError()) {
@@ -134,16 +150,8 @@
       }
     </section>
   }
-
-  <app-seance-list
-    [scenario]="scenario()"
-    [partieId]="scenario().partieId"
-    [isMj]="false"
-    [isEpisodique]="isEpisodique()"
-    (seanceLinked)="onSeanceLinked($event)"
-  />
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="close()">Fermer</button>
+  <button mat-button type="button" (click)="close()">{{ theme.tone()['common.fermer'] }}</button>
 </mat-dialog-actions>

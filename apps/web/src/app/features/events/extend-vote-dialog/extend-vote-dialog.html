@@ -1,0 +1,45 @@
+<h2 mat-dialog-title>{{ theme.tone()['parties.confirm_title'] }}</h2>
+
+<mat-dialog-content>
+  <p class="evd__heading">{{ heading() }}</p>
+
+  <!-- Date native : le minimum est le lendemain de l'échéance actuelle (jamais avant aujourd'hui). -->
+  <div class="evd__field">
+    <label class="evd__label" for="evd-day">{{
+      theme.tone()['partie.ralliement_event_extend_field']
+    }}</label>
+    <input
+      id="evd-day"
+      class="evd__input"
+      type="date"
+      lang="fr"
+      required
+      [attr.min]="data.minKey"
+      [value]="day()"
+      [disabled]="busy()"
+      (input)="setDay($any($event.target).value)"
+    />
+  </div>
+
+  <p class="evd__warning">{{ theme.tone()['partie.ralliement_event_extend_warning'] }}</p>
+
+  @if (error(); as message) {
+    <p class="evd__error" role="alert">{{ message }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" class="evd__cancel" [disabled]="busy()" (click)="cancel()">
+    {{ theme.tone()['partie.ralliement_event_cancel_btn'] }}
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    class="evd__confirm"
+    [disabled]="busy() || !valid()"
+    [attr.aria-busy]="busy()"
+    (click)="confirm()"
+  >
+    {{ theme.tone()['partie.ralliement_event_extend_confirm_btn'] }}
+  </button>
+</mat-dialog-actions>

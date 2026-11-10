@@ -1,4 +1,9 @@
-import type { SlotMemberDto } from '@master-jdr/shared';
+import { spanSlots } from '@master-jdr/shared';
+import type { AggregatedSlotDto, DaySlot, SlotMemberDto } from '@master-jdr/shared';
+import { fillTone } from '../../core/theme/tone-format';
+
+/** Dictionnaire de ton lisible par les fonctions pures (`theme.tone()` d'un composant). */
+type ToneDict = Readonly<Record<string, string>>;
 
 /**
  * Story 36.8 — la disponibilité du groupe, sur un canal séparé (FR-53).
@@ -110,27 +115,31 @@ export function groupIsAllBlocked(group: GroupAvailability): boolean {
  * Les identités ne sont énoncées que si le serveur en a servi — la fonction ne peut structurellement
  * pas en inventer.
  */
-export function groupAriaLabel(group: GroupAvailability): string {
+export function groupAriaLabel(group: GroupAvailability, tone: ToneDict): string {
   const total = safeCount(group.total);
   const available = Math.min(safeCount(group.available), total);
   const unavailable = Math.min(safeCount(group.unavailable), total);
 
-  const parts = [
-    `Disponibilité du groupe : ${available} sur ${total} disponible${available > 1 ? 's' : ''}`,
-  ];
+  const availableKey =
+    available > 1 ? 'calendar.util_group_aria_many' : 'calendar.util_group_aria_one';
+  const parts = [fillTone(tone[availableKey], { available, total })];
 
   // Les deux vides, dits en toutes lettres — c'est ici que l'AC6 tient sans la couleur.
   if (groupIsAllBlocked(group)) {
-    parts.push('tout le monde est bloqué');
+    parts.push(tone['calendar.util_group_all_blocked']);
   } else if (available === 0 && unavailable === 0) {
-    parts.push("personne ne s'est prononcé");
+    parts.push(tone['calendar.util_group_nobody']);
   } else if (unavailable > 0) {
-    parts.push(`${unavailable} indisponible${unavailable > 1 ? 's' : ''}`);
+    const unavailableKey =
+      unavailable > 1
+        ? 'calendar.util_group_unavailable_many'
+        : 'calendar.util_group_unavailable_one';
+    parts.push(fillTone(tone[unavailableKey], { n: unavailable }));
   }
 
   const members = group.members;
   if (members !== null && members.length > 0) {
-    parts.push(members.map((m) => `${m.displayName} ${memberStatusWord(m)}`).join(', '));
+    parts.push(members.map((m) => `${m.displayName} ${memberStatusWord(m, tone)}`).join(', '));
   }
 
   return parts.join(' — ');
@@ -138,14 +147,14 @@ export function groupAriaLabel(group: GroupAvailability): string {
 
 /** Le statut d'un membre, **en toutes lettres**. Point unique du vocabulaire du canal : les
  *  surfaces n'en écrivent jamais un second (même règle qu'`answerLabel()` pour le vote). */
-export function memberStatusWord(member: GroupMember): string {
+export function memberStatusWord(member: GroupMember, tone: ToneDict): string {
   switch (member.status) {
     case 'AVAILABLE':
-      return 'disponible';
+      return tone['calendar.week_status_available'];
     case 'UNAVAILABLE':
-      return 'indisponible';
+      return tone['calendar.week_status_unavailable'];
     default:
-      return 'sans réponse';
+      return tone['calendar.util_word_no_answer'];
   }
 }
 
@@ -168,4 +177,36 @@ export function memberStatusGlyph(member: GroupMember): string {
 export function groupCounterLabel(group: GroupAvailability): string {
   const total = safeCount(group.total);
   return `${Math.min(safeCount(group.available), total)} / ${total}`;
+}
+
+/**
+ * Story 47.5 (FR-23) — la PIRE disponibilité d'une plage candidate : le plus petit `available` du groupe sur chacun
+ * des créneaux que couvre le candidat (`spanSlots`, `@master-jdr/shared` — LA fonction des créneaux couverts).
+ * « 2 » veut dire : au pire, deux personnes sont libres sur toute la plage.
+ *
+ * `null` = pas de chiffre : un créneau de la plage manque dans la carte de chaleur chargée (hors du mois servi,
+ * pas encore chargée), ou la durée est invalide. Un chiffre partiel serait un mensonge — on n'en écrit pas.
+ * Fonction pure : aucune lecture réseau, la carte est celle que la vue a déjà.
+ */
+export function worstAvailability(
+  heatmap: readonly Pick<AggregatedSlotDto, 'date' | 'slot' | 'available'>[],
+  start: { date: string; slot: DaySlot },
+  durationSlots: number,
+): number | null {
+  let covered: { date: string; slot: DaySlot }[];
+  try {
+    covered = spanSlots(start.date.substring(0, 10), start.slot, durationSlots);
+  } catch {
+    return null;
+  }
+  const cells = new Map<string, number>();
+  for (const cell of heatmap)
+    cells.set(`${cell.date.substring(0, 10)}|${cell.slot}`, cell.available);
+  let worst: number | null = null;
+  for (const { date, slot } of covered) {
+    const available = cells.get(`${date}|${slot}`);
+    if (available === undefined) return null;
+    worst = worst === null ? available : Math.min(worst, available);
+  }
+  return worst;
 }

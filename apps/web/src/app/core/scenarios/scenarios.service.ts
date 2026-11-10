@@ -8,6 +8,7 @@ import type {
   ScenarioDocumentDto,
   ScenarioDto,
   SetCompteRenduDto,
+  AddSeanceDto,
   SetInfosPratiquesDto,
   SetResumeFinDto,
   SetSeanceCapacityDto,
@@ -32,7 +33,7 @@ export class ScenariosService {
 
   // Émis après chaque mutation réussie (create/update/open) — permet aux composants qui
   // affichent une liste de scénarios chargée ailleurs (ex. ScenarioTimeline, chargée une fois dans
-  // un onglet séparé de ScenarioDrafts/ScenarioForm) de savoir qu'ils doivent se recharger, sans
+  // un onglet séparé de ScenarioList/ScenarioForm) de savoir qu'ils doivent se recharger, sans
   // dépendre d'une navigation complète (F5) pour voir un changement fait dans un autre onglet.
   // Scopé par Partie (Story 17.3, AC1) : un nouvel objet à chaque appel garantit la notification
   // (Object.is sur la référence), le consommateur compare partieId pour ignorer les mutations
@@ -146,11 +147,12 @@ export class ScenariosService {
     return result;
   }
 
-  async addSeance(scenarioId: string): Promise<ScenarioDto> {
+  /** Story 47.1 : `durationSlots` = durée de la nouvelle séance en créneaux enchaînés (absente = 1). */
+  async addSeance(scenarioId: string, durationSlots?: number): Promise<ScenarioDto> {
     const result = await firstValueFrom(
       this.http.post<ScenarioDto>(
         `${API_BASE}/scenarios/${scenarioId}/seances`,
-        {},
+        (durationSlots === undefined ? {} : { durationSlots }) satisfies AddSeanceDto,
         { withCredentials: true },
       ),
     );
@@ -161,11 +163,19 @@ export class ScenariosService {
   async createSeancePoll(
     seanceId: string,
     options: { date: string; slot: DaySlot }[],
+    /** Story 45.4 — la fin du vote (jour `YYYY-MM-DD`) ; absente, le serveur propose la sienne. */
+    expiresAt?: string,
+    /** Story 47.4 — la durée du rendez-vous, écrite avec le vote (même transaction) ; absente = inchangée. */
+    durationSlots?: number,
   ): Promise<ScenarioDto> {
     const result = await firstValueFrom(
       this.http.post<ScenarioDto>(
         `${API_BASE}/scenarios/seances/${seanceId}/poll`,
-        { options } satisfies CreateSeancePollDto,
+        {
+          options,
+          ...(expiresAt ? { expiresAt } : {}),
+          ...(durationSlots !== undefined ? { durationSlots } : {}),
+        } satisfies CreateSeancePollDto,
         { withCredentials: true },
       ),
     );

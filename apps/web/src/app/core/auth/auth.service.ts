@@ -10,7 +10,7 @@ import { ThemeToneService } from '../theme/theme-tone.service';
 // Source unique de l'URL d'API (`core/api-base.ts`) — l'URL était auparavant redéfinie en dur ici,
 // ce qui cassait tout accès depuis un autre appareil que le poste de dev (la requête partait vers le
 // `localhost` du téléphone). Le TODO « passer l'URL par la config d'environnement » reste ouvert et
-// est suivi dans docs/backlog.md § Palier 10.
+// est suivi dans docs/backlog.md § Palier 11.
 const API = API_BASE;
 
 @Injectable({ providedIn: 'root' })

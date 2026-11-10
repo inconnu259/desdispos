@@ -13,7 +13,9 @@ jest.mock('@master-jdr/game-rules', () => ({
 
 import { AnnouncementsService } from './announcements.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
+import { testGrant } from '../common/test-utils/grant';
+import { RELEASED_ANNOUNCEMENT_WHERE } from '../permissions/scenario-visibility';
 import { ScenariosService } from '../scenarios/scenarios.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 
@@ -29,11 +31,10 @@ function makePrisma() {
   };
 }
 
-function makePartiesService() {
-  return {
-    getOwned: jest.fn(),
-    getViewable: jest.fn(),
-  };
+/** Story 37.7 : les droits sont décidés par `PermissionService.assert()`, simulé ici ; `ownerOf`
+ *  fournit l'identité de l'auteur (le MJ propriétaire) affichée sur les annonces. */
+function makePermissions() {
+  return { assert: jest.fn(), ownerOf: jest.fn() };
 }
 
 function makeScenariosService() {
@@ -60,20 +61,20 @@ function makeAnnouncement(overrides: Record<string, unknown> = {}) {
 describe('AnnouncementsService', () => {
   let service: AnnouncementsService;
   let prisma: ReturnType<typeof makePrisma>;
-  let parties: ReturnType<typeof makePartiesService>;
+  let permissions: ReturnType<typeof makePermissions>;
   let scenarios: ReturnType<typeof makeScenariosService>;
   let realtimeEvents: ReturnType<typeof makeRealtimeEvents>;
 
   beforeEach(async () => {
     prisma = makePrisma();
-    parties = makePartiesService();
+    permissions = makePermissions();
     scenarios = makeScenariosService();
     realtimeEvents = makeRealtimeEvents();
     const module = await Test.createTestingModule({
       providers: [
         AnnouncementsService,
         { provide: PrismaService, useValue: prisma },
-        { provide: PartiesService, useValue: parties },
+        { provide: PermissionService, useValue: permissions },
         { provide: ScenariosService, useValue: scenarios },
         { provide: RealtimeEventsService, useValue: realtimeEvents },
       ],
@@ -83,7 +84,7 @@ describe('AnnouncementsService', () => {
 
   describe('create()', () => {
     it('pas de scenarioId → Announcement créée avec scenarioId: null (AC1)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.announcement.create.mockResolvedValue(makeAnnouncement());
       prisma.user.findUnique.mockResolvedValue({
         pseudo: 'le-mj',
@@ -92,7 +93,9 @@ describe('AnnouncementsService', () => {
 
       const result = await service.create('p1', 'mj1', { text: 'Une annonce' });
 
-      expect(parties.getOwned).toHaveBeenCalledWith('p1', 'mj1');
+      expect(permissions.assert).toHaveBeenCalledWith('mj1', 'ANNOUNCEMENT_CREATE', {
+        partieId: 'p1',
+      });
       expect(scenarios.verifyScenarioBelongsToPartie).not.toHaveBeenCalled();
       expect(prisma.announcement.create).toHaveBeenCalledWith({
         data: { partieId: 'p1', scenarioId: null, text: 'Une annonce' },
@@ -107,7 +110,7 @@ describe('AnnouncementsService', () => {
     });
 
     it('émet un événement temps réel scopé sur la Partie (Story 18.1, AC1)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.announcement.create.mockResolvedValue(makeAnnouncement());
       prisma.user.findUnique.mockResolvedValue({
         pseudo: 'le-mj',
@@ -120,7 +123,7 @@ describe('AnnouncementsService', () => {
     });
 
     it('scenarioId valide de la Partie → Announcement créée avec ce scenarioId (AC2)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       scenarios.verifyScenarioBelongsToPartie.mockResolvedValue(undefined);
       prisma.announcement.create.mockResolvedValue(makeAnnouncement({ scenarioId: 's1' }));
       prisma.user.findUnique.mockResolvedValue({
@@ -141,7 +144,7 @@ describe('AnnouncementsService', () => {
     });
 
     it("scenarioId d'une autre Partie → rejet propagé par verifyScenarioBelongsToPartie, aucune écriture (AC3)", async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       scenarios.verifyScenarioBelongsToPartie.mockRejectedValue(
         new Error("Ce scénario n'appartient pas à cette Partie"),
       );
@@ -153,7 +156,7 @@ describe('AnnouncementsService', () => {
     });
 
     it('scenarioId visant un scénario BROUILLON/A_VENIR de la même Partie → acceptée, aucune validation de statut (AC7)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       // verifyScenarioBelongsToPartie ne valide jamais le statut (délégué à ScenariosService, AD-2) —
       // ce test documente que AnnouncementsService ne fait lui non plus aucune vérification de statut.
       scenarios.verifyScenarioBelongsToPartie.mockResolvedValue(undefined);
@@ -169,8 +172,8 @@ describe('AnnouncementsService', () => {
       expect(prisma.announcement.create).toHaveBeenCalled();
     });
 
-    it('non-MJ → ForbiddenException propagée par getOwned, aucune écriture (AC6)', async () => {
-      parties.getOwned.mockRejectedValue(new ForbiddenException());
+    it('non-MJ → ForbiddenException propagée par permissions.assert, aucune écriture (AC6)', async () => {
+      permissions.assert.mockRejectedValue(new ForbiddenException());
 
       await expect(service.create('p1', 'stranger', { text: 'x' })).rejects.toThrow(
         ForbiddenException,
@@ -182,58 +185,85 @@ describe('AnnouncementsService', () => {
 
   describe('findAll() (Story 9.2, AD-6/AD-9)', () => {
     it('liste les annonces de la Partie triées par createdAt desc, membre quelconque (AC1/AC2)', async () => {
-      parties.getViewable.mockResolvedValue({ id: 'p1' });
-      const mj = { pseudo: 'le-mj', displayName: 'Le Grand MJ' };
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }, 'player'));
+      permissions.ownerOf.mockResolvedValue({
+        userId: 'mj1',
+        pseudo: 'le-mj',
+        displayName: 'Le Grand MJ',
+      });
       prisma.announcement.findMany.mockResolvedValue([
         makeAnnouncement({
           id: 'ann2',
           createdAt: new Date('2026-07-15T10:00:00.000Z'),
-          partie: { mj },
         }),
         makeAnnouncement({
           id: 'ann1',
           createdAt: new Date('2026-07-14T10:00:00.000Z'),
-          partie: { mj },
         }),
       ]);
 
       const result = await service.findAll('p1', 'u1');
 
-      expect(parties.getViewable).toHaveBeenCalledWith('p1', 'u1');
+      expect(permissions.assert).toHaveBeenCalledWith('u1', 'ANNOUNCEMENT_READ', {
+        partieId: 'p1',
+      });
+      // Anti-spoil serveur : un joueur ne lit que les annonces de toute la partie ou ciblées sur un
+      // scénario diffusé (fragment partagé).
       expect(prisma.announcement.findMany).toHaveBeenCalledWith({
-        where: { partieId: 'p1' },
+        where: { AND: [{ partieId: 'p1' }, RELEASED_ANNOUNCEMENT_WHERE] },
         orderBy: { createdAt: 'desc' },
-        include: {
-          partie: {
-            select: { mj: { select: { pseudo: true, displayName: true } } },
-          },
-        },
       });
       expect(result.map((a) => a.id)).toEqual(['ann2', 'ann1']);
       expect(result[0].authorPseudo).toBe('le-mj');
       expect(result[0].authorDisplayName).toBe('Le Grand MJ');
     });
 
-    it('inclut une annonce scopée à un scénario BROUILLON/A_VENIR sans distinction (AC6, aucun filtrage serveur)', async () => {
-      parties.getViewable.mockResolvedValue({ id: 'p1' });
+    it('échec FERMÉ : un rôle autre que MJ (ici member) reçoit la liste filtrée', async () => {
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }, 'member'));
+      permissions.ownerOf.mockResolvedValue({ userId: 'mj1', pseudo: 'le-mj', displayName: 'MJ' });
+      prisma.announcement.findMany.mockResolvedValue([]);
+
+      await service.findAll('p1', 'u1');
+
+      expect(prisma.announcement.findMany).toHaveBeenCalledWith({
+        where: { AND: [{ partieId: 'p1' }, RELEASED_ANNOUNCEMENT_WHERE] },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+
+    it('le MJ lit TOUTES les annonces, y compris celles scopées à un scénario BROUILLON/A_VENIR (aucun filtre)', async () => {
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }, 'mj'));
+      permissions.ownerOf.mockResolvedValue({
+        userId: 'mj1',
+        pseudo: 'le-mj',
+        displayName: 'Le Grand MJ',
+      });
       prisma.announcement.findMany.mockResolvedValue([
-        makeAnnouncement({
-          id: 'ann-brouillon',
-          scenarioId: 's-brouillon',
-          partie: { mj: { pseudo: 'le-mj', displayName: 'Le Grand MJ' } },
-        }),
+        makeAnnouncement({ id: 'ann-brouillon', scenarioId: 's-brouillon' }),
       ]);
 
-      const result = await service.findAll('p1', 'u1');
+      const result = await service.findAll('p1', 'mj1');
 
+      expect(prisma.announcement.findMany).toHaveBeenCalledWith({
+        where: { partieId: 'p1' },
+        orderBy: { createdAt: 'desc' },
+      });
       expect(result).toHaveLength(1);
       expect(result[0].scenarioId).toBe('s-brouillon');
     });
 
-    it('non-membre → ForbiddenException propagée par getViewable, aucune lecture', async () => {
-      parties.getViewable.mockRejectedValue(new ForbiddenException());
+    it('non-membre → ForbiddenException propagée par permissions.assert, aucune lecture', async () => {
+      permissions.assert.mockRejectedValue(new ForbiddenException());
 
       await expect(service.findAll('p1', 'stranger')).rejects.toThrow(ForbiddenException);
+      expect(prisma.announcement.findMany).not.toHaveBeenCalled();
+    });
+
+    it("partie sans propriétaire (aucun auteur à afficher) → liste vide, sans lire d'annonce", async () => {
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: null }, 'player'));
+      permissions.ownerOf.mockResolvedValue(null);
+
+      await expect(service.findAll('p1', 'u1')).resolves.toEqual([]);
       expect(prisma.announcement.findMany).not.toHaveBeenCalled();
     });
   });

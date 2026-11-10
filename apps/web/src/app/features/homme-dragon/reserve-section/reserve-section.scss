@@ -1,0 +1,282 @@
+// Story 33.6 — section « Réserve de souffles » (DESIGN.md §2, §4, §7 du delta). Aucun token de
+// thème ajouté : alias `outline` -> --mat-sys-outline, `error` -> --mat-sys-error,
+// `surface-high` -> --mat-sys-surface-container-high. La teinte de race ne porte que la gemme et
+// le liséré de l'étiquette (le texte reste en `on-surface`).
+@use '../race-tint' as *;
+
+.race-vert {
+  @include race-tint(vert);
+}
+.race-bleu {
+  @include race-tint(bleu);
+}
+.race-rouge {
+  @include race-tint(rouge);
+}
+.race-noir {
+  @include race-tint(noir);
+}
+
+:host {
+  display: block;
+}
+
+.reserve {
+  // Container query : la ligne d'emplacement bascule sur deux lignes selon la largeur de la
+  // SECTION (sous ~480px), pas selon l'écran — aucun second seuil d'écran.
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--mat-sys-surface-container-high, #f0ebe3);
+  border-radius: 10px;
+  padding: 1rem 1.125rem;
+
+  &__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--mat-sys-on-surface-variant, #555);
+    margin: 0;
+  }
+
+  &__level,
+  &__hint,
+  &__rule {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--mat-sys-on-surface-variant, #555);
+  }
+
+  // Pictogramme « enregistré » (valider) : décoratif, à côté du texte.
+  &__hint app-icon {
+    --app-icon-size: 14px;
+    vertical-align: middle;
+  }
+
+  &__rule strong {
+    color: var(--mat-sys-on-surface);
+  }
+
+  &__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  &__info,
+  &__error,
+  &__undo {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 0;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 10px;
+    background: var(--mat-sys-surface-container-highest, transparent);
+    font-size: 0.875rem;
+  }
+
+  &__info-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--mat-sys-primary);
+    border-radius: 50%;
+    color: var(--mat-sys-primary);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  // Erreur : couleur + icône + texte (jamais la couleur seule).
+  &__error {
+    border-color: var(--mat-sys-error);
+    align-items: flex-start;
+
+    > app-icon:first-child {
+      /* Pictogramme décoratif avant le texte : 18px, de la couleur de l'erreur. */
+      --app-icon-size: 18px;
+      color: var(--mat-sys-error);
+    }
+  }
+
+  &__undo {
+    flex-wrap: wrap;
+    border-color: var(--mat-sys-outline);
+    padding-right: 0.375rem;
+  }
+
+  &__undo-text {
+    flex: 1 1 160px;
+  }
+
+  &__slots {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__slot {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 64px;
+    padding: 0.5rem 0.75rem;
+    background: var(--mat-sys-surface-container-highest, transparent);
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 10px;
+
+    // Vide : pointillé (jamais un aplat), doublé du libellé du bouton.
+    &--empty {
+      background: transparent;
+      border: 1px dashed var(--mat-sys-outline);
+    }
+  }
+
+  &__no {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: 50%;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  &__sbody {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  &__sname {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__acts {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0.5rem;
+  }
+
+  &__btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &[aria-disabled='true'] {
+      cursor: progress;
+      opacity: 0.7;
+    }
+  }
+
+  &__pick {
+    flex: 1;
+    text-align: left;
+  }
+
+  &__free {
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant, #555);
+  }
+
+  // Étiquette de famille / de race : texte toujours écrit, liséré et gemme teintés.
+  &__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px;
+    border: 1px solid var(--h, var(--mat-sys-on-surface-variant));
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  &__gem {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, var(--hl, rgba(255, 255, 255, 0.85)) 0%, transparent 40%),
+      conic-gradient(from 200deg, var(--g1, #888), var(--g2, #ccc), var(--g1, #888));
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+  }
+}
+
+.stat-pill {
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--mat-sys-secondary-container, #e0dbef);
+  color: var(--mat-sys-on-secondary-container, #2a1a4a);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+@container (max-width: 480px) {
+  .reserve__slot {
+    flex-wrap: wrap;
+  }
+
+  .reserve__sbody {
+    flex: 1 1 200px;
+  }
+
+  .reserve__acts {
+    flex: 1 1 100%;
+
+    .reserve__btn {
+      flex: 1;
+    }
+  }
+
+  .reserve__slot--empty .reserve__free {
+    display: none;
+  }
+}

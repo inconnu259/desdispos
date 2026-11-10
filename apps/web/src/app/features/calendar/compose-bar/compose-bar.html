@@ -1,11 +1,64 @@
 <!-- AC1 : barre PERSISTANTE — rendue tant que le mode dure, y compris à zéro créneau composé.
      AC16 : `role="toolbar"` et un nom, comme `SelectionBar`. -->
-<div class="compose-bar" role="toolbar" aria-label="Composition des créneaux d'un vote">
+<div
+  class="compose-bar"
+  role="toolbar"
+  [attr.aria-label]="theme.tone()['calendar.compose_bar_aria']"
+>
   <b class="compose-bar__target">{{ targetLabel() }}</b>
 
   <!-- AC16 : le compte est annoncé à chaque bascule — un lecteur d'écran ne voit pas le liseré
        d'une case composée. -->
   <span class="compose-bar__count" aria-live="polite">{{ countLabel() }}</span>
+
+  <!-- ⚠️ Story 45.4 — la fin du vote : un texte (« Fin du vote : ven. 6 nov. ✎ ») qui devient la date native au
+       crayon. Jamais l'ISO brut ; l'état « passée » est écrit, et la raison du blocage se lit plus bas. -->
+  @if (deadlineDay(); as day) {
+    <span class="compose-bar__deadline">
+      @if (editing()) {
+        <input
+          #dateInput
+          class="compose-bar__deadline-input"
+          type="date"
+          lang="fr"
+          [attr.min]="deadlineMin() || null"
+          [attr.aria-label]="theme.tone()['calendar.compose_deadline_edit_aria']"
+          [value]="day"
+          (change)="onPick($any($event.target).value)"
+          (blur)="editing.set(false)"
+        />
+      } @else {
+        <button
+          type="button"
+          class="compose-bar__deadline-btn"
+          [attr.aria-label]="theme.tone()['calendar.compose_deadline_edit_aria']"
+          [disabled]="busy()"
+          (click)="editing.set(true)"
+        >
+          {{ deadlineText() }}
+          @if (deadlinePast()) {
+            <b class="compose-bar__deadline-tag">{{
+              theme.tone()['calendar.compose_deadline_ended_tag']
+            }}</b>
+          }
+          <app-icon name="modifier" />
+        </button>
+      }
+      @if (deadlineHint()) {
+        <span class="compose-bar__deadline-hint">{{ deadlineHint() }}</span>
+      }
+    </span>
+  }
+
+  <!-- ⚠️ Story 47.4 — la ligne « Durée » : le compteur partagé (47.1), toujours présent ; la plage s'écrit depuis
+       le premier départ désigné. -->
+  <span class="compose-bar__duration">
+    <app-duration-stepper
+      [value]="durationSlots()"
+      [start]="durationStart()"
+      (valueChange)="durationChanged.emit($event)"
+    />
+  </span>
 
   @if (blockedReason()) {
     <span class="compose-bar__blocked">{{ blockedReason() }}</span>
@@ -21,8 +74,10 @@
     [disabled]="busy() || !canConfirm()"
     (click)="confirmed.emit()"
   >
-    Valider
+    {{ theme.tone()['common.valider'] }}
   </button>
   <!-- AC3 : l'autre sortie du mode. `Échap` fait exactement la même chose, depuis la grille. -->
-  <button mat-button type="button" [disabled]="busy()" (click)="cancelled.emit()">Annuler</button>
+  <button mat-button type="button" [disabled]="busy()" (click)="cancelled.emit()">
+    {{ theme.tone()['common.annuler'] }}
+  </button>
 </div>

@@ -3,22 +3,6 @@
   font-size: 0.9rem;
 }
 
-.compose-confirm__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.9rem;
-}
-
-.compose-confirm__select {
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--mat-sys-outline-variant, rgba(127, 127, 127, 0.4));
-  background: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: inherit;
-}
-
 /* AC6 / P-1 — l'avertissement ne repose pas sur la seule couleur : il a aussi un filet, du
    rembourrage et de la graisse. */
 .compose-confirm__warning {

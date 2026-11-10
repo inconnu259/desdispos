@@ -4,6 +4,11 @@
 // Learn more about theming and how to use it for your application's
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
+@use '@angular/cdk' as cdk;
+
+// Classe `.cdk-visually-hidden` : sans elle, le conteneur de `LiveAnnouncer` (annonce du titre de
+// chaque écran d'authentification, story 34.3) s'afficherait en clair sous la page.
+@include cdk.a11y-visually-hidden();
 
 html {
   height: 100%;
@@ -42,6 +47,10 @@ body {
 :root {
   --color-available:   #2ecc71;
   --color-unavailable: #e74c3c;
+  /* Story 42.1 : TEXTE rouge de l'annulé — `--color-unavailable` donne 3,6 à 4,3:1 sur les surfaces des trois
+     thèmes (sombres) une fois teinté ; ce rouge plus clair tient ≥ 4,6:1 sur toutes (mesuré, NFR4). Le fond
+     et les traits gardent `--color-unavailable`. */
+  --color-cancelled-text: #f26a5c;
   --color-unknown:     #7f8c8d;
   --color-mixed:       #f0a030;
 }
@@ -116,7 +125,7 @@ body {
   --mat-sys-on-secondary-container:   #c4a0ff;
 
   /* Angular Material M3 system tokens — contours & erreur */
-  --mat-sys-outline:                  #5a5070;
+  --mat-sys-outline:                  #6e6383;
   --mat-sys-outline-variant:          #2a2340;
   --mat-sys-error:                    #cf6679;
   --mat-sys-on-error:                 #1a0010;
@@ -177,7 +186,7 @@ body {
   --mat-sys-secondary-container:      #4a3800;
   --mat-sys-on-secondary-container:   #ffd86a;
 
-  --mat-sys-outline:                  #3a5040;
+  --mat-sys-outline:                  #54735c;
   --mat-sys-outline-variant:          #1a2e1f;
   --mat-sys-error:                    #cf6679;
   --mat-sys-on-error:                 #1a0010;
@@ -188,8 +197,8 @@ body {
   --mat-toolbar-container-text-color: #d4f0dc;
 }
 
-/* ── Thème Médiéval Steampunk ────────────────────────────────────────────── */
-.theme-medieval-steampunk {
+/* ── Thème Atelier Cuivré ────────────────────────────────────────────────── */
+.theme-atelier-cuivre {
   color-scheme: dark;
 
   --jdr-bg:           #1a1008;
@@ -239,7 +248,7 @@ body {
   --mat-sys-secondary-container:      #1a3025;
   --mat-sys-on-secondary-container:   #6a9a78;
 
-  --mat-sys-outline:                  #7a5030;
+  --mat-sys-outline:                  #8b6541;
   --mat-sys-outline-variant:          #3a2810;
   --mat-sys-error:                    #cf6679;
   --mat-sys-on-error:                 #1a0010;

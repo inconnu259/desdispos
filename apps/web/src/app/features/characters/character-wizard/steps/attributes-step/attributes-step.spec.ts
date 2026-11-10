@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import type { ContentEntryDto } from '@master-jdr/shared';
 import { AttributesStep } from './attributes-step';
+import { fillTone } from '../../../../../core/theme/tone-format';
+import { TONE_MAP } from '../../../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const PATTERNS: ContentEntryDto[] = [
   { key: 'equilibre', data: { label: 'Équilibré', values: [6, 6, 6, 6] } },
@@ -8,6 +12,9 @@ const PATTERNS: ContentEntryDto[] = [
   { key: 'specialiste', data: { label: 'Spécialiste', values: [4, 4, 8, 8] } },
 ];
 
+// Story 31.4 (AC11, C1) — les puces ne sont plus indexées par EMPLACEMENT du profil mais par VALEUR
+// DISTINCTE : une seule puce « 6 » par rangée, avec un badge « ×N ». Les scénarios de la 24.1 sont
+// conservés (mêmes attributs, mêmes valeurs émises), seule la façon de cibler une puce change.
 describe('AttributesStep', () => {
   afterEach(() => TestBed.resetTestingModule());
 
@@ -18,14 +25,32 @@ describe('AttributesStep', () => {
     fixture.detectChanges();
     return fixture;
   }
+  type Fixture = ReturnType<typeof setup>;
 
-  function selectPolyvalent(fixture: ReturnType<typeof setup>) {
+  function selectPattern(fixture: Fixture, index: number) {
     const buttons: HTMLButtonElement[] = fixture.nativeElement.querySelectorAll(
       '.attributes-step__patterns button',
     );
-    buttons[1].click(); // polyvalent
+    buttons[index].click();
     fixture.detectChanges();
   }
+  const selectPolyvalent = (fixture: Fixture) => selectPattern(fixture, 1);
+
+  /** Rangées d'attributs, dans l'ordre AGI, ESP, INT, VIG. */
+  const rows = (fixture: Fixture): HTMLElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.attr-slot'));
+  /** La puce de valeur `value` dans la rangée `row`. */
+  const chip = (fixture: Fixture, row: number, value: number): HTMLButtonElement =>
+    rows(fixture)[row].querySelector(`.value-chip[data-value="${value}"]`) as HTMLButtonElement;
+  const click = async (fixture: Fixture, row: number, value: number) => {
+    chip(fixture, row, value).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
+  const anySelected = (row: HTMLElement) =>
+    [...row.querySelectorAll('.value-chip')].some((c) =>
+      c.classList.contains('value-chip--selected'),
+    );
 
   describe('Story 24.1 : choix du profil', () => {
     it('aucune grille de chips tant qu’aucun profil n’est sélectionné', async () => {
@@ -38,7 +63,20 @@ describe('AttributesStep', () => {
       expect(fixture.nativeElement.textContent).toContain('Spécialiste');
     });
 
-    it('sélection d’un profil → affiche ses valeurs et la grille de chips', async () => {
+    it('AC7 (31.4) — chaque profil porte ses valeurs par ordre décroissant en sous-titre', async () => {
+      const fixture = setup();
+      await fixture.whenStable();
+      const details = Array.from(
+        fixture.nativeElement.querySelectorAll('.choice-card__detail'),
+      ) as HTMLElement[];
+      expect(details.map((d) => d.textContent)).toEqual([
+        '6 · 6 · 6 · 6',
+        '8 · 6 · 6 · 4',
+        '8 · 8 · 4 · 4',
+      ]);
+    });
+
+    it('sélection d’un profil → affiche la grille de chips et le résumé des valeurs placées', async () => {
       const fixture = setup();
       await fixture.whenStable();
 
@@ -46,7 +84,12 @@ describe('AttributesStep', () => {
       await fixture.whenStable();
 
       expect(fixture.nativeElement.querySelector('.attributes-step__grid')).toBeTruthy();
-      expect(fixture.nativeElement.textContent).toContain('8, 4, 6, 6');
+      expect(fixture.nativeElement.querySelector('.attributes-step__banner').textContent).toContain(
+        fillTone(GRIMOIRE_TONE['characters_wizard.attributes_banner_one'], {
+          n: 0,
+          total: 4,
+        }).replace(/^— /, ''),
+      );
     });
 
     it('changer de profil après une assignation partielle réinitialise l’assignation et réémet null', async () => {
@@ -57,25 +100,12 @@ describe('AttributesStep', () => {
 
       selectPolyvalent(fixture);
       await fixture.whenStable();
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click(); // AGI ← 8
-      fixture.detectChanges();
+      await click(fixture, 0, 8); // AGI ← 8
+
+      selectPattern(fixture, 2); // specialiste
       await fixture.whenStable();
 
-      const patternButtons: HTMLButtonElement[] = fixture.nativeElement.querySelectorAll(
-        '.attributes-step__patterns button',
-      );
-      patternButtons[2].click(); // specialiste
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      expect(fixture.nativeElement.textContent).toContain('4, 4, 8, 8');
-      const newRows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      expect(
-        [...newRows[0].querySelectorAll('.value-chip')].some((c) =>
-          c.classList.contains('value-chip--selected'),
-        ),
-      ).toBe(false);
+      expect(anySelected(rows(fixture)[0])).toBe(false);
       expect(emitted.at(-1)).toBeNull();
     });
 
@@ -87,32 +117,16 @@ describe('AttributesStep', () => {
 
       selectPolyvalent(fixture);
       await fixture.whenStable();
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      // Assigne les 4 attributs (Polyvalent [8,4,6,6]).
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click(); // AGI ← 8
-      (rows[1].querySelectorAll('.value-chip')[2] as HTMLButtonElement).click(); // ESP ← 6
-      (rows[2].querySelectorAll('.value-chip')[3] as HTMLButtonElement).click(); // INT ← 6
-      (rows[3].querySelectorAll('.value-chip')[1] as HTMLButtonElement).click(); // VIG ← 4
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // AGI ← 8
+      await click(fixture, 1, 6); // ESP ← 6
+      await click(fixture, 2, 6); // INT ← 6
+      await click(fixture, 3, 4); // VIG ← 4
       expect(emitted.at(-1)).toEqual({ AGI: 8, ESP: 6, INT: 6, VIG: 4 });
 
-      const patternButtons: HTMLButtonElement[] = fixture.nativeElement.querySelectorAll(
-        '.attributes-step__patterns button',
-      );
-      patternButtons[0].click(); // equilibre
-      fixture.detectChanges();
+      selectPattern(fixture, 0); // equilibre
       await fixture.whenStable();
 
-      expect(fixture.nativeElement.textContent).toContain('6, 6, 6, 6');
-      const newRows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      for (const row of Array.from(newRows)) {
-        expect(
-          [...row.querySelectorAll('.value-chip')].some((c) =>
-            c.classList.contains('value-chip--selected'),
-          ),
-        ).toBe(false);
-      }
+      for (const row of rows(fixture)) expect(anySelected(row)).toBe(false);
       expect(emitted.at(-1)).toBeNull();
     });
 
@@ -121,40 +135,27 @@ describe('AttributesStep', () => {
       await fixture.whenStable();
       selectPolyvalent(fixture);
       await fixture.whenStable();
-
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click(); // AGI ← 8
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // AGI ← 8
 
       selectPolyvalent(fixture); // reclic sur le même profil
       await fixture.whenStable();
 
-      expect((rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).classList).toContain(
-        'value-chip--selected',
-      );
+      expect(chip(fixture, 0, 8).classList).toContain('value-chip--selected');
     });
 
-    it('assigne les 4 valeurs du profil Spécialiste (dont les deux 4 et deux 8 distincts) → émet le résultat complet', async () => {
+    it('assigne les 4 valeurs du profil Spécialiste → émet le résultat complet', async () => {
       const fixture = setup();
       const emitted: unknown[] = [];
       fixture.componentInstance.attributesChange.subscribe((v) => emitted.push(v));
       await fixture.whenStable();
 
-      const patternButtons: HTMLButtonElement[] = fixture.nativeElement.querySelectorAll(
-        '.attributes-step__patterns button',
-      );
-      patternButtons[2].click(); // specialiste [4,4,8,8]
-      fixture.detectChanges();
+      selectPattern(fixture, 2); // specialiste [4,4,8,8]
       await fixture.whenStable();
 
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click(); // AGI ← 4 (index 0)
-      (rows[1].querySelectorAll('.value-chip')[1] as HTMLButtonElement).click(); // ESP ← 4 (index 1)
-      (rows[2].querySelectorAll('.value-chip')[2] as HTMLButtonElement).click(); // INT ← 8 (index 2)
-      (rows[3].querySelectorAll('.value-chip')[3] as HTMLButtonElement).click(); // VIG ← 8 (index 3)
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 4); // AGI ← 4
+      await click(fixture, 1, 4); // ESP ← 4 (second exemplaire)
+      await click(fixture, 2, 8); // INT ← 8
+      await click(fixture, 3, 8); // VIG ← 8 (second exemplaire)
 
       expect(emitted.at(-1)).toEqual({ AGI: 4, ESP: 4, INT: 8, VIG: 8 });
     });
@@ -168,14 +169,15 @@ describe('AttributesStep', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      expect(fixture.nativeElement.textContent).toContain('Patron choisi');
+      expect(fixture.nativeElement.textContent).toContain('Profil');
       expect(fixture.nativeElement.textContent).toContain('Spécialiste');
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      expect((rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).classList).toContain(
-        'value-chip--selected',
-      );
-      expect((rows[3].querySelectorAll('.value-chip')[3] as HTMLButtonElement).classList).toContain(
-        'value-chip--selected',
+      expect(chip(fixture as unknown as Fixture, 0, 4).classList).toContain('value-chip--selected');
+      expect(chip(fixture as unknown as Fixture, 3, 8).classList).toContain('value-chip--selected');
+      expect(fixture.nativeElement.querySelector('.attributes-step__banner').textContent).toContain(
+        fillTone(GRIMOIRE_TONE['characters_wizard.attributes_banner_many'], {
+          n: 4,
+          total: 4,
+        }).replace(/^— /, ''),
       );
     });
 
@@ -200,17 +202,12 @@ describe('AttributesStep', () => {
 
       const emitted: unknown[] = [];
       fixture.componentInstance.attributesChange.subscribe((v) => emitted.push(v));
-
-      const rows = fixture.nativeElement.querySelectorAll('.attr-slot');
-      // Assigne seulement AGI (première ligne, premier chip = 8)
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click();
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // seulement AGI
 
       expect(emitted).toEqual([null]);
     });
 
-    it('assigne les 4 valeurs (dont les deux 6 distincts) → émet le résultat complet', async () => {
+    it('assigne les 4 valeurs (dont les deux 6) → émet le résultat complet', async () => {
       const fixture = setup();
       await fixture.whenStable();
       selectPolyvalent(fixture);
@@ -219,20 +216,12 @@ describe('AttributesStep', () => {
       const emitted: unknown[] = [];
       fixture.componentInstance.attributesChange.subscribe((v) => emitted.push(v));
 
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
-      // AGI ← chip index 0 (valeur 8)
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click();
-      // ESP ← chip index 2 (valeur 6, première occurrence)
-      (rows[1].querySelectorAll('.value-chip')[2] as HTMLButtonElement).click();
-      // INT ← chip index 3 (valeur 6, seconde occurrence)
-      (rows[2].querySelectorAll('.value-chip')[3] as HTMLButtonElement).click();
-      // VIG ← chip index 1 (valeur 4)
-      (rows[3].querySelectorAll('.value-chip')[1] as HTMLButtonElement).click();
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // AGI ← 8
+      await click(fixture, 1, 6); // ESP ← 6 (premier exemplaire)
+      await click(fixture, 2, 6); // INT ← 6 (second exemplaire)
+      await click(fixture, 3, 4); // VIG ← 4
 
-      const last = emitted.at(-1);
-      expect(last).toEqual({ AGI: 8, ESP: 6, INT: 6, VIG: 4 });
+      expect(emitted.at(-1)).toEqual({ AGI: 8, ESP: 6, INT: 6, VIG: 4 });
     });
 
     it('une valeur assignée à un attribut ne peut pas être réassignée ailleurs sans être libérée', async () => {
@@ -240,24 +229,17 @@ describe('AttributesStep', () => {
       await fixture.whenStable();
       selectPolyvalent(fixture);
       await fixture.whenStable();
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
 
-      // AGI ← chip index 0 (valeur 8)
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click();
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // AGI ← 8
 
-      // Le chip index 0 (valeur 8) doit être désactivé dans les AUTRES lignes
-      const espChip0 = rows[1].querySelectorAll('.value-chip')[0] as HTMLButtonElement;
-      expect(espChip0.disabled).toBe(true);
-
-      // Mais toujours actif (sélectionné) sur sa propre ligne (AGI)
-      const agiChip0 = rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement;
-      expect(agiChip0.disabled).toBe(false);
-      expect(agiChip0.classList.contains('value-chip--selected')).toBe(true);
+      // Le 8 (exemplaire unique) est épuisé dans les AUTRES rangées…
+      expect(chip(fixture, 1, 8).disabled).toBe(true);
+      // …mais reste actif (sélectionné) dans sa propre rangée.
+      expect(chip(fixture, 0, 8).disabled).toBe(false);
+      expect(chip(fixture, 0, 8).classList.contains('value-chip--selected')).toBe(true);
     });
 
-    it('recliquer sur le chip déjà sélectionné le désélectionne (toggle) et libère la valeur pour les autres attributs', async () => {
+    it('recliquer sur la valeur déjà sélectionnée la désélectionne (toggle) et la libère pour les autres attributs', async () => {
       const fixture = setup();
       await fixture.whenStable();
       selectPolyvalent(fixture);
@@ -265,25 +247,15 @@ describe('AttributesStep', () => {
 
       const emitted: unknown[] = [];
       fixture.componentInstance.attributesChange.subscribe((v) => emitted.push(v));
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
 
-      // AGI ← chip index 0 (valeur 8) : les autres lignes se grisent sur cet index.
-      const agiChip0 = rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement;
-      agiChip0.click();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      expect(agiChip0.classList.contains('value-chip--selected')).toBe(true);
-      expect((rows[1].querySelectorAll('.value-chip')[0] as HTMLButtonElement).disabled).toBe(true);
+      await click(fixture, 0, 8);
+      expect(chip(fixture, 0, 8).classList.contains('value-chip--selected')).toBe(true);
+      expect(chip(fixture, 1, 8).disabled).toBe(true);
 
-      // Reclic sur AGI ← chip index 0 : désélection, redevient libre partout, next redevient invalide.
-      agiChip0.click();
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // reclic : désélection
 
-      expect(agiChip0.classList.contains('value-chip--selected')).toBe(false);
-      expect((rows[1].querySelectorAll('.value-chip')[0] as HTMLButtonElement).disabled).toBe(
-        false,
-      );
+      expect(chip(fixture, 0, 8).classList.contains('value-chip--selected')).toBe(false);
+      expect(chip(fixture, 1, 8).disabled).toBe(false);
       expect(emitted.at(-1)).toBeNull();
     });
 
@@ -292,45 +264,136 @@ describe('AttributesStep', () => {
       await fixture.whenStable();
       selectPolyvalent(fixture);
       await fixture.whenStable();
-      const rows: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.attr-slot');
 
-      // Assigne les 4 attributs.
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click(); // AGI ← 8
-      (rows[1].querySelectorAll('.value-chip')[2] as HTMLButtonElement).click(); // ESP ← 6
-      (rows[2].querySelectorAll('.value-chip')[3] as HTMLButtonElement).click(); // INT ← 6
-      (rows[3].querySelectorAll('.value-chip')[1] as HTMLButtonElement).click(); // VIG ← 4
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // AGI ← 8
+      await click(fixture, 1, 6); // ESP ← 6
+      await click(fixture, 2, 6); // INT ← 6
+      await click(fixture, 3, 4); // VIG ← 4
 
-      // Désélectionne AGI seul.
-      (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).click();
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await click(fixture, 0, 8); // désélectionne AGI seul
 
       // Le parent réel réagit à l'émission `null` en repassant `attributes` à `undefined` en entrée
-      // (cf. character-wizard.ts `sheetData.update(... attributes: attrs ?? undefined)`) — simulé ici.
-      // Le profil reste sélectionné localement (seule l'assignation change, pas `attributes()`).
+      // (cf. character-wizard.ts `sheetData.update(... attributes: attrs ?? undefined)`) — simulé.
       fixture.componentRef.setInput('attributes', undefined);
       fixture.detectChanges();
       await fixture.whenStable();
 
-      expect(
-        (rows[0].querySelectorAll('.value-chip')[0] as HTMLButtonElement).classList,
-      ).not.toContain('value-chip--selected');
-      // ESP, INT et VIG doivent RESTER sélectionnés — seul AGI a été désélectionné.
-      expect(
-        [...rows[1].querySelectorAll('.value-chip')].some((c) =>
-          c.classList.contains('value-chip--selected'),
-        ),
-      ).toBe(true);
-      expect(
-        [...rows[2].querySelectorAll('.value-chip')].some((c) =>
-          c.classList.contains('value-chip--selected'),
-        ),
-      ).toBe(true);
-      expect((rows[3].querySelectorAll('.value-chip')[1] as HTMLButtonElement).classList).toContain(
-        'value-chip--selected',
+      expect(anySelected(rows(fixture)[0])).toBe(false);
+      expect(anySelected(rows(fixture)[1])).toBe(true);
+      expect(anySelected(rows(fixture)[2])).toBe(true);
+      expect(chip(fixture, 3, 4).classList).toContain('value-chip--selected');
+    });
+  });
+
+  // ── Story 31.4 — AttributePool (AC11) : plus de puces jumelles ────────────────────────────
+
+  describe('AC11 — une puce par valeur distincte, avec compteur ×N', () => {
+    it('AC11 — profil [8,4,6,6] : trois puces par rangée (8, 6, 4), par ordre décroissant', async () => {
+      const fixture = setup();
+      selectPolyvalent(fixture);
+      await fixture.whenStable();
+      for (const row of rows(fixture)) {
+        const values = [...row.querySelectorAll('.value-chip')].map((c) =>
+          c.getAttribute('data-value'),
+        );
+        expect(values).toEqual(['8', '6', '4']);
+      }
+    });
+
+    it('AC11 — le badge ×N n’existe que pour une valeur multiple et décompte à chaque placement', async () => {
+      const fixture = setup();
+      selectPolyvalent(fixture);
+      await fixture.whenStable();
+      const count = (row: number, value: number) =>
+        chip(fixture, row, value).querySelector('.value-chip__count')?.textContent?.trim() ?? null;
+
+      expect(count(1, 6)).toBe('×2');
+      expect(count(1, 8)).toBeNull(); // valeur unique : jamais de badge
+      expect(count(1, 4)).toBeNull();
+
+      await click(fixture, 0, 6); // AGI ← 6
+      expect(count(1, 6)).toBe('×1');
+      expect(count(0, 6)).toBe('×1'); // dans sa propre rangée aussi : exemplaires restant à placer
+
+      await click(fixture, 1, 6); // ESP ← 6 : plus d'exemplaire
+      expect(count(2, 6)).toBeNull();
+    });
+
+    it('AC11 — une valeur épuisée est grisée dans les AUTRES rangées, jamais dans la sienne', async () => {
+      const fixture = setup();
+      selectPolyvalent(fixture);
+      await fixture.whenStable();
+      await click(fixture, 0, 6);
+      await click(fixture, 1, 6); // les deux 6 sont placés
+
+      expect(chip(fixture, 2, 6).disabled).toBe(true);
+      expect(chip(fixture, 3, 6).disabled).toBe(true);
+      // Sa propre rangée : on peut reprendre sa valeur pour la retirer.
+      expect(chip(fixture, 0, 6).disabled).toBe(false);
+      expect(chip(fixture, 1, 6).disabled).toBe(false);
+    });
+
+    it('AC11 — nom accessible avec compteur : « 6, encore 2 à placer »', async () => {
+      const fixture = setup();
+      selectPolyvalent(fixture);
+      await fixture.whenStable();
+      expect(chip(fixture, 0, 6).getAttribute('aria-label')).toBe(
+        fillTone(GRIMOIRE_TONE['characters_wizard.attributes_chip_remaining'], { value: 6, n: 2 }),
       );
+      expect(chip(fixture, 0, 8).getAttribute('aria-label')).toBe('8');
+    });
+
+    it('AC11 — profil [6,6,6,6] : une seule puce « 6 » par rangée, badge ×4 décomptant jusqu’à épuisement', async () => {
+      const fixture = setup();
+      selectPattern(fixture, 0);
+      await fixture.whenStable();
+      expect(rows(fixture)[0].querySelectorAll('.value-chip').length).toBe(1);
+      expect(chip(fixture, 1, 6).querySelector('.value-chip__count')?.textContent).toContain('×4');
+      await click(fixture, 0, 6);
+      await click(fixture, 1, 6);
+      await click(fixture, 2, 6);
+      expect(chip(fixture, 3, 6).querySelector('.value-chip__count')?.textContent).toContain('×1');
+    });
+
+    it('AC11 — changer la valeur d’une rangée libère l’exemplaire précédent', async () => {
+      const fixture = setup();
+      selectPolyvalent(fixture);
+      await fixture.whenStable();
+      await click(fixture, 0, 8); // AGI ← 8
+      await click(fixture, 0, 4); // AGI ← 4 (au lieu de 8)
+
+      expect(chip(fixture, 0, 4).classList).toContain('value-chip--selected');
+      expect(chip(fixture, 0, 8).classList).not.toContain('value-chip--selected');
+      expect(chip(fixture, 1, 8).disabled).toBe(false); // le 8 est de nouveau disponible
+      expect(chip(fixture, 1, 4).disabled).toBe(true); // le 4 (unique) est pris
+    });
+
+    it('AC11/AC3 — pour chaque profil et chaque permutation, les valeurs émises sont exactement celles placées', async () => {
+      const permutations = (arr: number[]): number[][] =>
+        arr.length <= 1
+          ? [arr]
+          : arr.flatMap((v, i) =>
+              permutations([...arr.slice(0, i), ...arr.slice(i + 1)]).map((p) => [v, ...p]),
+            );
+      const keys = ['AGI', 'ESP', 'INT', 'VIG'] as const;
+      for (const [patternIndex, values] of [
+        [0, [6, 6, 6, 6]],
+        [1, [8, 4, 6, 6]],
+        [2, [4, 4, 8, 8]],
+      ] as [number, number[]][]) {
+        for (const perm of permutations(values)) {
+          TestBed.resetTestingModule(); // une instance de TestBed par combinaison
+          const fixture = setup();
+          const emitted: unknown[] = [];
+          fixture.componentInstance.attributesChange.subscribe((v) => emitted.push(v));
+          selectPattern(fixture, patternIndex);
+          await fixture.whenStable();
+          for (let row = 0; row < 4; row++) await click(fixture, row, perm[row]);
+          expect(emitted.at(-1), `${values} / ${perm}`).toEqual(
+            Object.fromEntries(keys.map((k, i) => [k, perm[i]])),
+          );
+        }
+      }
     });
   });
 });

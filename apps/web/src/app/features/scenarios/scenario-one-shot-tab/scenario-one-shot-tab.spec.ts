@@ -7,6 +7,9 @@ import type { ScenarioDto } from '@master-jdr/shared';
 import { ScenarioOneShotTab } from './scenario-one-shot-tab';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const SCENARIO: ScenarioDto = {
   id: 's1',
@@ -68,7 +71,7 @@ describe('ScenarioOneShotTab', () => {
     const { fixture, scenariosSvc } = await createComponent();
     expect(scenariosSvc.listDrafts).toHaveBeenCalledWith('p1');
     expect(fixture.nativeElement.querySelector('app-scenario-editor')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('Ouvrir aux joueurs');
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['common.ouvrir_aux_joueurs']);
   });
 
   it('sans scénario en BROUILLON (déjà ouvert) → retombe sur listAll() et affiche l’éditeur', async () => {
@@ -85,7 +88,9 @@ describe('ScenarioOneShotTab', () => {
     const { fixture } = await createComponent([], []);
     const comp = fixture.componentInstance as any;
     expect(comp.notFound()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Aucun scénario trouvé');
+    expect(fixture.nativeElement.textContent).toContain(
+      GRIMOIRE_TONE['scenarios.one_shot_not_found'],
+    );
   });
 
   it('clic sur Ouvrir aux joueurs appelle open() et met à jour le statut affiché (bouton disparaît)', async () => {
@@ -156,7 +161,9 @@ describe('ScenarioOneShotTab', () => {
       const scenariosSvc = makeScenariosService([SCENARIO], []);
       const { fixture } = await createComponent([SCENARIO], [], scenariosSvc);
       const comp = fixture.componentInstance as any;
-      expect(fixture.nativeElement.textContent).toContain('Ouvrir aux joueurs');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['common.ouvrir_aux_joueurs'],
+      );
 
       // Le scénario a été publié par un co-MJ ailleurs : il ne remonte plus dans listDrafts().
       const opened = { ...SCENARIO, status: 'A_VENIR' as const };

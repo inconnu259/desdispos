@@ -60,10 +60,18 @@
     color: inherit;
   }
 
-  mat-icon {
-    font-size: 1.1rem;
-    width: 1.1rem;
-    height: 1.1rem;
+  app-icon {
+    --app-icon-size: 1.1rem;
+  }
+}
+
+// Icônes des boutons de la barre (filtres, modes de vue) et de la pastille de réinitialisation :
+// le nom accessible reste porté par le bouton, l'icône est décorative.
+.list-control-bar__toggle,
+.list-control-bar__mode,
+.list-control-bar__reset {
+  app-icon {
+    --app-icon-size: 1.1rem;
   }
 }
 

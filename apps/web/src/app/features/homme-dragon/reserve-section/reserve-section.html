@@ -1,0 +1,151 @@
+<section class="reserve" [attr.aria-labelledby]="uid + '-title'">
+  <header class="reserve__head">
+    <h2 class="reserve__title" [id]="uid + '-title'">Réserve de souffles</h2>
+    <span class="reserve__level">{{ levelText() }}</span>
+  </header>
+
+  <!-- Zone de statut persistante : présente dès le chargement, annonces non visuelles. -->
+  <p class="reserve__sr" role="status" aria-live="polite">{{ statusMessage() }}</p>
+
+  @if (capacity() === 0) {
+    <p class="reserve__info">
+      <span class="reserve__info-icon" aria-hidden="true">i</span>
+      <span>La réserve de souffles s'ouvre au niveau 2.</span>
+    </p>
+  }
+  @if (shownCount() > 0) {
+    @if (saving()) {
+      <p class="reserve__hint">{{ theme.tone()['common.enregistrement'] }}</p>
+    } @else if (errors().length === 0) {
+      <p class="reserve__hint">
+        <app-icon name="valider" /> {{ theme.tone()['hd.reserve_autosaved'] }}
+      </p>
+    }
+    @if (capacity() > 0) {
+      <p class="reserve__rule"><strong>Règle :</strong> {{ rule() }}</p>
+    }
+    @if (shownCount() > capacity()) {
+      <p class="reserve__info">
+        <span class="reserve__info-icon" aria-hidden="true">i</span>
+        <span>
+          Le niveau a baissé : les souffles au-delà des {{ capacity() }}
+          emplacement{{ capacity() > 1 ? 's' : '' }} du niveau sont conservés. Vous pouvez les
+          retirer, pas en ajouter.
+        </span>
+      </p>
+    }
+
+    <ol class="reserve__slots" role="list" [attr.aria-busy]="saving()">
+      @for (slot of slots(); track slot.n) {
+        <li
+          class="reserve__slot"
+          [class.reserve__slot--empty]="!slot.view"
+          [attr.aria-labelledby]="uid + '-no-' + slot.n + ' ' + uid + '-nm-' + slot.n"
+        >
+          <span class="reserve__no" [id]="uid + '-no-' + slot.n"
+            ><span class="reserve__sr">Emplacement </span>{{ slot.n }}</span
+          >
+          @if (slot.view; as v) {
+            <div class="reserve__sbody">
+              <div class="reserve__sname">
+                <strong [id]="uid + '-nm-' + slot.n">{{ v.label }}</strong>
+                @if (v.cost) {
+                  <span class="stat-pill">{{ v.cost }}</span>
+                }
+              </div>
+              @if (v.tag; as tag) {
+                <span class="reserve__tag" [class]="raceClass(tag.race)">
+                  @if (tag.race) {
+                    <span class="reserve__gem" aria-hidden="true"></span>
+                  }
+                  {{ tag.text }}
+                </span>
+              }
+            </div>
+            <div class="reserve__acts">
+              @if (!slot.over) {
+                <button
+                  type="button"
+                  class="reserve__btn"
+                  data-reserve-btn="change"
+                  [attr.data-slot]="slot.n"
+                  [attr.aria-disabled]="saving() ? 'true' : null"
+                  [attr.aria-label]="slot.changeLabel"
+                  (click)="openPicker(slot.n, $event)"
+                >
+                  {{ theme.tone()['common.changer'] }}
+                </button>
+              }
+              <button
+                type="button"
+                class="reserve__btn"
+                data-reserve-btn="remove"
+                [attr.data-slot]="slot.n"
+                [attr.aria-disabled]="saving() ? 'true' : null"
+                [attr.aria-label]="slot.removeLabel"
+                (click)="remove(slot.n)"
+              >
+                {{ theme.tone()['common.retirer'] }}
+              </button>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="reserve__btn reserve__pick"
+              data-reserve-btn="pick"
+              [attr.data-slot]="slot.n"
+              [attr.aria-disabled]="saving() ? 'true' : null"
+              [attr.aria-label]="slot.pickLabel"
+              (click)="openPicker(slot.n, $event)"
+            >
+              {{ theme.tone()['hd.reserve_pick_btn'] }}
+            </button>
+            <span class="reserve__free" [id]="uid + '-nm-' + slot.n">Emplacement libre</span>
+          }
+        </li>
+      }
+    </ol>
+
+    @for (e of errors(); track e.id) {
+      <p class="reserve__error" role="alert">
+        <app-icon name="avertissement" />
+        <span>{{ theme.tone()['hd.reserve_save_error'] }}</span>
+      </p>
+    }
+
+    @if (undoBanner(); as u) {
+      <div
+        class="reserve__undo"
+        (mouseenter)="onBannerEnter()"
+        (mouseleave)="onBannerLeave()"
+        (focusin)="onBannerFocusIn()"
+        (focusout)="onBannerFocusOut()"
+      >
+        <span aria-hidden="true">↶</span>
+        <span class="reserve__undo-text">{{ undoText(u) }}</span>
+        <button
+          type="button"
+          class="reserve__btn"
+          data-reserve-btn="undo"
+          [attr.aria-disabled]="!u.armed || saving() ? 'true' : null"
+          (click)="undoRemoval()"
+        >
+          {{ theme.tone()['common.annuler'] }}
+        </button>
+      </div>
+    }
+  }
+
+  @if (picking(); as p) {
+    <app-reserve-picker
+      [slot]="p.slot"
+      [reserve]="reserve()"
+      [level]="level()"
+      [race]="race()"
+      [souffleCatalog]="souffleCatalog()"
+      [ritualCatalog]="ritualCatalog()"
+      (chosen)="onPicked($event)"
+      (closed)="onPickerClosed()"
+    />
+  }
+</section>

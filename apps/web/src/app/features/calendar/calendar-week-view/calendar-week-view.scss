@@ -94,16 +94,9 @@
 }
 
 /* ── Icône de créneau (Story 36.13, DESIGN.md §7.10) ──────────────────────── */
-/* Mêmes réglages de trait que le rail — un seul dessin par objet dans le projet. */
+/* Taille posée par `--app-icon-size` ; le trait vient de `<app-icon>`. */
 .slot-icon {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  --app-icon-size: 15px;
   color: var(--mat-sys-on-surface-variant);
 }
 
@@ -194,9 +187,27 @@
   /* Story 36.10, AC13 — un créneau DÉSIGNÉ pour un vote, traité comme en vue Mois
      (`.band--composed`) : teinte du vote, trait TIRETÉ, jamais la couleur seule. Distinct de
      `.selected`, qui dit « ce créneau partira à l'écriture de MA disponibilité ». */
+  /* Story 46.2 — la fenêtre de l'automate sélectionnée : contour PLEIN (le tireté est celui du composer). */
+  &.slot-cell--window {
+    outline: 2px solid var(--mat-sys-primary, #6750a4);
+    outline-offset: -2px;
+  }
+
   &.slot-cell--composed {
     background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 24%, transparent);
     outline: 2px dashed var(--jdr-status-todo, #f0a030);
+    outline-offset: -2px;
+  }
+
+  /* ⚠️ Story 47.4 (DESIGN `preview`) — bloc JUMEAU de `.band--span-preview` (vue Mois) : les autres créneaux de la
+     plage d'un départ désigné, ou de celle qu'ouvrirait la cellule survolée. Fond accent 22 %, pointillé 1,5 px. */
+  &.slot-cell--span-preview {
+    background: color-mix(
+      in srgb,
+      var(--jdr-accent-1, var(--mat-sys-primary, #6750a4)) 22%,
+      transparent
+    );
+    outline: 1.5px dotted var(--jdr-accent-1, var(--mat-sys-primary, #6750a4));
     outline-offset: -2px;
   }
 
@@ -207,6 +218,37 @@
     outline: 2px dashed var(--mat-sys-on-surface-variant);
     outline-offset: -2px;
   }
+}
+
+/* Story 47.3 (UX-DR9) — le CONNECTEUR d'une plage en vue Semaine : le même triangle de 5 px que la bande du Mois,
+   posé au bord de la cellule (soir : la plage continue ; matin : elle vient de la veille). Jamais seul : le nom
+   accessible de la cellule dit la plage entière. Teinte du rang gagnant, aucune teinte nouvelle. */
+.slot-cell--span-next::after,
+.slot-cell--span-prev::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  margin-top: -4px;
+  z-index: 2;
+  border: 4px solid transparent;
+  border-left: 5px solid var(--span-connector, currentColor);
+  pointer-events: none;
+}
+
+.slot-cell--span-next::after {
+  right: 0;
+}
+
+.slot-cell--span-prev::before {
+  left: 0;
+}
+
+.slot-cell[data-winner='seance'] {
+  --span-connector: var(--jdr-status-soon, #ff7ad9);
+}
+
+.slot-cell[data-winner='vote'] {
+  --span-connector: var(--jdr-status-todo, #f0a030);
 }
 
 @keyframes slotPulse {
@@ -225,6 +267,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Story 47.5 — « ×n » : plusieurs plages d'un même vote recouvrent ce créneau. 9 px, coin haut droit de la cellule,
+   couleur de texte (aucune teinte nouvelle) ; sans interaction (le tap ouvre le sélecteur de la cellule). */
+.ev-overlap {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  z-index: 3;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mat-sys-on-surface);
+  pointer-events: none;
 }
 
 .ev-title {
@@ -362,5 +418,16 @@
 
   .week-title {
     font-size: 1.2rem;
+  }
+}
+
+/* ── Story 52.3 : le mode déclaration ──
+   Les cellules sont déjà en `pan-y` ; la marge réservée sous la grille laisse la barre collante ne jamais cacher sa
+   dernière ligne. L'en-tête de colonne devient une cible de tap (la journée entière). */
+.week-grid--declare {
+  margin-bottom: 16px;
+
+  .col-header {
+    cursor: pointer;
   }
 }

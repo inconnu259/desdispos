@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>PartieDetail — onglet Détails (page entière)</title>
+<style>
+  :root {
+    --jdr-bg: #0d0a14;
+    --jdr-surface: #1a1428;
+    --jdr-surface-2: #221c35;
+    --jdr-accent-1: #7ec8a4;
+    --jdr-accent-2: #9b6dff;
+    --jdr-text: #e8e0f0;
+    --jdr-text-muted: #9b8fb0;
+    --jdr-border: #2a2340;
+    --jdr-gradient-cta: linear-gradient(135deg, #7ec8a4, #9b6dff);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: #050308;
+    color: var(--jdr-text);
+    font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+    margin: 0;
+    padding: 2rem;
+  }
+  .note {
+    max-width: 60rem; margin: 0 auto 1rem; font-size: 0.82rem; color: var(--jdr-text-muted);
+    line-height: 1.4;
+  }
+  .card {
+    max-width: 60rem;
+    margin: 0 auto;
+    background: var(--jdr-bg);
+    border: 1px solid var(--jdr-border);
+    border-radius: 0.9rem;
+    display: flex;
+    align-items: flex-start;
+    overflow: hidden;
+  }
+  .roster {
+    width: 13rem;
+    flex-shrink: 0;
+    padding: 1.25rem 1rem;
+    border-right: 1px solid var(--jdr-border);
+  }
+  .roster h5 {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--jdr-text-muted); margin: 0 0 0.75rem;
+  }
+  .roster .member {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0; font-size: 0.85rem;
+  }
+  .roster .avatar {
+    width: 1.6rem; height: 1.6rem; border-radius: 50%;
+    background: var(--jdr-surface-2); display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; color: var(--jdr-accent-1);
+  }
+  .main { flex: 1; min-width: 0; padding: 0; }
+  .tabs {
+    display: flex; gap: 0.25rem; padding: 0.75rem 1.25rem 0; border-bottom: 1px solid var(--jdr-border);
+  }
+  .tabs .tab {
+    font-size: 0.85rem; padding: 0.6rem 0.9rem; color: var(--jdr-text-muted);
+  }
+  .tabs .tab.active {
+    color: var(--jdr-accent-1); font-weight: 600; border-bottom: 2px solid var(--jdr-accent-1);
+  }
+  .content { padding: 1.4rem 1.5rem 1.6rem; }
+  .zone-title {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--jdr-text-muted); margin: 0 0 0.9rem;
+  }
+  button {
+    font-family: inherit; font-size: 0.85rem; font-weight: 500; border-radius: 0.4rem; cursor: pointer;
+  }
+
+  /* Zone Action — mix B/C retenu */
+  .session-card {
+    background: var(--jdr-surface);
+    border-left: 3px solid var(--jdr-accent-2);
+    border-radius: 0.5rem;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1.1rem;
+  }
+  .session-card h4 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--jdr-accent-2); margin: 0 0 0.45rem; font-weight: 700;
+  }
+  .session-card p { margin: 0.3rem 0; font-size: 0.88rem; }
+  .session-card .muted { color: var(--jdr-text-muted); font-size: 0.82rem; }
+  .session-card .btn-flat {
+    margin-top: 0.6rem; background: var(--jdr-accent-1); color: #062018; border: none;
+    padding: 0.55rem 1rem;
+  }
+  .quickbar { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 2.1rem; }
+  .quickbar button {
+    display: flex; align-items: center; gap: 0.45rem;
+    padding: 0.6rem 1rem; background: var(--jdr-surface-2); color: var(--jdr-text);
+    border: 1px solid var(--jdr-border); font-size: 0.85rem;
+  }
+  .quickbar button.primary { background: var(--jdr-gradient-cta); color: #0d0a14; border: none; font-weight: 700; }
+  .quickbar .icon { font-size: 1rem; line-height: 1; }
+
+  /* Zone Consultation */
+  .consultation-feed {
+    display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 2.1rem;
+  }
+  .feed-item {
+    padding: 0.7rem 0.9rem; background: var(--jdr-surface); border-radius: 0.5rem; font-size: 0.85rem;
+  }
+  .feed-item .muted { color: var(--jdr-text-muted); font-size: 0.78rem; }
+
+  /* Zone Référence */
+  .ref-block { margin-bottom: 1.6rem; }
+  .ref-block:last-child { margin-bottom: 0; }
+  .ref-block h4 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--jdr-text-muted); margin: 0 0 0.6rem; font-weight: 600;
+  }
+  .dl-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .dl-chip {
+    display: flex; align-items: center; gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    background: transparent;
+    border: 1px solid var(--jdr-border);
+    color: var(--jdr-text-muted);
+    font-size: 0.8rem;
+    border-radius: 999px;
+  }
+  .dl-chip .icon { font-size: 0.85rem; color: var(--jdr-accent-1); }
+  .description { font-size: 0.88rem; color: var(--jdr-text-muted); margin: 0 0 1.6rem; font-style: italic; }
+
+  /* Footer mat-card-actions */
+  .footer {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+    padding: 1rem 1.5rem; border-top: 1px solid var(--jdr-border);
+  }
+  .footer button {
+    background: transparent; border: 1px solid var(--jdr-border); color: var(--jdr-text-muted);
+    padding: 0.45rem 0.8rem; font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+  <p class="note">Maquette de la page entière (onglet « Détails ») avec la zone Action retenue (mix B/C) + zones Consultation/Référence et le bandeau d'actions du bas — pour vérifier la cohérence d'ensemble avant de trancher.</p>
+  <div class="card">
+    <div class="roster">
+      <h5>Compagnons</h5>
+      <div class="member"><span class="avatar">S</span> Sylas (MJ)</div>
+      <div class="member"><span class="avatar">A</span> Alice</div>
+      <div class="member"><span class="avatar">B</span> Boris</div>
+    </div>
+    <div class="main">
+      <div class="tabs">
+        <span class="tab active">Détails</span>
+        <span class="tab">Invitations</span>
+        <span class="tab">Homme Dragon</span>
+        <span class="tab">Scénario</span>
+        <span class="tab">Chronologie</span>
+      </div>
+      <div class="content">
+        <p class="zone-title">Action</p>
+        <div class="session-card">
+          <h4>Prochaine séance</h4>
+          <p class="muted">Aucune séance convoquée.</p>
+          <button class="btn-flat">Consulter l'oracle des créneaux</button>
+        </div>
+        <div class="quickbar">
+          <button class="primary"><span class="icon">✦</span> Distribuer de l'XP</button>
+          <button><span class="icon">✎</span> Proclamer une annonce</button>
+        </div>
+
+        <p class="zone-title">Consultation</p>
+        <div class="consultation-feed">
+          <div class="feed-item">
+            <div class="muted">Historique d'XP</div>
+            Alice a reçu <strong>+3 XP</strong> — il y a 2 jours
+          </div>
+          <div class="feed-item">
+            <div class="muted">Annonce de campagne</div>
+            « La caravane repart demain à l'aube. »
+          </div>
+        </div>
+
+        <p class="zone-title">Référence</p>
+        <p class="description">Une troupe de voyageurs Ryuutama traverse les terres de l'Ouest à la recherche d'un dragon endormi.</p>
+        <div class="ref-block">
+          <h4>Grimoires de référence</h4>
+          <div class="dl-row">
+            <span class="dl-chip"><span class="icon">⭳</span> Journal</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Carte</span>
+          </div>
+        </div>
+        <div class="ref-block">
+          <h4>Grimoires de préparation (MJ)</h4>
+          <div class="dl-row">
+            <span class="dl-chip"><span class="icon">⭳</span> Monde</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Monstre</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Ville</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Objectif — Chasse</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Objectif — Quête</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Objectif — Voyage</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Œuf de bataille</span>
+            <span class="dl-chip"><span class="icon">⭳</span> Structure</span>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        <button>Retranscrire</button>
+        <button>Sceller des secrets</button>
+        <button>Clore le grimoire</button>
+        <button>Supprimer</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

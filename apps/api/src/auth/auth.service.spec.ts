@@ -9,6 +9,7 @@ import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { InviteLinksService } from '../invitations/invite-links.service';
 import { EmailService } from '../email/email.service';
+import { PartiesService } from '../parties/parties.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { anyOf, callArg, objectLike, stringLike } from '../common/test-utils/jest-typed';
 
@@ -40,12 +41,14 @@ describe('AuthService', () => {
       findUnique: jest.Mock;
       count: jest.Mock;
       updateMany: jest.Mock;
+      deleteMany: jest.Mock;
     };
-    emailChangeRollbackToken: { findUnique: jest.Mock };
+    emailChangeRollbackToken: { findUnique: jest.Mock; deleteMany: jest.Mock };
   };
-  let inviteLinks: { consumeLink: jest.Mock };
+  let inviteLinks: { consumeLink: jest.Mock; assertUsableForRegistration: jest.Mock };
   let email: { sendMail: jest.Mock };
   let realtimeEvents: { emit: jest.Mock };
+  let parties: { notifyPartieSignalsChanged: jest.Mock };
 
   const fakeUser = {
     id: 'u1',
@@ -59,6 +62,7 @@ describe('AuthService', () => {
     mustResetPassword: false,
     partiesSort: 'urgence',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',
     charactersSort: 'partie',
@@ -117,20 +121,27 @@ describe('AuthService', () => {
         findUnique: jest.fn(),
         count: jest.fn().mockResolvedValue(0),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
-      emailChangeRollbackToken: { findUnique: jest.fn() },
+      emailChangeRollbackToken: {
+        findUnique: jest.fn(),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
     };
     inviteLinks = {
-      consumeLink: jest.fn().mockResolvedValue({ partieId: 'p1' }),
+      consumeLink: jest.fn().mockResolvedValue({ partieId: 'p1', partie: { ownerId: 'mj1' } }),
+      assertUsableForRegistration: jest.fn().mockResolvedValue(undefined),
     };
     email = { sendMail: jest.fn().mockResolvedValue({ ok: true }) };
     realtimeEvents = { emit: jest.fn() };
+    parties = { notifyPartieSignalsChanged: jest.fn().mockResolvedValue(undefined) };
     service = new AuthService(
       users as unknown as UsersService,
       prisma as unknown as PrismaService,
       inviteLinks as unknown as InviteLinksService,
       email as unknown as EmailService,
       realtimeEvents as unknown as RealtimeEventsService,
+      parties as unknown as PartiesService,
     );
   });
 
@@ -138,6 +149,22 @@ describe('AuthService', () => {
     it('renvoie null si identifiant (email ou pseudo) inconnu', async () => {
       users.findByEmailOrPseudo.mockResolvedValue(null);
       expect(await service.validateUser('x@y.z', 'pw')).toBeNull();
+    });
+
+    it('identifiant en forme d’adresse : cherché en minuscules ; pseudo : tel quel (rogné)', async () => {
+      users.findByEmailOrPseudo.mockResolvedValue(null);
+      await service.validateUser('  Alice@Example.COM ', 'pw');
+      expect(users.findByEmailOrPseudo).toHaveBeenLastCalledWith('alice@example.com');
+      await service.validateUser(' Alice ', 'pw');
+      expect(users.findByEmailOrPseudo).toHaveBeenLastCalledWith('Alice');
+    });
+
+    it('identifiant inconnu : vérifie quand même un hash argon2 (durée de réponse indiscernable)', async () => {
+      users.findByEmailOrPseudo.mockResolvedValue(null);
+      (argon2.hash as jest.Mock).mockResolvedValue('$argon2id$factice');
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+      expect(await service.validateUser('inconnu', 'pw')).toBeNull();
+      expect(argon2.verify).toHaveBeenCalledWith(expect.any(String), 'pw');
     });
 
     it('renvoie null si mauvais mot de passe', async () => {
@@ -174,6 +201,24 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
+    it('revue de sécurité : lien invalide → refus AVANT tout hash et toute création (aucun oracle 409)', async () => {
+      inviteLinks.assertUsableForRegistration.mockRejectedValue(
+        new NotFoundException('Lien invalide'),
+      );
+      (argon2.hash as jest.Mock).mockClear();
+      await expect(
+        service.register({
+          email: 'pris@b.c',
+          pseudo: 'alice',
+          password: 'password123',
+          token: 'faux',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(argon2.hash).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(inviteLinks.assertUsableForRegistration).toHaveBeenCalledWith('faux', 'pris@b.c');
+    });
+
     it("crée le compte, consomme le lien et renvoie l'utilisateur sans le hash", async () => {
       tx.user.create.mockResolvedValue(fakeUser);
       const result = await service.register({
@@ -210,6 +255,30 @@ describe('AuthService', () => {
       expect(realtimeEvents.emit).toHaveBeenCalledWith(partieTopic('p1'));
     });
 
+    it('Story 39.3 : notifie les signaux de la partie rejointe avec son propriétaire, après la transaction', async () => {
+      tx.user.create.mockResolvedValue(fakeUser);
+      // Ordre observé : la notification ne doit partir qu'APRÈS la résolution de la transaction (un
+      // appel placé dans son callback la ferait précéder 'transaction résolue').
+      const ordre: string[] = [];
+      prisma.$transaction.mockImplementation(async (cb: (t: typeof tx) => unknown) => {
+        const resultat = await cb(tx);
+        ordre.push('transaction résolue');
+        return resultat;
+      });
+      parties.notifyPartieSignalsChanged.mockImplementation(() => {
+        ordre.push('notification');
+        return Promise.resolve();
+      });
+      await service.register({
+        email: 'a@b.c',
+        pseudo: 'alice',
+        password: 'password123',
+        token: 'tok',
+      });
+      expect(parties.notifyPartieSignalsChanged).toHaveBeenCalledWith('p1', 'mj1');
+      expect(ordre).toEqual(['transaction résolue', 'notification']);
+    });
+
     it('renseigne displayName au pseudo à la création (AD-1, deuxième point d’écriture obligatoire)', async () => {
       tx.user.create.mockResolvedValue(fakeUser);
       await service.register({
@@ -236,7 +305,7 @@ describe('AuthService', () => {
         token: 'tok',
       });
       const data = callArg<{ data: { theme: string } }>(tx.user.create).data;
-      expect(['grimoire-emeraude', 'foret-ancienne', 'medieval-steampunk']).toContain(data.theme);
+      expect(['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre']).toContain(data.theme);
     });
 
     it('lève ConflictException si email/pseudo déjà pris (P2002)', async () => {
@@ -483,6 +552,38 @@ describe('AuthService', () => {
         service.resetPassword('r1.secretvalue', 'newpassword123'),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(tx.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyPassword (Story 43.2)', () => {
+    it('mot de passe correct → résolu, rien d’écrit', async () => {
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: 'STORED_HASH' });
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+
+      await expect(service.verifyPassword('u1', 'bon')).resolves.toBeUndefined();
+
+      expect(argon2.verify).toHaveBeenCalledWith('STORED_HASH', 'bon');
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('mot de passe incorrect → UnauthorizedException', async () => {
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: 'STORED_HASH' });
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.verifyPassword('u1', 'faux')).rejects.toThrow('Mot de passe incorrect');
+    });
+
+    it('hash illisible (argon2 lève) → traité comme incorrect, jamais un 500', async () => {
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: 'N_IMPORTE_QUOI' });
+      (argon2.verify as jest.Mock).mockRejectedValue(new Error('invalid hash'));
+
+      await expect(service.verifyPassword('u1', 'bon')).rejects.toThrow('Mot de passe incorrect');
+    });
+
+    it('compte introuvable → NotFoundException', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.verifyPassword('u1', 'bon')).rejects.toThrow('Compte introuvable');
     });
   });
 
@@ -856,6 +957,19 @@ describe('AuthService', () => {
       );
     });
 
+    it('revue de sécurité : brûle tous les autres jetons du compte (reset mdp, changement d’e-mail, rollback)', async () => {
+      prisma.emailChangeRollbackToken.findUnique.mockResolvedValue(validRollbackRecord);
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+      tx.emailChangeRollbackToken.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.rollbackEmailChange('rb1.secretvalue');
+
+      const burnAll = { where: { userId: 'u1', usedAt: null }, data: { usedAt: anyOf(Date) } };
+      expect(tx.passwordResetToken.updateMany).toHaveBeenCalledWith(burnAll);
+      expect(tx.emailChangeToken.updateMany).toHaveBeenCalledWith(burnAll);
+      expect(tx.emailChangeRollbackToken.updateMany).toHaveBeenCalledWith(burnAll);
+    });
+
     it('token inconnu/expiré/déjà utilisé/secret invalide → NotFoundException, aucune écriture', async () => {
       prisma.emailChangeRollbackToken.findUnique.mockResolvedValue(null);
 
@@ -897,6 +1011,14 @@ describe('AuthService', () => {
       expect(prisma.passwordResetToken.deleteMany).toHaveBeenCalledWith({
         where: { expiresAt: { lt: anyOf(Date) } },
       });
+    });
+
+    it('purge aussi les jetons de changement d’e-mail et de rollback expirés', async () => {
+      prisma.passwordResetToken.deleteMany.mockResolvedValue({ count: 0 });
+      await service.purgeExpiredResetTokens();
+      const expired = { where: { expiresAt: { lt: anyOf(Date) } } };
+      expect(prisma.emailChangeToken.deleteMany).toHaveBeenCalledWith(expired);
+      expect(prisma.emailChangeRollbackToken.deleteMany).toHaveBeenCalledWith(expired);
     });
 
     it('aucun token expiré → se résout normalement sans erreur', async () => {

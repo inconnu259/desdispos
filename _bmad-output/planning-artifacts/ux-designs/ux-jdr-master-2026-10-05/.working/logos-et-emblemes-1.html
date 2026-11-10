@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dés Dispos — logos et emblèmes (passe 1)</title>
+<style>
+/*
+  VALEURS HEXADÉCIMALES UTILISÉES
+  (jetons réels de apps/web/src/styles.scss ; aucune couleur hors thème dans les emblèmes)
+
+  Fond neutre (section 1 uniquement) : fond #16151b · logo (une couleur) #f4efe6
+
+  Grimoire Émeraude  .th-em
+    --bg #0d0a14 · --surface #1a1428 · accent-1 #7ec8a4 · accent-2 #9b6dff
+    --text #e8e0f0 · --muted #9b8fb0 · on-primary #062018
+    --outline #5a5070 · --outline-variant #2a2340
+    --glow #463271  (= color-mix 34 % accent-2 / surface, calculé : formule de party-banner.scss)
+    --scrim rgba(13,10,20,.6) (voile de lisibilité derrière le texte, dérivé de --bg)
+
+  Forêt Ancienne  .th-fo
+    --bg #080f0a · --surface #0f1f12 · accent-1 #2ecc71 · accent-2 #f0c040
+    --text #d4f0dc · --muted #7aa885 · on-primary #062518
+    --outline #3a5040 · --outline-variant #1a2e1f
+    --glow #5c5622 · --scrim rgba(8,15,10,.6)
+
+  Atelier Cuivré (clé medieval-steampunk)  .th-at
+    --bg #1a1008 · --surface #2a1e10 · accent-1 #cd7f32 · accent-2 #4a7c59
+    --text #f0e6d0 · --muted #b39569 · on-primary #1a0800
+    --outline #7a5030 · --outline-variant #3a2810
+    --todo #ffd21f (aiguille du manomètre de la scène, comme party-banner.scss)
+    --glow #353e29 · --scrim rgba(26,16,8,.6)
+
+  Seules exceptions : #fff / #000 dans le <mask> du sceau C (masque de luminance, jamais peint),
+  et les gris du cadre de téléphone / navigateur (hors produit).
+
+  MOUVEMENT : seulement transform et opacity ; décor aria-hidden ;
+  @media (prefers-reduced-motion: reduce) => animation: none (composition au repos complète).
+*/
+*{box-sizing:border-box}
+html{background:#0e0d12}
+body{margin:0;background:#0e0d12;color:#ece6da;font:15px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1360px;margin:0 auto;padding:28px 20px 72px}
+h1{margin:0 0 6px;font:700 28px/1.2 Georgia,"Times New Roman",serif}
+h2{margin:48px 0 6px;font:700 22px/1.25 Georgia,"Times New Roman",serif;padding-top:18px;border-top:1px solid #2c2a35}
+h3{margin:22px 0 4px;font:700 16px/1.3 system-ui,"Segoe UI",sans-serif}
+p{margin:4px 0 10px;color:#c9c3b6}
+.legend{margin:14px 0 0;padding:12px 18px 12px 34px;background:#17161d;border:1px solid #2c2a35;border-radius:10px;font-size:14px;color:#d8d2c5}
+.legend li{margin:2px 0}
+.small-note{font-size:13px;color:#9a9486}
+
+/* ───────────── Thèmes (rôles) ───────────── */
+.th-neutral{--bg:#16151b;--surface:#1f1e26;--text:#f4efe6}
+.th-em{--bg:#0d0a14;--surface:#1a1428;--a1:#7ec8a4;--a2:#9b6dff;--text:#e8e0f0;--muted:#9b8fb0;--on-primary:#062018;--outline:#5a5070;--outline-v:#2a2340;--glow:#463271;--scrim:rgba(13,10,20,.6);--todo:#f0a030}
+.th-fo{--bg:#080f0a;--surface:#0f1f12;--a1:#2ecc71;--a2:#f0c040;--text:#d4f0dc;--muted:#7aa885;--on-primary:#062518;--outline:#3a5040;--outline-v:#1a2e1f;--glow:#5c5622;--scrim:rgba(8,15,10,.6);--todo:#ff8a3d}
+.th-at{--bg:#1a1008;--surface:#2a1e10;--a1:#cd7f32;--a2:#4a7c59;--text:#f0e6d0;--muted:#b39569;--on-primary:#1a0800;--outline:#7a5030;--outline-v:#3a2810;--glow:#353e29;--scrim:rgba(26,16,8,.6);--todo:#ffd21f}
+
+/* Rôles de couleur pour les SVG (aucune couleur littérale dans les dessins) */
+.f1{fill:var(--a1)} .f2{fill:var(--a2)} .ft{fill:var(--text)} .fsurf{fill:var(--surface)}
+.k1{stroke:var(--a1)} .k2{stroke:var(--a2)} .kt{stroke:var(--text)} .ks{stroke:var(--surface)} .kn{stroke:var(--todo)}
+.nf{fill:none} .rc{stroke-linecap:round;stroke-linejoin:round}
+.sa1{stop-color:var(--a1)} .sa2{stop-color:var(--a2)} .st{stop-color:var(--text)}
+
+/* ───────────── Section 1 : logos ───────────── */
+.track{margin:18px 0 8px}
+.track-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.track-head h3{margin:0}
+.track-head p{margin:0;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-top:10px}
+.tile{background:var(--bg);color:var(--text);border:1px solid #34323c;border-radius:12px;padding:14px 16px 12px;min-height:230px;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
+.tile .cap{font:600 11px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;opacity:.6}
+.stage{display:flex;align-items:center;justify-content:center;flex:1;min-height:110px}
+.row32{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;border-top:1px dashed rgba(255,255,255,.14);padding-top:10px}
+.row32 .cap{width:100%}
+.lk{display:inline-flex;align-items:center;color:var(--text);white-space:nowrap}
+.lk .mk{display:block;flex:none;color:var(--text)}
+.wm-a{font:700 1em/1 Georgia,"Times New Roman",serif;letter-spacing:-.005em}
+.lk-a{gap:.28em}
+.lk-a.big{font-size:36px} .lk-a.big .mk{width:80px;height:80px}
+.lk-a.small{font-size:17px} .lk-a.small .mk{width:32px;height:32px}
+.lk-b{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;font-weight:800;line-height:1;letter-spacing:-.025em}
+.lk-b.big{font-size:56px} .lk-b.small{font-size:29px}
+.wm-b{display:inline-block;line-height:1}
+.gl{position:relative;display:inline-block}
+.gl b{position:absolute;display:block;width:.19em;height:.19em;border-radius:50%;background:currentColor;top:.045em}
+.gl.e b{left:.37em}
+.gl.i b{left:.045em}
+.lk-c{flex-direction:column;gap:.18em;text-align:center}
+.wm-c{font:700 1em/1 Georgia,"Times New Roman",serif;letter-spacing:.02em}
+.lk-c.big{font-size:27px} .lk-c.big .mk{width:100px;height:100px}
+.lk-c.small{font-size:10px;gap:1px} .lk-c.small .mk{width:21px;height:21px}
+.mk32{width:32px;height:32px;display:block;color:var(--text)}
+
+/* ───────────── Section 2 : bandes ───────────── */
+.theme-row{margin-top:26px}
+.theme-row > h3{margin:0 0 2px;font-size:18px}
+.frames{display:flex;flex-wrap:wrap;gap:30px;margin-top:12px;align-items:flex-start}
+figure.fr{margin:0}
+figure.fr figcaption{max-width:399px;margin:0 0 8px;font-size:13px;color:#cfc9bb}
+figure.fr figcaption b{color:#fff}
+.phone{width:399px;padding:12px;border-radius:40px;background:#050505;border:2px solid #34323a;box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.phone .screen{width:375px;border-radius:28px;overflow:hidden;background:var(--bg);color:var(--text)}
+.browser{width:520px;border-radius:10px;border:1px solid #3a3844;background:#1c1b22;overflow:hidden;box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.browser .chrome{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#26252d}
+.browser .dots{display:flex;gap:6px}
+.browser .dots i{display:block;width:10px;height:10px;border-radius:50%;background:#4a4853}
+.browser .url{flex:1;background:#17161c;border-radius:12px;font:12px/1.4 ui-monospace,Consolas,monospace;color:#a39ead;padding:3px 12px}
+.browser .screen{background:var(--bg);color:var(--text);padding-bottom:2px}
+.browser .card{max-width:380px;margin:18px auto}
+
+.band{position:relative;height:180px;overflow:hidden;background:radial-gradient(ellipse 80% 95% at 50% 30%,var(--glow),var(--bg));border-bottom:1px solid var(--outline-v)}
+.scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.band::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 56% 64% at 50% 55%,var(--scrim),transparent 78%)}
+.brand{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 22px 8px;text-align:center}
+.emblem{width:64px;height:64px;display:block;flex:none}
+.brand .name{margin:5px 0 0;font:700 26px/1.1 Georgia,"Times New Roman",serif;color:var(--text);letter-spacing:.01em;text-shadow:0 1px 10px var(--bg)}
+.brand .tag{margin:4px 0 0;max-width:320px;font:italic 13.5px/1.3 Georgia,"Times New Roman",serif;color:var(--text);opacity:.93;text-shadow:0 1px 8px var(--bg)}
+
+.card{margin:16px;padding:20px 18px 16px;background:var(--surface);border:1px solid var(--outline-v);border-radius:14px}
+.card h4{margin:0 0 16px;font:600 20px/1.2 system-ui,"Segoe UI",sans-serif;color:var(--text)}
+.field{position:relative;display:flex;align-items:center;justify-content:space-between;height:56px;margin-bottom:16px;padding:0 6px 0 14px;border:1px solid var(--outline);border-radius:8px;color:var(--text)}
+.field .lbl{position:absolute;top:-9px;left:10px;padding:0 5px;background:var(--surface);font-size:12px;line-height:1.2;color:var(--muted)}
+.field .val{font-size:16px;letter-spacing:.12em}
+.field .eye{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:transparent;color:var(--muted);padding:0}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:48px;margin-top:4px;border:0;border-radius:24px;background:var(--a1);color:var(--on-primary);font:600 15px/1 system-ui,"Segoe UI",sans-serif;letter-spacing:.01em}
+.sec{display:flex;justify-content:center;margin-top:10px}
+.sec .lnk{padding:10px 12px;font-size:14px;color:var(--a1);text-decoration:underline;text-underline-offset:3px}
+.hint{margin:6px 0 0;padding-top:12px;border-top:1px solid var(--outline-v);text-align:center;font-size:13px;color:var(--muted)}
+
+/* ───────────── Mouvement (principes des bannières, transform + opacity seulement) ───────────── */
+@keyframes dd-spin{to{transform:rotate(360deg)}}
+@keyframes dd-spin-rev{to{transform:rotate(-360deg)}}
+@keyframes dd-twinkle{0%,100%{opacity:.22}50%{opacity:.95}}
+@keyframes dd-glow{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+@keyframes dd-fly{0%{transform:translateX(-60px);opacity:0}12%{opacity:1}76%{opacity:1}100%{transform:translateX(var(--tr,260px));opacity:0}}
+@keyframes dd-drift{0%{transform:translate(0,0);opacity:0}14%{opacity:.9}82%{opacity:.45}100%{transform:translate(var(--dx,10px),-96px);opacity:0}}
+@keyframes dd-fall{0%{transform:translate(0,-16px) rotate(0deg);opacity:0}12%{opacity:.9}100%{transform:translate(var(--dx,22px),118px) rotate(240deg);opacity:0}}
+@keyframes dd-puff{0%{transform:translate(0,0) scale(.6);opacity:0}22%{opacity:1}100%{transform:translate(12px,-42px) scale(1.7);opacity:0}}
+@keyframes dd-needle{0%,100%{transform:rotate(-40deg)}44%{transform:rotate(28deg)}60%{transform:rotate(15deg)}}
+
+.star{fill:var(--text);opacity:.5;animation:dd-twinkle 3.4s ease-in-out infinite}
+.halo{opacity:.75;animation:dd-glow 6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.fly{animation:dd-fly 7s ease-in-out infinite}
+.mote{opacity:.8;animation:dd-drift 8.5s linear infinite}
+.leaf{opacity:.8;animation:dd-fall 9.5s linear infinite}
+.spin{animation:dd-spin 16s linear infinite}
+.spin.rev{animation-name:dd-spin-rev}
+.spin.slow{animation-duration:24s}
+.spin.fast{animation-duration:11s}
+.puff{opacity:.9;animation:dd-puff 5s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.needle{animation:dd-needle 5.5s ease-in-out infinite}
+.gc1{color:var(--a1);opacity:.7} .gc2{color:var(--a2);opacity:.95}
+.grid-rect{opacity:.22}
+.rivet{opacity:.85}
+.dl1{animation-delay:-.3s}.dl2{animation-delay:-1.1s}.dl3{animation-delay:-2s}.dl4{animation-delay:-2.9s}
+.dl5{animation-delay:-3.7s}.dl6{animation-delay:-4.6s}.dl7{animation-delay:-5.8s}.dl8{animation-delay:-7s}
+
+@media (prefers-reduced-motion: reduce){
+  .scene *{animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<!-- Définitions partagées (SVG invisible) : marques de logo monochromes, rouage, masque du sceau -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Piste A : dé à six faces = six créneaux ; cinq pris (pleins), un libre (vide) -->
+    <symbol id="mark-a" viewBox="0 0 64 64">
+      <g transform="rotate(-6 32 36)">
+        <rect x="7" y="11" width="50" height="50" rx="11" fill="none" stroke="currentColor" stroke-width="4"/>
+        <rect x="19" y="3" width="6" height="14" rx="3" fill="currentColor"/>
+        <rect x="39" y="3" width="6" height="14" rx="3" fill="currentColor"/>
+        <g fill="currentColor">
+          <rect x="19.5" y="20" width="10" height="8" rx="2.5"/>
+          <rect x="34.5" y="20" width="10" height="8" rx="2.5"/>
+          <rect x="19.5" y="32" width="10" height="8" rx="2.5"/>
+          <rect x="34.5" y="32" width="10" height="8" rx="2.5"/>
+          <rect x="19.5" y="44" width="10" height="8" rx="2.5"/>
+        </g>
+        <rect x="35.7" y="45.2" width="7.6" height="5.6" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/>
+      </g>
+    </symbol>
+
+    <!-- Piste C : sceau « DD », deux dés liés (le dé de gauche passe sous celui de droite) -->
+    <mask id="seal-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+      <rect width="100" height="100" fill="#fff"/>
+      <g transform="rotate(10 63 61)"><rect x="44" y="42" width="38" height="38" rx="9" fill="#000"/></g>
+    </mask>
+    <symbol id="mark-c" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46.5" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="1.4 3.4"/>
+      <g mask="url(#seal-cut)">
+        <g transform="rotate(-10 37 39)">
+          <rect x="21" y="23" width="32" height="32" rx="7" fill="none" stroke="currentColor" stroke-width="3.5"/>
+          <text x="37" y="48.6" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="24" fill="currentColor">D</text>
+        </g>
+      </g>
+      <g transform="rotate(10 63 61)">
+        <rect x="47" y="45" width="32" height="32" rx="7" fill="none" stroke="currentColor" stroke-width="3.5"/>
+        <text x="63" y="70.6" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="24" fill="currentColor">D</text>
+      </g>
+    </symbol>
+
+    <!-- Rouage (technique B des bannières), 100 x 100 -->
+    <g id="gear-b">
+      <g fill="currentColor">
+        <rect x="46" y="2" width="8" height="14" rx="1.5"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(30 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(60 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(90 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(120 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(150 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(180 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(210 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(240 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(270 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(300 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(330 50 50)"/>
+      </g>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" stroke-width="7"/>
+      <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="5"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Dés Dispos — logos et emblèmes</h1>
+  <p>Passe 1 · écrans d'authentification (story 34.3). Toutes les formes sont en SVG en ligne ; la section 2 anime les bandes (désactivées avec « réduire les animations »).</p>
+  <ul class="legend">
+    <li><b>Piste A</b> — pictogramme : un dé dont les six points sont des créneaux de calendrier (cinq pris, un libre), et le nom à côté.</li>
+    <li><b>Piste B</b> — typographique seul : « Dés Dispos », l'accent du é et le point du i dessinés comme deux points de dé.</li>
+    <li><b>Piste C</b> — monogramme-sceau « DD » : deux dés liés dans un médaillon, nom dessous.</li>
+    <li><b>E1 / E2</b> — Émeraude : E1 grimoire ouvert + étoile, E2 comète qui traverse un dé · Forêt : E1 feuille de chêne + point lumineux, E2 arbre à cases de calendrier.</li>
+    <li><b>E1 / E2</b> — Atelier Cuivré : E1 rouage dont le moyeu est un dé, E2 manomètre dont l'aiguille pointe un créneau. Cadre navigateur : Émeraude E1.</li>
+  </ul>
+
+  <!-- ═══════════════════════ SECTION 1 ═══════════════════════ -->
+  <h2>Logo de Dés Dispos</h2>
+  <p>Trois pistes, une seule couleur chacune (la couleur de texte du fond). Chaque tuile : version grande, puis version 32 px de haut pour tester la lisibilité (verrouillage complet réduit, plus la marque seule quand elle existe).</p>
+
+  <!-- PISTE A -->
+  <div class="track">
+    <div class="track-head"><h3>Piste A — le dé-calendrier</h3><p>Le dé, c'est la partie ; les six points, six créneaux dont un reste à caler : « des dispos ? ».</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-a big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-a small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-a big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-a small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-a big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-a small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-a big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-a small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg><span class="wm-a">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-a"/></svg></div></div>
+    </div>
+  </div>
+
+  <!-- PISTE B -->
+  <div class="track">
+    <div class="track-head"><h3>Piste B — le nom, deux points de dé</h3><p>Aucun pictogramme : l'accent du é et le point du i deviennent deux pips (la face « 2 » du dé). Se lit « Dés Dispos », se devine « des dispos ? ».</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-b big"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-b small"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-b big"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-b small"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-b big"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-b small"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-b big"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-b small"><span class="wm-b" role="img" aria-label="Dés Dispos">D<span class="gl e">e<b></b></span>s D<span class="gl i">ı<b></b></span>spos</span></div></div></div>
+    </div>
+  </div>
+
+  <!-- PISTE C -->
+  <div class="track">
+    <div class="track-head"><h3>Piste C — le sceau « DD »</h3><p>Deux dés (D et D) liés l'un à l'autre dans un médaillon perlé, façon cachet de MJ ; le nom dessous.</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">32 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><svg class="mk32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ SECTION 2 ═══════════════════════ -->
+  <h2>La bande au-dessus de la carte</h2>
+  <p>Six cadres de téléphone (375 px), deux emblèmes par thème. Dans chaque cadre : bande animée (≈ 180 px) avec emblème 64 px, nom et accroche du thème, puis la carte de connexion factice. Un cadre navigateur étroit montre la même bande en largeur 520 px (Émeraude E1).</p>
+
+  <!-- ═════ ÉMERAUDE ═════ -->
+  <div class="theme-row th-em-label">
+    <h3>Grimoire Émeraude</h3>
+    <div class="frames">
+
+      <!-- Émeraude E1 (téléphone) -->
+      <figure class="fr th-em">
+        <figcaption><b>E1 — grimoire ouvert surmonté d'une étoile.</b> Les pages sont l'accent 1, l'étoile l'accent 2 : « la partie qui s'ouvre ».</figcaption>
+        <div class="phone"><div class="screen">
+          <header class="band">
+            <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <defs>
+                <radialGradient id="em1-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+                <radialGradient id="em1-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+                <linearGradient id="em1-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+                <radialGradient id="em1-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              </defs>
+              <circle class="halo" cx="345" cy="52" r="84" fill="url(#em1-h2)"/>
+              <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#em1-h1)"/>
+              <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+              <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+              <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+              <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+              <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#em1-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#em1-head)"/></g></g>
+            </svg>
+            <div class="brand">
+              <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Grimoire Émeraude : grimoire ouvert surmonté d'une étoile">
+                <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+                <path class="f1" d="M32 51 C26 47 16 46 9 48 L9 28 C16 26 26 27 32 32 Z"/>
+                <path class="f1" d="M32 51 C38 47 48 46 55 48 L55 28 C48 27 38 26 32 32 Z"/>
+                <path class="nf ks rc" stroke-width="1.6" d="M32 32 V51"/>
+                <path class="nf ks rc" stroke-width="1.6" d="M14 34 C18 33 23 34 27 36 M14 39.5 C18 38.5 23 39.5 27 41.5 M50 34 C46 33 41 34 37 36 M50 39.5 C46 38.5 41 39.5 37 41.5"/>
+                <path class="nf k1 rc" stroke-width="2.6" d="M7 52 C16 50 26 51 32 56 C38 51 48 50 57 52"/>
+                <path class="f2" d="M32 4 L34.8 11.2 L42 14 L34.8 16.8 L32 24 L29.2 16.8 L22 14 L29.2 11.2 Z"/>
+                <circle class="f2" cx="46" cy="9" r="1.5"/><circle class="f2" cx="18" cy="10" r="1.5"/>
+              </svg>
+              <p class="name">Dés Dispos</p>
+              <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+            </div>
+          </header>
+          <main class="card">
+            <h4>Connexion</h4>
+            <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+            <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+              <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+            <button type="button" class="btn">Se connecter</button>
+            <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+            <p class="hint">L'inscription se fait sur invitation.</p>
+          </main>
+        </div></div>
+      </figure>
+
+      <!-- Émeraude E2 (téléphone) -->
+      <figure class="fr th-em">
+        <figcaption><b>E2 — comète qui traverse un dé.</b> Dé en accent 1 (face « 2 »), comète en accent 2 : « le coup de dés qui tombe juste ».</figcaption>
+        <div class="phone"><div class="screen">
+          <header class="band">
+            <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <defs>
+                <radialGradient id="em2-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+                <radialGradient id="em2-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+                <linearGradient id="em2-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa2" stop-opacity="0"/><stop offset=".6" class="sa2" stop-opacity=".5"/><stop offset="1" class="sa2" stop-opacity=".95"/></linearGradient>
+                <radialGradient id="em2-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa2" stop-opacity=".9"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              </defs>
+              <circle class="halo dl2" cx="105" cy="58" r="76" fill="url(#em2-h2)"/>
+              <circle class="halo dl6" cx="342" cy="132" r="72" fill="url(#em2-h1)"/>
+              <circle class="star dl2" cx="46" cy="22" r="1.4"/><circle class="star dl5" cx="150" cy="30" r="1.1"/><circle class="star dl1" cx="60" cy="150" r="1.2"/><circle class="star dl7" cx="165" cy="140" r="1.4"/>
+              <circle class="star dl3" cx="228" cy="14" r="1"/><circle class="star dl8" cx="290" cy="40" r="1.5"/><circle class="star dl4" cx="388" cy="22" r="1.2"/><circle class="star dl6" cx="408" cy="70" r="1"/>
+              <circle class="star dl1" cx="398" cy="156" r="1.4"/><circle class="star dl5" cx="262" cy="166" r="1.1"/><circle class="star dl2" cx="36" cy="82" r="1"/><circle class="star dl7" cx="330" cy="82" r="1.3"/>
+              <g transform="translate(34 128) rotate(-15)"><g class="fly" style="--tr:290px"><path d="M0 0 L70 -3.4 L70 3.4 Z" fill="url(#em2-tail)"/><circle cx="70" cy="0" r="4.4" fill="url(#em2-head)"/></g></g>
+              <g transform="translate(250 28) rotate(26)"><g class="fly dl5" style="--tr:170px;animation-duration:9s"><path d="M0 0 L38 -2.2 L38 2.2 Z" fill="url(#em2-tail)"/><circle cx="38" cy="0" r="3" fill="url(#em2-head)"/></g></g>
+            </svg>
+            <div class="brand">
+              <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Grimoire Émeraude : comète qui traverse un dé">
+                <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+                <rect class="nf k1" x="18" y="22" width="28" height="28" rx="6.5" stroke-width="3.2"/>
+                <circle class="f1" cx="25" cy="29" r="2.8"/><circle class="f1" cx="39" cy="43" r="2.8"/>
+                <path class="f2" d="M52 16 L21.2 55.2 L12.8 46.8 Z"/>
+                <circle class="f2" cx="17" cy="51" r="5.2"/><circle class="ft" cx="17" cy="51" r="2"/>
+                <circle class="f2" cx="53" cy="9" r="1.4"/><circle class="f2" cx="11" cy="18" r="1.3"/>
+              </svg>
+              <p class="name">Dés Dispos</p>
+              <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+            </div>
+          </header>
+          <main class="card">
+            <h4>Connexion</h4>
+            <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+            <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+              <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+            <button type="button" class="btn">Se connecter</button>
+            <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+            <p class="hint">L'inscription se fait sur invitation.</p>
+          </main>
+        </div></div>
+      </figure>
+
+      <!-- Émeraude E1 (navigateur étroit) -->
+      <figure class="fr th-em">
+        <figcaption><b>E1 dans un navigateur étroit (520 px).</b> La bande se recadre au centre ; la carte reste à 380 px max.</figcaption>
+        <div class="browser">
+          <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">…/connexion</span></div>
+          <div class="screen">
+            <header class="band">
+              <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+                <defs>
+                  <radialGradient id="em1b-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+                  <radialGradient id="em1b-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+                  <linearGradient id="em1b-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+                  <radialGradient id="em1b-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+                </defs>
+                <circle class="halo" cx="345" cy="52" r="84" fill="url(#em1b-h2)"/>
+                <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#em1b-h1)"/>
+                <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+                <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+                <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+                <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+                <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#em1b-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#em1b-head)"/></g></g>
+              </svg>
+              <div class="brand">
+                <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Grimoire Émeraude : grimoire ouvert surmonté d'une étoile">
+                  <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+                  <path class="f1" d="M32 51 C26 47 16 46 9 48 L9 28 C16 26 26 27 32 32 Z"/>
+                  <path class="f1" d="M32 51 C38 47 48 46 55 48 L55 28 C48 27 38 26 32 32 Z"/>
+                  <path class="nf ks rc" stroke-width="1.6" d="M32 32 V51"/>
+                  <path class="nf ks rc" stroke-width="1.6" d="M14 34 C18 33 23 34 27 36 M14 39.5 C18 38.5 23 39.5 27 41.5 M50 34 C46 33 41 34 37 36 M50 39.5 C46 38.5 41 39.5 37 41.5"/>
+                  <path class="nf k1 rc" stroke-width="2.6" d="M7 52 C16 50 26 51 32 56 C38 51 48 50 57 52"/>
+                  <path class="f2" d="M32 4 L34.8 11.2 L42 14 L34.8 16.8 L32 24 L29.2 16.8 L22 14 L29.2 11.2 Z"/>
+                  <circle class="f2" cx="46" cy="9" r="1.5"/><circle class="f2" cx="18" cy="10" r="1.5"/>
+                </svg>
+                <p class="name">Dés Dispos</p>
+                <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+              </div>
+            </header>
+            <main class="card">
+              <h4>Connexion</h4>
+              <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+              <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+                <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+              <button type="button" class="btn">Se connecter</button>
+              <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+              <p class="hint">L'inscription se fait sur invitation.</p>
+            </main>
+          </div>
+        </div>
+      </figure>
+    </div>
+  </div>
+
+  <!-- ═════ FORÊT ═════ -->
+  <div class="theme-row">
+    <h3>Forêt Ancienne</h3>
+    <div class="frames">
+
+      <!-- Forêt E1 -->
+      <figure class="fr th-fo">
+        <figcaption><b>E1 — feuille de chêne qui contient un point lumineux.</b> Contour en accent 1, lucioles et point en accent 2 : « la lumière du feu de camp ».</figcaption>
+        <div class="phone"><div class="screen">
+          <header class="band">
+            <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <defs>
+                <radialGradient id="fo1-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+                <radialGradient id="fo1-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+                <radialGradient id="fo1-mote"><stop offset="0" class="sa2" stop-opacity=".95"/><stop offset=".35" class="sa2" stop-opacity=".7"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              </defs>
+              <circle class="halo" cx="82" cy="70" r="76" fill="url(#fo1-h1)"/>
+              <circle class="halo dl5" cx="362" cy="124" r="74" fill="url(#fo1-h2)"/>
+              <circle class="halo dl2" cx="250" cy="14" r="46" fill="url(#fo1-h1)"/>
+              <circle class="mote dl1" cx="62" cy="150" r="5" fill="url(#fo1-mote)" style="--dx:10px"/>
+              <circle class="mote dl4" cx="108" cy="168" r="4" fill="url(#fo1-mote)" style="--dx:-12px"/>
+              <circle class="mote dl7" cx="150" cy="140" r="5" fill="url(#fo1-mote)" style="--dx:14px"/>
+              <circle class="mote dl2" cx="44" cy="96" r="4" fill="url(#fo1-mote)" style="--dx:-8px"/>
+              <circle class="mote dl5" cx="196" cy="170" r="4" fill="url(#fo1-mote)" style="--dx:10px"/>
+              <circle class="mote dl8" cx="262" cy="158" r="5" fill="url(#fo1-mote)" style="--dx:-14px"/>
+              <circle class="mote dl3" cx="318" cy="172" r="4" fill="url(#fo1-mote)" style="--dx:12px"/>
+              <circle class="mote dl6" cx="372" cy="150" r="5" fill="url(#fo1-mote)" style="--dx:-10px"/>
+              <circle class="mote dl1" cx="404" cy="112" r="4" fill="url(#fo1-mote)" style="--dx:8px"/>
+              <circle class="mote dl7" cx="346" cy="96" r="4" fill="url(#fo1-mote)" style="--dx:-12px"/>
+              <circle class="mote dl4" cx="128" cy="92" r="3.5" fill="url(#fo1-mote)" style="--dx:10px"/>
+            </svg>
+            <div class="brand">
+              <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Forêt Ancienne : feuille de chêne contenant un point lumineux">
+                <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+                <path class="f1 k1 rc" fill-opacity=".22" stroke-width="3.2" d="M32 7 C36 7 37 12 39 13 C42 12 46 13 46 17 C46 21 44 22 43 24 C47 24 51 27 50 31 C50 35 46 36 44 37 C47 39 49 42 47 45 C45 48 40 47 38 47 C37 50 35 52 32 53 C29 52 27 50 26 47 C24 47 19 48 17 45 C15 42 17 39 20 37 C18 36 14 35 14 31 C13 27 17 24 21 24 C20 22 18 21 18 17 C18 13 22 12 25 13 C27 12 28 7 32 7 Z"/>
+                <path class="nf k1 rc" stroke-width="3.2" d="M32 53 V60"/>
+                <path class="nf k1 rc" stroke-width="2.2" d="M32 51 V34"/>
+                <circle class="nf k2" stroke-width="1.6" stroke-opacity=".55" cx="32" cy="27" r="9"/>
+                <circle class="f2" cx="32" cy="27" r="5"/>
+              </svg>
+              <p class="name">Dés Dispos</p>
+              <p class="tag">Un feu de camp, des amis, et une date qui arrange tout le monde</p>
+            </div>
+          </header>
+          <main class="card">
+            <h4>Connexion</h4>
+            <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+            <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+              <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+            <button type="button" class="btn">Se connecter</button>
+            <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+            <p class="hint">L'inscription se fait sur invitation.</p>
+          </main>
+        </div></div>
+      </figure>
+
+      <!-- Forêt E2 -->
+      <figure class="fr th-fo">
+        <figcaption><b>E2 — arbre dont les branches portent des cases de calendrier.</b> Tronc et branches en accent 1, cases en accent 2, une case pleine : la date choisie.</figcaption>
+        <div class="phone"><div class="screen">
+          <header class="band">
+            <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <defs>
+                <radialGradient id="fo2-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+                <radialGradient id="fo2-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              </defs>
+              <circle class="halo dl3" cx="352" cy="46" r="74" fill="url(#fo2-h2)"/>
+              <circle class="halo dl1" cx="70" cy="132" r="76" fill="url(#fo2-h1)"/>
+              <g transform="translate(46 14) rotate(30)"><path class="leaf f1 dl1" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:18px"/></g>
+              <g transform="translate(112 6) rotate(-20)"><path class="leaf f2 dl4" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:26px"/></g>
+              <g transform="translate(160 20) rotate(50)"><path class="leaf f1 dl7" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:14px"/></g>
+              <g transform="translate(36 70) rotate(-35)"><path class="leaf f2 dl2" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:22px"/></g>
+              <g transform="translate(270 10) rotate(15)"><path class="leaf f2 dl5" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:-20px"/></g>
+              <g transform="translate(318 24) rotate(-45)"><path class="leaf f1 dl8" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:-14px"/></g>
+              <g transform="translate(396 8) rotate(25)"><path class="leaf f1 dl3" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:-24px"/></g>
+              <g transform="translate(400 74) rotate(-10)"><path class="leaf f2 dl6" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:-18px"/></g>
+              <g transform="translate(206 4) rotate(40)"><path class="leaf f1 dl2" d="M0 0 Q6 -8 15 -3 Q9 6 0 0 Z" style="--dx:16px"/></g>
+            </svg>
+            <div class="brand">
+              <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Forêt Ancienne : arbre dont les branches portent des cases de calendrier">
+                <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+                <path class="nf k1 rc" stroke-width="4.2" d="M32 58 V36"/>
+                <path class="nf k1 rc" stroke-width="3" d="M22 58 H42"/>
+                <path class="nf k1 rc" stroke-width="3" d="M32 36 V22 M32 42 Q24 40 20 32 M32 42 Q40 40 44 32 M32 52 Q24 51 20 45 M32 52 Q40 51 44 45"/>
+                <rect class="f2" x="27" y="12" width="10" height="10" rx="2.4"/>
+                <rect class="f2 k2" fill-opacity=".3" stroke-width="2.2" x="10" y="24" width="10" height="10" rx="2.4"/>
+                <rect class="f2 k2" fill-opacity=".3" stroke-width="2.2" x="44" y="24" width="10" height="10" rx="2.4"/>
+                <rect class="f2 k2" fill-opacity=".3" stroke-width="2.2" x="10" y="40" width="10" height="10" rx="2.4"/>
+                <rect class="f2 k2" fill-opacity=".3" stroke-width="2.2" x="44" y="40" width="10" height="10" rx="2.4"/>
+              </svg>
+              <p class="name">Dés Dispos</p>
+              <p class="tag">Un feu de camp, des amis, et une date qui arrange tout le monde</p>
+            </div>
+          </header>
+          <main class="card">
+            <h4>Connexion</h4>
+            <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+            <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+              <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+            <button type="button" class="btn">Se connecter</button>
+            <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+            <p class="hint">L'inscription se fait sur invitation.</p>
+          </main>
+        </div></div>
+      </figure>
+    </div>
+  </div>
+
+  <!-- ═════ ATELIER CUIVRÉ ═════ -->
+  <div class="theme-row">
+    <h3>Atelier Cuivré</h3>
+    <div class="frames">
+
+      <!-- Atelier E1 -->
+      <figure class="fr th-at">
+        <figcaption><b>E1 — rouage dont les dents forment un dé.</b> Rouage de huit dents en accent 1 (cuivre), moyeu en dé d'accent 2 (patine) : « on cale, la machine tourne ».</figcaption>
+        <div class="phone"><div class="screen">
+          <header class="band">
+            <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <defs>
+                <pattern id="at1-grid" width="13" height="13" patternUnits="userSpaceOnUse"><path d="M13 0H0V13" class="nf k1" stroke-width=".5"/></pattern>
+                <radialGradient id="at1-steam"><stop offset="0" class="st" stop-opacity=".3"/><stop offset="1" class="st" stop-opacity="0"/></radialGradient>
+              </defs>
+              <rect class="grid-rect" x="0" y="0" width="440" height="180" fill="url(#at1-grid)"/>
+              <g transform="translate(-14 100) scale(.85)"><g class="spin" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+              <g transform="translate(352 96) scale(.8)"><g class="spin rev slow" style="transform-origin:50px 50px"><use href="#gear-b" class="gc2"/></g></g>
+              <g transform="translate(380 51) scale(.5)"><g class="spin fast" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+              <circle class="rivet f1" cx="44" cy="12" r="2"/><circle class="rivet f1" cx="396" cy="12" r="2"/><circle class="rivet f1" cx="44" cy="168" r="2"/><circle class="rivet f1" cx="396" cy="168" r="2"/>
+              <circle class="puff dl1" cx="306" cy="160" r="9" fill="url(#at1-steam)"/>
+              <circle class="puff dl4" cx="318" cy="164" r="7" fill="url(#at1-steam)"/>
+              <circle class="puff dl7" cx="298" cy="166" r="8" fill="url(#at1-steam)"/>
+              <g transform="translate(58 18)"><circle cx="20" cy="20" r="20" class="fsurf"/><circle cx="20" cy="20" r="18.5" class="nf k1" stroke-width="3"/>
+                <g transform="translate(20 20)"><g class="needle"><line x1="0" y1="0" x2="-5.9" y2="-10" class="kn rc" stroke-width="2"/></g></g><circle cx="20" cy="20" r="2.5" class="f1"/></g>
+            </svg>
+            <div class="brand">
+              <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Atelier Cuivré : rouage dont les dents forment un dé">
+                <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+                <g class="f1">
+                  <rect x="28" y="4" width="8" height="12" rx="2"/>
+                  <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(45 32 32)"/>
+                  <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(90 32 32)"/>
+                  <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(135 32 32)"/>
+                  <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(180 32 32)"/>
+                  <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(225 32 32)"/>
+                  <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(270 32 32)"/>
+                  <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(315 32 32)"/>
+                </g>
+                <circle class="f1" cx="32" cy="32" r="23"/>
+                <rect class="f2 ks" stroke-width="2.4" x="19" y="19" width="26" height="26" rx="6"/>
+                <g class="ft"><circle cx="25.5" cy="25.5" r="2.5"/><circle cx="38.5" cy="25.5" r="2.5"/><circle cx="32" cy="32" r="2.5"/><circle cx="25.5" cy="38.5" r="2.5"/><circle cx="38.5" cy="38.5" r="2.5"/></g>
+              </svg>
+              <p class="name">Dés Dispos</p>
+              <p class="tag">On cale tout le monde, et on lance la machine&#160;!</p>
+            </div>
+          </header>
+          <main class="card">
+            <h4>Connexion</h4>
+            <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+            <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+              <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+            <button type="button" class="btn">Se connecter</button>
+            <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+            <p class="hint">L'inscription se fait sur invitation.</p>
+          </main>
+        </div></div>
+      </figure>
+
+      <!-- Atelier E2 -->
+      <figure class="fr th-at">
+        <figcaption><b>E2 — manomètre dont l'aiguille pointe un créneau.</b> Cadran en accent 1, créneau en accent 2 cerclé de texte : « l'aiguille sur la bonne case ».</figcaption>
+        <div class="phone"><div class="screen">
+          <header class="band">
+            <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <defs>
+                <pattern id="at2-grid" width="13" height="13" patternUnits="userSpaceOnUse"><path d="M13 0H0V13" class="nf k1" stroke-width=".5"/></pattern>
+                <radialGradient id="at2-steam"><stop offset="0" class="st" stop-opacity=".3"/><stop offset="1" class="st" stop-opacity="0"/></radialGradient>
+              </defs>
+              <rect class="grid-rect" x="0" y="0" width="440" height="180" fill="url(#at2-grid)"/>
+              <g transform="translate(360 -20) scale(.85)"><g class="spin slow" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+              <g transform="translate(-20 96) scale(.7)"><g class="spin rev" style="transform-origin:50px 50px"><use href="#gear-b" class="gc2"/></g></g>
+              <g transform="translate(36 126) scale(.45)"><g class="spin fast" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+              <circle class="rivet f1" cx="44" cy="12" r="2"/><circle class="rivet f1" cx="396" cy="12" r="2"/><circle class="rivet f1" cx="44" cy="168" r="2"/><circle class="rivet f1" cx="396" cy="168" r="2"/>
+              <circle class="puff dl2" cx="62" cy="40" r="8" fill="url(#at2-steam)"/>
+              <circle class="puff dl5" cx="74" cy="46" r="9" fill="url(#at2-steam)"/>
+              <circle class="puff dl8" cx="54" cy="48" r="7" fill="url(#at2-steam)"/>
+              <g transform="translate(366 112)"><circle cx="14" cy="14" r="14" class="fsurf"/><circle cx="14" cy="14" r="12.8" class="nf k1" stroke-width="2.6"/>
+                <g transform="translate(14 14)"><g class="needle dl3"><line x1="0" y1="0" x2="-4.1" y2="-7" class="kn rc" stroke-width="1.8"/></g></g><circle cx="14" cy="14" r="2" class="f1"/></g>
+            </svg>
+            <div class="brand">
+              <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Atelier Cuivré : manomètre dont l'aiguille pointe un créneau">
+                <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+                <rect class="f1" x="29" y="5" width="6" height="6" rx="1.5"/>
+                <circle class="fsurf" cx="32" cy="34" r="22"/>
+                <circle class="nf k1" stroke-width="4" cx="32" cy="34" r="22"/>
+                <g class="nf k1 rc" stroke-width="2" stroke-opacity=".8">
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(-120 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(-100 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(-80 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(-60 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(-40 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(-20 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(60 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(80 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(100 32 34)"/>
+                  <line x1="32" y1="14.5" x2="32" y2="17" transform="rotate(120 32 34)"/>
+                </g>
+                <rect class="f2 kt" stroke-width="1.4" x="34.5" y="19.4" width="10" height="8" rx="2.2"/>
+                <line class="k1 rc" stroke-width="3.2" x1="32" y1="34" x2="38.4" y2="25.2"/>
+                <circle class="f1" cx="32" cy="34" r="3.6"/><circle class="fsurf" cx="32" cy="34" r="1.3"/>
+              </svg>
+              <p class="name">Dés Dispos</p>
+              <p class="tag">On cale tout le monde, et on lance la machine&#160;!</p>
+            </div>
+          </header>
+          <main class="card">
+            <h4>Connexion</h4>
+            <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+            <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+              <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+            <button type="button" class="btn">Se connecter</button>
+            <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+            <p class="hint">L'inscription se fait sur invitation.</p>
+          </main>
+        </div></div>
+      </figure>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

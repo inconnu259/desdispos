@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { PortraitPanel } from './portrait-panel';
 import { API_BASE } from '../../../core/api-base';
+import { TONE_MAP } from '../../../core/theme/tones';
+import { fillTone } from '../../../core/theme/tone-format';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 describe('PortraitPanel', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -26,12 +30,12 @@ describe('PortraitPanel', () => {
     const img: HTMLImageElement = fixture.nativeElement.querySelector('.portrait-panel__img');
     expect(panel).not.toBeNull();
     expect(img.src).toBe(`${API_BASE}/characters/char1/portrait`);
-    expect(fixture.nativeElement.textContent).toContain('Portrait complet');
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['portrait.panel_caption']);
   });
 
   it('alt text mentionne le nom du personnage', () => {
     const fixture = setup('/uploads/portraits/x.jpg', 'Fenn');
     const img: HTMLImageElement = fixture.nativeElement.querySelector('.portrait-panel__img');
-    expect(img.alt).toBe('Portrait complet de Fenn');
+    expect(img.alt).toBe(fillTone(GRIMOIRE_TONE['portrait.panel_alt'], { name: 'Fenn' }));
   });
 });

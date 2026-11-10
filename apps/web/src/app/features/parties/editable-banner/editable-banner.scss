@@ -1,0 +1,84 @@
+// Bannière de la page d'une partie (Story 53.6, ⚠️ planche UI). Puces posées sur la bannière, en
+// haut à droite à 8 px du bord, sœurs d'elle ; même allure que celles du formulaire (Story 38.3).
+:host {
+  display: block;
+}
+
+.editable-banner {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.editable-banner__banner {
+  display: block;
+  width: 100%;
+}
+
+.cover-chips {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+// Puce translucide « Changer » / « Retirer ». Zone de toucher portée à 44 px par `::after`.
+.cover-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(8, 6, 16, 0.58);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+
+  &:focus-visible,
+  &:has(.cover-file-input:focus-visible) {
+    // Double anneau : le blanc seul disparaît sur une couverture claire.
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(8, 6, 16, 0.9);
+  }
+
+  &:disabled,
+  &.cover-chip--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Contraste forcé : fonds et ombres sont neutralisés, la bordure reste le seul contour visible.
+@media (forced-colors: active) {
+  .cover-chip {
+    border: 2px solid ButtonText;
+  }
+}
+
+// Pictogramme <app-icon> « modifier », décoratif (la puce est nommée par son texte).
+.cover-chip__icon {
+  --app-icon-size: 16px;
+}
+
+// Champ fichier natif masqué SOUS la puce, mais jamais retiré de l'arbre : Tab l'atteint.
+.cover-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: inherit;
+}

@@ -1,0 +1,12 @@
+<div class="homme-dragon-page">
+  <a class="homme-dragon-page__back" routerLink="/characters">{{
+    theme.tone()['hd.page_back_to_characters']
+  }}</a>
+  @if (hommeDragonId()) {
+    <app-homme-dragon-sheet [hommeDragonId]="hommeDragonId()" [showCreatedNotice]="justCreated()" />
+  } @else {
+    <p class="homme-dragon-page__error" role="alert">
+      {{ theme.tone()['common.homme_dragon_introuvable'] }}
+    </p>
+  }
+</div>

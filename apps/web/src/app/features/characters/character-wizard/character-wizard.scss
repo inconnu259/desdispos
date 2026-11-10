@@ -29,7 +29,12 @@
     border: none;
     background: transparent;
     color: inherit;
-    font-size: 1rem;
+    /* Pictogramme <app-icon> seul dans un bouton nommé (aria-label) : 20px. */
+    --app-icon-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     cursor: pointer;
 
     &:disabled {
@@ -94,6 +99,12 @@
     button {
       flex: 1;
       min-height: 44px;
+      /* Pictogramme décoratif avant / après le libellé : 18px, aligné au texte. */
+      --app-icon-size: 18px;
+    }
+
+    app-icon {
+      vertical-align: middle;
     }
   }
 
@@ -110,44 +121,57 @@
     }
   }
 
+  // Colonne de récapitulatif (Story 31.4) : composant `app-wizard-summary`. Masquée sous 1024 px —
+  // l'ancien bloc du bas y était à moitié caché par les barres fixes ; le bouton « Récap » du bandeau
+  // ouvre la même chose en feuille.
   &__summary {
+    display: none;
+    min-width: 0;
     padding: 1rem;
-    background: var(--mat-sys-surface-container-high, #f0ebe3);
+    background: var(--mat-sys-surface-container, #1a1428);
   }
 
-  &__summary-header {
-    margin-bottom: 0.75rem;
+  // Bandeau collant sous 1024 px : le bouton « Récap » reste atteignable où qu'on soit dans l'étape.
+  &__head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
   }
 
-  &__summary-name {
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-
-  &__derived-badges {
-    display: flex;
-    flex-wrap: wrap;
+  &__recap-btn {
+    display: inline-flex;
+    align-items: center;
     gap: 0.375rem;
+    min-height: 36px;
+    padding: 0 0.75rem;
+    background: transparent;
+    border: 1px solid var(--mat-sys-outline, #777);
+    border-radius: 999px;
+    color: inherit;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
   }
 
-  &__summary-hint {
-    font-size: 0.85rem;
-    color: var(--mat-sys-on-surface-variant, #555);
-    font-style: italic;
+  &__recap-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: var(--mat-sys-tertiary, #7ec8a4);
+    color: var(--mat-sys-on-tertiary, #0d0a14);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
   }
-}
 
-.stat-pill {
-  padding: 0.25rem 0.625rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  background: var(--mat-sys-secondary-container, #e0dbef);
-  color: var(--mat-sys-on-secondary-container, #2a1a4a);
-
-  &:nth-child(even) {
-    background: var(--mat-sys-primary-container, #ece3ff);
-    color: var(--mat-sys-on-primary-container, #2a1a4a);
+  // Sous 1024 px la flèche « suivant » double la barre d'actions : son emplacement passe au « Récap ».
+  @media (max-width: 1023px) {
+    &__nav-next {
+      display: none;
+    }
   }
 }
 
@@ -175,9 +199,25 @@
       }
     }
 
+    // 🚨 Trouvé à l'écran (31.4) : `flex-basis: 35%` + padding en `content-box` faisait déborder la
+    // colonne de droite hors de la page (texte coupé). `border-box` sur les deux colonnes.
+    &__main {
+      box-sizing: border-box;
+    }
+
     &__summary {
+      display: block;
+      box-sizing: border-box;
       flex: 0 0 35%;
       max-width: 35%;
+    }
+
+    &__recap-btn {
+      display: none;
+    }
+
+    &__head {
+      position: static;
     }
   }
 }

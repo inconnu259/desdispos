@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WeekCell } from './calendar-week-view/calendar-week-view';
-import { buildBatchItems, monthRangeDays, weekRangeCells } from './selection.utils';
+import { buildBatchItems, mergeCells, monthRangeDays, weekRangeCells } from './selection.utils';
 
 function makeSlotData() {
   return { status: 'UNKNOWN' as const, preview: null, declLabel: null };
@@ -123,5 +123,35 @@ describe('buildBatchItems', () => {
 
   it('liste vide → liste vide', () => {
     expect(buildBatchItems([], 'UNAVAILABLE')).toEqual([]);
+  });
+});
+
+describe('mergeCells (Story 52.3)', () => {
+  const cell = (iso: string, slot: 'MORNING' | 'EVENING' | 'FULL_DAY') => ({
+    date: new Date(iso + 'T00:00:00'),
+    slot,
+  });
+
+  it('réunit sans doublon, trié par date, le créneau déjà retenu gardant sa place', () => {
+    const base = [cell('2026-08-21', 'FULL_DAY'), cell('2026-08-20', 'EVENING')];
+    const added = [
+      cell('2026-08-20', 'FULL_DAY'),
+      cell('2026-08-21', 'FULL_DAY'),
+      cell('2026-08-22', 'FULL_DAY'),
+    ];
+
+    const merged = mergeCells(base, added);
+
+    expect(merged.map((c) => `${c.date.getDate()}|${c.slot}`)).toEqual([
+      '20|EVENING',
+      '20|FULL_DAY',
+      '21|FULL_DAY',
+      '22|FULL_DAY',
+    ]);
+  });
+
+  it('une base vide rend les créneaux ajoutés, et rien ne rend rien', () => {
+    expect(mergeCells([], [cell('2026-08-20', 'MORNING')])).toHaveLength(1);
+    expect(mergeCells([], [])).toEqual([]);
   });
 });

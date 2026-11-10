@@ -1,0 +1,129 @@
+/* Story 40.1 — carte d'une conjonction (UX-DR7). Filet de 1 px à la teinte de l'état + barre
+   gauche de 3 px ; au palier imminent, 2 px + 4 px. Teintes : tokens `--jdr-status-*` du thème
+   (même source que `StatusBadge`), jamais une couleur réinventée. L'épaisseur DOUBLE l'état écrit
+   par le badge, elle ne le remplace jamais. Aucune animation. */
+:host {
+  display: block;
+}
+
+.event-card {
+  --event-card-tone: var(--jdr-status-soon, #ff7ad9);
+  position: relative;
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--event-card-tone);
+  border-left-width: 3px;
+  background: var(--mat-sys-surface-container, transparent);
+}
+
+/* Story 40.2 : la carte s'ouvre — le titre est un bouton natif étiré sur toute la carte (::after).
+   L'anneau de focus est dessiné sur la carte entière, jamais retiré. */
+.event-card {
+  cursor: pointer;
+
+  &:has(.event-card__open:focus-visible) {
+    outline: 2px solid var(--jdr-accent-1, var(--mat-sys-primary));
+    outline-offset: 2px;
+  }
+}
+
+.event-card__open {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+}
+
+.event-card--imminent {
+  border-width: 2px;
+  border-left-width: 4px;
+}
+
+.event-card--past {
+  --event-card-tone: var(--jdr-status-done, #5a5a6a);
+}
+
+.event-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.event-card__date {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.event-card__line {
+  align-self: stretch;
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.event-card__situation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.event-card__situation-label {
+  color: var(--jdr-text-muted, #9b8fb0);
+}
+
+/* Story 42.1 (⚠️ contrat UI, UX-DR16) — la carte annulée : contenu estompé à 50 % (titre, date, hôte, lieu),
+   trait diagonal rouge semi-transparent sur toute la carte (`pointer-events: none` : elle reste cliquable),
+   filet rouge. Le badge « Annulée » reste à pleine opacité : le mot porte le sens, le trait ne le porte
+   JAMAIS seul (NFR4). Aucune animation. */
+.event-card--cancelled {
+  --event-card-tone: var(--color-unavailable, #e74c3c);
+
+  .event-card__title,
+  .event-card__date,
+  .event-card__line {
+    opacity: 0.5;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      color-mix(in srgb, var(--color-unavailable, #e74c3c) 60%, transparent) calc(50% - 1px),
+      color-mix(in srgb, var(--color-unavailable, #e74c3c) 60%, transparent) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    );
+  }
+}

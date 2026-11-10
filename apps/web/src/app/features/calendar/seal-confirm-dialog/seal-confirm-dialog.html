@@ -1,20 +1,65 @@
 <h2 mat-dialog-title>{{ theme.tone()['calendar.agenda.seal_confirm_title'] }}</h2>
 
 <mat-dialog-content>
-  <!-- AC11 — la confirmation NOMME la date et le créneau retenus. Une confirmation qui ne dit pas
-       sur quoi elle porte ne protège de rien. -->
-  <p>
-    <strong>{{ data.pollLabel }}</strong> — {{ data.dateLabel }}
-  </p>
-  <p>{{ theme.tone()['calendar.agenda.seal_confirm_body'] }}</p>
+  @if (slotsData; as slots) {
+    <!-- Story 44.6 — la Destinée liste les créneaux candidats, du plus au moins plébiscité : le meilleur est
+         présélectionné. L'état est écrit (« n oui · n peut-être · n non »), jamais porté par la couleur seule. -->
+    <p class="sfd__heading" id="sfd-heading">
+      <strong>{{ slots.pollLabel }}</strong>
+    </p>
+    <div class="sfd__slots" role="radiogroup" aria-labelledby="sfd-heading">
+      @for (row of rows; track row.id) {
+        <label
+          class="sfd__slot"
+          [class.sfd__slot--selected]="selected() === row.id"
+          [class.sfd__slot--past]="row.past"
+        >
+          <input
+            type="radio"
+            class="sfd__radio"
+            name="sfd-slot"
+            [value]="row.id"
+            [checked]="selected() === row.id"
+            [disabled]="busy() || row.past"
+            (change)="select(row.id)"
+          />
+          <span class="sfd__label">{{ row.label }}</span>
+          <span class="sfd__counts">{{ row.counts }}</span>
+          @if (row.past) {
+            <span class="sfd__past">{{ theme.tone()['partie.ralliement_event_fix_past'] }}</span>
+          }
+        </label>
+      }
+    </div>
+    <p>{{ theme.tone()['calendar.agenda.seal_confirm_body'] }}</p>
+    @if (error(); as message) {
+      <p class="sfd__error" role="alert">{{ message }}</p>
+    }
+  } @else if (data; as agenda) {
+    <!-- AC11 — la confirmation NOMME la date et le créneau retenus. Une confirmation qui ne dit pas
+         sur quoi elle porte ne protège de rien. -->
+    <p>
+      <strong>{{ agenda.pollLabel }}</strong> — {{ agenda.dateLabel }}
+    </p>
+    <p>{{ theme.tone()['calendar.agenda.seal_confirm_body'] }}</p>
+  }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
   <!-- Revue de code (36.12) — thématisé, comme le reste du dialogue. Réutilise `account.cancel_btn`
        plutôt que d'ajouter une clé dédiée : c'est déjà le libellé de renoncement générique thématisé
        (« Renoncer » / « Abandonner » / « Annuler »). -->
-  <button mat-button type="button" (click)="cancel()">{{ theme.tone()['account.cancel_btn'] }}</button>
-  <button mat-flat-button color="primary" type="button" (click)="confirm()">
+  <button mat-button type="button" [disabled]="busy()" (click)="cancel()">
+    {{ theme.tone()['account.cancel_btn'] }}
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    [disabled]="busy() || (slotsData !== null && !selected())"
+    [attr.aria-busy]="busy()"
+    (click)="confirm()"
+  >
     {{ theme.tone()['cta.choose_date'] }}
   </button>
 </mat-dialog-actions>

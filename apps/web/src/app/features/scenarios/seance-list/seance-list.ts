@@ -8,8 +8,11 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import type {
   DaySlot,
   PartieMemberDto,
@@ -17,13 +20,37 @@ import type {
   SeanceDto,
   SessionPollDto,
 } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../core/theme/tone-format';
 import { PollService } from '../../../core/poll/poll.service';
-import { composeSeanceInfo } from '../../calendar/day-detail.utils';
-import { PollStatusPanel } from '../../poll/poll-status/poll-status';
-import { PollResponseComponent } from '../../poll/poll-response/poll-response';
+import { pollRankableOptions } from '../../../core/poll/poll.util';
+import { atelierUrl } from '@master-jdr/shared';
+import { composeSeanceInfo, toDateKey } from '../../calendar/day-detail.utils';
+import { rankedEntrySlots } from '../../events/event-card.util';
+import {
+  SealConfirmDialog,
+  type SealSlotsData,
+} from '../../calendar/seal-confirm-dialog/seal-confirm-dialog';
 import { FillIndicator } from '../fill-indicator/fill-indicator';
+import { SeanceSituationComponent } from '../seance-situation/seance-situation';
+import { SeancePollSummary } from '../seance-poll-summary/seance-poll-summary';
+import {
+  seanceSituationBox,
+  type SeanceSituationBox,
+} from '../seance-situation/seance-situation-box';
+import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
+import { StatusBadge } from '../../../shared/status-badge/status-badge';
+import { SituationLine } from '../../../shared/situation-line/situation-line';
+import {
+  seanceSituation,
+  seanceState,
+  type SeanceSituation,
+  type StatusBadgeState,
+} from '../../../core/status/status-derivation';
+import { isSpan, spanShortLabel } from '../../calendar/span-label';
 
 /** Même forme que côté serveur (`set-infos-pratiques.dto.ts`) : sert uniquement à détecter une
  *  valeur stockée hors app (écriture directe en base) que le widget natif `type="time"` rendrait
@@ -41,12 +68,21 @@ const SLOT_LABELS: Record<DaySlot, string> = {
  * Liste des séances d'un scénario (Story 8.2, retravaillé Story 8.7/8.8) — la création de vote ne
  * vit plus ici (panneau `<app-poll-creation>` retiré, point d'entrée unique désormais le calendrier
  * via `goToCalendarForSeance`, cf. AC2/AC3 Story 8.7). AD-4 révisé (Story 8.8) : une séance
- * épisodique peut désormais avoir à la fois un vote (`PollStatusPanel`/`PollResponseComponent`,
+ * épisodique peut désormais avoir à la fois un vote (`SeancePollSummary`, côté MJ comme côté joueur,
  * choisit *quand*) et une inscription à capacité limitée (choisit *qui*) — les deux coexistent.
  */
 @Component({
   selector: 'app-seance-list',
-  imports: [MatButtonModule, PollStatusPanel, PollResponseComponent, FillIndicator],
+  imports: [
+    AppIcon,
+    DurationStepper,
+    MatButtonModule,
+    SeancePollSummary,
+    FillIndicator,
+    StatusBadge,
+    SituationLine,
+    SeanceSituationComponent,
+  ],
   templateUrl: './seance-list.html',
   styleUrl: './seance-list.scss',
 })
@@ -55,16 +91,32 @@ export class SeanceList {
   private readonly pollSvc = inject(PollService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  protected readonly theme = inject(ThemeToneService);
 
   protected readonly currentUserId = computed(() => this.auth.currentUser()?.id);
 
   readonly scenario = input.required<ScenarioDto>();
   readonly partieId = input.required<string>();
   readonly isMj = input(false);
+  /**
+   * Story 53.3 — rôle pris en compte par la SEULE ligne « Ma situation » ; par défaut `isMj()`.
+   *
+   * 🚨 Le dialogue de lecture passe `[isMj]="false"` pour garder les contrôles MJ cachés, mais le MJ
+   * y ouvre ses chapitres PASSE : sans cette entrée il lirait la situation d'un joueur sur des
+   * séances qu'il a menées. Elle ne débloque AUCUN contrôle — `isMj` reste seul juge de ceux-là.
+   */
+  readonly situationIsMj = input<boolean | undefined>(undefined);
   readonly isEpisodique = input.required<boolean>();
   readonly members = input<PartieMemberDto[]>([]);
+  /** Story 54.3 — la liste des membres est chargée (et non « vide ou en échec ») : sans elle le résumé du MJ
+   *  retombe sur le NOMBRE d'absents au lieu de les nommer. */
+  readonly membersLoaded = input(false);
 
   readonly seanceLinked = output<ScenarioDto>();
+  /** Story 54.1 — la fiche va quitter la page (« Voter dans le calendrier ») : l'hôte, s'il est une
+   *  fenêtre, doit se fermer AVANT la navigation, comme `ScenarioReadDialog.editResume()`. */
+  readonly leaving = output<void>();
 
   constructor() {
     // Story 19.1 (AC2) : réutilise le signal ScenariosService.changed déjà actif — SeanceList
@@ -101,13 +153,42 @@ export class SeanceList {
     Record<string, { heureRdv: string; lieu: string; notePratique: string }>
   >({});
 
+  /** Story 47.1 : durée saisie par séance (brouillon local, comme les informations pratiques). */
+  protected readonly durationDrafts = signal<Record<string, number>>({});
+
+  protected durationDraft(seanceId: string): number {
+    return this.durationDrafts()[seanceId] ?? 1;
+  }
+
+  protected setDurationDraft(seanceId: string, value: number): void {
+    this.durationDrafts.update((d) => ({ ...d, [seanceId]: value }));
+  }
+
+  /** Départ de la plage d'une séance datée, pour que le compteur l'écrive en clair. */
+  protected durationStart(seance: SeanceDto): { date: string; slot: DaySlot } | null {
+    return seance.dateValidee && seance.slotValidee
+      ? { date: seance.dateValidee.substring(0, 10), slot: seance.slotValidee }
+      : null;
+  }
+
+  /** Un vote ouvert sans date : sa durée se règle dans le composer de dates (Story 47.4), pas ici. */
+  protected durationLocked(seance: SeanceDto): boolean {
+    return seance.poll !== undefined && !seance.dateValidee;
+  }
+
   private syncInfosDrafts(s: ScenarioDto): void {
     const previous = this.previousScenarioSeances;
     this.previousScenarioSeances = s.seances;
     const next = { ...this.infosDrafts() };
+    const nextDurations = { ...this.durationDrafts() };
+    let durationsTouched = false;
     let touched = false;
     for (const seance of s.seances) {
       const prevSeance = previous?.find((p) => p.id === seance.id);
+      if (!prevSeance || prevSeance.durationSlots !== seance.durationSlots) {
+        nextDurations[seance.id] = seance.durationSlots;
+        durationsTouched = true;
+      }
       const serverChanged =
         !prevSeance ||
         (prevSeance.heureRdv ?? '') !== (seance.heureRdv ?? '') ||
@@ -123,6 +204,7 @@ export class SeanceList {
       }
     }
     if (touched) this.infosDrafts.set(next);
+    if (durationsTouched) this.durationDrafts.set(nextDurations);
   }
 
   /** Valeur à afficher dans un champ d'informations pratiques : le brouillon local, jamais
@@ -147,13 +229,146 @@ export class SeanceList {
 
   readonly SLOT_LABELS = SLOT_LABELS;
 
-  // Story 8.7, AC2/AC3 : point d'entrée unique — envoie le MJ sur le calendrier (mode MJ) avec
-  // cette séance pré-sélectionnée/verrouillée, plutôt qu'un panneau de création dupliqué ici.
-  // Story 8.8 : ce même point d'entrée est désormais aussi utilisé pour l'épisodique.
+  /**
+   * Story 32.3 — jour courant figé à la CONSTRUCTION, une seule fois pour toute la liste.
+   *
+   * 🚨 Même raison que `CalendarView.todayKey` : si chaque badge relisait l'horloge, deux séances
+   * rendues de part et d'autre de minuit ne compareraient plus au même « aujourd'hui », et
+   * l'intensité d'imminence deviendrait incohérente d'une ligne à l'autre.
+   */
+  protected readonly todayKey = toDateKey(new Date());
+
+  /**
+   * L'état affiché d'une séance — dérivé, jamais servi (AD-20 : aucun champ `status` sur
+   * `SeanceDto`). Impersonnel depuis la story 53.1 : « Vote en cours » pour tout le monde, l'appel
+   * à l'action du lecteur vit dans la pastille « Ma situation » (`seanceSituation()`).
+   *
+   * ⚠️ Ce badge ne remplace RIEN : l'indicateur de remplissage, le panneau de vote et le
+   * compte-rendu restent exactement où ils étaient. Il les résume, il ne les supplante pas.
+   */
+  protected seanceBadge(seance: SeanceDto): StatusBadgeState {
+    return seanceState(seance, this.todayKey);
+  }
+
+  /**
+   * Story 53.3 — « Ma situation » du lecteur sur cette séance, ou `null` (aucune ligne). Calcul
+   * unique `seanceSituation()` avec le `todayKey` de l'écran, jamais redéfini ici. Partagé par
+   * l'éditeur de scénario, le dialogue de lecture et l'onglet Chapitre d'une quête unique.
+   */
+  protected seanceSituation(seance: SeanceDto): SeanceSituation | null {
+    return seanceSituation(
+      seance,
+      this.currentUserId(),
+      this.situationIsMj() ?? this.isMj(),
+      this.todayKey,
+    );
+  }
+
+  /**
+   * Story 54.1 — l'encadré d'action de cette séance, ou `null` (la ligne « Ma situation » seule).
+   * Fonction pure `seanceSituationBox()` ; reçoit la valeur de `seanceSituation()` sans la recalculer.
+   * `isMj()` (les contrôles) et non `situationIsMj` : le MJ qui lit un chapitre passé en lecture seule
+   * ne reçoit aucun encadré, ses actions vivant dans `ScenarioEditor`.
+   */
+  protected situationBox(
+    seance: SeanceDto,
+    situation: SeanceSituation | null,
+  ): SeanceSituationBox | null {
+    return seanceSituationBox(
+      seance,
+      situation,
+      this.isMj(),
+      this.currentUserId(),
+      this.todayKey,
+      this.isEpisodique(),
+    );
+  }
+
+  /** L'action de l'encadré : les mêmes méthodes qu'avant, l'action n'apparaît plus qu'une fois. */
+  protected onBoxAction(seance: SeanceDto, box: SeanceSituationBox): void {
+    switch (box) {
+      case 'voter':
+        if (seance.poll) this.goToCalendarForPoll(seance.poll.id, 'player');
+        return;
+      case 'fixer_la_date':
+        void this.onFixDate(seance);
+        return;
+      case 'participer':
+        void this.onInscrire(seance.id);
+        return;
+      case 'se_desinscrire':
+        void this.onDesinscrire(seance.id);
+        return;
+      case 'lancer_le_vote':
+        this.goToCalendarForSeance(seance.id);
+        return;
+      case 'reinitialiser_la_date':
+        void this.onResetSeanceDate(seance.id);
+        return;
+    }
+  }
+
+  /** Story 54.1 : ouvre la Destinée sur ce vote (`?poll=`), la fiche se fermant d'abord. */
+  protected goToCalendarForPoll(pollId: string, role: 'mj' | 'player'): void {
+    this.leaving.emit();
+    void this.router.navigateByUrl(
+      atelierUrl({ partieId: this.partieId(), family: 'jdr', role }, { poll: pollId }),
+    );
+  }
+
+  /**
+   * Date effective de la séance, ou `null`.
+   *
+   * 🚨 La RACINE du DTO (story 32.3) prend le relais des deux sources historiques quand elles sont
+   * vides : c'est exactement le cas d'une séance linéaire datée par héritage, sans vote ni
+   * inscription, qui portait un badge « Programmée » avec aucune date à côté. Même résolution que
+   * `seanceState()`, pour que le badge et le texte ne puissent pas se contredire.
+   */
+  protected resolvedDate(seance: SeanceDto): string | null {
+    return seance.poll?.chosenDate ?? seance.dateValidee ?? seance.inscription?.dateValidee ?? null;
+  }
+
+  /** « Séance N » — l'index est 0-based côté gabarit, le libellé est 1-based. */
+  protected seanceLabel(index: number): string {
+    return fillTone(this.theme.tone()['common.seance_n'], { n: index + 1 });
+  }
+
+  /** « Date retenue : … » — la date, déjà mise en forme, s'insère dans le gabarit du thème. */
+  protected dateRetenue(date: string): string {
+    return fillTone(this.theme.tone()['common.date_retenue_date'], { date });
+  }
+
+  /** Avertissement affiché sous le champ Heure quand la valeur stockée est illisible (`raw`). */
+  protected heureMalformedWarning(raw: string): string {
+    return fillTone(this.theme.tone()['scenarios.seances_heure_malformed'], { raw });
+  }
+
+  /** Libellé « Date retenue ». Le créneau n'existe que sur un vote scellé, d'où les deux mises en
+   *  forme — `formatChosenDate()` l'ajoute, `formatValidatedDate()` n'a rien à ajouter. */
+  protected formatSeanceDate(seance: SeanceDto): string {
+    // Story 47.3 : une plage de plusieurs créneaux s'écrit du départ à la fin.
+    const startIso = this.resolvedDate(seance);
+    if (startIso && seance.endDate) {
+      const start = {
+        date: startIso.substring(0, 10),
+        slot: seance.poll?.chosenSlot ?? seance.slotValidee,
+      };
+      const end = { date: seance.endDate.substring(0, 10), slot: seance.endSlot };
+      if (isSpan(start, end)) return spanShortLabel(start, end);
+    }
+    return seance.poll?.chosenDate
+      ? this.formatChosenDate(seance.poll)
+      : this.formatValidatedDate(this.resolvedDate(seance)!);
+  }
+
+  // Story 8.7, AC2/AC3 : point d'entrée unique — envoie le MJ sur le calendrier (mode MJ) plutôt qu'un panneau
+  // de création dupliqué ici. Story 8.8 : aussi utilisé pour l'épisodique.
+  // ⚠️ Story 45.2 : `?seanceId` ARME le composer du calendrier pour cette séance (le panneau 8.7 n'existe plus),
+  // par l'adresse de l'atelier construite par la fonction unique `atelierUrl`.
   protected goToCalendarForSeance(seanceId: string): void {
-    void this.router.navigate(['/parties', this.partieId(), 'calendar'], {
-      queryParams: { seanceId },
-    });
+    void this.router.navigateByUrl(
+      atelierUrl({ partieId: this.partieId(), family: 'jdr', role: 'mj' }, { seanceId }),
+    );
   }
 
   protected openCapacityEdit(seanceId: string): void {
@@ -164,21 +379,32 @@ export class SeanceList {
     this.editingCapacitySeanceId.set(null);
   }
 
-  // 🚨 Revue de code (deferred-work.md, 2026-08-24) : PAS de confirmation ici. `PollStatusPanel`
-  // (`app-poll-status`, seul émetteur de `chosen`) ouvre déjà son propre `ConfirmDialog` stylé
-  // AVANT d'émettre l'événement (`poll-status.ts:onChooseClick`) — un `window.confirm()` ajouté
-  // ici (décision du 2026-08-24, retirée) doublait le prompt : deux confirmations successives
-  // pour le même scellement. Toujours confirmé, une seule fois, via le MatDialog déjà en place —
-  // même mécanisme que `CalendarView.onSealRequested()` (Agenda/grille).
-  protected async onChoose(pollId: string, optionId: string): Promise<void> {
-    if (this.pollActionPending()) return;
+  /**
+   * Story 54.3 ⚠️ — « Fixer la date… » : `SealConfirmDialog` en mode liste de créneaux, comme
+   * `CalendarView.openDestinyFix()` — le meilleur créneau en tête et présélectionné (aucun sans « oui »),
+   * un créneau passé jamais retenu, le refus du serveur affiché dans la fenêtre. L'effet est celui de
+   * « Sceller ce créneau » (`PATCH …/poll/:pollId/choose`) : le vote passe à `CLOSED` avec sa date.
+   */
+  protected async onFixDate(seance: SeanceDto): Promise<void> {
+    const poll = seance.poll;
+    if (!poll || !seance.can.choose || this.pollActionPending()) return;
+    const todayKey = this.todayKey;
+    const slots = rankedEntrySlots(pollRankableOptions(poll), todayKey, poll.durationSlots);
+    const index = this.scenario().seances.findIndex((s) => s.id === seance.id);
+    const pollLabel = `${this.scenario().title} — ${this.seanceLabel(index)}`;
+    const confirm = (optionId: string) =>
+      this.pollSvc.chooseDate(this.partieId(), poll.id, { optionId });
+    // Posé AVANT d'ouvrir la fenêtre : deux touchers rapprochés n'en ouvrent pas deux.
     this.pollActionPending.set(true);
     this.error.set(null);
     try {
-      await this.pollSvc.chooseDate(this.partieId(), pollId, { optionId });
-      await this.refreshScenario();
-    } catch {
-      this.error.set('Impossible de choisir cette date. Réessayez.');
+      const ref = this.dialog.open<SealConfirmDialog, SealSlotsData, boolean>(SealConfirmDialog, {
+        data: { pollLabel, slots, todayKey, confirm },
+        width: 'min(560px, 96vw)',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      });
+      if (await firstValueFrom(ref.afterClosed())) await this.refreshScenario();
     } finally {
       this.pollActionPending.set(false);
     }
@@ -192,17 +418,10 @@ export class SeanceList {
       await this.pollSvc.closePoll(this.partieId(), pollId);
       await this.refreshScenario();
     } catch {
-      this.error.set('Impossible de clôturer le vote. Réessayez.');
+      this.error.set(this.theme.tone()['common.impossible_de_cloturer_le_vote_reessayez']);
     } finally {
       this.pollActionPending.set(false);
     }
-  }
-
-  protected onPollResponded(poll: SessionPollDto): void {
-    this.seanceLinked.emit({
-      ...this.scenario(),
-      seances: this.scenario().seances.map((s) => (s.poll?.id === poll.id ? { ...s, poll } : s)),
-    });
   }
 
   protected isInscrit(inscrits: { userId: string; pseudo: string }[]): boolean {
@@ -228,7 +447,7 @@ export class SeanceList {
       this.editingCapacitySeanceId.set(null);
       this.seanceLinked.emit(updated);
     } catch {
-      this.error.set('Impossible de définir la capacité. Réessayez.');
+      this.error.set(this.theme.tone()['scenarios.seances_capacity_error']);
     } finally {
       this.pollActionPending.set(false);
     }
@@ -242,7 +461,7 @@ export class SeanceList {
       const updated = await this.scenarios.inscrire(seanceId);
       this.seanceLinked.emit(updated);
     } catch {
-      this.error.set('Impossible de vous inscrire. Réessayez.');
+      this.error.set(this.theme.tone()['scenarios.seances_inscrire_error']);
     } finally {
       this.pollActionPending.set(false);
     }
@@ -256,7 +475,7 @@ export class SeanceList {
       const updated = await this.scenarios.desinscrire(seanceId);
       this.seanceLinked.emit(updated);
     } catch {
-      this.error.set('Impossible de vous désinscrire. Réessayez.');
+      this.error.set(this.theme.tone()['scenarios.seances_desinscrire_error']);
     } finally {
       this.pollActionPending.set(false);
     }
@@ -268,10 +487,11 @@ export class SeanceList {
   // suppression autorisée (décision utilisateur), mais le MJ doit être prévenu explicitement.
   protected async onDeleteSeance(seance: SeanceDto): Promise<void> {
     if (this.pollActionPending()) return;
-    const hasValidatedDate = !!(seance.inscription?.dateValidee ?? seance.poll?.chosenDate);
-    const message = hasValidatedDate
-      ? 'Cette séance a une date validée. La supprimer quand même ? Cette action est définitive.'
-      : 'Supprimer cette séance ? Cette action est définitive.';
+    const hasValidatedDate = this.resolvedDate(seance) !== null;
+    const key = hasValidatedDate
+      ? 'scenarios.seances_delete_confirm_dated'
+      : 'scenarios.seances_delete_confirm';
+    const message = this.theme.tone()[key];
     if (!window.confirm(message)) return;
     this.pollActionPending.set(true);
     this.error.set(null);
@@ -279,7 +499,7 @@ export class SeanceList {
       const updated = await this.scenarios.deleteSeance(seance.id);
       this.seanceLinked.emit(updated);
     } catch {
-      this.error.set('Impossible de supprimer cette séance. Réessayez.');
+      this.error.set(this.theme.tone()['scenarios.seances_delete_error']);
     } finally {
       this.pollActionPending.set(false);
     }
@@ -290,17 +510,14 @@ export class SeanceList {
   // destructive, même style que la suppression de séance à date validée, Story 8.7 revue).
   protected async onResetSeanceDate(seanceId: string): Promise<void> {
     if (this.pollActionPending()) return;
-    if (
-      !window.confirm('Réinitialiser la date de cette séance ? Un nouveau vote pourra être lancé.')
-    )
-      return;
+    if (!window.confirm(this.theme.tone()['scenarios.seances_reset_confirm'])) return;
     this.pollActionPending.set(true);
     this.error.set(null);
     try {
       const updated = await this.scenarios.resetSeanceDate(seanceId);
       this.seanceLinked.emit(updated);
     } catch {
-      this.error.set('Impossible de réinitialiser la date. Réessayez.');
+      this.error.set(this.theme.tone()['scenarios.seances_reset_error']);
     } finally {
       this.pollActionPending.set(false);
     }
@@ -319,14 +536,27 @@ export class SeanceList {
     this.pollActionPending.set(true);
     this.error.set(null);
     try {
+      const current = this.scenario().seances.find((x) => x.id === seanceId);
       const updated = await this.scenarios.setInfosPratiques(seanceId, {
         heureRdv: heureRdv.trim() || null,
         lieu: lieu.trim() || null,
         notePratique: notePratique.trim() || null,
+        // Story 47.1 : la durée ne part que si le compteur a bougé (absente = inchangée côté serveur) et
+        // jamais sous un vote ouvert sans date.
+        ...(current &&
+        !this.durationLocked(current) &&
+        this.durationDraft(seanceId) !== current.durationSlots
+          ? { durationSlots: this.durationDraft(seanceId) }
+          : {}),
       });
       this.seanceLinked.emit(updated);
-    } catch {
-      this.error.set('Impossible d’enregistrer les informations pratiques. Réessayez.');
+    } catch (err) {
+      // Story 47.1 : un refus du serveur sur la durée (déjà écrit en français) est montré tel quel.
+      this.error.set(
+        err instanceof HttpErrorResponse && typeof err.error?.message === 'string'
+          ? err.error.message
+          : this.theme.tone()['scenarios.seances_infos_error'],
+      );
     } finally {
       this.pollActionPending.set(false);
     }
@@ -352,7 +582,7 @@ export class SeanceList {
       const updated = await this.scenarios.setCompteRendu(seanceId, compteRendu);
       this.seanceLinked.emit(updated);
     } catch {
-      this.error.set('Impossible d’enregistrer le compte-rendu. Réessayez.');
+      this.error.set(this.theme.tone()['scenarios.seances_compte_rendu_error']);
     } finally {
       this.pollActionPending.set(false);
     }
@@ -411,9 +641,7 @@ export class SeanceList {
         if (fresh) this.seanceLinked.emit(fresh);
       } catch {
         if (generation !== this.refreshGeneration) return;
-        this.error.set(
-          'Action effectuée, mais impossible de rafraîchir l’affichage. Rechargez la page.',
-        );
+        this.error.set(this.theme.tone()['scenarios.seances_refresh_error']);
       }
     }
   }

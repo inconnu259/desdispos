@@ -10,6 +10,12 @@ export const HOMME_DRAGON_LEVEL_THRESHOLDS: { level: number; scenariosPasse: num
   { level: 5, scenariosPasse: 12 },
 ];
 
+/** Niveau à partir duquel le MJ choisit l'artefact cadeau (`docs/dragons.md`, « Niveaux »). */
+export const ARTEFACT_CADEAU_LEVEL = 4;
+
+/** Niveau à partir duquel les souffles rituels (mère-dragon) sont consultables. */
+export const SOUFFLES_RITUELS_LEVEL = 5;
+
 /** Niveau 1 si en dessous du premier seuil (1 scénario Passé) — même convention que `levelForXp`. */
 export function levelForScenariosPasse(count: number): number {
   let level = 1;

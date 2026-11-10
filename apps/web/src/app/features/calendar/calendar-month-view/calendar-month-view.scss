@@ -235,6 +235,38 @@
   &--gauge {
     padding-right: 11px;
   }
+
+  /* Story 47.3 (UX-DR9) — le CONNECTEUR d'une plage : un triangle de 5 px, à l'intérieur de la bande (la
+     bande est en `overflow: hidden` et ne compte jamais sur l'écart de la grille, qui disparaît d'une ligne
+     de semaine à l'autre, dimanche → lundi compris). Il ne porte jamais seul l'information : le nom accessible
+     de la bande dit la plage entière. Teinte = celle du rang gagnant, aucune teinte nouvelle. */
+  &--span-next::after,
+  &--span-prev::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    margin-top: -4px;
+    z-index: 2;
+    border: 4px solid transparent;
+    border-left: 5px solid var(--span-connector, currentColor);
+    pointer-events: none;
+  }
+
+  &--span-next::after {
+    right: 0;
+  }
+
+  &--span-prev::before {
+    left: 0;
+  }
+
+  &[data-winner='seance'] {
+    --span-connector: var(--jdr-status-soon, #ff7ad9);
+  }
+
+  &[data-winner='vote'] {
+    --span-connector: var(--jdr-status-todo, #f0a030);
+  }
 }
 
 /* Story 36.3, AC2/AC3 — la bande que la PORTÉE désigne. Marquée par un anneau (une forme) en
@@ -251,6 +283,12 @@
    « ce créneau sera proposé à TOUT LE MONDE ». Deux intentions opposées ne peuvent pas porter le
    même traitement. La teinte est celle du vote (`status-todo`), et le trait est TIRETÉ — la
    forme, pas seulement la couleur (P-1), et « pas encore enregistré » se lit dans le pointillé. */
+.band--window {
+  /* Story 46.2 — la fenêtre de l'automate sélectionnée : contour PLEIN (le tireté est celui du composer). */
+  outline: 2px solid var(--mat-sys-primary, #6750a4);
+  outline-offset: -2px;
+}
+
 .band--composed {
   box-shadow:
     inset 0 0 0 100px color-mix(in srgb, var(--jdr-status-todo, #f0a030) 24%, transparent);
@@ -258,6 +296,31 @@
   outline-offset: -2px;
 }
 
+/* ⚠️ Story 47.4 (DESIGN `preview`) — les autres bandes de la plage d'un départ désigné, ou de celle qu'ouvrirait la
+   bande survolée : l'état d'aperçu existant (fond accent 22 %, pointillé 1,5 px accent). Aucune teinte nouvelle ; le
+   départ, lui, garde son tireté. Bloc JUMEAU de `.slot-cell--span-preview` (vue Semaine). */
+.band--span-preview {
+  box-shadow:
+    inset 0 0 0 100px
+    color-mix(in srgb, var(--jdr-accent-1, var(--mat-sys-primary, #6750a4)) 22%, transparent);
+  outline: 1.5px dotted var(--jdr-accent-1, var(--mat-sys-primary, #6750a4));
+  outline-offset: -2px;
+}
+
+
+/* Story 47.5 — « ×n » : plusieurs plages d'un même vote recouvrent ce créneau. 9 px, coin haut droit de la bande,
+   couleur de texte (aucune teinte nouvelle). Sans interaction : le tap ouvre le sélecteur de la bande. */
+.band__overlap {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  z-index: 3;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--jdr-text);
+  pointer-events: none;
+}
 
 /* Le titre de la séance ou le libellé du vote, tronqué à l'ellipse et jamais reformaté.
    Il disparaît sous le seuil de densité (voir plus bas) : la forme survit, le texte cède. */
@@ -389,5 +452,17 @@
     font-size: 0.75rem;
     letter-spacing: 0.5px;
     padding: 6px 0;
+  }
+}
+
+/* ── Story 52.3 : le mode déclaration ──
+   Un tap sélectionne et un glissement HORIZONTAL sélectionne aussitôt, sans appui long : le défilement vertical de la
+   page redevient donc natif (`pan-y`) au lieu d'être sacrifié comme en lecture (`touch-action: none` ci-dessus). Une
+   marge réservée sous la grille laisse la barre collante ne jamais cacher sa dernière ligne. */
+.calendar-grid--declare {
+  margin-bottom: 16px;
+
+  .day-cell {
+    touch-action: pan-y;
   }
 }

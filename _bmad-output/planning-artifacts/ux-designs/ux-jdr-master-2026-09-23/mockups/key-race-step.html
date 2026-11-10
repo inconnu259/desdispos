@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Key screen — Étape « Race », traitement final (itération 7)</title>
+<style>
+/*
+  Gouverne cette planche : ux-jdr-master-2026-09-23/.memlog.md, entrée "Décision finale sur la
+  teinte par race : mix des 3 propositions — gemme de race + lueur de coin douce + liséré
+  uniforme 2px". Convergence sur les 4 races réelles, état repos + un état sélectionné.
+
+  Base : ux-jdr-master-2026-08-31 DESIGN.md §7.1 ChoiceCard (nom + sous-titre 2 lignes,
+  sélection = accent-2), §4 grille auto-fill/minmax(140px,1fr), cible 44px, seuil desktop 1024px.
+  EXPERIENCE.md §7 Accessibility Floor : jamais la couleur seule — nom + étiquette texte
+  redondants avec la gemme/liséré sur les 4 cartes. Tokens réels apps/web/src/styles.scss
+  .theme-grimoire-emeraude.
+*/
+:root{
+  --bg:#0d0a14; --surface:#1a1428; --surface-high:#221c35;
+  --accent-1:#7ec8a4; --accent-2:#9b6dff; --accent-2-rgb:155,109,255;
+  --text:#e8e0f0; --text-muted:#9b8fb0; --border-subtle:rgba(255,255,255,.08);
+  --gradient-cta:linear-gradient(135deg,#7ec8a4,#9b6dff);
+  --text-sm:12px; --text-base:14px; --text-lg:16px; --text-xl:20px; --text-2xl:26px;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:12px; --sp-base:16px; --sp-lg:24px; --sp-xl:32px;
+  --r-card:10px; --r-badge:6px; --r-button:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050308;color:var(--text);
+  font:var(--text-base)/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:var(--sp-xl);}
+h1{font-size:var(--text-2xl);margin:0 0 4px;font-weight:700}
+p.lead{color:var(--text-muted);max-width:820px;margin:0 0 var(--sp-lg)}
+
+.browser{width:900px;background:#020103;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.7);border:1px solid #241a30}
+.chrome{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#150f20;border-bottom:1px solid var(--border-subtle)}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot.r{background:#e05252}.dot.y{background:#f0a030}.dot.g{background:#7ec8a4}
+.url{margin-left:10px;flex:1;background:#0d0a14;border:1px solid var(--border-subtle);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text-muted)}
+.viewport{background:var(--bg)}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:var(--surface-high);font-weight:600;font-size:13px}
+.nav i{font-style:normal;color:var(--text-muted);width:28px;text-align:center}
+.prog{height:4px;background:#2a2438}
+.prog>div{height:100%;background:var(--gradient-cta)}
+.step-body{padding:var(--sp-lg) var(--sp-xl)}
+.intro{font-style:italic;color:var(--text-muted);margin:0 0 var(--sp-md);font-size:13px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));gap:var(--sp-sm)}
+.cc{
+  position:relative;overflow:hidden;
+  border:2px solid var(--h);border-radius:var(--r-card);
+  padding:var(--sp-md) var(--sp-base);
+  background:var(--surface-high);
+  min-height:126px;
+}
+.cc:not(.sel)::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(130px 100px at 10% -8%, var(--glow) 0%, transparent 70%);
+}
+.cc.sel{border-color:var(--accent-2);background:rgba(var(--accent-2-rgb),.16)}
+.cc-head{display:flex;align-items:center;gap:var(--sp-sm);margin-bottom:6px;position:relative}
+.gem{
+  width:30px;height:30px;border-radius:50%;flex:0 0 auto;position:relative;
+  background:
+    radial-gradient(circle at 32% 28%, var(--hl,rgba(255,255,255,.85)) 0%, transparent 40%),
+    conic-gradient(from 200deg, var(--g1), var(--g2), var(--g1));
+  box-shadow:0 0 0 1px rgba(255,255,255,.16), 0 0 10px -2px var(--glow-strong, transparent);
+}
+.cc b{font-weight:500;font-size:var(--text-base);display:block}
+.cc .tag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+  padding:2px 7px;border-radius:var(--r-badge);border:1px solid var(--h);color:var(--h);
+  margin-bottom:8px;position:relative;
+}
+.cc p{margin:0;font-size:var(--text-sm);line-height:1.35;color:var(--text-muted);position:relative;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cc .radio{position:absolute;top:12px;right:12px;width:16px;height:16px;border-radius:50%;
+  border:2px solid var(--border-subtle);z-index:1}
+.cc.sel .radio{border-color:var(--accent-2)}
+.cc.sel .radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--accent-2)}
+
+.vert{--h:#5fa578; --g1:#3f7d54; --g2:#8fd6ab; --glow:rgba(126,200,164,.20); --glow-strong:rgba(126,200,164,.55)}
+.bleu{--h:#6a93c2; --g1:#3d6289; --g2:#9cc3e8; --glow:rgba(122,169,216,.20); --glow-strong:rgba(122,169,216,.55)}
+.rouge{--h:#c06552; --g1:#7d3226; --g2:#e08a6f; --glow:rgba(224,120,90,.22); --glow-strong:rgba(224,120,90,.55)}
+/* Noir : la gemme (onyx + reflet) porte l'identité, pas le liséré — donc le liséré/étiquette
+   peuvent rester un charbon assumé ("un peu moins noir" que la gemme) sans que la carte perde
+   son identité, puisque l'œil est d'abord attiré par le reflet de la gemme. */
+.noir{--h:#524d5e; --g1:#0c0b10; --g2:#4a4656; --hl:rgba(255,255,255,.55); --glow:rgba(255,255,255,.10); --glow-strong:rgba(255,255,255,.30)}
+
+.bar{display:flex;gap:var(--sp-sm);padding:var(--sp-sm) var(--sp-xl) var(--sp-lg)}
+.bar div{min-height:44px;padding:0 18px;border-radius:var(--r-button);display:flex;align-items:center;justify-content:center;font-weight:600;border:1px solid var(--border-subtle);font-size:13px}
+.bar .go{background:var(--gradient-cta);color:#0d0a14;border:0;margin-left:auto}
+.note{max-width:900px;font-size:12px;color:var(--text-muted);margin-top:var(--sp-sm)}
+.note b{color:var(--accent-1)}
+</style>
+</head>
+<body>
+
+<h1>Étape « Race » — traitement final (itération 7)</h1>
+<p class="lead">
+  Convergence sur les 4 races réelles : gemme de race (prop. 3) + lueur de coin douce (prop. 2) +
+  liséré uniforme 2px (prop. 1), les trois combinés, même traitement pour les quatre — y compris
+  le Noir, dont l'identité passe par le reflet de la gemme plutôt que par la couleur du liséré.
+</p>
+
+<div class="browser">
+  <div class="chrome">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <div class="url">app.jdr-master.local/parties/voie-des-brumes/hommes-dragons/nouveau</div>
+  </div>
+  <div class="viewport">
+    <div class="nav"><i>❮</i><span>Étape 1/5 · Race</span><i>❯</i></div>
+    <div class="prog"><div style="width:20%"></div></div>
+    <div class="step-body">
+      <p class="intro">[Texte d'introduction de l'étape — seedé, inchangé]</p>
+      <div class="grid">
+        <div class="cc vert">
+          <div class="radio"></div>
+          <div class="cc-head"><span class="gem"></span><b>Dragon Vert</b></div>
+          <span class="tag">Vert</span>
+          <p>Décrit ici ce qui distingue le Dragon Vert des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+        </div>
+        <div class="cc bleu sel">
+          <div class="radio"></div>
+          <div class="cc-head"><span class="gem"></span><b>Dragon Bleu</b></div>
+          <span class="tag">Bleu</span>
+          <p>Décrit ici ce qui distingue le Dragon Bleu des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+        </div>
+        <div class="cc rouge">
+          <div class="radio"></div>
+          <div class="cc-head"><span class="gem"></span><b>Dragon Rouge</b></div>
+          <span class="tag">Rouge</span>
+          <p>Décrit ici ce qui distingue le Dragon Rouge des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+        </div>
+        <div class="cc noir">
+          <div class="radio"></div>
+          <div class="cc-head"><span class="gem"></span><b>Dragon Noir</b></div>
+          <span class="tag">Noir</span>
+          <p>Décrit ici ce qui distingue le Dragon Noir des autres races — ce texte est un espace réservé, le contenu définitif viendra d'une autre story.</p>
+        </div>
+      </div>
+    </div>
+    <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+  </div>
+</div>
+<p class="note">Étape sans champ de formulaire natif : le <code>&lt;select&gt;</code> race actuel (<b>homme-dragon-sheet.html</b>) disparaît, remplacé entièrement par ces <code>ChoiceCard</code>. Dragon Bleu montré à l'état sélectionné (halo <code>accent-2</code>, gemme/liséré de race conservés).</p>
+
+</body>
+</html>

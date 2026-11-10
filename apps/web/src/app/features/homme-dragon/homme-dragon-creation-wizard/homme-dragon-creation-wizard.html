@@ -1,0 +1,317 @@
+<div class="hdw">
+  <div class="hdw__head">
+    <p class="hdw__title" aria-live="polite">
+      {{ stepProgress() }}
+    </p>
+    <div class="hdw__progress-track">
+      <div class="hdw__progress-fill" [style.width.%]="((stepIndex() + 1) / steps().length) * 100"></div>
+    </div>
+  </div>
+
+  <div class="hdw__main">
+    @if (introText(); as intro) {
+      <div class="hdw__intro">
+        <p
+          id="hdw-intro"
+          class="hdw__intro-text"
+          [class.hdw__intro-text--clamped]="introTruncatable() && !introExpanded()"
+        >{{ intro }}</p>
+        @if (introTruncatable()) {
+          <button
+            type="button"
+            class="hdw__intro-toggle"
+            aria-controls="hdw-intro"
+            [attr.aria-expanded]="introExpanded()"
+            (click)="introExpanded.set(!introExpanded())"
+          >{{ introExpanded() ? theme.tone()['common.reduire'] : theme.tone()['common.lire_la_suite'] }}</button>
+        }
+      </div>
+    }
+
+    @switch (currentStep().key) {
+      @case ('race') {
+        <div
+          class="hdw__grid hdw__grid--race"
+          role="radiogroup"
+          [attr.aria-label]="currentStep().label"
+          appRadioGroupNav
+        >
+          @for (r of raceOptions(); track r.race) {
+            <div
+              class="hdw__race"
+              [class.hdw__race--vert]="r.race === 'DRAGON_VERT'"
+              [class.hdw__race--bleu]="r.race === 'DRAGON_BLEU'"
+              [class.hdw__race--rouge]="r.race === 'DRAGON_ROUGE'"
+              [class.hdw__race--noir]="r.race === 'DRAGON_NOIR'"
+            >
+              <app-choice-card
+                [option]="r.option"
+                [selected]="race() === r.race"
+                [tint]="true"
+                [badge]="r.tag"
+                (selectedOption)="onRaceChange($event)"
+              />
+              @if (r.hasDetail) {
+                <button
+                  type="button"
+                  class="hdw__more"
+                  [attr.aria-label]="moreAria(r.option.label)"
+                  (click)="openRaceDetail(r.race, $event)"
+                >{{ theme.tone()['common.en_savoir_plus'] }}</button>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @case ('artefact') {
+        @if (artefactOptions().length === 0) {
+          <p class="hdw__empty">{{ theme.tone()['hd.wizard_artefact_empty'] }}</p>
+        } @else {
+          <div
+            class="hdw__grid hdw__grid--artefact"
+            role="radiogroup"
+            [attr.aria-label]="currentStep().label"
+            appRadioGroupNav
+          >
+            @for (a of artefactOptions(); track a.option.key) {
+              <div class="hdw__artefact">
+                <app-choice-card
+                  [option]="a.option"
+                  [selected]="artefactKey() === a.option.key"
+                  [fullDetail]="isDesktop()"
+                  (selectedOption)="artefactKey.set($event)"
+                />
+                @if (a.detailContent; as content) {
+                  <button
+                    type="button"
+                    class="hdw__more"
+                    [attr.aria-label]="moreAria(a.option.label)"
+                    (click)="detail.openContent(content, $event)"
+                  >{{ theme.tone()['common.en_savoir_plus'] }}</button>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="hdw__fields">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Nom de l'artefact</mat-label>
+            <input
+              matInput
+              type="text"
+              required
+              [maxlength]="maxArtefactText"
+              [ngModel]="artefactNom()"
+              (ngModelChange)="artefactNom.set($event)"
+            />
+            @if (help('artefactNom'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Inscription (facultatif)</mat-label>
+            <input
+              matInput
+              type="text"
+              [maxlength]="maxArtefactText"
+              [ngModel]="artefactInscription()"
+              (ngModelChange)="artefactInscription.set($event)"
+            />
+            @if (help('artefactInscription'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('identite') {
+        <div class="hdw__fields">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Nom</mat-label>
+            <input
+              matInput
+              type="text"
+              required
+              [maxlength]="maxNom"
+              [ngModel]="nom()"
+              (ngModelChange)="nom.set($event)"
+            />
+            @if (help('nom'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Apparence</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [maxlength]="maxText"
+              [ngModel]="apparence()"
+              (ngModelChange)="apparence.set($event)"
+            ></textarea>
+            @if (help('apparence'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Caractère</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [maxlength]="maxText"
+              [ngModel]="caractere()"
+              (ngModelChange)="caractere.set($event)"
+            ></textarea>
+            @if (help('caractere'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('vie') {
+        <div class="hdw__fields">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Vocation</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [maxlength]="maxText"
+              [ngModel]="vocation()"
+              (ngModelChange)="vocation.set($event)"
+            ></textarea>
+            @if (help('vocation'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Demeure</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [maxlength]="maxText"
+              [ngModel]="demeure()"
+              (ngModelChange)="demeure.set($event)"
+            ></textarea>
+            @if (help('demeure'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Mondes protégés</mat-label>
+            <textarea
+              matInput
+              rows="2"
+              [maxlength]="maxText"
+              [ngModel]="mondesProteges()"
+              (ngModelChange)="mondesProteges.set($event)"
+            ></textarea>
+            @if (help('mondesProteges'); as text) {
+              <mat-hint>{{ text }}</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('avatar') {
+        <div class="hdw__fields">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Avatar</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [maxlength]="maxText"
+              [ngModel]="avatar()"
+              (ngModelChange)="avatar.set($event)"
+            ></textarea>
+          </mat-form-field>
+        </div>
+      }
+    }
+
+    @if (createError(); as error) {
+      <p class="hdw__error" role="alert">{{ error }}</p>
+    }
+  </div>
+
+  <div class="hdw__nav-bottom">
+    <button mat-stroked-button type="button" [disabled]="isFirstStep() || creating()" (click)="goPrev()">
+      <app-icon name="precedent" />
+      {{ theme.tone()['common.precedent_2'] }}
+    </button>
+    @if (isLastStep()) {
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="!isValid() || creating()"
+        (click)="onSubmit()"
+      >
+        {{ theme.tone()['homme-dragon.create_cta'] }}
+      </button>
+    } @else {
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="!canGoNext() || creating()"
+        (click)="goNext()"
+      >
+        {{ theme.tone()['common.suivant_2'] }}
+        <app-icon name="suivant" />
+      </button>
+    }
+  </div>
+
+  @if (detail.selected(); as d) {
+    <app-detail-surface
+      [title]="d.title"
+      [body]="d.body"
+      [rows]="d.rows ?? []"
+      [narrative]="d.narrative ?? ''"
+      [custom]="!!raceInfo()"
+      [openToken]="detail.openToken()"
+      (closed)="onDetailClosed()"
+    >
+      @if (raceInfo(); as info) {
+        <div class="hdw__race-info">
+          <p class="hdw__race-info-text">{{ info.description }}</p>
+          @if (info.preferences) {
+            <section class="hdw__race-info-section">
+              <h3>Préférences</h3>
+              <p>{{ info.preferences }}</p>
+            </section>
+          }
+          @if (info.artefacts.length > 0) {
+            <section class="hdw__race-info-section">
+              <h3>Artefacts</h3>
+              <dl>
+                @for (a of info.artefacts; track a.key) {
+                  <dt>{{ a.label }}</dt>
+                  @if (a.description) {
+                    <dd>{{ a.description }}</dd>
+                  }
+                }
+              </dl>
+            </section>
+          }
+          @if (info.souffles.length > 0) {
+            <section class="hdw__race-info-section">
+              <h3>Souffles</h3>
+              <dl>
+                @for (sf of info.souffles; track sf.key) {
+                  <dt>{{ sf.label }}@if (sf.ps) { · {{ sf.ps }} PS }</dt>
+                  @if (sf.description) {
+                    <dd>{{ sf.description }}</dd>
+                  }
+                }
+              </dl>
+            </section>
+          }
+        </div>
+      }
+    </app-detail-surface>
+  }
+</div>

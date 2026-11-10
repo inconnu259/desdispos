@@ -1,0 +1,6 @@
+@if (value(); as situation) {
+  <p class="situation-line">
+    <span class="situation-line__label">{{ theme.tone()['situation.ma_situation'] }}</span>
+    <app-situation-pill [value]="situation" />
+  </p>
+}

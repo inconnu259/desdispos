@@ -2,6 +2,10 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { PollTrack } from './poll-track';
 import type { VoteParticipation } from '../poll-track.utils';
+import { fillTone } from '../../../core/theme/tone-format';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function vote(over: Partial<VoteParticipation> = {}): VoteParticipation {
   return {
@@ -86,9 +90,15 @@ describe('PollTrack (Story 36.6)', () => {
 
     expect(track.getAttribute('role')).toBe('img');
     const label = track.getAttribute('aria-label') ?? '';
-    expect(label).toContain('3 réponses sur 4');
+    expect(label).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.util_participation_many'], { n: 3, total: 4 }),
+    );
     expect(label).toContain('2 oui');
-    expect(label).toContain('tu as dit oui');
+    expect(label).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.util_answer_mine'], {
+        answer: GRIMOIRE_TONE['calendar.util_answer_yes'],
+      }),
+    );
   });
 
   it('AC14 — le compteur et ma réponse visibles sont aria-hidden : l’information est annoncée UNE fois', async () => {

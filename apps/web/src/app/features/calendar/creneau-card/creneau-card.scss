@@ -57,6 +57,13 @@
   font-size: 0.875rem;
 }
 
+/* Pictogramme de disponibilité (oui / partiel / non), lisible à 1rem ; l'état est dit par la forme. */
+.creneau-card__status {
+  --app-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+}
+
 .creneau-card__icon {
   font-size: 0.75rem;
   color: var(--mat-sys-on-surface-variant, #49454f);
@@ -82,4 +89,78 @@
   font-size: 0.75rem;
   color: var(--mat-sys-on-surface-variant, #49454f);
   font-style: italic;
+}
+
+/* Story 46.2 — la fenêtre sélectionnée : contour PLEIN (le trait tireté est celui du composer). */
+.creneau-card--selectable {
+  cursor: pointer;
+}
+
+.creneau-card--selected {
+  outline: 2px solid var(--mat-sys-primary, #6750a4);
+  outline-offset: -1px;
+}
+
+.creneau-card__select {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.creneau-card__select:focus-visible {
+  outline: 2px solid var(--mat-sys-primary, currentColor);
+  outline-offset: 2px;
+}
+
+.creneau-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.creneau-card__action {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background: none;
+  color: var(--mat-sys-primary, inherit);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.creneau-card__action--primary {
+  background: var(--mat-sys-primary, #6750a4);
+  color: var(--mat-sys-on-primary, #fff);
+}
+
+/* Désactivées : écrites mais sans effet encore (46.3, 46.4). */
+.creneau-card__action[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Story 46.4 — une fenêtre masquée : 55 % d'opacité, comme le contrat des fenêtres de l'automate. */
+.creneau-card--hidden {
+  opacity: 0.55;
+}
+
+.creneau-card--hidden .creneau-card__action {
+  opacity: 1;
+}
+
+/* Story 47.6 — la plage d'une fenêtre de plusieurs créneaux (« sam. 9 mars après-midi → sam. 9 mars soir ») : une
+   seule ligne, écrite par `span-label`, donc sans majuscule forcée sur chaque mot. */
+.creneau-card__range {
+  text-transform: none;
 }

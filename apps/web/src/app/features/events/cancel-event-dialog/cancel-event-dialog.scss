@@ -1,0 +1,38 @@
+.ced__heading {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ced__warning {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.ced__error {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mat-sys-error, var(--color-unavailable));
+}
+
+/* Story 42.1 (UX-DR12, DESIGN §7.9) : le rouge est réservé à l'irréversible et à l'annulé. Bouton plein,
+   texte sur le fond primaire du thème (jamais du blanc), cible de 44 px. */
+.ced__confirm {
+  min-height: 44px;
+  /* Pictogramme <app-icon> décoratif avant le texte. */
+  --app-icon-size: 18px;
+  --mat-button-filled-container-color: var(--color-unavailable, #e74c3c);
+  --mat-button-filled-label-text-color: var(--jdr-bg, #0d0a14);
+  --mat-button-filled-disabled-container-color: color-mix(
+    in srgb,
+    var(--color-unavailable, #e74c3c) 40%,
+    transparent
+  );
+
+  app-icon {
+    margin-right: 0.4rem;
+  }
+}

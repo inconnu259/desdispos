@@ -1,6 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import type { ContentEntryDto } from '@master-jdr/shared';
 import { WeaponStep } from './weapon-step';
+import { TONE_MAP } from '../../../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const WEAPON_CATEGORIES: ContentEntryDto[] = [
   {
@@ -71,14 +74,23 @@ describe('WeaponStep', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).toContain(
+    // Revue de code 31.4 (AC2, décision utilisateur) : la description de la catégorie n'est plus en
+    // ligne — une pastille ⓘ l'ouvre dans la surface de détail.
+    expect(fixture.nativeElement.textContent).not.toContain(
       'Distance, mais difficiles à utiliser. Deux mains.',
     );
+    const trigger = fixture.nativeElement.querySelector('.weapon-step__detail-trigger');
+    expect(trigger.textContent).toContain('Arc');
+    trigger.click();
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('.detail-surface-panel .detail-surface-body').textContent,
+    ).toContain('Distance, mais difficiles à utiliser. Deux mains.');
     const items = itemButtons(fixture);
     expect(items.length).toBe(3);
     expect(items[0].textContent).toContain('Arc de chasse');
     expect(items[1].textContent).toContain('Arc court');
-    expect(items[2].textContent).toContain('Créer une arme libre');
+    expect(items[2].textContent).toContain(GRIMOIRE_TONE['characters_wizard.weapon_custom_card']);
   });
 
   it('étape 2 : choisir une arme précise émet weaponIdChange et affiche Toucher/Dégâts résolus par catégorie', async () => {
@@ -145,7 +157,7 @@ describe('WeaponStep', () => {
     const items = itemButtons(fixture);
     expect(items.length).toBe(2);
     expect(items[0].textContent).toContain('Lance');
-    expect(items[1].textContent).toContain('Créer une arme libre');
+    expect(items[1].textContent).toContain(GRIMOIRE_TONE['characters_wizard.weapon_custom_card']);
   });
 
   it('aucune catégorie sélectionnée → aucune étape 2 ni détail affichés', async () => {

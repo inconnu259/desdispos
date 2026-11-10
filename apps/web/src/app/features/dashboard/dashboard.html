@@ -1,7 +1,29 @@
-@if (hasMjParties()) {
-  <div class="head">
-    <a mat-flat-button routerLink="/parties/new"><mat-icon>add</mat-icon> {{ theme.tone()['nav.create_game'] }}</a>
-  </div>
+<!-- Story 52.5 (AD-5) — LE rappel « Dispos à déclarer » : un seul bandeau en tête de page, avant les invitations et les
+     listes, jamais une pastille par carte. La règle est entièrement côté serveur ; rien ne s'affiche pendant le
+     chargement ni si la lecture échoue. Le patron est celui du bandeau de la Destinée (`.calendar-notice`). -->
+@if (reminder.show()) {
+  <section class="reminder-banner" aria-labelledby="reminder-banner-title">
+    <h2 id="reminder-banner-title" class="reminder-banner__title">
+      {{ theme.tone()['dashboard.reminder_title'] }}
+    </h2>
+    <p class="reminder-banner__body">{{ theme.tone()['dashboard.reminder_body'] }}</p>
+    <a
+      mat-flat-button
+      class="reminder-banner__action"
+      routerLink="/profile/calendar"
+      [queryParams]="{ declarer: 1 }"
+    >
+      {{ theme.tone()['calendar.declare_btn'] }}
+    </a>
+    <button
+      mat-button
+      type="button"
+      class="reminder-banner__silence"
+      (click)="silenceReminder()"
+    >
+      {{ theme.tone()['dashboard.reminder_silence'] }}
+    </button>
+  </section>
 }
 
 @if (received().length > 0) {
@@ -12,12 +34,17 @@
         <mat-card-header>
           <mat-card-title>{{ inv.partie.name }}</mat-card-title>
           <mat-card-subtitle>
-            {{ system(inv.partie.gameSystemId) }} · invité par {{ inv.inviterPseudo }}
+            {{ invitationSystemLabel(inv) }} · {{ invitedByLabel(inv.inviterPseudo) }}
           </mat-card-subtitle>
         </mat-card-header>
+        @if (pendingInvitationChip(inv); as chip) {
+          <mat-card-content class="invitation-chip">
+            <app-status-badge [state]="chip" />
+          </mat-card-content>
+        }
         <mat-card-actions>
-          <button mat-flat-button (click)="accept(inv)"><mat-icon>check</mat-icon> Accepter</button>
-          <button mat-button (click)="decline(inv)"><mat-icon>close</mat-icon> Refuser</button>
+          <button mat-flat-button (click)="accept(inv)"><app-icon name="valider" /> {{ theme.tone()['common.accepter'] }}</button>
+          <button mat-button (click)="decline(inv)"><app-icon name="fermer" /> {{ theme.tone()['common.refuser'] }}</button>
         </mat-card-actions>
       </mat-card>
     }
@@ -47,6 +74,17 @@
         <option value="all">{{ theme.tone()['dashboard.filter_role_all'] }}</option>
         <option value="mj">{{ theme.tone()['dashboard.role_mj'] }}</option>
         <option value="player">{{ theme.tone()['dashboard.role_player'] }}</option>
+        <option value="admin">{{ theme.tone()['dashboard.role_ralliement_admin'] }}</option>
+        <option value="member">{{ theme.tone()['dashboard.role_ralliement_member'] }}</option>
+      </select>
+    </label>
+
+    <label extraFilters class="controls-bar__field">
+      <span class="controls-bar__label">{{ theme.tone()['dashboard.filter_genre_label'] }}</span>
+      <select [ngModel]="genreFilter()" (ngModelChange)="genreFilter.set($event)">
+        <option value="all">{{ theme.tone()['dashboard.filter_genre_all'] }}</option>
+        <option value="quete">{{ theme.tone()['dashboard.genre_quetes'] }}</option>
+        <option value="ralliement">{{ theme.tone()['dashboard.genre_ralliements'] }}</option>
       </select>
     </label>
 
@@ -57,6 +95,8 @@
         <option value="A_VENIR">{{ theme.tone()['dashboard.section_upcoming'] }}</option>
         <option value="EN_COURS">{{ theme.tone()['dashboard.section_ongoing'] }}</option>
         <option value="TERMINEE">{{ theme.tone()['dashboard.section_finished'] }}</option>
+        <!-- Story 42.4 (⚠️ contrat UI) : la phase « Annulée » (rencontre isolée annulée). -->
+        <option value="ANNULEE">{{ theme.tone()['dashboard.status_cancelled_badge'] }}</option>
       </select>
     </label>
 
@@ -67,6 +107,11 @@
         (ngModelChange)="onHideFinishedChange($event)"
       />
       <span>{{ theme.tone()['dashboard.hide_finished_label'] }}</span>
+    </label>
+
+    <label extraFilters class="controls-bar__field controls-bar__field--checkbox">
+      <input type="checkbox" [ngModel]="groupByType()" (ngModelChange)="groupByType.set($event)" />
+      <span>{{ theme.tone()['dashboard.group_by_type_label'] }}</span>
     </label>
   </app-list-control-bar>
 
@@ -81,6 +126,25 @@
   <p class="empty">{{ theme.tone()['dashboard.empty'] }}</p>
 } @else if (flatTiles().length === 0) {
   <p class="empty">{{ theme.tone()['dashboard.empty_filtered'] }}</p>
+} @else if (groupByType()) {
+  <!-- « Grouper par type » (Story 38.5) : deux sections, chacune dans l'ordre du tri choisi, sans
+       les intertitres d'urgence. Une section vide est omise. -->
+  @if (questTiles().length > 0) {
+    <h2>{{ theme.tone()['dashboard.genre_quetes'] }}</h2>
+    <div class="grid" [class]="gridDensityClass()">
+      @for (t of questTiles(); track t.partie.id) {
+        <ng-container [ngTemplateOutlet]="tile" [ngTemplateOutletContext]="{ $implicit: t }" />
+      }
+    </div>
+  }
+  @if (ralliementTiles().length > 0) {
+    <h2>{{ theme.tone()['dashboard.genre_ralliements'] }}</h2>
+    <div class="grid" [class]="gridDensityClass()">
+      @for (t of ralliementTiles(); track t.partie.id) {
+        <ng-container [ngTemplateOutlet]="tile" [ngTemplateOutletContext]="{ $implicit: t }" />
+      }
+    </div>
+  }
 } @else if (partiesSort() === 'urgence') {
   <!-- Quatre intertitres (Story 29.7, AC10) : ce qui t'attend / en cours / à venir / terminées. -->
   @if (awaitingTiles().length > 0) {
@@ -136,6 +200,7 @@
     <div
       class="row"
       [class.row--closed]="t.partie.status === 'TERMINEE'"
+      [class.row--cancelled]="t.partie.status === 'ANNULEE'"
       [routerLink]="['/parties', t.partie.id]"
     >
       <!-- Pastille d'état : équivalent exact de la bande verticale des modes moyen/grand
@@ -147,18 +212,26 @@
         [class.row__dot--live]="t.tint === 'live'"
         [class.row__dot--soon]="t.tint === 'soon'"
         [class.row__dot--closed]="t.tint === 'done'"
+        [class.row__dot--cancelled]="t.tint === 'cancelled'"
         aria-hidden="true"
       ></span>
-      <app-party-banner
-        class="row__vignette"
-        [partieId]="t.partie.id"
-        [partieName]="t.partie.name"
-        [coverImageVersion]="t.partie.coverImageVersion"
-        mode="compact"
-      />
+      <span class="row__vignette">
+        <app-party-banner
+          [partieId]="t.partie.id"
+          [partieName]="t.partie.name"
+          [coverImageVersion]="t.partie.coverImageVersion"
+          mode="compact"
+        />
+        @if (hasSystemBadge(t.partie)) {
+          <app-system-badge class="system-badge" [systemId]="t.partie.gameSystemId" />
+        }
+      </span>
       <span class="row__txt">
         <span class="row__name">{{ t.partie.name }}</span>
-        <span class="row__sub">{{ rowSummary(t) }}</span>
+        <span class="row__subline">
+          <span class="row__sub">{{ rowSummary(t) }}</span>
+          <span class="system-chip">{{ system(t.partie.gameSystemId) }}</span>
+        </span>
       </span>
       @if (rowCount(t) > 0) {
         <!-- §4.1 bis : « En mode liste, un seul compteur » — jamais les badges détaillés. -->
@@ -174,13 +247,27 @@
         [attr.aria-label]="favoriteAriaLabel(t.partie.isFavorite)"
         (click)="$event.stopPropagation(); toggleFavorite(t.partie)"
       >
-        <mat-icon aria-hidden="true">{{ t.partie.isFavorite ? 'star' : 'star_border' }}</mat-icon>
+        <app-icon [name]="t.partie.isFavorite ? 'favori-pose' : 'favori-vide'" />
       </button>
+      @if (canHide(t.partie)) {
+        <!-- Story 42.5 : « Retirer de ma liste » (partie terminée ou annulée), pour soi seul ; l'icône est doublée du
+             nom accessible et de la confirmation écrite. -->
+        <button
+          type="button"
+          class="favorite-btn hide-btn"
+          [disabled]="isHidePending(t.partie.id)"
+          [attr.aria-label]="hideAriaLabel(t.partie)"
+          (click)="$event.stopPropagation(); confirmHide(t.partie)"
+        >
+          <app-icon name="masquer" />
+        </button>
+      }
     </div>
   } @else {
   <mat-card
     class="tile"
     [class.tile--closed]="t.partie.status === 'TERMINEE'"
+    [class.tile--cancelled]="t.partie.status === 'ANNULEE'"
     [class.tile--awaiting]="t.tint === 'todo'"
     [class.tile--live]="t.tint === 'live'"
     [class.tile--soon]="t.tint === 'soon'"
@@ -189,24 +276,38 @@
     @if (partiesViewMode() === 'large') {
       <!-- Bannière pleine largeur, en tête de carte (DESIGN.md §7.3). Elle remplace le
            pseudo-élément que la Story 29.9 avait réservé à cet emplacement. -->
-      <app-party-banner
-        [partieId]="t.partie.id"
-        [partieName]="t.partie.name"
-        [coverImageVersion]="t.partie.coverImageVersion"
-        mode="large"
-      />
+      <div class="tile__banner">
+        <app-party-banner
+          [partieId]="t.partie.id"
+          [partieName]="t.partie.name"
+          [coverImageVersion]="t.partie.coverImageVersion"
+          mode="large"
+        />
+        @if (hasSystemBadge(t.partie)) {
+          <!-- Seul écart au contrat (-6/-6) : en pleine largeur, le débord serait rogné par
+               `.tile { overflow: hidden }` — le badge se pose donc à 6 px DANS le coin. -->
+          <app-system-badge
+            class="system-badge system-badge--inset"
+            [systemId]="t.partie.gameSystemId"
+          />
+        }
+      </div>
     }
     <div class="tile__head">
       @if (partiesViewMode() === 'medium') {
         <!-- Vignette carrée 44 px : la MÊME composition que ci-dessus, recadrée au centre par le
              composant. `Dashboard` ne connaît pas cette différence. -->
-        <app-party-banner
-          class="tile__vignette"
-          [partieId]="t.partie.id"
-          [partieName]="t.partie.name"
-          [coverImageVersion]="t.partie.coverImageVersion"
-          mode="medium"
-        />
+        <div class="tile__vignette">
+          <app-party-banner
+            [partieId]="t.partie.id"
+            [partieName]="t.partie.name"
+            [coverImageVersion]="t.partie.coverImageVersion"
+            mode="medium"
+          />
+          @if (hasSystemBadge(t.partie)) {
+            <app-system-badge class="system-badge" [systemId]="t.partie.gameSystemId" />
+          }
+        </div>
       }
       <mat-card-header>
       <mat-card-title>
@@ -219,29 +320,55 @@
           [attr.aria-label]="favoriteAriaLabel(t.partie.isFavorite)"
           (click)="$event.stopPropagation(); toggleFavorite(t.partie)"
         >
-          <mat-icon aria-hidden="true">{{ t.partie.isFavorite ? 'star' : 'star_border' }}</mat-icon>
+          <app-icon [name]="t.partie.isFavorite ? 'favori-pose' : 'favori-vide'" />
         </button>
+        @if (canHide(t.partie)) {
+          <!-- Story 42.5 : « Retirer de ma liste » (partie terminée ou annulée), pour soi seul ; l'icône est doublée du
+               nom accessible et de la confirmation écrite. -->
+          <button
+            type="button"
+            class="favorite-btn hide-btn"
+            [disabled]="isHidePending(t.partie.id)"
+            [attr.aria-label]="hideAriaLabel(t.partie)"
+            (click)="$event.stopPropagation(); confirmHide(t.partie)"
+          >
+            <app-icon name="masquer" />
+          </button>
+        }
       </mat-card-title>
       <mat-card-subtitle>
-        {{ system(t.partie.gameSystemId) }} · {{ kind(t.partie.kind) }}
+        {{ subtitle(t.partie) }}
         <span
           class="role-indicator"
-          [attr.aria-label]="theme.tone()['dashboard.role_prefix'] + ' ' + (t.partie.role === 'mj' ? theme.tone()['dashboard.role_mj'] : theme.tone()['dashboard.role_player'])"
+          [attr.aria-label]="theme.tone()['dashboard.role_prefix'] + ' ' + roleLabel(t.partie)"
         >
-          <mat-icon aria-hidden="true" class="role-icon">{{ t.partie.role === 'mj' ? 'shield' : 'person' }}</mat-icon>
-          <span aria-hidden="true">{{ t.partie.role === 'mj' ? theme.tone()['dashboard.role_mj'] : theme.tone()['dashboard.role_player'] }}</span>
+          <app-icon
+            class="role-icon"
+            [name]="roleIconName(t.partie.role, { soireeIsolee: t.partie.kind === 'ONE_SHOT' })"
+          />
+          <span aria-hidden="true">{{ roleLabel(t.partie) }}</span>
         </span>
+        <span class="system-chip">{{ system(t.partie.gameSystemId) }}</span>
         @if (t.partie.status === 'TERMINEE') {
           <span class="status-indicator" [attr.aria-label]="theme.tone()['dashboard.status_closed_badge']">
-            <mat-icon aria-hidden="true" class="role-icon">flag</mat-icon>
+            <app-icon class="role-icon" name="etat-terminee" />
             <span aria-hidden="true">{{ theme.tone()['dashboard.status_closed_badge'] }}</span>
+          </span>
+        }
+        @if (t.partie.status === 'ANNULEE') {
+          <!-- Story 42.2 : l'état « Annulée » est écrit (jamais le trait seul), avec son pictogramme. -->
+          <span class="status-indicator status-indicator--cancelled" [attr.aria-label]="theme.tone()['dashboard.status_cancelled_badge']">
+            <app-icon class="role-icon" name="etat-annulee" />
+            <span aria-hidden="true">{{ theme.tone()['dashboard.status_cancelled_badge'] }}</span>
           </span>
         }
         @if ((t.tint === 'live' || t.tint === 'soon') && t.visibleSignals.length === 0) {
           <!-- AC9/P-1 : sans badge visible, la teinte de bord (couleur seule) doit être doublée
                d'un signal non chromatique — icône + libellé, même patron que .status-indicator. -->
           <span class="status-indicator" [attr.aria-label]="tintLabel(t.tint)">
-            <mat-icon aria-hidden="true" class="role-icon">{{ tintIcon(t.tint) }}</mat-icon>
+            @if (tintIcon(t.tint); as icon) {
+              <app-icon class="role-icon" [name]="icon" />
+            }
             <span aria-hidden="true">{{ tintLabel(t.tint) }}</span>
           </span>
         }
@@ -258,7 +385,7 @@
             [class.signal-badge--dominant]="code === t.dominant"
             [class.signal-badge--soon]="badgeTone(code) === 'soon'"
           >
-            <mat-icon aria-hidden="true">flag</mat-icon>
+            <app-icon name="signal" />
             <span>{{ badgeLabel(code, t.partie) }}</span>
           </span>
         }

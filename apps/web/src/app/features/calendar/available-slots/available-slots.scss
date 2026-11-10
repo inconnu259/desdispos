@@ -11,6 +11,27 @@
   color: var(--mat-sys-on-surface, #1c1b1f);
 }
 
+.available-slots__fold {
+  --app-icon-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.available-slots__fold:focus-visible {
+  outline: 2px solid var(--mat-sys-primary, currentColor);
+  outline-offset: 2px;
+}
+
 .available-slots__loading {
   display: flex;
   flex-direction: column;
@@ -48,4 +69,22 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Story 46.4 — le lien « Afficher les N masquées » du pied de liste : écrit, 44 px. */
+.available-slots__hidden-toggle {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mat-sys-primary, inherit);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.available-slots__hidden-toggle:focus-visible {
+  outline: 2px solid var(--mat-sys-primary, currentColor);
+  outline-offset: 2px;
 }

@@ -10,6 +10,12 @@ const PDF_TEMPLATE_PATH = join(
   'game-systems/ryuutama/assets/Ryuutama-fiche_equipement_edit.pdf',
 );
 
+// Story 31.6 (revue de code) : nom du champ AcroForm rempli depuis `encombrementLimit`
+// (`mapEquipmentToPdfFields`, packages/game-rules/src/ryuutama/equipment-pdf-field-map.ts) — retiré
+// plutôt qu'exporté avec un `0` trompeur quand `derived` est absent (même patron que
+// `DERIVED_PDF_FIELDS` dans `RyuutamaPdfService`).
+const ENCOMBREMENT_PDF_FIELD = 'limite_enc';
+
 @Injectable()
 export class EquipmentPdfService {
   private readonly logger = new Logger(EquipmentPdfService.name);
@@ -31,10 +37,14 @@ export class EquipmentPdfService {
       );
     }
 
-    const fields = mapEquipmentToPdfFields({
+    const rawFields = mapEquipmentToPdfFields({
       ownerPseudo: character.ownerPseudo,
       characterName: sheetData.narrative?.name ?? '',
-      encombrementLimit: character.derived.Encombrement,
+      // Story 31.6 : `derived` (typé plein dans `CharacterDto`) peut être ABSENT à l'exécution
+      // quand `attributes`/`levelUps` est verrouillé pour ce lecteur (`hiddenFields` le signale) —
+      // le `?? 0` évite un crash sur `EquipmentPdfInput.encombrementLimit: number` (non-optionnel),
+      // le champ PDF correspondant est ensuite retiré ci-dessous plutôt qu'exporté à `0`.
+      encombrementLimit: character.derived?.Encombrement ?? 0,
       equipment: {
         individual: (sheetData.equipment?.individual ?? []).map((i) => ({
           name: i.name,
@@ -55,6 +65,11 @@ export class EquipmentPdfService {
         })),
       },
     });
+    // Retire `limite_enc` (jamais un `0` trompeur) quand `derived` est absent — cohérent avec
+    // `RyuutamaPdfService` (revue de code, même état masqué traité de façon identique).
+    const fields = character.derived
+      ? rawFields
+      : rawFields.filter((f) => f.field !== ENCOMBREMENT_PDF_FIELD);
 
     const doc = await PDFDocument.load(templateBytes);
     const form = doc.getForm();

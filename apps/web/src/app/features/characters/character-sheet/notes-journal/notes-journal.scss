@@ -23,6 +23,11 @@
 
 .notes-journal__share-toggle {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  /* Pictogramme décoratif à côté du texte : 16px en ligne. */
+  --app-icon-size: 16px;
   min-height: 44px;
   background: none;
   border: none;
@@ -33,6 +38,11 @@
   @media (min-width: 768px) {
     min-height: 36px;
   }
+}
+
+.notes-journal__share-indicator {
+  display: inline-flex;
+  --app-icon-size: 16px;
 }
 
 .notes-journal__empty {

@@ -27,16 +27,43 @@ import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { ScenariosService } from './scenarios.service';
 import { CreateScenarioDto } from './dto/create-scenario.dto';
 import { UpdateScenarioDto } from './dto/update-scenario.dto';
+import { AddSeanceDto } from './dto/add-seance.dto';
 import { CreateSeancePollDto } from './dto/create-seance-poll.dto';
+import { ReservePlaceDto } from './dto/reserve-place.dto';
 import { SetSeanceCapacityDto } from './dto/set-seance-capacity.dto';
 import { SetCompteRenduDto } from './dto/set-compte-rendu.dto';
 import { SetInfosPratiquesDto } from './dto/set-infos-pratiques.dto';
 import { SetResumeFinDto } from './dto/set-resume-fin.dto';
 
 const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024;
+// Plafonds du formulaire multipart : UN fichier et quelques champs texte courts. Sans eux, Multer accepte un
+// nombre illimité de champs (jusqu'à 1 Mo chacun), lus en mémoire AVANT tout contrôle de droits.
+const DOCUMENT_UPLOAD_LIMITS = {
+  fileSize: MAX_DOCUMENT_SIZE,
+  files: 1,
+  fields: 5,
+  parts: 6,
+  fieldSize: 16 * 1024,
+  fieldNameSize: 100,
+};
 
-function sanitizeHeaderFilename(name: string): string {
-  return name.replace(/[\r\n"]/g, '');
+/**
+ * En-tête `Content-Disposition` d'un document téléchargé. `originalName` vient du client
+ * (file.originalname) : jamais interpolé tel quel dans un en-tête HTTP.
+ * - caractères de contrôle (dont CR/LF : injection d'en-tête), guillemets, `\`, `/` retirés ;
+ * - extension IMPOSÉE par le type réel du fichier (`.pdf` / `.txt`) : un nom `regles.hta` ou `.bat` ne
+ *   doit pas faire ouvrir un contenu PDF/texte avec une application dangereuse ;
+ * - `filename` ASCII de repli + `filename*` UTF-8 (RFC 5987) pour les noms accentués.
+ */
+export function documentContentDisposition(originalName: string, mime: string): string {
+  const extension = mime === 'application/pdf' ? '.pdf' : '.txt';
+  // eslint-disable-next-line no-control-regex -- retrait volontaire des caractères de contrôle
+  const cleaned = originalName.replace(/[\x00-\x1f\x7f"\\/]/g, '').trim();
+  const dot = cleaned.lastIndexOf('.');
+  const base = (dot > 0 ? cleaned.slice(0, dot) : cleaned).slice(0, 150) || 'document';
+  const filename = `${base}${extension}`;
+  const asciiFallback = filename.replace(/[^\x20-\x7e]/g, '_');
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 @UseGuards(AuthenticatedGuard)
@@ -106,8 +133,12 @@ export class ScenariosController {
   }
 
   @Post('scenarios/:id/seances')
-  addSeance(@Param('id', ParseUUIDPipe) scenarioId: string, @CurrentUser() user: AuthUser) {
-    return this.scenarios.addSeance(scenarioId, user.id);
+  addSeance(
+    @Param('id', ParseUUIDPipe) scenarioId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto?: AddSeanceDto,
+  ) {
+    return this.scenarios.addSeance(scenarioId, user.id, dto?.durationSlots);
   }
 
   @Delete('scenarios/seances/:id')
@@ -121,7 +152,13 @@ export class ScenariosController {
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateSeancePollDto,
   ) {
-    return this.scenarios.createSeancePoll(seanceId, user.id, dto.options);
+    return this.scenarios.createSeancePoll(
+      seanceId,
+      user.id,
+      dto.options,
+      dto.expiresAt,
+      dto.durationSlots,
+    );
   }
 
   @Patch('scenarios/seances/:id/reset-date')
@@ -153,6 +190,32 @@ export class ScenariosController {
     return this.scenarios.desinscrire(seanceId, user.id);
   }
 
+  /** Story 40.4 : accepter la place qui m'est réservée (groupe de ralliement). */
+  @Patch('scenarios/seances/:id/inscription/accept')
+  accepterReservation(@Param('id', ParseUUIDPipe) seanceId: string, @CurrentUser() user: AuthUser) {
+    return this.scenarios.accepterReservation(seanceId, user.id);
+  }
+
+  /** Story 40.4 : l'hôte d'une conjonction réserve une place à un membre. */
+  @Post('scenarios/seances/:id/reservations')
+  reserver(
+    @Param('id', ParseUUIDPipe) seanceId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ReservePlaceDto,
+  ) {
+    return this.scenarios.reserver(seanceId, user.id, dto.userId);
+  }
+
+  /** Story 40.4 : l'hôte retire la réservation d'un membre. */
+  @Delete('scenarios/seances/:id/reservations/:userId')
+  retirerReservation(
+    @Param('id', ParseUUIDPipe) seanceId: string,
+    @Param('userId', ParseUUIDPipe) targetUserId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.scenarios.retirerReservation(seanceId, user.id, targetUserId);
+  }
+
   @Patch('scenarios/seances/:id/compte-rendu')
   setCompteRendu(
     @Param('id', ParseUUIDPipe) seanceId: string,
@@ -164,7 +227,7 @@ export class ScenariosController {
 
   // Story 36.5 — informations pratiques (D-15). Un seul PATCH pour les trois champs : le MJ les
   // saisit ensemble. Comme partout dans ce contrôleur, l'autorisation MJ est vérifiée EN SERVICE
-  // (parties.getOwned), pas par un guard de route.
+  // (PermissionService.assert), pas par un guard de route.
   @Patch('scenarios/seances/:id/infos-pratiques')
   setInfosPratiques(
     @Param('id', ParseUUIDPipe) seanceId: string,
@@ -179,7 +242,7 @@ export class ScenariosController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: MAX_DOCUMENT_SIZE },
+      limits: DOCUMENT_UPLOAD_LIMITS,
     }),
   )
   uploadDocument(
@@ -221,9 +284,7 @@ export class ScenariosController {
     );
     return new StreamableFile(buffer, {
       type: mime,
-      // originalName vient du client (file.originalname) : jamais interpolé tel quel dans un
-      // en-tête HTTP — CR/LF et guillemets retirés pour empêcher une injection d'en-tête.
-      disposition: `attachment; filename="${sanitizeHeaderFilename(originalName)}"`,
+      disposition: documentContentDisposition(originalName, mime),
     });
   }
 }

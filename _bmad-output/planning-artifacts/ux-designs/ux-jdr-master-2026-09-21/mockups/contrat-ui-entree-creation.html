@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Contrat UI — Point d'entrée de la création (FR-58 à FR-60)</title>
+<style>
+/*
+  Gouvernent cette planche : DESIGN.md §Components (CharacterCallout, CreateEntriesSection, NatureMarker) ;
+  EXPERIENCE.md §Component Patterns, §State Patterns, §Key Flows. Tokens : thème Grimoire Émeraude
+  (base ux-jdr-master-20260626). Aucun token neuf. Les deux autres thèmes héritent de la structure
+  par leurs propres valeurs et leurs propres libellés (EXPERIENCE.md §3).
+*/
+:root{
+  --primary-bg:#0d0a14;--surface-bg:#1a1428;--surface-high:#241c38;
+  --accent-1:#7ec8a4;--accent-2:#9b6dff;--gradient-cta:linear-gradient(135deg,#7ec8a4,#9b6dff);
+  --text:#e8e8f0;--muted:#7a7a8a;--border:rgba(255,255,255,.08);--dash:rgba(126,200,164,.55);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#07050c;color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:32px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:20px;margin:36px 0 4px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.lead{color:var(--muted);max-width:820px}
+.warn{background:var(--surface-bg);border-left:3px solid #e0a852;padding:10px 14px;border-radius:0 8px 8px 0;max-width:820px;margin:14px 0}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:16px}
+.cap{font-size:12px;color:var(--muted);max-width:340px;margin:8px 0 0}
+.cap b{color:var(--accent-1)}
+.phone{width:340px;background:var(--primary-bg);border:2px solid #2a2440;border-radius:26px;overflow:hidden;display:flex;flex-direction:column;min-height:560px}
+.desk{width:760px;background:var(--primary-bg);border:2px solid #2a2440;border-radius:12px;overflow:hidden;min-height:420px}
+.ctx{padding:10px 14px;background:var(--surface-high);font-weight:600;font-size:13px}
+.ctx small{display:block;color:var(--muted);font-weight:400}
+.tabs{display:flex;gap:2px;background:var(--surface-bg);border-bottom:1px solid var(--border);font-size:13px;overflow:hidden}
+.tabs span{padding:10px 14px;color:var(--muted);white-space:nowrap}
+.tabs .on{color:var(--text);border-bottom:2px solid var(--accent-1)}
+.body{padding:14px;flex:1}
+.bnav{display:flex;justify-content:space-around;background:var(--surface-high);padding:8px 0;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
+.bnav .on{color:var(--accent-1)}
+/* CharacterCallout */
+.callout{display:flex;gap:12px;align-items:flex-start;background:var(--surface-high);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.callout .ic{flex:none;width:40px;height:40px;border-radius:50%;background:rgba(126,200,164,.16);display:flex;align-items:center;justify-content:center;color:var(--accent-1);font-size:20px}
+.callout b{display:block;font-size:15px;font-weight:600}
+.callout p{margin:2px 0 10px;font-size:12px;color:var(--muted)}
+.cta{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:999px;background:var(--gradient-cta);color:#0d0a14;font-weight:700}
+.callout.stack{flex-direction:column}
+.callout.stack .cta{width:100%}
+.muted{color:var(--muted);font-size:13px}
+.sec{background:var(--surface-bg);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px}
+/* Roster rail */
+.dsk-grid{display:flex;min-height:340px}
+.rail{width:62px;background:var(--surface-bg);padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:10px;border-right:1px solid var(--border);font-size:12px;color:var(--muted)}
+.av{position:relative;width:38px;height:38px;border-radius:50%;background:#2c2444;display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--text)}
+.av.me{outline:1px dashed var(--dash);outline-offset:2px}
+.av i{position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;border-radius:50%;background:var(--accent-1);color:#0d0a14;font-style:normal;font-size:12px;line-height:16px;text-align:center;font-weight:700}
+.dsk-main{flex:1;padding:16px 20px}
+/* CreateEntriesSection */
+.csec{margin:0 0 14px}
+.csec h3{margin:0 0 6px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.entry{display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 12px;border:1px dashed var(--dash);border-radius:12px;background:transparent;margin-bottom:8px}
+.entry .pl{flex:none;width:32px;height:32px;border-radius:50%;background:rgba(126,200,164,.16);color:var(--accent-1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px}
+.entry .tx{flex:1;font-size:14px;font-weight:500}
+.entry .tx small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.entry .go{color:var(--accent-1);font-size:18px}
+.more{display:flex;align-items:center;min-height:44px;color:var(--accent-1);font-size:13px;font-weight:600}
+.egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.egrid .entry{margin:0}
+/* Liste */
+.bar{display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--surface-bg);border-radius:10px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.card{display:flex;gap:10px;align-items:center;background:var(--surface-high);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.card .pt{flex:none;width:44px;height:44px;border-radius:50%;background:#2c2444;display:flex;align-items:center;justify-content:center;font-weight:600}
+.card b{display:block;font-weight:600}
+.card small{color:var(--muted);font-size:12px}
+.nat{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;border:1px solid var(--accent-2);color:#cdb8ff;font-size:11px;font-weight:600;margin-left:6px;vertical-align:1px}
+.nat.icon{padding:1px 5px}
+.empty{font-style:italic;color:var(--muted);padding:14px 4px}
+.tag{display:inline-block;background:var(--surface-high);border:1px solid var(--border);border-radius:6px;padding:0 6px;font-size:11px;color:var(--muted);margin-right:4px}
+</style>
+</head>
+<body>
+<h1>Contrat UI — Point d'entrée de la création</h1>
+<p class="lead">FR-58 · FR-59 · stories 29.15, 29.16, 33.5. Thème Grimoire Émeraude ; libellés des trois thèmes dans <code>EXPERIENCE.md</code> §3. Le wizard de création (31.4) n'est pas concerné : cette planche ne dessine que <b>là où l'on y entre</b>.</p>
+
+<div class="warn"><b>⚠️ Ce que cette planche engage.</b> Tout ce qui y est dessiné sera implémenté. Elle <b>amende</b> le contrat <code>ux-jdr-master-2026-08-04</code> en trois points, signalés dans <code>EXPERIENCE.md</code> : (1) l'onglet Détails d'une partie gagne un bloc pour le joueur sans personnage ; (2) l'écran Personnages gagne un bloc distinct au-dessus de la barre de contrôles — la grammaire de la liste, elle, ne bouge pas ; (3) le message de liste vide change quand ce bloc est affiché.</div>
+
+<h2>A · Sur la partie — le bloc d'invitation</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="ctx">Le Convoi du Nord<small>Ryuutama · Campagne</small></div>
+      <div class="tabs"><span class="on">Détails</span><span>Ma fiche</span></div>
+      <div class="body">
+        <div class="callout stack">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div class="ic">＋</div>
+            <div><b>Votre voyageur reste à forger</b><p>Quelques étapes, et vous rejoignez la table.</p></div>
+          </div>
+          <span class="cta">Créer un voyageur</span>
+        </div>
+        <p>Une caravane, un col enneigé et trop peu de provisions.</p>
+        <div class="sec"><b>Prochaine séance</b><br><span class="muted">Aucune séance prévue</span></div>
+      </div>
+      <div class="bnav"><span>Parties</span><span class="on">Personnages</span><span>Calendrier</span><span>Compte</span></div>
+    </div>
+    <p class="cap"><b>Mobile.</b> En tête de l'onglet <b>Détails</b> — l'onglet par défaut : visible dès l'ouverture, sans changer d'onglet ni défiler. Bouton pleine largeur, 44 px. Pas de croix : le bloc disparaît de lui-même quand le personnage existe.</p>
+  </div>
+  <div>
+    <div class="desk">
+      <div class="ctx">Le Convoi du Nord<small>Ryuutama · Campagne</small></div>
+      <div class="tabs"><span class="on">Détails</span><span>Calendrier</span></div>
+      <div class="dsk-grid">
+        <div class="rail">
+          <div class="av">M<i>MJ</i></div>
+          <div class="av me">+<i>+</i></div>
+          <div class="av">S</div>
+        </div>
+        <div class="dsk-main">
+          <div class="callout">
+            <div class="ic">＋</div>
+            <div style="flex:1"><b>Votre voyageur reste à forger</b><p>Quelques étapes, et vous rejoignez la table.</p></div>
+            <span class="cta" style="align-self:center">Créer un voyageur</span>
+          </div>
+          <p>Une caravane, un col enneigé et trop peu de provisions.</p>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>Desktop.</b> Même bloc, en ligne (texte à gauche, bouton à droite), en tête de la colonne de contenu. Le <b>slot d'initiale du rail reste</b> : c'est un raccourci, plus l'unique porte. Son libellé accessible et son infobulle reprennent le libellé du bouton.</p>
+  </div>
+</div>
+
+<h2>B · Dans Personnages — la section de création</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="ctx">Mes voyageurs</div>
+      <div class="body">
+        <section class="csec">
+          <h3>À forger</h3>
+          <div class="entry"><span class="pl">＋</span><span class="tx">Créer un voyageur pour Le Convoi du Nord</span><span class="go">›</span></div>
+          <div class="entry"><span class="pl">＋</span><span class="tx">Créer un voyageur pour Les Cendres d'Aube</span><span class="go">›</span></div>
+          <div class="entry"><span class="pl">＋</span><span class="tx">Créer un voyageur pour La Foire aux Ombres</span><span class="go">›</span></div>
+          <div class="more">Voir les 2 autres</div>
+        </section>
+        <div class="bar">▦ ▤ ☰ · Trier · 🔍</div>
+        <div class="card"><div class="pt">A</div><div><b>Ariane</b><small>Niveau 3 · Chasseuse · Les Vents Perdus</small></div></div>
+      </div>
+      <div class="bnav"><span>Parties</span><span class="on">Personnages</span><span>Calendrier</span><span>Compte</span></div>
+    </div>
+    <p class="cap"><b>Mobile, joueur.</b> La section est <b>au-dessus</b> de la barre de contrôles, donc hors de son masquage au défilement et hors de sa pastille de résumé. Lignes en <b>bordure pointillée</b> (« à remplir ») face aux cartes pleines des personnages : jamais une carte de personnage. Trois lignes, puis « Voir les N autres ».</p>
+  </div>
+  <div>
+    <div class="phone">
+      <div class="ctx">Mes voyageurs</div>
+      <div class="body">
+        <section class="csec">
+          <h3>À forger</h3>
+          <div class="entry"><span class="pl">＋</span><span class="tx">Créer un Homme Dragon pour Le Convoi du Nord</span><span class="go">›</span></div>
+          <div class="entry"><span class="pl">＋</span><span class="tx">Créer un voyageur pour Les Vents Perdus</span><span class="go">›</span></div>
+        </section>
+        <div class="bar">▦ ▤ ☰ · Trier · 🔍</div>
+        <div class="card"><div class="pt">🐉</div><div><b>Skarn <span class="nat">🐉 Homme Dragon</span></b><small>Le Ballet des Braises</small></div></div>
+        <div class="card"><div class="pt">A</div><div><b>Ariane</b><small>Niveau 3 · Chasseuse · Les Vents Perdus</small></div></div>
+      </div>
+      <div class="bnav"><span>Parties</span><span class="on">Personnages</span><span>Calendrier</span><span>Compte</span></div>
+    </div>
+    <p class="cap"><b>Mobile, MJ (et joueur ailleurs).</b> Les entrées se mélangent en <b>une seule liste ordonnée par partie</b> ; le <b>verbe et le mot</b> disent la nature (« Homme Dragon » / « voyageur »), jamais la couleur. L'Homme Dragon déjà créé vit dans la liste, avec son marqueur de nature.</p>
+  </div>
+</div>
+<div class="row">
+  <div>
+    <div class="desk">
+      <div class="ctx">Mes voyageurs</div>
+      <div style="padding:16px 20px">
+        <section class="csec">
+          <h3>À forger</h3>
+          <div class="egrid">
+            <div class="entry"><span class="pl">＋</span><span class="tx">Créer un voyageur pour Le Convoi du Nord</span><span class="go">›</span></div>
+            <div class="entry"><span class="pl">＋</span><span class="tx">Créer un Homme Dragon pour Le Ballet des Braises</span><span class="go">›</span></div>
+            <div class="entry"><span class="pl">＋</span><span class="tx">Créer un voyageur pour Les Cendres d'Aube</span><span class="go">›</span></div>
+          </div>
+        </section>
+        <div class="bar">▦ ▤ ☰ · Trier par Niveau · 🔍 Rechercher un voyageur</div>
+        <div class="egrid">
+          <div class="card"><div class="pt">A</div><div><b>Ariane</b><small>Niveau 3 · Chasseuse · Les Vents Perdus</small></div></div>
+          <div class="card"><div class="pt">🐉</div><div><b>Skarn <span class="nat">🐉 Homme Dragon</span></b><small>Le Ballet des Braises</small></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>Desktop.</b> Les entrées se rangent en grille (colonnes de 300 px mini), toujours au-dessus de la barre. Une recherche, un tri ou un changement de mode <b>n'y touche pas</b>. Au tri « Niveau », l'Homme Dragon, qui n'a pas de niveau, passe en dernier.</p>
+  </div>
+  <div>
+    <div class="phone" style="min-height:0">
+      <div class="body">
+        <span class="tag">mode liste</span>
+        <div class="card" style="padding:6px 10px"><div class="pt" style="width:32px;height:32px;font-size:12px">🐉</div><div style="flex:1"><b>Skarn <span class="nat icon" title="Homme Dragon">🐉</span></b></div></div>
+        <span class="tag">mode moyen / grand</span>
+        <div class="card"><div class="pt">🐉</div><div><b>Skarn <span class="nat">🐉 Homme Dragon</span></b><small>Le Ballet des Braises</small></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>Marqueur de nature.</b> Moyen et grand : icône <b>+ mot</b>. Mode liste, compact : icône seule, le mot passe dans l'<code>aria-label</code>. Contour <code>accent-2</code>, pas de remplissage de statut.</p>
+  </div>
+</div>
+
+<h2>C · États</h2>
+<div class="row">
+  <div>
+    <div class="phone" style="min-height:0"><div class="body">
+      <section class="csec"><h3>À forger</h3>
+        <div class="entry"><span class="pl">＋</span><span class="tx">Créer un voyageur pour Le Convoi du Nord</span><span class="go">›</span></div></section>
+      <div class="bar">▦ ▤ ☰ · Trier · 🔍</div>
+      <p class="empty">Nul voyageur forgé pour l'instant.</p>
+    </div></div>
+    <p class="cap"><b>Aucun personnage, une entrée.</b> Le message de liste vide <b>ne renvoie plus</b> « depuis une quête… » : l'entrée est déjà là, au-dessus.</p>
+  </div>
+  <div>
+    <div class="phone" style="min-height:0"><div class="body">
+      <div class="bar">▦ ▤ ☰ · Trier · 🔍</div>
+      <p class="empty">Nul voyageur forgé. Créez-en un depuis une quête…</p>
+    </div></div>
+    <p class="cap"><b>Aucun personnage, aucune entrée.</b> Rien de neuf : la section n'est <b>pas rendue</b> — jamais un bloc vide — et le message d'origine reste.</p>
+  </div>
+  <div>
+    <div class="phone" style="min-height:0"><div class="body">
+      <p class="muted">Sur la partie, joueur <b>avec</b> un personnage, MJ, ou système sans module :</p>
+      <p class="muted">→ aucun bloc, aucun bouton. Jamais un refus « vous avez déjà un personnage ».</p>
+      <p class="muted">Après création : au retour sur Personnages, l'entrée de cette partie a disparu et le personnage figure dans la liste.</p>
+    </div></div>
+    <p class="cap"><b>Absences.</b> Les cas où l'entrée n'existe pas sont des cas où <b>rien</b> n'est rendu.</p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,4 +1,13 @@
-import { Component, computed, effect, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { ContentEntryDto } from '@master-jdr/shared';
 import {
@@ -8,6 +17,12 @@ import {
   type WeaponItemContentData,
   type WeaponCategoryContentData,
 } from '@master-jdr/game-rules';
+import { ThemeToneService } from '../../../../../core/theme/theme-tone.service';
+import { DetailSurface } from '../../../../../shared/detail-surface/detail-surface';
+import {
+  createDetailSurfaceHost,
+  detailContent,
+} from '../../../../../shared/detail-surface/detail-surface-host';
 import { ChoiceCard, type ChoiceCardOption } from '../../choice-card/choice-card';
 import { RadioGroupNavDirective } from '../../choice-card/radio-group-nav.directive';
 
@@ -30,7 +45,7 @@ const CUSTOM_WEAPON_KEY = '__custom__';
 @Component({
   selector: 'app-weapon-step',
   standalone: true,
-  imports: [ChoiceCard, RadioGroupNavDirective, FormsModule],
+  imports: [ChoiceCard, RadioGroupNavDirective, FormsModule, DetailSurface],
   templateUrl: './weapon-step.html',
   styleUrl: './weapon-step.scss',
 })
@@ -41,6 +56,11 @@ export class WeaponStep {
   readonly customWeapon = input<CustomWeapon | undefined>();
 
   readonly weaponIdChange = output<string | null>();
+
+  protected readonly theme = inject(ThemeToneService);
+
+  /** Description de la catégorie d'arme : derrière la surface de détail (revue de code 31.4, AC2). */
+  protected readonly detail = createDetailSurfaceHost();
   readonly customWeaponChange = output<CustomWeapon | null>();
 
   /** État UI de saisie de l'arme libre — le parent ne reçoit que `customWeaponChange`
@@ -68,7 +88,7 @@ export class WeaponStep {
       return {
         key: entry.key,
         label: data.label,
-        detail: `Toucher ${data.touchFormula}, Dégâts ${data.damageFormula}`,
+        detail: `Toucher ${data.touchFormula} · Dégâts ${data.damageFormula}`,
       };
     }),
   );
@@ -82,12 +102,21 @@ export class WeaponStep {
     const catalogItems = this.weaponItems()
       .filter((entry) => (entry.data as WeaponItemData).categoryId === categoryKey)
       .map((entry) => ({ key: entry.key, label: (entry.data as WeaponItemData).label }));
-    return [...catalogItems, { key: CUSTOM_WEAPON_KEY, label: 'Créer une arme libre' }];
+    return [
+      ...catalogItems,
+      { key: CUSTOM_WEAPON_KEY, label: this.theme.tone()['characters_wizard.weapon_custom_card'] },
+    ];
   });
 
   protected readonly selectedCategoryData = computed<WeaponCategoryData | null>(() => {
     const entry = this.weaponCategories().find((c) => c.key === this.selectedCategoryKey());
     return entry ? (entry.data as WeaponCategoryData) : null;
+  });
+
+  /** Aide de la catégorie sélectionnée, ou `null` sans texte au catalogue (pas de texte ⇒ pas d'aide). */
+  protected readonly categoryHelp = computed(() => {
+    const data = this.selectedCategoryData();
+    return detailContent(data?.label, data?.description);
   });
 
   protected readonly resolvedWeapon = computed(() =>

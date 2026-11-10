@@ -10,7 +10,7 @@ import {
   rectangle,
   type PDFImage,
 } from 'pdf-lib';
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto, DerivedStats } from '@master-jdr/shared';
 import {
   mapToPdfFields,
   resolveWeapon,
@@ -33,6 +33,27 @@ const PDF_TEMPLATE_PATH = join(
   process.cwd(),
   'game-systems/ryuutama/assets/Ryuutama_fiche_de_voyageur_big_edit.pdf',
 );
+
+// Story 31.6 : stub neutre passé à `mapToPdfFields()` (packages/game-rules) quand `derived` est
+// ABSENT (verrouillé pour ce lecteur) — cette fonction lit `derived.PV`/`PE`/`Initiative` sans
+// garde (hors périmètre de cette story, cf. spec Code Map). Le stub évite le crash ; les 3 champs
+// AcroForm qui en dépendent sont ensuite retirés nous-mêmes (`DERIVED_PDF_FIELDS`) plutôt que de
+// laisser des zéros trompeurs dans le PDF.
+const DEFAULT_DERIVED_STATS: DerivedStats = {
+  PV: 0,
+  PE: 0,
+  Condition: 0,
+  Initiative: 0,
+  Encombrement: 0,
+};
+const DERIVED_PDF_FIELDS = new Set(['PV max', 'PE max', 'Initiative']);
+
+// Story 31.6 (revue de code) : `AGI`/`ESP`/`INT`/`VIG` sont des dropdowns PDF — un SEUL sous-champ
+// verrouillé (`sheetData.attributes` reste présent, seule la clé ciblée est retirée par le masque)
+// fait produire `String(undefined)` = `"undefined"` par `mapToPdfFields()` pour le dropdown
+// correspondant, une option qui n'existe pas sur le template : pdf-lib lève. Retirés nous-mêmes
+// (même patron que `DERIVED_PDF_FIELDS`) plutôt que de planter l'export.
+const ATTRIBUTE_PDF_FIELDS = ['AGI', 'ESP', 'INT', 'VIG'] as const;
 
 /**
  * Zone du portrait sur la page 1 du template — le cadre orné (vignes/feuilles) en haut à
@@ -202,7 +223,23 @@ export class RyuutamaPdfService {
     const derived = character.derived;
     const content = await this.resolveContent(sheetData, character.ownerPseudo, character.xp);
 
-    const fields = mapToPdfFields(sheetData, derived, content);
+    const rawFields = mapToPdfFields(sheetData, derived ?? DEFAULT_DERIVED_STATS, content);
+    // Story 31.6 : `derived` (typé plein dans `CharacterDto`) peut être absent à l'exécution quand
+    // `attributes`/`levelUps` est verrouillé pour ce lecteur (`hiddenFields` le signale) — retire
+    // les champs qui en dérivent plutôt que d'exporter le stub ci-dessus. `attributes` (typé plein
+    // dans `RyuutamaSheetData`) peut, de la même façon, avoir un sous-champ individuel absent
+    // (verrouillage ciblé, ex. `attributes.AGI`) sans que la clé `attributes` elle-même disparaisse
+    // — retire alors le seul dropdown concerné (cf. `ATTRIBUTE_PDF_FIELDS`).
+    const fields = rawFields.filter((f) => {
+      if (!derived && DERIVED_PDF_FIELDS.has(f.field)) return false;
+      if (
+        (ATTRIBUTE_PDF_FIELDS as readonly string[]).includes(f.field) &&
+        sheetData.attributes?.[f.field as (typeof ATTRIBUTE_PDF_FIELDS)[number]] === undefined
+      ) {
+        return false;
+      }
+      return true;
+    });
     // Champs auto-size du template officiel (résistances par terrain, statuts d'immunité) :
     // leur `DA` (`/Font 0 Tf`) laisse pdf-lib calculer une taille disproportionnée pour un texte
     // aussi court ("+2"/"Immunisé") — forcer une petite taille explicite, alignée sur les champs

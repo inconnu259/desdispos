@@ -1,14 +1,1 @@
-.join-page {
-  display: flex;
-  justify-content: center;
-  padding: 2rem 1rem;
-}
-
-.join-card {
-  width: 100%;
-  max-width: 420px;
-}
-
-.error {
-  color: var(--mat-sys-error, #b3261e);
-}
+@use '../auth/auth-card';

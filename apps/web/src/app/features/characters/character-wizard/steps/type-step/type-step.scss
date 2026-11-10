@@ -1,3 +1,5 @@
+// Piste B (contrat UI 31.4) : la carte choisie se déploie en place ; styles du détail partagés
+// (`choice-card/choice-detail.scss`).
 .type-step {
   &__grid {
     display: grid;
@@ -6,16 +8,11 @@
     margin-bottom: 1rem;
   }
 
-  &__advantages {
-    padding: 0.75rem 1rem;
-    background: var(--mat-sys-surface-container-high, #f0ebe3);
-    border-radius: 8px;
-    margin-bottom: 1rem;
-
-    ul {
-      margin: 0.5rem 0 0;
-      padding-left: 1.25rem;
-    }
+  &__expanded {
+    grid-column: 1 / -1;
   }
+}
 
+.type-step__detail-trigger {
+  text-align: left;
 }

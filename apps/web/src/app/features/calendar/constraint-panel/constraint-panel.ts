@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import type {
@@ -51,13 +51,7 @@ const RECUR_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-constraint-panel',
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatButtonToggleModule,
-    MatIconModule,
-    MatRadioModule,
-  ],
+  imports: [ReactiveFormsModule, MatButtonModule, MatButtonToggleModule, AppIcon, MatRadioModule],
   templateUrl: './constraint-panel.html',
   styleUrl: './constraint-panel.scss',
 })
@@ -226,7 +220,7 @@ export class ConstraintPanel implements OnInit {
       this.snack.open(this.theme.tone()['success.constraint_saved'], undefined, { duration: 3000 });
       this.saved.emit(result.created[0] ?? existing);
     } catch {
-      this.error.set("Impossible de modifier l'occurrence.");
+      this.error.set(this.theme.tone()['calendar.constraint_occurrence_modify_error']);
     } finally {
       this.saving.set(false);
     }
@@ -251,7 +245,7 @@ export class ConstraintPanel implements OnInit {
         this.pendingConflictDto = dto;
         return;
       }
-      this.error.set("Impossible d'enregistrer la contrainte.");
+      this.error.set(this.theme.tone()['common.impossible_d_enregistrer_la_contrainte']);
     } finally {
       this.saving.set(false);
     }
@@ -290,7 +284,7 @@ export class ConstraintPanel implements OnInit {
       this.snack.open(this.theme.tone()['success.constraint_saved'], undefined, { duration: 3000 });
       this.saved.emit(result.created[0] ?? existing!);
     } catch {
-      this.error.set("Impossible d'enregistrer la contrainte.");
+      this.error.set(this.theme.tone()['common.impossible_d_enregistrer_la_contrainte']);
     } finally {
       this.saving.set(false);
     }
@@ -321,7 +315,7 @@ export class ConstraintPanel implements OnInit {
       await this.availabilitySvc.splitOccurrence(existing.id, { occurrence, action: 'delete' });
       this.deleted.emit();
     } catch {
-      this.error.set("Impossible de supprimer l'occurrence.");
+      this.error.set(this.theme.tone()['calendar.constraint_occurrence_delete_error']);
     } finally {
       this.saving.set(false);
     }
@@ -355,7 +349,7 @@ export class ConstraintPanel implements OnInit {
       await this.availabilitySvc.updateDeclaration(existing.id, { endDate: dMinus7Str });
       this.deleted.emit();
     } catch {
-      this.error.set('Impossible de modifier la contrainte.');
+      this.error.set(this.theme.tone()['calendar.constraint_modify_error']);
     } finally {
       this.saving.set(false);
     }
@@ -376,7 +370,7 @@ export class ConstraintPanel implements OnInit {
       await this.availabilitySvc.deleteDeclaration(existing.id);
       this.deleted.emit();
     } catch {
-      this.error.set('Impossible de supprimer la contrainte.');
+      this.error.set(this.theme.tone()['calendar.constraint_delete_error']);
     } finally {
       this.saving.set(false);
     }

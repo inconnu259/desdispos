@@ -12,6 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import type { ScenarioDto } from '@master-jdr/shared';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { ScenarioEditor } from '../scenario-editor/scenario-editor';
 
 /**
@@ -32,6 +33,7 @@ import { ScenarioEditor } from '../scenario-editor/scenario-editor';
 export class ScenarioOneShotTab implements OnInit {
   private readonly scenarios = inject(ScenariosService);
   private readonly realtime = inject(RealtimeService);
+  protected readonly theme = inject(ThemeToneService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly partieId = input.required<string>();
@@ -83,12 +85,12 @@ export class ScenarioOneShotTab implements OnInit {
       this.notFound.set(false);
       this.loadError.set(null);
     } catch {
-      this.loadError.set('Impossible de charger le scénario. Réessayez.');
+      this.loadError.set(this.theme.tone()['common.impossible_de_charger_le_scenario_reessayez']);
     }
   }
 
   async ngOnInit(): Promise<void> {
-    // Revue de code : capturer partieId() une seule fois ici (comme ScenarioDrafts/PartieDetail),
+    // Revue de code : capturer partieId() une seule fois ici (comme ScenarioList/PartieDetail),
     // plutôt que de relire le signal à la destruction — si l'input venait à changer sans
     // réinstanciation du composant, disconnect() fermerait alors la mauvaise connexion.
     const partieId = this.partieId();
@@ -105,7 +107,7 @@ export class ScenarioOneShotTab implements OnInit {
     try {
       this.scenario.set(await this.scenarios.open(s.id));
     } catch {
-      this.openError.set("Impossible d'ouvrir le scénario aux joueurs. Réessayez.");
+      this.openError.set(this.theme.tone()['scenarios.one_shot_open_error']);
     } finally {
       this.opening.set(false);
     }

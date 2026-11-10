@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Bordure des champs — avant / après</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* Comparaison de la bordure des champs sur la carte d'authentification, pour trancher « visible ou imperceptible ? ».
+   Valeurs réelles de apps/web/src/styles.scss : surface carte = --mat-sys-surface-container ; texte = --mat-sys-on-surface ;
+   étiquette = --mat-sys-on-surface-variant ; bordure actuelle = --mat-sys-outline.
+   Émeraude : carte #1a1428, texte #e8e0f0, étiquette #9b8fb0, bordure AVANT #5a5070 (2,40:1) -> APRÈS #6e6383 (≈3,2:1)
+   Forêt    : carte #0f1f12, texte #d4f0dc, étiquette #7aa885, bordure AVANT #3a5040 (1,96:1) -> APRÈS #54735c (≈3,2:1)
+   Atelier  : carte #2a1e10, texte #f0e6d0, étiquette #b39569, bordure AVANT #7a5030 (2,34:1) -> APRÈS #8b6541 (≈3,1:1)
+   Fond de page : #0d0a14 / #080f0a / #1a1008 (surface). */
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:#16151b;color:#e9e6f0;font-family:system-ui,Segoe UI,Roboto,sans-serif;line-height:1.4}
+h1{font-size:20px;margin:0 0 4px}
+p.lead{margin:0 0 20px;color:#b9b4c8;max-width:70ch}
+.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:28px}
+@media (max-width:900px){.row{grid-template-columns:1fr}}
+.theme{border-radius:12px;padding:14px}
+.theme h2{font-size:14px;margin:0 0 10px;opacity:.85}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{border-radius:14px;padding:14px 12px 12px}
+.card small{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;opacity:.8}
+.field{height:56px;border-radius:8px;border:1px solid var(--b);padding:8px 12px;margin-bottom:12px;display:flex;flex-direction:column;justify-content:center}
+.field span{font-size:12px;color:var(--lab)}
+.field b{font-weight:400;font-size:16px;color:var(--txt)}
+.btn{height:48px;border-radius:24px;background:var(--acc);color:var(--onacc);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px}
+
+.emeraude{background:#0d0a14;--txt:#e8e0f0;--lab:#9b8fb0;--acc:#7c6bd6;--onacc:#0d0a14}
+.emeraude .card{background:#1a1428}
+.foret{background:#080f0a;--txt:#d4f0dc;--lab:#7aa885;--acc:#7bc88a;--onacc:#080f0a}
+.foret .card{background:#0f1f12}
+.atelier{background:#1a1008;--txt:#f0e6d0;--lab:#b39569;--acc:#d08a3c;--onacc:#1a1008}
+.atelier .card{background:#2a1e10}
+.emeraude .av{--b:#5a5070}.emeraude .ap{--b:#6e6383}
+.foret .av{--b:#3a5040}.foret .ap{--b:#54735c}
+.atelier .av{--b:#7a5030}.atelier .ap{--b:#8b6541}
+.note{color:#b9b4c8;font-size:13px;max-width:80ch}
+</style>
+</head>
+<body>
+<h1>Bordure des champs : avant / après</h1>
+<p class="lead">Chaque thème montre la carte de connexion actuelle (à gauche) et la même carte avec la bordure corrigée (à droite). Seule la bordure des champs change ; le reste est identique. Regarde surtout le champ du haut, vide, et celui du bas, rempli.</p>
+
+<div class="row">
+  <section class="theme emeraude" aria-label="Grimoire Émeraude">
+    <h2 style="color:#e8e0f0">Grimoire Émeraude · 2,4 → 3,2 pour 1</h2>
+    <div class="pair">
+      <div class="card av"><small style="color:#9b8fb0">Avant</small>
+        <div class="field"><span>Email ou pseudo</span></div>
+        <div class="field"><span>Mot de passe</span><b>••••••••</b></div>
+        <div class="btn">Se connecter</div></div>
+      <div class="card ap"><small style="color:#9b8fb0">Après</small>
+        <div class="field"><span>Email ou pseudo</span></div>
+        <div class="field"><span>Mot de passe</span><b>••••••••</b></div>
+        <div class="btn">Se connecter</div></div>
+    </div>
+  </section>
+
+  <section class="theme foret" aria-label="Forêt Ancienne">
+    <h2 style="color:#d4f0dc">Forêt Ancienne · 2,0 → 3,2 pour 1</h2>
+    <div class="pair">
+      <div class="card av"><small style="color:#7aa885">Avant</small>
+        <div class="field"><span>Email ou pseudo</span></div>
+        <div class="field"><span>Mot de passe</span><b>••••••••</b></div>
+        <div class="btn">Se connecter</div></div>
+      <div class="card ap"><small style="color:#7aa885">Après</small>
+        <div class="field"><span>Email ou pseudo</span></div>
+        <div class="field"><span>Mot de passe</span><b>••••••••</b></div>
+        <div class="btn">Se connecter</div></div>
+    </div>
+  </section>
+
+  <section class="theme atelier" aria-label="Atelier Cuivré">
+    <h2 style="color:#f0e6d0">Atelier Cuivré · 2,3 → 3,1 pour 1</h2>
+    <div class="pair">
+      <div class="card av"><small style="color:#b39569">Avant</small>
+        <div class="field"><span>Email ou pseudo</span></div>
+        <div class="field"><span>Mot de passe</span><b>••••••••</b></div>
+        <div class="btn">Se connecter</div></div>
+      <div class="card ap"><small style="color:#b39569">Après</small>
+        <div class="field"><span>Email ou pseudo</span></div>
+        <div class="field"><span>Mot de passe</span><b>••••••••</b></div>
+        <div class="btn">Se connecter</div></div>
+    </div>
+  </section>
+</div>
+
+<p class="note">Les couleurs du bouton ne sont là que pour donner du contexte (valeurs approchées) ; elles ne font pas partie de la proposition. Le seuil visé est de 3 pour 1 pour que la limite d'un champ reste repérable par une personne à faible vision.</p>
+</body>
+</html>

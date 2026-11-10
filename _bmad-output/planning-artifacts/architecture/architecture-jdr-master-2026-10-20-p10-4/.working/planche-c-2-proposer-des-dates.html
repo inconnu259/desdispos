@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Option C — Proposer des dates</title>
+<style>
+/* Planche de décision (.working) — architecture 10.4, bifurcation « rôle du calendrier personnel ».
+   Parcours UJ-2 (Léa, hôte d'une soirée isolée). Compare l'UX validée (A) à l'option C.
+   Thème Grimoire Émeraude, mode soirée : aucun mot du JDR à l'écran. */
+:root{
+  --bg:#09070f; --surface:#1a1428; --surface-high:#221c35; --surface-top:#2a2340;
+  --accent-1:#7ec8a4; --accent-2:#9b6dff; --text:#e8e0f0; --muted:#9b8fb0; --outline:#6e6383;
+  --todo:#f0a030; --toolbar:#150f20; --warn:#ff8a80; --busy:#c06c84;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050409;color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px}
+h1{font-size:18px;margin:0 0 4px}
+.intro{color:var(--muted);max-width:1180px;margin:0 0 20px}
+.board{display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start}
+.group{display:flex;flex-direction:column;gap:10px}
+.group h2{font-size:14px;margin:0;padding:6px 12px;border-radius:999px;align-self:flex-start}
+.group.s h2{background:var(--surface);color:var(--muted);border:1px solid var(--outline)}
+.group.a h2{background:rgba(155,109,255,.18);color:#c4a0ff;border:1px solid rgba(155,109,255,.5)}
+.group.c h2{background:rgba(126,200,164,.15);color:var(--accent-1);border:1px solid rgba(126,200,164,.45)}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.col{width:360px;max-width:100%}
+.cap{font-weight:600;margin:0 0 4px}
+.cap small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
+.phone{position:relative;width:360px;max-width:100%;height:740px;border-radius:34px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 0 0 1px #333}
+.tb{height:52px;background:var(--toolbar);display:flex;align-items:center;padding:0 14px;gap:10px;font-weight:600}
+.tb .back{color:var(--muted)}
+.tb .ctx{font-size:11px;font-weight:400;color:var(--muted);margin-left:auto}
+.controls{display:flex;gap:6px;align-items:center;padding:10px 10px 6px;flex-wrap:wrap}
+.chip{border:1px solid var(--outline);border-radius:999px;padding:5px 11px;font-size:12.5px;white-space:nowrap;color:var(--text)}
+.chip.on{background:rgba(155,109,255,.22);border-color:var(--accent-2)}
+.month{padding:0 10px}
+.mh{display:flex;justify-content:space-between;font-weight:600;padding:4px 2px 6px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dow div{font-size:10.5px;color:var(--muted);text-align:center}
+.cell{height:54px;background:var(--surface);border-radius:6px;padding:3px 4px;font-size:11px;display:flex;flex-direction:column;position:relative}
+.cell .band{flex:1;margin-top:2px;border-radius:3px;font-size:9px;line-height:1.1;padding:1px 2px;overflow:hidden}
+.cell.dispo::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--accent-1)}
+.cell.sel .band{background:rgba(126,200,164,.18);border:2px dashed var(--accent-1)}
+.cell.named .band{background:rgba(192,108,132,.25);border-left:3px solid var(--busy);color:#f2c4d0}
+.cell.anon .band{background:repeating-linear-gradient(135deg,#2a2340 0 4px,#3a3150 4px 8px);color:var(--muted)}
+.scrim{position:absolute;inset:52px 0 0 0;background:rgba(0,0,0,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface-high);border-radius:18px 18px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.5);padding:8px 14px 14px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--outline);margin:2px auto 10px}
+.sh-title{font-weight:600;font-size:15px;margin:0}
+.sh-sub{color:var(--muted);font-size:12px;margin:2px 0 10px}
+.grp{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+.line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;background:var(--surface-top);margin-bottom:6px}
+.line .t{font-weight:500}
+.line .s{font-size:11.5px;color:var(--muted)}
+.line .go{color:var(--accent-1);font-size:12px;white-space:nowrap}
+.selbar{position:absolute;left:0;right:0;bottom:118px;background:var(--surface-top);border-top:1px solid var(--outline);padding:8px 14px;display:flex;gap:6px;align-items:center;font-size:12px}
+.selbar .lbl{color:var(--muted);margin-right:auto}
+.composebar{position:absolute;left:0;right:0;bottom:0;background:var(--surface-high);border-top:1px solid var(--outline);padding:10px 14px 14px}
+.composebar .for{font-size:12px;color:var(--muted)}
+.composebar .for b{color:var(--text)}
+.btns{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;text-align:center;border-radius:999px;padding:10px 12px;font-weight:600;font-size:13px;border:1px solid var(--outline)}
+.btn.p{background:linear-gradient(135deg,#7ec8a4,#9b6dff);color:#0d0a14;border:none}
+.diffmark{outline:2px solid var(--warn);outline-offset:2px;border-radius:8px}
+.note{font-size:12px;color:var(--muted);margin-top:8px;max-width:360px}
+.note .w{color:var(--warn)}
+.keys{font-size:11.5px;color:var(--muted);margin:0 0 16px;display:flex;gap:14px;flex-wrap:wrap}
+.keys i{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
+table{border-collapse:collapse;margin-top:28px;max-width:1180px;width:100%;font-size:13px}
+th,td{border:1px solid #2e2642;padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--surface);color:var(--muted);font-weight:600}
+td.same{color:var(--muted)}
+</style>
+</head>
+<body>
+<h1>Option C, planche 2 : Léa propose des dates depuis son calendrier personnel (UJ-2)</h1>
+<p class="intro">Léa organise une soirée isolée, « Jeux chez Léa », encore sans date. Elle joue aussi dans « Les Voyageurs du col » (séance le sam. 21). Le choix du rendez-vous est <b>le même en A et en C</b>. Ce qui change, c'est l'endroit où elle compose ses créneaux.</p>
+<p class="keys">
+  <span><i style="background:rgba(126,200,164,.18);border:2px dashed #7ec8a4"></i>créneau sélectionné</span>
+  <span><i style="background:#7ec8a4;border-radius:50%;width:8px;height:8px"></i>ma dispo</span>
+  <span><i style="background:rgba(192,108,132,.25);border-left:3px solid #c06c84"></i>engagement nommé</span>
+  <span><i style="background:repeating-linear-gradient(135deg,#2a2340 0 3px,#3a3150 3px 6px)"></i>occupée (sans nom)</span>
+  <span style="outline:2px solid #ff8a80;border-radius:6px;padding:0 6px;color:#e8e0f0">ce qui diffère</span>
+</p>
+
+<div class="board">
+
+  <!-- Étape commune -->
+  <div class="group s">
+    <h2>Étape commune à A et C</h2>
+    <div class="col">
+      <p class="cap">① « Proposer des dates », choix du rendez-vous<small>Ses rendez-vous à dater, toutes parties confondues, groupés par nom.</small></p>
+      <div class="phone">
+        <div class="tb"><span class="back">←</span> Mon calendrier<span class="ctx">calendrier personnel</span></div>
+        <div class="controls"><span class="chip">☰ Affichage</span><span class="chip on">Proposer des dates</span></div>
+        <div class="month"><div class="mh"><span>novembre 2026</span><span>‹ ›</span></div></div>
+        <div class="scrim"></div>
+        <div class="sheet" style="top:200px">
+          <div class="grab"></div>
+          <p class="sh-title">Proposer des dates pour…</p>
+          <p class="sh-sub">Vos rendez-vous sans date ni vote en cours.</p>
+          <div class="grp">Jeux chez Léa</div>
+          <div class="line"><div><div class="t">Soirée jeux</div><div class="s">Sans date · 5 invités</div></div><span class="go">Choisir</span></div>
+          <div class="grp">La Bande</div>
+          <div class="line"><div><div class="t">Raclette de novembre</div><div class="s">Sans date · tous les membres</div></div><span class="go">Choisir</span></div>
+        </div>
+      </div>
+      <p class="note">Cette liste demande une lecture nouvelle dans les deux options : aujourd'hui, le calendrier personnel ne connaît aucun rendez-vous de mode soirée.</p>
+    </div>
+  </div>
+
+  <!-- A -->
+  <div class="group a">
+    <h2>A — UX validée : on compose sur place</h2>
+    <div class="col">
+      <p class="cap">② Composer dans le calendrier personnel<small>Elle reste sur « Mon calendrier ».</small></p>
+      <div class="phone">
+        <div class="tb diffmark"><span class="back">←</span> Mon calendrier<span class="ctx">calendrier personnel</span></div>
+        <div class="controls"><span class="chip">☰ Affichage</span></div>
+        <div class="month">
+          <div class="mh"><span>novembre 2026</span><span>‹ ›</span></div>
+          <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+          <div class="grid">
+            <div class="cell"><span>2</span><div class="band"></div></div>
+            <div class="cell"><span>3</span><div class="band"></div></div>
+            <div class="cell"><span>4</span><div class="band"></div></div>
+            <div class="cell"><span>5</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>6</span><div class="band"></div></div>
+            <div class="cell dispo"><span>7</span><div class="band"></div></div>
+            <div class="cell"><span>8</span><div class="band"></div></div>
+            <div class="cell"><span>9</span><div class="band"></div></div>
+            <div class="cell"><span>10</span><div class="band"></div></div>
+            <div class="cell"><span>11</span><div class="band"></div></div>
+            <div class="cell"><span>12</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>13</span><div class="band"></div></div>
+            <div class="cell sel"><span>14</span><div class="band"></div></div>
+            <div class="cell"><span>15</span><div class="band"></div></div>
+            <div class="cell"><span>16</span><div class="band"></div></div>
+            <div class="cell"><span>17</span><div class="band"></div></div>
+            <div class="cell"><span>18</span><div class="band"></div></div>
+            <div class="cell"><span>19</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>20</span><div class="band"></div></div>
+            <div class="cell named diffmark"><span>21</span><div class="band">Voyageurs du col</div></div>
+            <div class="cell"><span>22</span><div class="band"></div></div>
+            <div class="cell"><span>23</span><div class="band"></div></div>
+            <div class="cell"><span>24</span><div class="band"></div></div>
+            <div class="cell"><span>25</span><div class="band"></div></div>
+            <div class="cell"><span>26</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>27</span><div class="band"></div></div>
+            <div class="cell"><span>28</span><div class="band"></div></div>
+            <div class="cell"><span>29</span><div class="band"></div></div>
+          </div>
+        </div>
+        <div class="selbar"><span class="lbl">4 jours sélectionnés</span><span class="chip">Matin</span><span class="chip">Après-m.</span><span class="chip on">Soir</span></div>
+        <div class="composebar">
+          <div class="for">Pour : <b>Soirée jeux</b> · 5 créneaux</div>
+          <div class="btns"><span class="btn">Annuler</span><span class="btn p">Valider</span></div>
+        </div>
+      </div>
+      <p class="note">Elle voit le <b>nom</b> de ses autres engagements (« Voyageurs du col », sam. 21). <span class="w">Côté code</span> : le calendrier personnel doit savoir écrire les deux sortes de vote (séance de JDR ou soirée), avec leurs règles de créneaux (journée entière refusée en soirée), et sans les données de la partie qu'il n'a pas chargées.</p>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="group c">
+    <h2>C — on compose dans le calendrier de la soirée</h2>
+    <div class="col">
+      <p class="cap">② La page change : calendrier de la soirée, composer armé<small>Ouvert par l'adresse, rendez-vous déjà choisi.</small></p>
+      <div class="phone">
+        <div class="tb diffmark"><span class="back">←</span> Jeux chez Léa<span class="ctx">calendrier du groupe</span></div>
+        <div class="controls"><span class="chip">☰ Affichage</span></div>
+        <div class="month">
+          <div class="mh"><span>novembre 2026</span><span>‹ ›</span></div>
+          <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+          <div class="grid">
+            <div class="cell"><span>2</span><div class="band"></div></div>
+            <div class="cell"><span>3</span><div class="band"></div></div>
+            <div class="cell"><span>4</span><div class="band"></div></div>
+            <div class="cell"><span>5</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>6</span><div class="band"></div></div>
+            <div class="cell dispo"><span>7</span><div class="band"></div></div>
+            <div class="cell"><span>8</span><div class="band"></div></div>
+            <div class="cell"><span>9</span><div class="band"></div></div>
+            <div class="cell"><span>10</span><div class="band"></div></div>
+            <div class="cell"><span>11</span><div class="band"></div></div>
+            <div class="cell"><span>12</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>13</span><div class="band"></div></div>
+            <div class="cell sel"><span>14</span><div class="band"></div></div>
+            <div class="cell"><span>15</span><div class="band"></div></div>
+            <div class="cell"><span>16</span><div class="band"></div></div>
+            <div class="cell"><span>17</span><div class="band"></div></div>
+            <div class="cell"><span>18</span><div class="band"></div></div>
+            <div class="cell"><span>19</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>20</span><div class="band"></div></div>
+            <div class="cell anon diffmark"><span>21</span><div class="band">occupée</div></div>
+            <div class="cell"><span>22</span><div class="band"></div></div>
+            <div class="cell"><span>23</span><div class="band"></div></div>
+            <div class="cell"><span>24</span><div class="band"></div></div>
+            <div class="cell"><span>25</span><div class="band"></div></div>
+            <div class="cell"><span>26</span><div class="band"></div></div>
+            <div class="cell sel dispo"><span>27</span><div class="band"></div></div>
+            <div class="cell"><span>28</span><div class="band"></div></div>
+            <div class="cell"><span>29</span><div class="band"></div></div>
+          </div>
+        </div>
+        <div class="selbar"><span class="lbl">4 jours sélectionnés</span><span class="chip">Matin</span><span class="chip">Après-m.</span><span class="chip on">Soir</span></div>
+        <div class="composebar">
+          <div class="for">Pour : <b>Soirée jeux</b> · 5 créneaux</div>
+          <div class="btns"><span class="btn">Annuler</span><span class="btn p">Valider</span></div>
+        </div>
+      </div>
+      <p class="note">Même geste, même barre, même validation. Son engagement du sam. 21 reste visible, mais <b>sans nom</b> (« occupée »), comme dans tout calendrier de partie aujourd'hui. Après Valider, elle est dans le calendrier de sa soirée, Destinée active sur le nouveau vote ; ← la ramène à « Mon calendrier ». <span class="w">Côté code</span> : le composer de groupe existe déjà (Story 40.5b), on ne fait que l'armer par l'adresse.</p>
+    </div>
+  </div>
+
+</div>
+
+<table>
+  <tr><th>Moment d'UJ-2</th><th>A — UX validée</th><th>C</th></tr>
+  <tr><td>« Proposer des dates », choisir « Soirée jeux »</td><td class="same">Calendrier personnel, liste toutes parties</td><td class="same">Identique</td></tr>
+  <tr><td>Sélectionner les jours, choisir « Soir », ajouter un samedi après-midi</td><td>Dans « Mon calendrier »</td><td>Dans le calendrier de « Jeux chez Léa » : la page a changé</td></tr>
+  <tr><td>Ses autres engagements pendant la composition</td><td>Visibles avec leur nom</td><td>Visibles comme « occupée », sans nom</td></tr>
+  <tr><td>Après Valider</td><td>Reste dans « Mon calendrier »</td><td>Reste dans le calendrier de la soirée, Destinée active ; ← pour revenir</td></tr>
+  <tr><td>Depuis le calendrier de la soirée ou d'une partie</td><td class="same">Composer sur place</td><td class="same">Identique : rien ne change là-bas</td></tr>
+</table>
+</body>
+</html>

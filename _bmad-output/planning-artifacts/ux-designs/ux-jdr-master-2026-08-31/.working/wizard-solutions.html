@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Wizard de création — pistes de solutions (31.4)</title>
+<style>
+/*
+  Tokens repris de ux-jdr-master-20260626/DESIGN.md (thème Grimoire Émeraude, défaut)
+  + ux-jdr-master-2026-08-04/DESIGN.md §7.8 (DetailSurface). Aucune couleur/typo neuve :
+  ce document ne change pas l'identité visuelle, seulement la structure et l'interaction.
+*/
+:root {
+  --primary-bg: #0d0a14;
+  --surface-bg: #1a1428;
+  --surface-bg-high: #241c38;
+  --accent-1: #7ec8a4;
+  --accent-2: #9b6dff;
+  --gradient-cta: linear-gradient(135deg, #7ec8a4, #9b6dff);
+  --text-primary: #e8e8f0;
+  --text-muted: #7a7a8a;
+  --border-subtle: rgba(255,255,255,0.08);
+  --status-unavailable: #e05252;
+
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 26px;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-base: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  --radius-card: 10px;
+  --radius-badge: 6px;
+  --radius-button: 8px;
+  --radius-input: 4px;
+
+  --elevation-card: 0 4px 12px rgba(0,0,0,0.5);
+  --elevation-panel: 0 0 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--primary-bg);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  padding: var(--space-xl);
+}
+h1 { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--space-sm); }
+h2 { font-size: var(--text-xl); font-weight: 600; margin: var(--space-xl) 0 var(--space-xs); border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-sm); }
+h3 { font-size: var(--text-lg); font-weight: 600; margin: 0 0 var(--space-xs); }
+.intro { color: var(--text-muted); max-width: 760px; margin-bottom: var(--space-lg); }
+.problem { background: var(--surface-bg); border-left: 3px solid var(--status-unavailable); border-radius: var(--radius-badge); padding: var(--space-md) var(--space-base); margin-bottom: var(--space-base); max-width: 760px; }
+.problem b { color: var(--text-primary); }
+.problem span { color: var(--text-muted); }
+.variants { display: flex; gap: var(--space-lg); flex-wrap: wrap; align-items: flex-start; }
+.variant {
+  background: var(--surface-bg);
+  border-radius: var(--radius-card);
+  box-shadow: var(--elevation-card);
+  padding: var(--space-base);
+  width: 320px;
+  flex: 0 0 auto;
+}
+.variant.wide { width: 460px; }
+.variant__tag {
+  display: inline-block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent-1);
+  background: rgba(126,200,164,0.12);
+  border-radius: var(--radius-badge);
+  padding: 2px 8px;
+  margin-bottom: var(--space-sm);
+}
+.variant__reco .variant__tag { color: var(--accent-2); background: rgba(155,109,255,0.14); }
+.variant__title { font-size: var(--text-lg); font-weight: 600; margin: 0 0 var(--space-xs); }
+.variant__note { font-size: var(--text-sm); color: var(--text-muted); margin: var(--space-sm) 0 0; }
+.variant__risk { font-size: var(--text-sm); margin: var(--space-xs) 0 0; }
+.risk-low { color: var(--accent-1); }
+.risk-med { color: #f0c040; }
+.risk-high { color: var(--status-unavailable); }
+
+/* ---- choice-card mock ---- */
+.cc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); margin-top: var(--space-sm); }
+.cc {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-bg-high);
+  min-height: 44px;
+  cursor: default;
+}
+.cc.selected { border-color: var(--accent-2); background: rgba(155,109,255,0.14); }
+.cc__label { font-weight: 500; font-size: var(--text-base); display: block; }
+.cc__sub { font-size: var(--text-sm); color: var(--text-muted); display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc__tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: var(--space-xs); }
+.cc__pill { font-size: 10px; padding: 1px 6px; border-radius: var(--radius-badge); background: rgba(126,200,164,0.14); color: var(--accent-1); }
+.cc__info-btn {
+  position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--text-muted); color: var(--text-muted); font-size: 11px; line-height: 16px;
+  text-align: center; background: transparent;
+}
+.cc-wrap { position: relative; }
+
+/* ---- detail surface body mock ---- */
+.ds { background: var(--surface-bg-high); border-radius: var(--radius-card); box-shadow: var(--elevation-panel); padding: var(--space-base); }
+.ds__title { font-size: var(--text-lg); font-weight: 600; margin: 0 0 var(--space-sm); }
+.ds__wall { font-size: var(--text-base); color: var(--text-primary); white-space: pre-line; }
+table.ds__stats { width: 100%; border-collapse: collapse; margin: var(--space-sm) 0 var(--space-base); font-size: var(--text-sm); }
+table.ds__stats th { text-align: left; color: var(--text-muted); font-weight: 500; padding: 4px 8px 4px 0; width: 38%; vertical-align: top; }
+table.ds__stats td { padding: 4px 0; color: var(--text-primary); }
+table.ds__stats tr + tr th, table.ds__stats tr + tr td { border-top: 1px solid var(--border-subtle); }
+.ds__lead { color: var(--text-primary); margin: 0 0 var(--space-sm); }
+.ds__prose { color: var(--text-muted); font-style: italic; margin: 0; font-size: var(--text-base); }
+.ds__hr { border: none; border-top: 1px solid var(--border-subtle); margin: var(--space-sm) 0; }
+.ds__disclosure { font-size: var(--text-sm); color: var(--accent-1); cursor: default; margin-top: var(--space-xs); display: inline-block; }
+.ds__cols { display: flex; gap: var(--space-base); }
+.ds__cols > div { flex: 1; }
+
+/* ---- attributes step mock ---- */
+.attr-row { margin-bottom: var(--space-sm); }
+.attr-row__label { font-size: var(--text-sm); color: var(--text-muted); margin-bottom: 4px; }
+.chip { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 32px; padding: 0 8px; border-radius: var(--radius-badge); border: 1px solid var(--border-subtle); background: var(--surface-bg-high); color: var(--text-primary); font-weight: 600; margin-right: 6px; font-size: var(--text-base); position: relative; }
+.chip.used { opacity: 0.35; }
+.chip.selected { border-color: var(--accent-2); background: rgba(155,109,255,0.18); }
+.chip .count { position: absolute; top: -6px; right: -6px; background: var(--accent-1); color: #0d0a14; font-size: 9px; font-weight: 700; border-radius: 999px; width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; }
+select.attr-select { width: 100%; background: var(--surface-bg-high); color: var(--text-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-input); padding: 6px 8px; font-size: var(--text-base); }
+.drag-pool { display: flex; gap: 6px; margin-bottom: var(--space-sm); }
+.drag-token { width: 36px; height: 36px; border-radius: 50%; background: var(--gradient-cta); color: #0d0a14; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: var(--text-base); }
+.drop-slot { border: 1px dashed var(--border-subtle); border-radius: var(--radius-badge); min-height: 32px; display: flex; align-items: center; padding: 0 8px; font-size: var(--text-sm); color: var(--text-muted); }
+.drop-slot.filled { border-style: solid; border-color: var(--accent-1); color: var(--text-primary); font-weight: 600; }
+
+footer { margin-top: var(--space-xl); padding-top: var(--space-base); border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: var(--text-sm); }
+</style>
+</head>
+<body>
+
+<h1>Wizard de création — pistes de solutions</h1>
+<p class="intro">Story 31.4 (FR-21). Cadrage posé par l'utilisateur : les 3 thèmes / palette / typographie restent hérités tels quels — le sujet est le polish d'interaction et de mise en forme, pas une nouvelle identité visuelle. Contenu réel (Ryuutama), thème Grimoire Émeraude illustré ; les mêmes structures s'appliquent aux deux autres thèmes via les tokens existants. Chaque section propose plusieurs variantes — <b style="color:var(--accent-2)">la recommandation est indiquée</b>, le choix reste à l'utilisateur.</p>
+
+<!-- ============================================================ -->
+<h2>A. Choix de classe/type : une description visible avant de cliquer</h2>
+<div class="problem"><b>Constat.</b> <span>Chaque carte de choix (classe, type, catégorie d'arme…) n'affiche que le nom. Fait intéressant côté code : <code>ChoiceCardOption.detail</code> existe déjà et porte du contenu (liste des talents pour une classe, formules pour une arme…) mais n'est utilisé nulle part visuellement — seulement dans l'attribut <code>aria-label</code>, donc invisible à l'écran pour tout le monde. La donnée est là ; il manque juste le rendu.</span></div>
+
+<div class="variants">
+
+  <div class="variant variant__reco">
+    <span class="variant__tag">Recommandée</span>
+    <div class="variant__title">A1 — Sous-titre descriptif</div>
+    <div class="cc-grid">
+      <div class="cc selected">
+        <span class="cc__label">Artisan</span>
+        <span class="cc__sub">Crée et répare tout objet en voyage</span>
+      </div>
+      <div class="cc">
+        <span class="cc__label">Chasseur</span>
+        <span class="cc__sub">Trouve toujours à manger, quitte à…</span>
+      </div>
+      <div class="cc">
+        <span class="cc__label">Marchand</span>
+        <span class="cc__sub">Dégote les bonnes affaires en route</span>
+      </div>
+      <div class="cc">
+        <span class="cc__label">Noble</span>
+        <span class="cc__sub">Aisé partout... sauf en extérieur</span>
+      </div>
+    </div>
+    <p class="variant__note">Une phrase courte (première phrase de <code>data.description</code>, tronquée) sous le nom, 1 ligne, ellipsis. Nécessite d'ajouter cette source au <code>detail</code> — aujourd'hui rempli par la liste des talents, pas la description. Le geste de sélection ne change pas.</p>
+    <p class="variant__risk risk-low">Risque faible — CSS + une ligne de mapping par step, aucune interaction nouvelle.</p>
+  </div>
+
+  <div class="variant">
+    <span class="variant__tag">Alternative</span>
+    <div class="variant__title">A2 — Tags au lieu d'une phrase</div>
+    <div class="cc-grid">
+      <div class="cc selected">
+        <span class="cc__label">Artisan</span>
+        <div class="cc__tags"><span class="cc__pill">Création</span><span class="cc__pill">Réparation</span></div>
+      </div>
+      <div class="cc">
+        <span class="cc__label">Chasseur</span>
+        <div class="cc__tags"><span class="cc__pill">Pistage</span><span class="cc__pill">+2</span></div>
+      </div>
+    </div>
+    <p class="variant__note">Réutilise <code>detail</code> tel quel (liste de talents/avantages) sous forme de puces, sans y toucher côté données. Plus actionnable pour classe/type (« qu'est-ce que je gagne ? ») que pour une catégorie d'arme (où A1/le texte de formule convient mieux) — probablement à mixer par step plutôt qu'appliqué partout à l'identique.</p>
+    <p class="variant__risk risk-low">Risque faible — aucun changement de données, seulement le rendu.</p>
+  </div>
+
+  <div class="variant">
+    <span class="variant__tag">Minimale</span>
+    <div class="variant__title">A3 — Bouton (i) discret</div>
+    <div class="cc-grid">
+      <div class="cc-wrap"><div class="cc selected"><span class="cc__label">Artisan</span></div><button class="cc__info-btn">i</button></div>
+      <div class="cc-wrap"><div class="cc"><span class="cc__label">Chasseur</span></div><button class="cc__info-btn">i</button></div>
+    </div>
+    <p class="variant__note">Garde la densité actuelle de la grille (carte compacte), mais ne répond qu'à moitié à la demande : le nom seul reste tout ce qu'on voit sans agir. À réserver si l'espace carte est jugé non négociable — sinon A1 fait mieux pour un coût similaire.</p>
+    <p class="variant__risk risk-med">Risque moyen — un bouton imbriqué dans une carte-radio doit être vérifié avec la navigation clavier du radiogroup (piège déjà rencontré story 31.3).</p>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2>B. Surface de détail : sortir du pavé de texte</h2>
+<div class="problem"><b>Constat.</b> <span>Un talent porte 4 informations distinctes (<code>attributes</code>, <code>difficulty</code>, <code>effect.description</code>, <code>effect.conditions</code>) + le texte d'ambiance (<code>description</code>) — aujourd'hui concaténées en un seul bloc de prose (<code>class-step.ts:talentText()</code>), qui pousse le texte vraiment utile en bas, après défilement.</span></div>
+
+<div class="variants">
+
+  <div class="variant wide variant__reco">
+    <span class="variant__tag">Recommandée</span>
+    <div class="variant__title">B1 — Fiche mécanique + récit</div>
+    <div class="ds">
+      <div class="ds__title">Création</div>
+      <table class="ds__stats">
+        <tr><th>Attributs</th><td>VIG · AGI</td></tr>
+        <tr><th>Difficulté</th><td>Variable</td></tr>
+        <tr><th>Effet</th><td>Fabrique un objet du type choisi lors de l'obtention de ce talent</td></tr>
+        <tr><th>Conditions</th><td>Durée : encombrement de l'objet en jours. Coût : moitié de son prix.</td></tr>
+      </table>
+      <hr class="ds__hr">
+      <p class="ds__prose">« Les artisans gagnent leur vie en créant des objets de tout type : beaux, pratiques, efficaces, etc. Avec assez de matériel et de temps, ils sont même capables de les fabriquer sur la route. »</p>
+    </div>
+    <p class="variant__note">Ce qui sert à décider (attributs, difficulté, effet, conditions) en tableau scannable en premier ; le texte d'ambiance en italique ensuite, clairement distingué. Résout la mise en forme sans ajouter d'interaction — le contenu tient déjà quasi sans scroll pour la plupart des talents.</p>
+    <p class="variant__risk risk-low">Risque faible — un composant de rendu structuré dans <code>DetailSurface</code> (ou ses appelants), aucun changement de contrat public.</p>
+  </div>
+
+  <div class="variant wide">
+    <span class="variant__tag">Alternative</span>
+    <div class="variant__title">B2 — Résumé + récit replié</div>
+    <div class="ds">
+      <div class="ds__title">Création</div>
+      <p class="ds__lead"><b>VIG · AGI</b> — Difficulté variable · Fabrique un objet du type choisi lors de l'obtention de ce talent</p>
+      <span class="ds__disclosure">▸ Lire le récit</span>
+    </div>
+    <p class="variant__note">Va plus loin que B1 : replie le texte d'ambiance par défaut (composant Angular Material disponible, aucune dépendance neuve). Le scroll disparaît quasi systématiquement, mais ajoute un geste — à réserver aux talents dont le texte est vraiment long.</p>
+    <p class="variant__risk risk-med">Risque moyen — nouvel état d'interaction (ouvert/replié) à tester, dont le focus/clavier.</p>
+  </div>
+
+  <div class="variant wide">
+    <span class="variant__tag">Complément desktop</span>
+    <div class="variant__title">B3 — Deux colonnes (panneau large ≥1024px)</div>
+    <div class="ds">
+      <div class="ds__title">Création</div>
+      <div class="ds__cols">
+        <div>
+          <table class="ds__stats">
+            <tr><th>Attributs</th><td>VIG · AGI</td></tr>
+            <tr><th>Difficulté</th><td>Variable</td></tr>
+          </table>
+        </div>
+        <div>
+          <p class="ds__prose" style="margin:0">« Les artisans gagnent leur vie en créant des objets de tout type… »</p>
+        </div>
+      </div>
+    </div>
+    <p class="variant__note">Le panneau desktop a la largeur pour une mise en page à deux colonnes ; la feuille mobile reprend B1 empilé. Une amélioration de B1 pour le breakpoint ≥1024px existant, pas une variante concurrente.</p>
+    <p class="variant__risk risk-low">Risque faible — CSS média-query sur le composant, pas de nouvel état.</p>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2>C. Attributs : lever l'ambiguïté des valeurs dupliquées</h2>
+<div class="problem"><b>Constat.</b> <span>Patron « Polyvalent » = [8, 4, 6, 6]. Aujourd'hui, chaque attribut affiche 4 boutons avec les 4 valeurs du patron ; les deux boutons « 6 » sont visuellement identiques mais représentent des emplacements distincts du pool partagé — sélectionner l'un ou l'autre a un effet différent sur ce qu'il reste à assigner, sans repère visuel pour le distinguer.</span></div>
+
+<div class="variants">
+
+  <div class="variant wide variant__reco">
+    <span class="variant__tag">Recommandée</span>
+    <div class="variant__title">C1 — Une puce par valeur distincte, avec compteur</div>
+    <div class="attr-row">
+      <div class="attr-row__label">VIGUEUR (VIG)</div>
+      <span class="chip">8</span>
+      <span class="chip selected">6<span class="count">2</span></span>
+      <span class="chip">4</span>
+    </div>
+    <div class="attr-row">
+      <div class="attr-row__label">AGILITÉ (AGI)</div>
+      <span class="chip used">8</span>
+      <span class="chip">6<span class="count">1</span></span>
+      <span class="chip">4</span>
+    </div>
+    <p class="variant__note">Les valeurs identiques (8,4,6,6) sont fusionnées en <b>une seule</b> puce par valeur, avec un badge « ×2 » qui décompte à chaque assignation — il n'existe plus deux « 6 » indiscernables à confondre, juste un pool avec un compte restant. Le geste (cliquer une valeur pour l'assigner à l'attribut actif) ne change pas.</p>
+    <p class="variant__risk risk-low">Risque faible — logique d'assignation déjà pool-based dans <code>attributes-step.ts</code>, seul le regroupement d'affichage change.</p>
+  </div>
+
+  <div class="variant wide">
+    <span class="variant__tag">Alternative — zéro ambiguïté</span>
+    <div class="variant__title">C2 — Sélecteur déroulant par attribut</div>
+    <div class="attr-row">
+      <div class="attr-row__label">VIGUEUR (VIG)</div>
+      <select class="attr-select"><option>— Choisir —</option><option>8</option><option selected>6 (1 restant)</option><option>4 (1 restant)</option></select>
+    </div>
+    <div class="attr-row">
+      <div class="attr-row__label">AGILITÉ (AGI)</div>
+      <select class="attr-select"><option>6 (0 restant, désactivé)</option><option>4 (1 restant)</option></select>
+    </div>
+    <p class="variant__note">Un <code>&lt;select&gt;</code> par attribut, dont les options se désactivent selon ce qu'il reste dans le pool — aucune ambiguïté possible par construction, au prix d'un geste plus « formulaire » et moins « jeu » que les puces actuelles.</p>
+    <p class="variant__risk risk-low">Risque faible — pattern déjà utilisé ailleurs dans le wizard (choix de classe requis).</p>
+  </div>
+
+  <div class="variant wide">
+    <span class="variant__tag">Stretch — non recommandée par défaut</span>
+    <div class="variant__title">C3 — Glisser-déposer</div>
+    <div class="drag-pool"><div class="drag-token">8</div><div class="drag-token">6</div><div class="drag-token">6</div><div class="drag-token">4</div></div>
+    <div class="attr-row"><div class="attr-row__label">VIGUEUR</div><div class="drop-slot filled">6</div></div>
+    <div class="attr-row"><div class="attr-row__label">AGILITÉ</div><div class="drop-slot">Déposer une valeur ici</div></div>
+    <p class="variant__note">La plus « sympa » visuellement/tactilement, mais interaction neuve à concevoir en accessibilité (clavier, lecteur d'écran, tactile) et plus coûteuse à tester (AC3 exige une équivalence stricte des données produites, plus dure à garantir sur un geste drag). À ne retenir que sur décision explicite, pas par défaut.</p>
+    <p class="variant__risk risk-high">Risque élevé — accessibilité clavier/tactile à concevoir de zéro, coût de test important.</p>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2>D. Équipement : au-delà de la liste plate</h2>
+<div class="problem"><b>Constat.</b> <span>Mode « Achat libre » = une seule liste non groupée, 68 objets dont 54 « individuels » (armes/armures traitées ailleurs). Aucun groupement, aucune recherche, budget affiché en texte brut (« Budget : 320 / 1000 Po »). Et surtout : 68 objets sur 68 portent un champ <code>effect</code> avec un vrai texte de règle (ex. <i>Alcools</i> → provoque l'état Surexcité) — chargé par le code mais rendu nulle part, ni en carte ni en info-bulle (cf. AC6 de la story dev, trouvaille indépendante de cette session UX).</span></div>
+
+<div class="variants">
+
+  <div class="variant wide variant__reco">
+    <span class="variant__tag">Recommandée</span>
+    <div class="variant__title">D1 — Regroupé, avec accès à l'effet</div>
+    <div style="font-size:var(--text-sm);color:var(--text-muted);margin-bottom:4px;">Consommables</div>
+    <div class="cc-grid" style="grid-template-columns:1fr;">
+      <div class="cc" style="display:flex;justify-content:space-between;align-items:center;">
+        <span><span class="cc__label" style="text-decoration:underline;text-decoration-style:dotted;">Alcools</span><span class="cc__sub" style="display:inline;margin-left:6px;">— 10 Po</span></span>
+        <span style="font-size:var(--text-sm);color:var(--accent-1);">Ajouter</span>
+      </div>
+    </div>
+    <div class="ds" style="margin-top:8px;">
+      <div class="ds__title" style="font-size:var(--text-base);">Alcools</div>
+      <p class="ds__prose" style="margin:0;">« Consommés avec une condition inférieure à 4, ils provoquent l'état Surexcité (4). »</p>
+    </div>
+    <p class="variant__note" style="margin-top:8px;">Sections par <code>nature</code> (Consommables/individuels, Contenants, Animaux) au lieu d'une liste unique. Le nom devient un déclencheur (même <code>DetailSurface</code> que la section B — un seul paragraphe ici, les objets n'ont ni attributs ni difficulté). Jauge de budget visuelle plutôt que le texte brut actuel.</p>
+    <p class="variant__risk risk-low">Risque faible — réutilise <code>createDetailSurfaceHost()</code> tel quel (AC5 de la story dev), aucune nouvelle donnée.</p>
+  </div>
+
+  <div class="variant wide">
+    <span class="variant__tag">Complément — recommandé si la liste reste longue</span>
+    <div class="variant__title">D2 — + recherche texte</div>
+    <input type="text" placeholder="Rechercher un objet…" style="width:100%;background:var(--surface-bg-high);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-input);padding:6px 8px;font-size:var(--text-base);margin-bottom:8px;">
+    <p class="variant__note">Le groupement par <code>nature</code> seul (D1) laisse encore 54 objets « individuels » dans un même groupe — pas de sous-catégorie plus fine dans les données actuelles. Un champ de recherche réduit vraiment le temps de scan sur ce sous-groupe, sans exiger de nouvelle donnée ni de reclassement du catalogue.</p>
+    <p class="variant__risk risk-low">Risque faible — filtrage front pur sur <code>label</code>, aucune dépendance neuve.</p>
+  </div>
+
+</div>
+
+<footer>
+  Contenu réel : catalogue Ryuutama seedé (classes.json, attribute-patterns.json, equipment-items.json). Aucune donnée inventée.
+  Thème illustré : Grimoire Émeraude — les deux autres thèmes (Forêt Ancienne, Médiéval Steampunk / futur « Atelier Cuivre ») héritent de la même structure via leurs propres tokens de couleur, non redessinés ici.
+</footer>
+
+</body>
+</html>

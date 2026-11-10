@@ -1,13 +1,15 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { computeDerived, type DerivedStats, type RyuutamaSheetData } from '@master-jdr/game-rules';
 import type { ContentEntryDto, GameSystemContentDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../core/theme/tone-format';
 import {
   ClassStep,
   type ClassCapabilityPatch,
@@ -20,6 +22,8 @@ import { WeaponStep } from './steps/weapon-step/weapon-step';
 import { FetishStep } from './steps/fetish-step/fetish-step';
 import { EquipmentStep } from './steps/equipment-step/equipment-step';
 import { NarrativeStep } from './steps/narrative-step/narrative-step';
+import { DetailSurface } from '../../../shared/detail-surface/detail-surface';
+import { WizardSummary } from './wizard-summary/wizard-summary';
 import {
   PortraitCropper,
   type PortraitCropData,
@@ -103,6 +107,7 @@ interface ServerValidationError {
   standalone: true,
   imports: [
     MatButtonModule,
+    AppIcon,
     ClassStep,
     TypeStep,
     MagicStep,
@@ -112,6 +117,8 @@ interface ServerValidationError {
     EquipmentStep,
     NarrativeStep,
     PortraitCropper,
+    WizardSummary,
+    DetailSurface,
   ],
   templateUrl: './character-wizard.html',
   styleUrl: './character-wizard.scss',
@@ -175,6 +182,14 @@ export class CharacterWizard implements OnInit {
     startingEquipment: [],
   });
   protected readonly submitting = signal(false);
+
+  /** Feuille « Récap » (téléphone, Story 31.4) : le récapitulatif de la colonne de droite y est rendu. */
+  protected readonly recapOpen = signal(false);
+  private readonly recapButton = viewChild<ElementRef<HTMLButtonElement>>('recapBtn');
+  /** Nombre d'exemplaires d'équipement choisis — pastille du bouton « Récap ». */
+  protected readonly cartCount = computed(() =>
+    (this.sheetData().startingEquipment ?? []).reduce((n, s) => n + s.quantity, 0),
+  );
   protected readonly stepErrors = signal<Record<string, string[]>>({});
 
   /** Portrait : hors `sheetData` (vit sur `Character.portraitUrl`/`portraitCropData`, uploadé après création). */
@@ -187,6 +202,14 @@ export class CharacterWizard implements OnInit {
   );
   protected readonly currentStepLabel = computed(
     () => this.steps()[this.currentStepIndex()]?.label ?? '',
+  );
+  /** Titre de la barre de navigation : « Étape 2/9 · Voyage » (rang, total et libellé de l'étape). */
+  protected readonly stepProgressText = computed(() =>
+    fillTone(this.theme.tone()['characters_wizard.step_progress'], {
+      index: this.currentStepIndex() + 1,
+      total: this.steps().length,
+      label: this.currentStepLabel(),
+    }),
   );
   protected readonly wizardStepIntros = computed<ContentEntryDto[]>(
     () => this.content()?.['wizardStepIntro'] ?? [],
@@ -294,12 +317,16 @@ export class CharacterWizard implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
     this.partieId = id;
+    // Vrai seulement pendant le chargement du schéma/contenu : un 404 y signifie « ce système n'a
+    // pas de module », alors qu'un 404 de `partiesSvc.get()` signifie « partie introuvable ».
+    let loadingGameSystem = false;
     try {
       // `partie-detail.ts` passe déjà `gameSystemId` en query param (il l'a chargé juste avant) —
       // évite un aller-retour réseau redondant. Repli sur un fetch de la partie uniquement pour
       // une navigation directe (lien partagé, rechargement de page) où le paramètre est absent.
       const gameSystemIdParam = this.route.snapshot.queryParamMap.get('gameSystemId');
       this.gameSystemId = gameSystemIdParam ?? (await this.partiesSvc.get(id)).gameSystemId;
+      loadingGameSystem = true;
       const [schema, content] = await Promise.all([
         this.characterSvc.getGameSystemSchema(this.gameSystemId),
         this.characterSvc.getGameSystemContent(this.gameSystemId),
@@ -308,11 +335,25 @@ export class CharacterWizard implements OnInit {
       this.allStepsRaw.set(allSteps.filter((s) => SUPPORTED_STEP_KEYS.has(s.key)));
       this.content.set(content);
       this.currentStepKeyTracked.set(this.steps()[0]?.key ?? '');
-    } catch {
-      this.loadError.set(
-        "Impossible de charger l'assistant de création. Vérifiez votre connexion et réessayez.",
-      );
+    } catch (err) {
+      // Un système de jeu déclaré mais sans module (ex. Draconis, prévu au Palier 13) répond 404 :
+      // dire la vraie cause plutôt qu'un « vérifiez votre connexion » trompeur.
+      if (loadingGameSystem && err instanceof HttpErrorResponse && err.status === 404) {
+        this.loadError.set(this.theme.tone()['characters_wizard.load_error_no_module']);
+        return;
+      }
+      this.loadError.set(this.theme.tone()['characters_wizard.load_error']);
     }
+  }
+
+  protected openRecap(): void {
+    this.recapOpen.set(true);
+  }
+
+  protected closeRecap(): void {
+    this.recapOpen.set(false);
+    // Le focus revient au bouton d'origine (patron des autres surfaces flottantes).
+    queueMicrotask(() => this.recapButton()?.nativeElement.focus());
   }
 
   protected goNext(): void {
@@ -438,7 +479,7 @@ export class CharacterWizard implements OnInit {
           // Le personnage existe déjà : un échec d'upload ne doit pas se présenter comme un
           // échec de création (cf. Dev Notes Story 4.5) — avertissement non bloquant.
           this.snack.open(
-            "Personnage créé, mais le portrait n'a pas pu être enregistré. Réessayez depuis la fiche.",
+            this.theme.tone()['characters_wizard.portrait_upload_warning'],
             undefined,
             { duration: 5000 },
           );
@@ -455,17 +496,21 @@ export class CharacterWizard implements OnInit {
 
   private handleSubmitError(err: unknown): void {
     if (!(err instanceof HttpErrorResponse)) {
-      this.snack.open('Une erreur inattendue est survenue. Réessayez.', undefined, {
-        duration: 4000,
-      });
+      this.snack.open(
+        this.theme.tone()['common.une_erreur_inattendue_est_survenue_reessayez'],
+        undefined,
+        { duration: 4000 },
+      );
       return;
     }
 
     if (err.status === 409) {
       const message = typeof err.error?.message === 'string' ? err.error.message : undefined;
-      this.snack.open(message ?? 'Vous avez déjà un personnage sur cette partie', undefined, {
-        duration: 4000,
-      });
+      this.snack.open(
+        message ?? this.theme.tone()['characters_wizard.already_has_character'],
+        undefined,
+        { duration: 4000 },
+      );
       this.router.navigate(['/parties', this.partieId]);
       return;
     }
@@ -483,7 +528,9 @@ export class CharacterWizard implements OnInit {
         // Corps 400 générique (ex. validation DTO renvoyant un tableau de strings) : pas de
         // champ exploitable pour rouvrir une étape précise, mais on informe quand même l'utilisateur.
         const genericMessage =
-          typeof rawMessage === 'string' ? rawMessage : 'Données invalides. Vérifiez votre saisie.';
+          typeof rawMessage === 'string'
+            ? rawMessage
+            : this.theme.tone()['characters_wizard.invalid_data'];
         this.snack.open(genericMessage, undefined, { duration: 4000 });
         return;
       }
@@ -500,8 +547,10 @@ export class CharacterWizard implements OnInit {
       return;
     }
 
-    this.snack.open('Une erreur inattendue est survenue. Réessayez.', undefined, {
-      duration: 4000,
-    });
+    this.snack.open(
+      this.theme.tone()['common.une_erreur_inattendue_est_survenue_reessayez'],
+      undefined,
+      { duration: 4000 },
+    );
   }
 }

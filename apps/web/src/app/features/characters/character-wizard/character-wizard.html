@@ -1,33 +1,47 @@
 @if (loadError(); as error) {
   <div class="wizard__load-error" role="alert">{{ error }}</div>
 } @else if (steps().length === 0) {
-  <div class="wizard__loading">Chargement de l'assistant…</div>
+  <div class="wizard__loading">{{ theme.tone()['characters_wizard.loading'] }}</div>
 } @else {
   <div class="wizard">
+    <div class="wizard__head">
     <div class="wizard__nav">
       <button
         type="button"
         class="wizard__nav-btn"
         [disabled]="isFirstStep() || submitting()"
         (click)="goPrev()"
-        aria-label="Étape précédente"
-      >❮</button>
+        [attr.aria-label]="theme.tone()['characters_wizard.step_prev_aria']"
+      ><app-icon name="precedent" /></button>
       <span class="wizard__nav-title" aria-live="polite">
-        Étape {{ currentStepIndex() + 1 }}/{{ steps().length }} · {{ currentStepLabel() }}
+        {{ stepProgressText() }}
       </span>
       <button
         type="button"
-        class="wizard__nav-btn"
+        class="wizard__nav-btn wizard__nav-next"
         [disabled]="!canGoNext() || isLastStep() || submitting()"
         (click)="goNext()"
-        aria-label="Étape suivante"
-      >❯</button>
+        [attr.aria-label]="theme.tone()['characters_wizard.step_next_aria']"
+      ><app-icon name="suivant" /></button>
+      <!-- Téléphone : le récapitulatif ne tient pas en colonne — un bouton l'ouvre en feuille. -->
+      <button
+        #recapBtn
+        type="button"
+        class="wizard__recap-btn"
+        (click)="openRecap()"
+      >
+        {{ theme.tone()['character.recap_button'] }}
+        @if (cartCount() > 0) {
+          <span class="wizard__recap-badge" aria-hidden="true">{{ cartCount() }}</span>
+        }
+      </button>
     </div>
     <div class="wizard__progress-track">
       <div
         class="wizard__progress-fill"
         [style.width.%]="((currentStepIndex() + 1) / steps().length) * 100"
       ></div>
+    </div>
     </div>
 
     <div class="wizard__body">
@@ -121,35 +135,43 @@
         }
 
         <div class="wizard__nav-bottom">
-          <button mat-stroked-button [disabled]="isFirstStep() || submitting()" (click)="goPrev()">❮ Précédent</button>
+          <button mat-stroked-button [disabled]="isFirstStep() || submitting()" (click)="goPrev()"><app-icon name="precedent" /> {{ theme.tone()['common.precedent'] }}</button>
           @if (isLastStep()) {
             <button mat-flat-button color="primary" [disabled]="submitting()" (click)="onSubmit()">
-              @if (submitting()) { Création… } @else { {{ theme.tone()['character.create_cta'] }} }
+              @if (submitting()) { {{ theme.tone()['characters_wizard.submitting'] }} } @else { {{ theme.tone()['character.create_cta'] }} }
             </button>
           } @else {
             <button mat-flat-button color="primary" [disabled]="!canGoNext() || submitting()" (click)="goNext()">
-              Suivant ❯
+              {{ theme.tone()['common.suivant'] }} <app-icon name="suivant" />
             </button>
           }
         </div>
       </div>
 
-      <div class="wizard__summary">
-        <div class="wizard__summary-header">
-          <span class="wizard__summary-name">{{ sheetData().narrative?.name || 'Voyageur' }}</span>
-        </div>
-        @if (derived(); as stats) {
-          <div class="wizard__derived-badges">
-            <span class="stat-pill">PV {{ stats.PV }}</span>
-            <span class="stat-pill">PE {{ stats.PE }}</span>
-            <span class="stat-pill">Condition {{ stats.Condition }}</span>
-            <span class="stat-pill">Initiative {{ stats.Initiative }}</span>
-            <span class="stat-pill">Encombrement max {{ stats.Encombrement }}</span>
-          </div>
-        } @else {
-          <p class="wizard__summary-hint">Les statistiques dérivées apparaîtront une fois les attributs assignés.</p>
-        }
-      </div>
+      <aside class="wizard__summary" [attr.aria-label]="theme.tone()['characters_wizard.summary_aria']">
+        <app-wizard-summary
+          [sheetData]="sheetData()"
+          [derived]="derived()"
+          [content]="content()"
+          (equipmentChange)="onStartingEquipmentChange($event)"
+        />
+      </aside>
     </div>
+
+    @if (recapOpen()) {
+      <app-detail-surface
+        [title]="theme.tone()['character.recap_title']"
+        [custom]="true"
+        [openToken]="1"
+        (closed)="closeRecap()"
+      >
+        <app-wizard-summary
+          [sheetData]="sheetData()"
+          [derived]="derived()"
+          [content]="content()"
+          (equipmentChange)="onStartingEquipmentChange($event)"
+        />
+      </app-detail-surface>
+    }
   </div>
 }

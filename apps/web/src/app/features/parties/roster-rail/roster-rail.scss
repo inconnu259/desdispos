@@ -19,6 +19,9 @@
 }
 
 .roster-rail__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   align-self: flex-end;
   margin: 0 0.5rem 0.5rem;
   width: 36px;
@@ -27,6 +30,11 @@
   background: transparent;
   cursor: pointer;
   border-radius: 50%;
+
+  // Icônes du jeu (palier 10.7) : flèche décorative, le bouton porte son aria-label.
+  app-icon {
+    --app-icon-size: 1.25rem;
+  }
 }
 
 .roster-rail__item,

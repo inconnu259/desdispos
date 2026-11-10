@@ -1,7 +1,9 @@
 # Seed Ryuutama
 
-Ce dossier attend, dans un sous-dossier `data/` (gitignoré — contenu extrait du *Guide
-du Voyageur*, sous droits d'auteur, NFR4), les 4 fichiers JSON suivants. Sans ces
+Ce dossier attend, dans un sous-dossier `data/`, les fichiers JSON de contenu décrits
+ci-dessous. Depuis le 2026-09-25 (NFR4 révisée), ces fichiers sont **versionnés** : les textes
+y sont reformulés à partir du *Guide du Voyageur* (mécaniques conservées, formulation propre au
+projet) — le livre reste nécessaire pour jouer. Sans ces
 fichiers, le démarrage de l'API échoue au bootstrap avec un message d'erreur pointant
 vers ce README.
 
@@ -96,3 +98,26 @@ qui n'a pas de texte dans le livre et reste géré en dur côté frontend, `tone
 `weaponCategoryId`, `fetiqueObject`, `equipment`, `narrative`). `text` est le texte
 d'introduction affiché avant toute sélection, transcrit tel quel de `docs/assistant.md`
 (*Guide du Voyageur*, chapitre « Créer un Voyageur ») — Story 23.3.
+
+## homme-dragon-level-capacities.json
+
+Tableau de 6 objets : les capacités que l'Homme Dragon acquiert en montant de niveau (clé de
+catalogue `hommeDragonLevelCapacity`, Story 33.7). La fiche liste celles dont `level` est inférieur
+ou égal à son niveau ; la carte est masquée au niveau 1.
+
+```json
+[
+  { "key": "reserve", "label": "Réserve de souffles", "level": 2, "description": "À partir du niveau 2, ..." }
+]
+```
+
+La capacité `artefact-cadeau` (niveau 4) s'accompagne d'un choix unique et définitif porté par la
+fiche (`sheetData.artefactCadeau`), pas par ce catalogue.
+
+## souffles-rituels.json
+
+Tableau de 6 objets : les souffles rituels de la mère-dragon, consultables dès le niveau 5 (clé de
+catalogue `souffleRituel`, Story 33.7). Même forme que `souffles.json` (`key`, `label`, `ps`,
+`description`) mais **sans** `race`, `famille` ni `reservable` : ils ne sont jamais classés « autre
+race ». Le livre ne précise pas leur coût ; hypothèse retenue et documentée dans `docs/dragons.md` :
+`ps: 1`, comme les autres souffles.

@@ -6,7 +6,11 @@
   border-radius: 6px;
   background: transparent;
   color: var(--mat-sys-on-surface-variant, #888);
-  font-size: 12px;
+  /* Pictogramme <app-icon> : sa taille passe par la variable, plus par font-size. */
+  --app-icon-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   cursor: pointer;
 
@@ -21,6 +25,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  /* Boutons valider / fermer : pictogramme de bouton nommé (20px). */
+  --app-icon-size: 20px;
 }
 
 .field-edit-pencil__input {

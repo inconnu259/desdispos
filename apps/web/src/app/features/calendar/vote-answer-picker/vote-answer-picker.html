@@ -4,30 +4,53 @@
 
   Motif ARIA de menu : le conteneur est nommé par le jour et le créneau, chaque choix est un
   `menuitemradio` dont `aria-checked` dit lequel est le mien, le retrait est un `menuitem`.
+
+  Story 47.5 — quand plusieurs plages du vote couvrent le créneau, chaque plage est un groupe nommé par sa plage
+  (« ven. 6 soir → dim. 8 après-midi ») avec ses trois réponses et son retrait ; avec une seule, rien ne change.
 -->
-<div class="picker" role="menu" [attr.aria-label]="'Répondre au vote — ' + slotLabel()">
+<div class="picker" role="menu" [attr.aria-label]="menuAriaLabel()">
   <!-- Nommer le créneau n'est pas décoratif : le sélecteur est ancré sur une bande de quelques
        pixels, et rien d'autre à l'écran ne dit sur QUEL créneau on est en train de répondre. -->
   <div class="picker__head">{{ slotLabel() }}</div>
 
+  @if (multi()) {
+    @for (line of lines(); track line.vote.optionId; let first = $first) {
+      @if (!first) {
+        <div class="sep" aria-hidden="true"></div>
+      }
+      <div class="picker__line" role="group" [attr.aria-label]="line.range">
+        <div class="picker__range" aria-hidden="true">{{ line.range }}</div>
+        <ng-container
+          [ngTemplateOutlet]="answers"
+          [ngTemplateOutletContext]="{ $implicit: line.vote }"
+        />
+      </div>
+    }
+  } @else {
+    <ng-container [ngTemplateOutlet]="answers" [ngTemplateOutletContext]="{ $implicit: vote() }" />
+  }
+</div>
+
+<ng-template #answers let-v>
   @for (answer of ANSWERS; track answer) {
     <button
       #answerBtn
       type="button"
       class="opt2 opt2--answer"
       role="menuitemradio"
-      [class.sel]="isMine(answer)"
-      [attr.aria-checked]="isMine(answer)"
+      [class.sel]="isMine(v, answer)"
+      [attr.aria-checked]="isMine(v, answer)"
       [attr.data-answer]="answer"
+      [attr.data-option]="v.optionId"
       [disabled]="busy()"
-      (click)="choose(answer)"
+      (click)="choose(v, answer)"
     >
       <!-- La pastille DOUBLE le mot, elle ne le remplace jamais (P-1). -->
       <i aria-hidden="true"></i>{{ label(answer) }}
     </button>
   }
 
-  @if (canWithdraw()) {
+  @if (canWithdraw(v)) {
     <!-- La quatrième entrée est le chemin UNIQUE de FR-35 dans le calendrier
          (`contrat-ui-calendrier.html:634`) : depuis cette story, aucun autre n'y subsiste. -->
     <div class="sep" aria-hidden="true"></div>
@@ -35,10 +58,11 @@
       type="button"
       class="opt2 opt2--withdraw"
       role="menuitem"
+      [attr.data-option]="v.optionId"
       [disabled]="busy()"
-      (click)="withdraw()"
+      (click)="withdraw(v)"
     >
-      Retirer ma réponse
+      {{ theme.tone()['calendar.answer_withdraw'] }}
     </button>
   }
-</div>
+</ng-template>

@@ -1,5 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { InventoryItemRow } from './inventory-item-row';
+import { TONE_MAP } from '../../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 describe('InventoryItemRow', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -152,10 +155,41 @@ describe('InventoryItemRow', () => {
     await fixture.whenStable();
 
     expect(
-      fixture.nativeElement.querySelector('button[aria-label="Modifier l\'objet"]'),
+      fixture.nativeElement.querySelector(
+        `button[aria-label="${GRIMOIRE_TONE['characters_sheet.item_edit_aria']}"]`,
+      ),
     ).not.toBeNull();
     expect(
       fixture.nativeElement.querySelector('button[aria-label="Supprimer l\'objet"]'),
     ).toBeNull();
+  });
+
+  it('les boutons modifier et supprimer portent les pictogrammes modifier et supprimer, sans second nom', async () => {
+    TestBed.configureTestingModule({ imports: [InventoryItemRow] });
+    const fixture = TestBed.createComponent(InventoryItemRow);
+    fixture.componentRef.setInput('item', {
+      id: 'item-1',
+      name: 'Cape',
+      weight: 1,
+      addedBy: 'player',
+    });
+    fixture.componentRef.setInput('editable', true);
+    fixture.componentRef.setInput('removable', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const buttons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ) as HTMLButtonElement[];
+    expect(buttons.map((b) => b.querySelector('app-icon')?.getAttribute('data-icon'))).toEqual([
+      'modifier',
+      'supprimer',
+    ]);
+    // Le nom du bouton reste son aria-label : l'icône est décorative.
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+      GRIMOIRE_TONE['characters_sheet.item_edit_aria'],
+      GRIMOIRE_TONE['characters_sheet.item_remove_aria'],
+    ]);
+    expect(buttons[0].querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 });

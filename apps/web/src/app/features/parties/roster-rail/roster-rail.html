@@ -6,19 +6,20 @@
     [attr.aria-label]="expanded() ? theme.tone()['roster.collapse_label'] : theme.tone()['roster.expand_label']"
     [attr.aria-expanded]="expanded()"
   >
-    <span aria-hidden="true">{{ expanded() ? '‹' : '›' }}</span>
+    <app-icon [name]="expanded() ? 'precedent' : 'suivant'" />
   </button>
 
   @for (row of rows(); track row.member.userId) {
     <div
       class="roster-rail__item"
       [class.roster-rail__item--mj]="row.isMj"
-      [class.roster-rail__item--clickable]="row.character || row.isSelf"
-      [class.roster-rail__item--create]="!row.character && row.isSelf"
+      [class.roster-rail__item--clickable]="row.character || row.canCreate"
+      [class.roster-rail__item--create]="row.canCreate"
       [attr.data-user-id]="row.member.userId"
       [attr.aria-label]="row.ariaLabel"
+      [title]="row.ariaLabel"
       role="button"
-      [attr.tabindex]="row.character || row.isSelf ? 0 : -1"
+      [attr.tabindex]="row.character || row.canCreate ? 0 : -1"
       (click)="selectRow(row)"
       (keydown.enter)="selectRow(row)"
       (keydown.space)="$event.preventDefault(); selectRow(row)"
@@ -34,7 +35,7 @@
         @if (row.isMj) {
           <span class="roster-rail__mj-badge">{{ theme.tone()['roster.mj_badge'] }}</span>
         }
-        @if (!row.character && row.isSelf) {
+        @if (row.canCreate) {
           <span class="roster-rail__create-badge" aria-hidden="true">+</span>
         }
         @if (row.hasPendingLevelUp) {
@@ -54,7 +55,7 @@
       @if (expanded()) {
         <span class="roster-rail__label">
           <span class="roster-rail__name">
-            @if (!row.character && row.isSelf && !row.isMj) {
+            @if (row.canCreate) {
               {{ theme.tone()['character.create_cta'] }}
             } @else {
               <app-identity-label [characterName]="row.characterLabel" [playerName]="row.playerLabel" />

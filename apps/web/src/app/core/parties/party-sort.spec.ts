@@ -8,7 +8,7 @@ function makeParty(overrides: Partial<PartieDto> = {}): PartieDto {
     kind: 'ONE_SHOT',
     gameSystemId: 'draconis',
     description: null,
-    mjId: 'mj1',
+    ownerId: 'mj1',
     createdAt: '2026-01-01T00:00:00.000Z',
     nextSessionDate: null,
     nextSessionSlot: null,
@@ -16,6 +16,7 @@ function makeParty(overrides: Partial<PartieDto> = {}): PartieDto {
     status: 'A_VENIR',
     isFavorite: false,
     coverImageVersion: null,
+    can: { coverUpdate: true },
     ...overrides,
   };
 }
@@ -55,6 +56,19 @@ describe('sortParties (Story 29.8)', () => {
     expect(sorted.map((p) => p.id)).toEqual(['a', 'b']);
   });
 
+  it('urgence : une rencontre ANNULEE (Story 42.2) passe après toute partie active, comme une terminée', () => {
+    const active = makeParty({ id: 'a', name: 'A', status: 'A_VENIR' });
+    const cancelled = makeParty({ id: 'b', name: 'B', status: 'ANNULEE' });
+    const map = signals({
+      a: { role: 'mj', status: 'A_VENIR', signals: [] },
+      b: { role: 'player', status: 'ANNULEE', signals: ['PARTIE_ANNULEE'] },
+    });
+
+    const sorted = sortParties([cancelled, active], 'urgence', map);
+
+    expect(sorted.map((p) => p.id)).toEqual(['a', 'b']);
+  });
+
   it('urgence : une partie sans entrée dans signalsMap se comporte comme « aucun signal » (chargement pas encore résolu)', () => {
     const blocking = makeParty({ id: 'a', name: 'A' });
     const missing = makeParty({ id: 'b', name: 'B' });
@@ -86,7 +100,7 @@ describe('sortParties (Story 29.8)', () => {
     expect(sorted.map((p) => p.id)).toEqual(['b', 'a']);
   });
 
-  it('type : ordre alphabétique des libellés (Campagne < Campagne épisodique < One-shot)', () => {
+  it('type : rang explicite, indépendant des libellés (Campagne < Campagne épisodique < One-shot)', () => {
     const oneShot = makeParty({ id: 'a', kind: 'ONE_SHOT' });
     const campagne = makeParty({ id: 'b', kind: 'CAMPAGNE_LINEAIRE' });
     const episodique = makeParty({ id: 'c', kind: 'CAMPAGNE_EPISODIQUE' });

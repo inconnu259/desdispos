@@ -1,0 +1,79 @@
+# Production (Raspberry Pi + Cloudflare Tunnel). Procédure complète : docs/deploiement.md.
+#
+#   cp .env.prod.example .env.prod   # puis remplir (secrets générés, jamais ceux de .env.dev)
+#   docker compose -f docker-compose.prod.yml up -d --build                     # test local : http://127.0.0.1:8080
+#   docker compose -f docker-compose.prod.yml --profile tunnel up -d --build    # avec le tunnel Cloudflare
+#
+# Aucun port n'est ouvert vers l'extérieur : le trafic public n'entre que par le tunnel (connexion
+# SORTANTE de cloudflared vers Cloudflare). Seul `web` est publié, sur 127.0.0.1, pour le test local.
+name: desdispos
+
+# Rotation des journaux de chaque conteneur : par défaut Docker les garde sans limite de taille, ce qui
+# finit par remplir la carte SD d'un Pi. 3 fichiers de 10 Mo par conteneur au plus.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '3'
+
+services:
+  db:
+    <<: *logging
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file: [.env.prod]
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    <<: *logging
+    image: desdispos-api:local
+    build:
+      context: .
+      dockerfile: docker/prod.api.Dockerfile
+    restart: unless-stopped
+    env_file: [.env.prod]
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      # Seul le réseau Docker (nginx) est un proxy de confiance pour X-Forwarded-For / -Proto.
+      TRUST_PROXY: uniquelocal
+    volumes:
+      - uploads:/app/apps/api/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *logging
+    image: desdispos-web:local
+    build:
+      context: .
+      dockerfile: docker/prod.web.Dockerfile
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - '127.0.0.1:${WEB_LOCAL_PORT:-8080}:8080'
+
+  # Tunnel Cloudflare : dans le tableau de bord Zero Trust, faire pointer le nom public vers
+  # http://web:8080. Le jeton du tunnel va dans un fichier À PART, `.env.tunnel` (TUNNEL_TOKEN=...) :
+  # cette image tierce ne doit pas recevoir les secrets de l'application (.env.prod).
+  # Épingler une version précise (ou un digest) une fois le tunnel validé.
+  cloudflared:
+    <<: *logging
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    env_file: [.env.tunnel]
+    depends_on: [web]
+    profiles: [tunnel]
+
+volumes:
+  db-data:
+  uploads:

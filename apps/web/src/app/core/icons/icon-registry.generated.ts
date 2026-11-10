@@ -1,0 +1,3681 @@
+// Fichier généré par scripts/generate-icons.mjs, ne pas modifier.
+// Source : src/assets-src/icons/. Régénérer : `docker compose exec web node scripts/generate-icons.mjs`.
+
+import type { Theme } from '@master-jdr/shared';
+
+/** Balises admises dans un dessin (cf. la liste blanche du générateur). */
+export type IconTag = 'path' | 'circle' | 'ellipse' | 'rect' | 'line' | 'polyline' | 'polygon';
+
+/** Un élément de dessin : balise et attributs, rien d’autre. */
+export interface IconElement {
+  readonly tag: IconTag;
+  readonly attrs: Readonly<Record<string, string>>;
+}
+
+/** Un dessin : son viewBox et ses éléments. */
+export interface IconDrawing {
+  readonly viewBox: string;
+  readonly elements: readonly IconElement[];
+}
+
+/** Icônes « de sens » : un dessin par thème. */
+export const THEMED_ICON_NAMES = [
+  'destinee',
+  'distribuer-xp',
+  'document',
+  'envie',
+  'etat-a-venir',
+  'etat-annulee',
+  'etat-en-cours',
+  'etat-terminee',
+  'favori-pose',
+  'favori-vide',
+  'inviter',
+  'jeux',
+  'masquer',
+  'membres',
+  'nav-calendrier',
+  'nav-compte',
+  'nav-parties',
+  'nav-personnages',
+  'nommer-admin',
+  'proclamer',
+  'quitter-groupe',
+  'quitter-office',
+  'retirer-membre',
+  'role-admin',
+  'role-hote',
+  'role-joueur',
+  'role-mj',
+  'rouvrir',
+  'signal',
+  'vote',
+] as const;
+
+/** Utilitaires : un seul dessin pour les trois thèmes. */
+export const COMMON_ICON_NAMES = [
+  'actif',
+  'ajouter',
+  'apres-midi',
+  'aujourdhui',
+  'avertissement',
+  'cadenas-ferme',
+  'cadenas-ouvert',
+  'copier',
+  'declarer-dispos',
+  'deplier',
+  'dispo-non',
+  'dispo-oui',
+  'dispo-partiel',
+  'effacer',
+  'email',
+  'fermer',
+  'filtres',
+  'information',
+  'lien',
+  'lien-revoque',
+  'matin',
+  'menu-actions',
+  'menu-affichage',
+  'modifier',
+  'oeil',
+  'oeil-barre',
+  'ouvrir',
+  'precedent',
+  'quitter',
+  'rechercher',
+  'reinitialiser',
+  'replier',
+  'retour',
+  'soir',
+  'suivant',
+  'supprimer',
+  'telecharger',
+  'valider',
+  'vue-compacte',
+  'vue-large',
+  'vue-moyenne',
+] as const;
+
+export type ThemedIconName = (typeof THEMED_ICON_NAMES)[number];
+export type CommonIconName = (typeof COMMON_ICON_NAMES)[number];
+export type IconName = ThemedIconName | CommonIconName;
+
+export const THEMED_ICONS: Readonly<Record<ThemedIconName, Readonly<Record<Theme, IconDrawing>>>> = {
+  destinee: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.5 10.5 L14 12.5 M10.6 21.5 L14 18.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.5 7.5 V10.5 M5 9 H8 M7.5 22.5 V25.5 M6 24 H9',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M20.5 8 C22.6 13.4 22.6 13.4 28 15.5 C22.6 17.6 22.6 17.6 20.5 23 C18.4 17.6 18.4 17.6 13 15.5 C18.4 13.4 18.4 13.4 20.5 8 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 29 V22 M16 22 C12.5 19.5 7.8 15.5 6 8 M16 22 C19.5 19.5 24.2 15.5 26 8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.82 16.18 L6.42 16.58 M22.18 16.18 L25.58 16.58 M7.2 10.8 C8.8 7.6 10.6 6 13 5.2 M24.8 10.8 C23.2 7.6 21.4 6 19 5.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 7.6 C17.4 11.2 17.4 11.2 21 12.6 C17.4 14 17.4 14 16 17.6 C14.6 14 14.6 14 11 12.6 C14.6 11.2 14.6 11.2 16 7.6 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.09 20.86 L10.18 17.99 L9.61 17.17 L14.52 13.73 L13.95 12.91 L19.27 9.18 L23.29 14.92 L17.96 18.65 L17.39 17.83 L12.48 21.27 L11.9 20.45 L7.81 23.32 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16.65 11.02 L20.67 16.75',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M14.93 19.55 L10.5 28.5 M14.93 19.55 L20 28.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M25.79 5.5 C26.74 7.94 26.74 7.94 29.19 8.9 C26.74 9.85 26.74 9.85 25.79 12.3 C24.84 9.85 24.84 9.85 22.39 8.9 C24.84 7.94 24.84 7.94 25.79 5.5 Z',
+          },
+        },
+      ],
+    },
+  },
+  'distribuer-xp': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 22.5 C13 20.5 8.5 20 4 20.5 V27 C8.5 26.5 13 27 16 29 C19 27 23.5 26.5 28 27 V20.5 C23.5 20 19 20.5 16 22.5 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16 22.5 V29 M9.5 17 L8.5 14 M22.5 17 L23.5 14',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 3.4 L17.53 7.49 L21.9 7.68 L18.48 10.4 L19.64 14.62 L16 12.2 L12.36 14.62 L13.52 10.4 L10.1 7.68 L14.47 7.49 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 8.4 C13 6.4 9 5.9 4.5 6.4 V14 C9 13.5 13 14 16 16 C19 14 23 13.5 27.5 14 V6.4 C23 5.9 19 6.4 16 8.4 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16 8.4 V16 M7.5 9.4 C9.5 9.4 11.5 9.7 13 10.3 M24.5 9.4 C22.5 9.4 20.5 9.7 19 10.3',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M8.6 28.5 C10.6 27.6 11.4 25.6 11.4 22.4 V19 H20.6 V22.4 C20.6 25.6 21.4 27.6 23.4 28.5 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M4 16.5 V24.5 A9 3 0 0 0 22 24.5 V16.5 M27.41 4.56 A4.2 2.4 -55 0 1 22.59 11.44 A4.2 2.4 -55 0 1 27.41 4.56 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M4 20.5 A9 3 0 0 0 22 20.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M4 16.5 A9 3 0 1 0 22 16.5 A9 3 0 1 0 4 16.5 Z',
+          },
+        },
+      ],
+    },
+  },
+  document: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'circle',
+          attrs: {
+            'stroke-width': '2',
+            cx: '9.28',
+            cy: '22.72',
+            r: '4',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.45 19.89 L19.89 6.45 A4 4 0 0 1 25.55 12.11 L12.11 25.55',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.28 21.52 a1.2 1.2 0 1 0 0.01 0',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M11.97 12.68 L14.09 10.56 L21.44 17.91 L21.5 26.5 L20.4 25 L19.3 26.5 L19.32 20.03 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'circle',
+          attrs: {
+            'stroke-width': '2',
+            cx: '9.28',
+            cy: '22.72',
+            r: '4',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.45 19.89 L19.89 6.45 A4 4 0 0 1 25.55 12.11 L12.11 25.55',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.28 21.52 a1.2 1.2 0 1 0 0.01 0 M14.09 19.61 L16.35 17.35 M18.12 15.58 L19.96 13.74',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M15.6 9.8 L17.7 7.7 L24.3 14.3 L22.2 16.4 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M7 4 H20 L25 9 V28 H7 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M20 4 V9 H25 M10.5 8.5 H16.5 M10.5 22 H21.5 M10.5 25 H18',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M4.5 14.6 L27.5 12.6 L27.8 16.8 L4.8 18.8 Z',
+          },
+        },
+      ],
+    },
+  },
+  envie: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16 3 V6 M6.6 5.6 L8.4 7.4 M25.4 5.6 L23.6 7.4 M2.8 14 H4.3 M27.7 14 H29.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 26.5 C10 22 6.5 18.5 6.5 14.3 C6.5 11.4 8.6 9.3 11.2 9.3 C13.2 9.3 15 10.5 16 12.3 C17 10.5 18.8 9.3 20.8 9.3 C23.4 9.3 25.5 11.4 25.5 14.3 C25.5 18.5 22 22 16 26.5 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M17.6 26.6 C25.6 21 29.6 15 27.6 10.5 C25.8 6.5 20.6 6.5 18 10.6 C19.2 15.6 19.2 21 17.6 26.6 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M18.6 22.6 C18.6 17.6 20.4 13 24.2 10.4',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M14.4 26.6 C6.4 21 2.4 15 4.4 10.5 C6.2 6.5 11.4 6.5 14 10.6 C12.8 15.6 12.8 21 14.4 26.6 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M11.5 28 C4.5 23.2 2 18.8 2 14.6 C2 11.4 4.4 9 7.4 9 C9.3 9 10.6 10 11.5 11.6 C12.4 10 13.7 9 15.6 9 C18.6 9 21 11.4 21 14.6 C21 18.8 18.5 23.2 11.5 28 Z M21 14.6 H25.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M26.6 14.8 A2.9 1.9 90 0 1 26.6 9 A2.9 1.9 90 0 1 26.6 14.8 Z M26.6 20.2 A2.9 1.9 90 0 1 26.6 14.4 A2.9 1.9 90 0 1 26.6 20.2 Z',
+          },
+        },
+      ],
+    },
+  },
+  'etat-a-venir': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M7 4 H25 M7 28 H25',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 4 C10 10 14 13 14 16 C14 19 10 22 10 28 M22 4 C22 10 18 13 18 16 C18 19 22 22 22 28',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16 17.5 V22',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M12.3 7.5 H19.7 C19 10.2 17.4 12.2 16 13.2 C14.6 12.2 13 10.2 12.3 7.5 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M3 27.5 H29 M3.5 27.5 C8.5 19.5 23.5 19.5 28.5 27.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16 8 L16 5.6 M22.08 10.52 L23.78 8.82 M9.92 10.52 L8.22 8.82 M24.47 15.11 L26.83 14.69 M7.53 15.11 L5.17 14.69',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M10.58 19.92 A6.4 6.4 0 1 1 21.42 19.92 L20.15 19.57 L18.83 19.32 L17.5 19.16 L16.15 19.1 L14.8 19.14 L13.46 19.27 L12.14 19.51 L10.86 19.84 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M8.3 8 H27.5 V24 H8.3',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M14.5 15 A3 3 0 1 0 20.5 15 A3 3 0 1 0 14.5 15 Z M13 15 H22 M17.5 11 V19 M12.5 21.5 H22.5 M12.5 20.5 V22.5 M22.5 20.5 V22.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M4.5 7.8 A1.9 1.9 0 0 1 8.3 7.8 V24.2 A1.9 1.9 0 0 1 4.5 24.2 Z',
+          },
+        },
+      ],
+    },
+  },
+  'etat-annulee': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M25 14.7 V6 a2 2 0 0 0 -2 -2 H7 a2 2 0 0 0 -2 2 V26 a2 2 0 0 0 2 2 H16.9',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9 4 V28 M13 9 H20',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M23.42 17.63 A2.07 2.07 0 0 1 25.72 19.3 A2.07 2.07 0 0 1 26.6 22 A2.07 2.07 0 0 1 25.72 24.7 A2.07 2.07 0 0 1 23.42 26.37 A2.07 2.07 0 0 1 20.58 26.37 A2.07 2.07 0 0 1 18.28 24.7 A2.07 2.07 0 0 1 17.4 22 A2.07 2.07 0 0 1 18.28 19.3 A2.07 2.07 0 0 1 20.58 17.63 L21.1 20 L22.2 21.8 L21.8 24.6 L23.6 21.5 L22.6 19.6 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M3 28.5 H29',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M3.8 23.1 C3.8 19.8 8.42 19.3 12.62 19.3 C18.08 19.3 20.6 20.95 20.6 22.93 C20.6 25.24 16.4 25.9 12.2 25.9 C7.16 25.9 3.8 25.24 3.8 23.1 Z M5.51 16.09 C5.15 13.52 8.25 12.69 11.13 12.28 C14.86 11.76 16.76 12.81 16.98 14.35 C17.23 16.15 14.43 17.07 11.56 17.47 C8.12 17.96 5.75 17.77 5.51 16.09 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16.5 9.5 C21.5 8.6 25 11 25.6 16.8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M21.59 23.76 C22.04 21.2 24.06 21.16 25.83 21.47 C28.13 21.88 28.97 23.34 28.7 24.88 C28.38 26.67 26.52 26.87 24.75 26.56 C22.62 26.19 21.29 25.42 21.59 23.76 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10.7 16.35 L6.81 20.24 A3.5 3.5 -45 0 0 11.76 25.19 L15.65 21.3 M16.35 10.7 L20.24 6.81 A3.5 3.5 -45 0 1 25.19 11.76 L21.3 15.65',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M10.34 21.66 L12.46 19.54 M19.54 12.46 L21.66 10.34',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M13.03 13.03 C16 15.32 16 15.32 17.2 14.8 C16.68 16 16.68 16 18.97 18.97 C16 16.68 16 16.68 14.8 17.2 C15.32 16 15.32 16 13.03 13.03 Z',
+          },
+        },
+      ],
+    },
+  },
+  'etat-en-cours': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 11 C13 8.5 8.5 8 4 8.5 V25.5 C8.5 25 13 25.5 16 28 C19 25.5 23.5 25 28 25.5 V11',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16 11 V28 M7.5 13 C9.5 13 11.5 13.4 13 14 M7.5 17.5 C9.5 17.5 11.5 17.9 13 18.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 11 C17 7 19.5 4.2 24 3.5 C22.6 7.5 22 12.5 22.4 19.5 C20 19.8 17.8 20.8 16 22.5 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.74 19.48 C5.78 16.04 6.72 14.18 8.35 13.78 C9.98 13.37 11.68 14.57 12.45 18.06 C12.83 20.02 11.96 20.89 12.44 22.39 C12.85 23.59 13.41 24.09 13.56 25.14 C13.74 26.29 12.8 26.84 11.68 27.12 C10.56 27.4 9.46 27.35 9.08 26.26 C8.72 25.26 8.98 24.55 8.78 23.3 C8.5 21.75 7.33 21.39 6.74 19.48 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M18.34 10.28 C17.38 6.84 18.32 4.98 19.95 4.58 C21.58 4.17 23.28 5.37 24.05 8.86 C24.43 10.82 23.56 11.69 24.04 13.19 C24.45 14.39 25.01 14.89 25.16 15.94 C25.34 17.09 24.4 17.64 23.28 17.92 C22.16 18.2 21.06 18.15 20.68 17.06 C20.32 16.06 20.58 15.35 20.38 14.1 C20.1 12.55 18.93 12.19 18.34 10.28 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6 28.5 V23.5 A1.5 1.5 0 0 1 7.5 22 H24.5 A1.5 1.5 0 0 1 26 23.5 V28.5 Z M8.5 22 V12.5 A1.5 1.5 0 0 1 10 11 H16 A1.5 1.5 0 0 1 17.5 12.5 V22 M13 11 V6 M10 6 H16',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M8.5 15.5 H17.5 M17.5 18 H21.5 V15.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M20.2 10.3 A2.2 2.2 0 1 0 24.6 10.3 A2.2 2.2 0 1 0 20.2 10.3 Z M22.1 7.6 A3.1 3.1 0 1 0 28.3 7.6 A3.1 3.1 0 1 0 22.1 7.6 Z M25.1 10.4 A1.9 1.9 0 1 0 28.9 10.4 A1.9 1.9 0 1 0 25.1 10.4 Z M22.8 10.6 A2 2 0 1 0 26.8 10.6 A2 2 0 1 0 22.8 10.6 Z',
+          },
+        },
+      ],
+    },
+  },
+  'etat-terminee': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M25 14.7 V6 a2 2 0 0 0 -2 -2 H7 a2 2 0 0 0 -2 2 V26 a2 2 0 0 0 2 2 H16.9',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9 4 V28 M13 9 H20',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M20.58 17.63 A2.07 2.07 0 0 1 23.42 17.63 A2.07 2.07 0 0 1 25.72 19.3 A2.07 2.07 0 0 1 26.6 22 A2.07 2.07 0 0 1 25.72 24.7 A2.07 2.07 0 0 1 23.42 26.37 A2.07 2.07 0 0 1 20.58 26.37 A2.07 2.07 0 0 1 18.28 24.7 A2.07 2.07 0 0 1 17.4 22 A2.07 2.07 0 0 1 18.28 19.3 A2.07 2.07 0 0 1 20.58 17.63 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M3 28.5 H29',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M7 23.1 C7 19.8 11.95 19.3 16.45 19.3 C22.3 19.3 25 20.95 25 22.93 C25 25.24 20.5 25.9 16 25.9 C10.6 25.9 7 25.24 7 23.1 Z M9.04 15.72 C8.86 13.13 12.24 12.5 15.33 12.28 C19.35 12 21.29 13.17 21.4 14.73 C21.53 16.54 18.47 17.28 15.38 17.49 C11.67 17.75 9.16 17.41 9.04 15.72 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M12.58 7.87 C12.85 5.28 15.08 5.13 17.07 5.34 C19.66 5.61 20.71 7.03 20.55 8.58 C20.36 10.39 18.32 10.69 16.33 10.49 C13.94 10.23 12.4 9.55 12.58 7.87 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6 28.5 V23.5 A1.5 1.5 0 0 1 7.5 22 H24.5 A1.5 1.5 0 0 1 26 23.5 V28.5 Z M16 22 L10.27 17.98',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M4.25 17.72 A12.5 12.5 0 0 1 27.75 17.72',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M7 17.24 A2.2 2.2 0 1 0 11.4 17.24 A2.2 2.2 0 1 0 7 17.24 Z',
+          },
+        },
+      ],
+    },
+  },
+  'favori-pose': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            fill: 'currentColor',
+            d: 'M9 4 H23 V28 L16 22.5 L9 28 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 7.5 C10 5.6 22 5.6 22 7.5 C22 9.4 10 9.4 10 7.5 Z M10 7.5 V27.5 C10 29.3 22 29.3 22 27.5 V20.2 L14.8 16 L22 11.8 V7.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M13.6 7.5 C13.6 6.8 18.4 6.8 18.4 7.5 C18.4 8.2 13.6 8.2 13.6 7.5 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M22 11.8 L14.8 16 L22 20.2 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M18.29 8.08 L15.2 13.32 M22.88 11.93 L18.26 15.89 M12.13 10.75 L21.32 18.46 A1.5 1.5 40 0 1 21.51 20.57 L21.19 20.95 A1.5 1.5 40 0 1 19.07 21.14 L9.88 13.43 A1.5 1.5 40 0 1 9.7 11.31 L10.02 10.93 A1.5 1.5 40 0 1 12.13 10.75 Z M14.48 17.28 L6.77 26.48',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M20.03 3.67 L26.92 9.45 A2 2 40 0 1 27.17 12.27 L26.21 13.42 A2 2 40 0 1 23.39 13.66 L16.5 7.88 A2 2 40 0 1 16.25 5.06 L17.21 3.91 A2 2 40 0 1 20.03 3.67 Z',
+          },
+        },
+      ],
+    },
+  },
+  'favori-vide': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M9 4 H23 V28 L16 22.5 L9 28 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 7.5 C10 5.6 22 5.6 22 7.5 C22 9.4 10 9.4 10 7.5 Z M10 7.5 V27.5 C10 29.3 22 29.3 22 27.5 V20.2 L14.8 16 L22 11.8 V7.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M13.6 7.5 C13.6 6.8 18.4 6.8 18.4 7.5 C18.4 8.2 13.6 8.2 13.6 7.5 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M19.77 4.75 L25.9 9.9 A1.5 1.5 40 0 1 26.08 12.01 L25.76 12.39 A1.5 1.5 40 0 1 23.65 12.58 L17.52 7.43 A1.5 1.5 40 0 1 17.34 5.32 L17.66 4.94 A1.5 1.5 40 0 1 19.77 4.75 Z M18.29 8.08 L15.2 13.32 M22.88 11.93 L18.26 15.89 M12.13 10.75 L21.32 18.46 A1.5 1.5 40 0 1 21.51 20.57 L21.19 20.95 A1.5 1.5 40 0 1 19.07 21.14 L9.88 13.43 A1.5 1.5 40 0 1 9.7 11.31 L10.02 10.93 A1.5 1.5 40 0 1 12.13 10.75 Z M14.48 17.28 L6.77 26.48',
+          },
+        },
+      ],
+    },
+  },
+  inviter: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '4',
+            y: '7',
+            width: '24',
+            height: '18',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M5 8 L11.3 13.3 M27 8 L20.7 13.3',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M14.62 13.67 A1.62 1.62 0 0 1 17.38 13.67 A1.62 1.62 0 0 1 19.33 15.62 A1.62 1.62 0 0 1 19.33 18.38 A1.62 1.62 0 0 1 17.38 20.33 A1.62 1.62 0 0 1 14.62 20.33 A1.62 1.62 0 0 1 12.67 18.38 A1.62 1.62 0 0 1 12.67 15.62 A1.62 1.62 0 0 1 14.62 13.67 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M9.5 15.2 C11.6 14.8 13 13.4 14.4 11.4 C15.4 10 17.6 10.6 17 12.4 L15.8 15.8 H26.4 C28.4 15.8 28.4 19.4 26.4 19.4 H25.6 C27.4 19.4 27.4 22.4 25.6 22.4 H24 C25.4 22.4 25.4 25.2 24 25.2 H15 C12.5 25.2 11 24.6 9.5 24.6',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M18.5 19.4 H25.6 M18.5 22.4 H24',
+          },
+        },
+        {
+          tag: 'rect',
+          attrs: {
+            x: '3',
+            y: '13.4',
+            width: '5',
+            height: '12.4',
+            rx: '1',
+            fill: 'currentColor',
+            stroke: 'none',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M13.2 6.8 A2.8 2.8 0 1 0 18.8 6.8 A2.8 2.8 0 1 0 13.2 6.8 Z M16 9.6 V13 M10.5 13 H21.5 V18 H10.5 Z M7 18 H25 A1 1 0 0 1 26 19 V20.5 A1 1 0 0 1 25 21.5 H7 A1 1 0 0 1 6 20.5 V19 A1 1 0 0 1 7 18 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M9 25 H23 A1 1 0 0 1 24 26 V27 A1 1 0 0 1 23 28 H9 A1 1 0 0 1 8 27 V26 A1 1 0 0 1 9 25 Z',
+          },
+        },
+      ],
+    },
+  },
+  jeux: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M8.5 4.5 H23.5 C23.5 10.5 20.5 14.5 16 14.5 C11.5 14.5 8.5 10.5 8.5 4.5 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 14.5 V23.5 M10 27.5 C10.5 24.8 13 23.5 16 23.5 C19 23.5 21.5 24.8 22 27.5 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M13.5 19 H18.5',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M4.5 27.5 V12 C4.5 7.6 8 5 12 5 H20 C24 5 27.5 7.6 27.5 12 V27.5 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M4.5 14.5 H11.4 M20.6 14.5 H27.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.5 5.6 V27.5 M22.5 5.6 V27.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M13.6 12 H18.4 V16.8 L16 19.4 L13.6 16.8 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M3 23 H29 M5.5 23 V8 A1 1 0 0 1 6.5 7 H9.5 A1 1 0 0 1 10.5 8 V23 M13.5 23 V11 A1 1 0 0 1 14.5 10 H17.5 A1 1 0 0 1 18.5 11 V23',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M6 23 V28.5 L10.5 23 M26 23 V28.5 L21.5 23 M5.5 18.5 H10.5 M13.5 18.5 H18.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M23.1 23 L27.33 21.46 L23.05 9.71 L18.82 11.25 Z',
+          },
+        },
+      ],
+    },
+  },
+  masquer: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '5',
+            y: '4',
+            width: '22',
+            height: '24',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9 4 V28',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M14.2 19.6 L13.3 21.6 M18 20.4 V22.6 M21.8 19.6 L22.7 21.6',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M11.5 15 C14 19.8 22 19.8 24.5 15 C21.6 17.4 14.4 17.4 11.5 15 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M3.5 14.5 C10 10.8 18 8 28.5 7',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M9.33 11.62 C12.11 11.26 13.58 8.41 12.27 5.94 C9.49 6.3 8.02 9.15 9.33 11.62 Z M15 9.58 C15.56 12.33 18.5 13.6 20.88 12.12 C20.32 9.37 17.38 8.1 15 9.58 Z M21.36 8.02 C24.15 8.23 26.17 5.75 25.4 3.06 C22.61 2.84 20.59 5.33 21.36 8.02 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M11.5 22.6 L10.5 25 M16 23.6 V26.2 M20.5 22.6 L21.5 25',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M8.5 18 C11.5 23.5 20.5 23.5 23.5 18 C20 20.8 12 20.8 8.5 18 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5 16 A11 11 0 1 0 27 16 A11 11 0 1 0 5 16 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M16 7.6 A7.2 7.2 0 0 1 18.29 16.2 M23.27 11.8 A7.2 7.2 0 0 1 16.97 18.08 M23.27 20.2 A7.2 7.2 0 0 1 14.68 17.88 M16 24.4 A7.2 7.2 0 0 1 13.71 15.8 M8.73 20.2 A7.2 7.2 0 0 1 15.03 13.92 M8.73 11.8 A7.2 7.2 0 0 1 17.32 14.12',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M18.29 16.2 L16.97 18.08 L14.68 17.88 L13.71 15.8 L15.03 13.92 L17.32 14.12 Z',
+          },
+        },
+      ],
+    },
+  },
+  membres: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5.5 26.5 L23 9 M26.5 26.5 L9 9',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M23 5.5 V3.5 M26.5 9 H28.5 M25.6 6.4 L27 5 M9 5.5 V3.5 M5.5 9 H3.5 M6.4 6.4 L5 5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 12.3 L19.2 16 L16 19.7 L12.8 16 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M12.67 24.53 C14.19 26.07 16.82 27.71 17.74 26.05 C18.29 24.98 17.47 23.64 16.62 22.75 C19.73 24.94 23.17 24.72 23.38 22.5 C23.44 20.89 21.68 19.55 19.94 18.94 C23.7 20.1 26.54 18.57 26.2 16.48 C25.82 14.82 23.8 14.27 22.36 14.31 C25.2 12.79 26.01 9.99 24.97 8.63 C24.8 7.58 24.47 6.79 24.12 6.22 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10.38 24.99 L8.58 27.87',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M9.79 22.73 C7.74 22.04 5.11 20.4 6.21 18.84 C6.93 17.88 8.48 18.03 9.66 18.41 C6.33 16.56 5.02 13.38 6.93 12.22 C8.35 11.45 10.32 12.45 11.63 13.74 C8.94 10.88 9.07 7.66 11.1 7.04 C12.76 6.66 14.13 8.23 14.73 9.54 C14.85 6.32 17.02 4.37 18.69 4.71 C19.71 4.4 20.57 4.35 21.24 4.41 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M13.96 6.41 L14.3 3.11 A13 13 0 0 1 17.7 3.11 L18.04 6.41 A9.8 9.8 0 0 1 21.34 7.78 L23.91 5.69 A13 13 0 0 1 26.31 8.09 L24.22 10.66 A9.8 9.8 0 0 1 25.59 13.96 L28.89 14.3 A13 13 0 0 1 28.89 17.7 L25.59 18.04 A9.8 9.8 0 0 1 24.22 21.34 L26.31 23.91 A13 13 0 0 1 23.91 26.31 L21.34 24.22 A9.8 9.8 0 0 1 18.04 25.59 L17.7 28.89 A13 13 0 0 1 14.3 28.89 L13.96 25.59 A9.8 9.8 0 0 1 10.66 24.22 L8.09 26.31 A13 13 0 0 1 5.69 23.91 L7.78 21.34 A9.8 9.8 0 0 1 6.41 18.04 L3.11 17.7 A13 13 0 0 1 3.11 14.3 L6.41 13.96 A9.8 9.8 0 0 1 7.78 10.66 L5.69 8.09 A13 13 0 0 1 8.09 5.69 L10.66 7.78 A9.8 9.8 0 0 1 13.96 6.41 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M11.6 16 A4.4 4.4 0 1 0 20.4 16 A4.4 4.4 0 1 0 11.6 16 Z',
+          },
+        },
+      ],
+    },
+  },
+  'nav-calendrier': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '4',
+            y: '6',
+            width: '24',
+            height: '23',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 3 V8 M22 3 V8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M4 12 H28',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 15 L17.35 18.64 L21.23 18.8 L18.19 21.21 L19.23 24.95 L16 22.8 L12.77 24.95 L13.81 21.21 L10.77 18.8 L14.65 18.64 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '4',
+            y: '6',
+            width: '24',
+            height: '23',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 3 V8 M22 3 V8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M4 12 H28 M22 17 H24.5 M22 21 H24.5 M22 25 H24.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M13.83 15 A5.6 5.6 0 1 0 18.64 23.03 A4.7 4.7 0 0 1 13.83 15 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6 6 H26 A2 2 0 0 1 28 8 V27 A2 2 0 0 1 26 29 H6 A2 2 0 0 1 4 27 V8 A2 2 0 0 1 6 6 Z M10 3 V8 M22 3 V8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M4 12 H28 M10.6 20.4 A5.4 5.4 0 1 0 21.4 20.4 A5.4 5.4 0 1 0 10.6 20.4 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M15.1 17 H16.9 V19.5 H19.6 V21.3 H15.1 Z',
+          },
+        },
+      ],
+    },
+  },
+  'nav-compte': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '5',
+            y: '4',
+            width: '22',
+            height: '24',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9 4 V28',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M20.58 12.31 A4.5 4.5 0 1 0 22.5 16 H19',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M20 4 H25 a2 2 0 0 1 2 2 V11 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '5.5',
+            y: '4',
+            width: '21',
+            height: '24',
+            rx: '3',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.5 4 V28',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M19 2.5 H21.8 V29.5 H19 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M4 14 H28 A1 1 0 0 1 29 15 V16.5 A1 1 0 0 1 28 17.5 H4 A1 1 0 0 1 3 16.5 V15 A1 1 0 0 1 4 14 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.5 17.5 V28.5 M25.5 17.5 V28.5 M16 14 V7.5 H20 V14 M20 9.5 H25.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M6.5 24 H25.5 M25.5 7 V11.8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M7.5 14 V7.5 H13 V14 Z',
+          },
+        },
+      ],
+    },
+  },
+  'nav-parties': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5 25.5 V7 a3 3 0 0 1 3 -3 H26 V29 H8 a3 3 0 0 1 0 -7 H26',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.5 4 V20.5 M10.5 25.5 H22.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M27.5 10.5 H22.5 L20 13 L22.5 15.5 H27.5 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.5 29 V16 C6.5 10 9.5 6 14 4.5 M25.5 29 V16 C25.5 10 22.5 6 18 4.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M6.5 19.5 L3.5 16.8 M25.5 19.5 L28.5 16.8 M9.2 9.8 L6.8 7.6 M22.8 9.8 L25.2 7.6',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M9.5 29.5 C12 25.5 16.8 23 15 18 H17.4 C19.8 22.5 17 25.5 22.5 29.5 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5.5 13 C5.5 9.4 10 7 16.5 7 C23.5 7 28.5 9.4 28.5 13 C28.5 16.6 23.5 19 16.5 19 C10 19 5.5 16.6 5.5 13 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M8.6 8.7 L5 5 H3 L5.65 11.9 M8.6 17.3 L5 21 H3 L5.65 14.1',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M13 18.8 L13.8 23 M20.5 18.9 L19.7 23 M9.2 23.2 V26.8 M9.2 25 H11.4',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M11.5 23 H22 L20.5 27 H13 Z',
+          },
+        },
+      ],
+    },
+  },
+  'nav-personnages': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 4 a12 12 0 1 0 0.01 0',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M8.67 25.5 C9.8 21.3 12.6 19.5 16 19.5 C19.4 19.5 22.2 21.3 23.33 25.5',
+          },
+        },
+        {
+          tag: 'circle',
+          attrs: {
+            cx: '16',
+            cy: '12',
+            r: '4.2',
+            fill: 'currentColor',
+            stroke: 'none',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M4.5 12.5 C4.5 9.6 6.6 8 9 8 L9.6 4.6 L12.4 8.6 C14 9.6 14.6 11.4 14.2 13.2 C16.5 16 17 21.5 15.5 25.5 C14.8 27.4 13 28.3 11 28.3 H7.5 C8.3 25 7.5 21.5 9 18.5 C7.2 16.5 5 15 4.5 12.5 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9 18.5 C7.6 19 6.6 20 6.8 21.2 M13.5 28.2 C12 25.5 12.5 22.5 14.6 21',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M8.6 11.2 a0.3 0.3 0 1 0 0.01 0',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M17.2 27.4 C24 28.6 29.4 23.2 28.5 16.5 C27.8 12 24 11 23.5 7.5 C23.2 5 25 3.5 27.5 4.2 C24.4 1.9 19.6 3.4 19.5 8 C19.5 12 23.3 14 23.3 18 C23.3 21.5 21 23.6 18.2 24.4 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 8 H22 A3 3 0 0 1 25 11 V22 A3 3 0 0 1 22 25 H10 A3 3 0 0 1 7 22 V11 A3 3 0 0 1 10 8 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 8 V5 M13.5 5 H18.5 M7 13.5 H4.5 V19.5 H7 M25 13.5 H27.5 V19.5 H25',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M13 19.6 V22.2 M16 19.6 V22.2 M19 19.6 V22.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 22 L10.01 22 M22 22 L22.01 22',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M11.5 12 H20.5 A1 1 0 0 1 21.5 13 V15 A1 1 0 0 1 20.5 16 H11.5 A1 1 0 0 1 10.5 15 V13 A1 1 0 0 1 11.5 12 Z',
+          },
+        },
+      ],
+    },
+  },
+  'nommer-admin': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M11.6 15.92 L10.07 14.83 A2.38 2.38 0 1 1 9.25 10.42 A2.38 2.38 0 1 1 13.95 10.42 A2.38 2.38 0 1 1 13.13 14.83 ZM11.6 15.92 V27.65',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.47 19.15 H13.72',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M11.6 22.55 H17.12 V24.5 H15.17 V26.54 H17.12 V28.5 H11.6 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M24.5 4.5 V11.5 M21 8 H28',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M8.35 23.2 C8.22 20.41 6.45 18.03 5.36 13.27 M7.03 18.51 C5.81 18.23 3.86 17.08 3.18 15.58 M5.89 15.26 C6.71 14.58 7.54 14.09 7.74 12.45 M14.61 23.2 C14.74 20.41 16.51 18.03 17.6 13.27 M15.93 18.51 C17.15 18.23 19.1 17.08 19.78 15.58 M17.07 15.26 C16.25 14.58 15.42 14.09 15.22 12.45',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M5.02 24.69 C8.08 25.37 14.88 25.37 17.94 24.69 V27.28 C14.88 27.96 8.08 27.96 5.02 27.28 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M24.5 4.5 V11.5 M21 8 H28',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M4.46 23.58 L11.6 19.02 L18.74 23.58 M4.46 27.8 L11.6 23.24 L18.74 27.8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M4.12 17.39 L11.6 12.63 L19.08 17.39 L19.08 19.57 L11.6 14.81 L4.12 19.57 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M24.5 4.5 V11.5 M21 8 H28',
+          },
+        },
+      ],
+    },
+  },
+  proclamer: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M7 7 V25 M25 7 V25',
+          },
+        },
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '4',
+            y: '3',
+            width: '24',
+            height: '4',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '4',
+            y: '25',
+            width: '24',
+            height: '4',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M10.5 11 H21.5 M10.5 14.5 H21.5 M10.5 18 H14',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M18.47 17.51 A1.22 1.22 0 0 1 20.53 17.51 A1.22 1.22 0 0 1 21.99 18.97 A1.22 1.22 0 0 1 21.99 21.03 A1.22 1.22 0 0 1 20.53 22.49 A1.22 1.22 0 0 1 18.47 22.49 A1.22 1.22 0 0 1 17.01 21.03 A1.22 1.22 0 0 1 17.01 18.97 A1.22 1.22 0 0 1 18.47 17.51 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M21 11.5 C14.5 17 7.5 15 4.5 7.5 C4.5 21 18 25 25.5 18.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M2.8 6.6 L6 5.4',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M11.44 14.38 L12.19 20.46 M14.37 14.59 L16.54 21.44',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M20.33 10.5 A5.24 2.6 56.11 1 0 26.17 19.2 A5.24 2.6 56.11 1 0 20.33 10.5 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10.5 28.5 L16 9.8 L21.5 28.5 M7 28.5 H25 M12.46 3.96 A5 5 0 0 0 12.46 11.04 M19.54 3.96 A5 5 0 0 1 19.54 11.04',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M13.32 19 H18.68 M12 23.5 H20 M9.04 2.62 A8.5 8.5 0 0 0 9.04 12.38 M22.96 2.62 A8.5 8.5 0 0 1 22.96 12.38',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M13.7 7.5 A2.3 2.3 0 1 0 18.3 7.5 A2.3 2.3 0 1 0 13.7 7.5 Z',
+          },
+        },
+      ],
+    },
+  },
+  'quitter-groupe': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M19.89 10.21 A9 9 0 1 0 19.89 21.79',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M13 16 H23.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M23 11.5 L29 16 L23 20.5 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M15.86 21.04 A7 7 0 0 1 12.93 22.73 M9.07 22.73 A7 7 0 0 1 6.14 21.04 M4.21 17.69 A7 7 0 0 1 4.21 14.31 M6.14 10.96 A7 7 0 0 1 9.07 9.27 M12.93 9.27 A7 7 0 0 1 15.86 10.96',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M23.8 12.6 L22.4 19 M22.4 19 L19.8 24.6 M22.4 19 L25.2 23.4 L27.4 24.4 M23.4 14.4 L20.6 16.6 M23.4 14.4 L26.6 16.2',
+          },
+        },
+        {
+          tag: 'circle',
+          attrs: {
+            cx: '24.4',
+            cy: '8.8',
+            r: '2.4',
+            fill: 'currentColor',
+            stroke: 'none',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M17 10 V6.5 A2.5 2.5 0 0 0 14.5 4 H6.5 A2.5 2.5 0 0 0 4 6.5 V25.5 A2.5 2.5 0 0 0 6.5 28 H14.5 A2.5 2.5 0 0 0 17 25.5 V22 M10 16 H24',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M7.2 7.2 L7.21 7.2 M13.8 7.2 L13.81 7.2 M7.2 24.8 L7.21 24.8 M13.8 24.8 L13.81 24.8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M23.5 11.5 L29.5 16 L23.5 20.5 Z',
+          },
+        },
+      ],
+    },
+  },
+  'quitter-office': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M11.6 15.92 L10.07 14.83 A2.38 2.38 0 1 1 9.25 10.42 A2.38 2.38 0 1 1 13.95 10.42 A2.38 2.38 0 1 1 13.13 14.83 ZM11.6 15.92 V27.65',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M9.47 19.15 H13.72',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M11.6 22.55 H17.12 V24.5 H15.17 V26.54 H17.12 V28.5 H11.6 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M25 3.5 V10.5 M22 7.5 L25 10.5 L28 7.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M22 14 H28.5',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M8.35 23.2 C8.22 20.41 6.45 18.03 5.36 13.27 M7.03 18.51 C5.81 18.23 3.86 17.08 3.18 15.58 M5.89 15.26 C6.71 14.58 7.54 14.09 7.74 12.45 M14.61 23.2 C14.74 20.41 16.51 18.03 17.6 13.27 M15.93 18.51 C17.15 18.23 19.1 17.08 19.78 15.58 M17.07 15.26 C16.25 14.58 15.42 14.09 15.22 12.45',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M5.02 24.69 C8.08 25.37 14.88 25.37 17.94 24.69 V27.28 C14.88 27.96 8.08 27.96 5.02 27.28 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M25 3.5 V10.5 M22 7.5 L25 10.5 L28 7.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M22 14 H28.5',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M4.46 23.58 L11.6 19.02 L18.74 23.58 M4.46 27.8 L11.6 23.24 L18.74 27.8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M4.12 17.39 L11.6 12.63 L19.08 17.39 L19.08 19.57 L11.6 14.81 L4.12 19.57 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M25 3.5 V10.5 M22 7.5 L25 10.5 L28 7.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M22 14 H28.5',
+          },
+        },
+      ],
+    },
+  },
+  'retirer-membre': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M27 14.5 V8 a2 2 0 0 0 -2 -2 H5 a2 2 0 0 0 -2 2 V20 a2 2 0 0 0 2 2 H15.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M4 7 L15 15.5 L26 7',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M19.6 18.9 L21.1 17.4 L24.3 20.6 L27.5 17.4 L29 18.9 L25.8 22.1 L29 25.3 L27.5 26.8 L24.3 23.6 L21.1 26.8 L19.6 25.3 L22.8 22.1 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M9.5 18.2 C11.6 17.8 13 16.4 14.4 14.4 C15.4 13 17.6 13.6 17 15.4 L15.8 18.8 H26.4 C28.4 18.8 28.4 22.4 26.4 22.4 H25.6 C27.4 22.4 27.4 25.4 25.6 25.4 H24 C25.4 25.4 25.4 28.2 24 28.2 H15 C12.5 28.2 11 27.6 9.5 27.6',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M18.5 22.4 H25.6 M18.5 25.4 H24',
+          },
+        },
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '3.5',
+            y: '17',
+            width: '4',
+            height: '11',
+            rx: '1',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M19.6 4.3 L21.1 2.8 L24.3 6 L27.5 2.8 L29 4.3 L25.8 7.5 L29 10.7 L27.5 12.2 L24.3 9 L21.1 12.2 L19.6 10.7 L22.8 7.5 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M8.76 11.14 A2.24 2.24 0 1 0 13.24 11.14 A2.24 2.24 0 1 0 8.76 11.14 Z M11 13.38 L11 16.1 M6.6 16.1 L15.4 16.1 L15.4 20.1 L6.6 20.1 Z M3.8 20.1 L18.2 20.1 A0.8 0.8 0 0 1 19 20.9 L19 22.1 A0.8 0.8 0 0 1 18.2 22.9 L3.8 22.9 A0.8 0.8 0 0 1 3 22.1 L3 20.9 A0.8 0.8 0 0 1 3.8 20.1 Z M5.4 26.9 L16.6 26.9',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M19.6 4.3 L21.1 2.8 L24.3 6 L27.5 2.8 L29 4.3 L25.8 7.5 L29 10.7 L27.5 12.2 L24.3 9 L21.1 12.2 L19.6 10.7 L22.8 7.5 Z',
+          },
+        },
+      ],
+    },
+  },
+  'role-admin': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 13.2 L14.2 11.92 A2.8 2.8 0 1 1 13.23 6.73 A2.8 2.8 0 1 1 18.77 6.73 A2.8 2.8 0 1 1 17.8 11.92 Z M16 13.2 V27',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M13.5 17 H18.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 21 H22.5 V23.3 H20.2 V25.7 H22.5 V28 H16 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M11.4 19.6 C11.2 15.5 8.6 12 7 5 M9.46 12.7 C7.66 12.3 4.8 10.6 3.8 8.4 M7.78 7.93 C8.98 6.93 10.2 6.2 10.5 3.8 M20.6 19.6 C20.8 15.5 23.4 12 25 5 M22.54 12.7 C24.34 12.3 27.2 10.6 28.2 8.4 M24.22 7.93 C23.02 6.93 21.8 6.2 21.5 3.8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M6.5 21.8 C11 22.8 21 22.8 25.5 21.8 V25.6 C21 26.6 11 26.6 6.5 25.6 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5.5 22 L16 15.3 L26.5 22 M5.5 28.2 L16 21.5 L26.5 28.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M5 12.9 L16 5.9 L27 12.9 V16.1 L16 9.1 L5 16.1 Z',
+          },
+        },
+      ],
+    },
+  },
+  'role-hote': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 3.5 a11.5 11.5 0 1 0 0.01 0 M8.5 27.5 H23.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M11.5 5.5 V24.6 M20.5 5.5 V24.6',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 13 a2 2 0 1 0 0.01 0 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M3.5 15 L16 4 L28.5 15 C22 17.4 10 17.4 3.5 15 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.5 17.6 V27.5 M25.5 17.6 V27.5 M3.5 27.5 H28.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M10.6 12.6 L13 10.2 M21.4 12.6 L19 10.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M12.5 27.5 V23 a3.5 3.5 0 0 1 7 0 V27.5 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M7.5 28.5 V6 A2 2 0 0 1 9.5 4 H22.5 A2 2 0 0 1 24.5 6 V28.5 M4 28.5 H28 M20.5 18.5 V22.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M11.4 12 A4.6 4.6 0 1 0 20.6 12 A4.6 4.6 0 1 0 11.4 12 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M13.4 12 A2.6 2.6 0 1 0 18.6 12 A2.6 2.6 0 1 0 13.4 12 Z',
+          },
+        },
+      ],
+    },
+  },
+  'role-joueur': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M20 19.5 A7.5 7.5 0 0 1 12.5 12 M5 27 L14.7 17.3',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M20 4.5 V3 M27.5 12 H29 M25.3 6.7 L26.36 5.64',
+          },
+        },
+        {
+          tag: 'circle',
+          attrs: {
+            cx: '20',
+            cy: '12',
+            r: '4.5',
+            fill: 'currentColor',
+            stroke: 'none',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5 28.5 L25 5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M7.71 22.7 L10.29 24.9 M9.31 20.82 L11.89 23.02 M23.3 7 C24.2 8.4 24.8 9.8 25 11.2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M23.4 11.4 C20.6 12.4 20.3 17.8 25 18.8 C29.7 17.8 29.4 12.4 26.6 11.4 C25.6 11 24.4 11 23.4 11.4 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6.82 21.76 A2.2 2.2 45 0 0 9.94 24.88 L17.57 17.24 C20.26 18.37 23.16 17.73 25.28 15.61 L29.03 11.86 L26.2 9.04 L23.3 11.94 L19.76 8.4 L22.66 5.5 L19.84 2.67 L16.09 6.42 C13.97 8.54 13.33 11.44 14.46 14.13 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M18.49 11.09 L20.61 13.21 A1.2 1.2 45 0 1 18.92 14.91 L16.79 12.78 A1.2 1.2 45 0 1 18.49 11.09 Z',
+          },
+        },
+      ],
+    },
+  },
+  'role-mj': {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10 22 C10.86 12.66 18.51 5.01 27 5 C26.99 13.49 19.34 21.14 10 22 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M7.6 24.4 L20.2 11.8',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M3.4 28.6 L4.77 24.97 L7.6 24.4 L7.03 27.23 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M13 7 V5.5 a3 3 0 0 1 6 0 V7',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M9.5 11 L12.5 7 H19.5 L22.5 11 Z M10.5 11 V24 M21.5 11 V24',
+          },
+        },
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '8.5',
+            y: '24',
+            width: '15',
+            height: '4.5',
+            rx: '1',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M16 13.9 C18.3 16.2 18.9 17.7 18.9 19.1 C18.9 20.7 17.6 21.6 16 21.6 C14.4 21.6 13.1 20.7 13.1 19.1 C13.1 17.7 13.7 16.2 16 13.9 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 2.5 V5 M14.7 9.8 L7.5 27.5 M17.3 9.8 L24.5 27.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M10.9 19 Q16 21.4 21.1 19',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M13.4 7.5 A2.6 2.6 0 1 0 18.6 7.5 A2.6 2.6 0 1 0 13.4 7.5 Z',
+          },
+        },
+      ],
+    },
+  },
+  rouvrir: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M27 21.5 H7.5 a2.5 2.5 0 0 0 0 5 H27',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6 21 L23 11.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M10 24 H24',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M25.5 11.9 C26.51 14.49 26.51 14.49 29.1 15.5 C26.51 16.51 26.51 16.51 25.5 19.1 C24.49 16.51 24.49 16.51 21.9 15.5 C24.49 14.49 24.49 14.49 25.5 11.9 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5.6 18.81 C5.03 15.45 6.11 13.79 7.7 13.56 C9.28 13.34 10.78 14.65 11.15 18.03 C11.32 19.92 10.41 20.65 10.72 22.13 C10.98 23.3 11.46 23.84 11.5 24.84 C11.56 25.95 10.61 26.38 9.52 26.54 C8.43 26.69 7.4 26.53 7.15 25.46 C6.91 24.48 7.22 23.83 7.15 22.63 C7.04 21.13 5.97 20.67 5.6 18.81 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M14.6 26 C14.6 16 18 10.2 24.2 9.6',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M23.6 5.2 L29.4 9.4 L23.9 14 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M6 28.5 V23.5 A1.5 1.5 0 0 1 7.5 22 H24.5 A1.5 1.5 0 0 1 26 23.5 V28.5 Z M16 22 L20.02 16.27 M3.93 18.76 A12.5 12.5 0 0 1 17.74 9.62 M15.73 7.39 L17.74 9.62 L15.2 11.21',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M18.56 15.2 A2.2 2.2 0 1 0 22.96 15.2 A2.2 2.2 0 1 0 18.56 15.2 Z',
+          },
+        },
+      ],
+    },
+  },
+  signal: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '4',
+            y: '4',
+            width: '24',
+            height: '24',
+            rx: '2',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M8 13 C8 10 9.6 8 12.5 8 M24 19 C24 22 22.4 24 19.5 24',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M14.3 8.5 H17.7 L17 19 H15 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M16 22.6 a0.6 0.6 0 1 0 0.01 0',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M14.6 28.31 C16.49 26.21 17.15 23.57 16.52 19.39 C16.32 15.12 17.32 9.46 14.28 7.7 C11.84 6.35 7.55 9.95 8.45 12.58 C9.66 15.88 15.4 15.89 19.58 16.82 C23.58 18.17 26.3 17.98 28.7 16.48',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M14.71 14.13 C17.01 13.76 19.14 13.8 19.78 14.57 C20.81 15.79 20.3 18.31 19.46 19.79 C17.85 20.36 15.29 20.42 14.26 19.2 C13.62 18.43 13.95 16.33 14.71 14.13 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M5.5 14.5 A10.5 10.5 0 1 0 26.5 14.5 A10.5 10.5 0 1 0 5.5 14.5 Z M16 25 V28.5 M12.5 28.5 H19.5 M16 14.5 L23.24 10.65',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M10.49 15.47 L8.71 15.78 M11.15 11.7 L9.59 10.8 M14.08 9.24 L13.47 7.55',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M19.8 7.92 A7.6 7.6 0 0 1 23.48 15.82 L20.73 15.33 A4.8 4.8 0 0 0 18.4 10.34 Z',
+          },
+        },
+      ],
+    },
+  },
+  vote: {
+    'grimoire-emeraude': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M11 25.5 V22 C8.5 20.5 6.5 17.5 6 14.5 C5.8 13 7.8 12.5 8.8 13.8 L11 16.5 V7 A1.75 1.75 0 0 1 14.5 7 V14 V5.5 A1.75 1.75 0 0 1 18 5.5 V14 V6.5 A1.75 1.75 0 0 1 21.5 6.5 V14.5 V9.5 A1.75 1.75 0 0 1 25 9.5 V19 C25 22 23.5 24.3 21 25.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M9.5 25.5 H22.5 V29.5 H9.5 Z',
+          },
+        },
+      ],
+    },
+    'foret-ancienne': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M11 25.5 V22 C8.5 20.5 6.5 17.5 6 14.5 C5.8 13 7.8 12.5 8.8 13.8 L11 16.5 V7 A1.75 1.75 0 0 1 14.5 7 V14 V5.5 A1.75 1.75 0 0 1 18 5.5 V14 V6.5 A1.75 1.75 0 0 1 21.5 6.5 V14.5 V9.5 A1.75 1.75 0 0 1 25 9.5 V19 C25 22 23.5 24.3 21 25.5',
+          },
+        },
+        {
+          tag: 'rect',
+          attrs: {
+            'stroke-width': '2',
+            x: '9.5',
+            y: '25.5',
+            width: '13',
+            height: '3',
+            rx: '1',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M14.6 23 C17.91 23.32 21.11 20.32 21 17 C17.69 16.68 14.49 19.68 14.6 23 Z',
+          },
+        },
+      ],
+    },
+    'atelier-cuivre': {
+      viewBox: '0 0 32 32',
+      elements: [
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M11 25.5 V22 C8.5 20.5 6.5 17.5 6 14.5 C5.8 13 7.8 12.5 8.8 13.8 L11 16.5 V7 A1.75 1.75 0 0 1 14.5 7 V14 V5.5 A1.75 1.75 0 0 1 18 5.5 V14 V6.5 A1.75 1.75 0 0 1 21.5 6.5 V14.5 V9.5 A1.75 1.75 0 0 1 25 9.5 V19 C25 22 23.5 24.3 21 25.5',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '2',
+            d: 'M10.5 25.5 H21.5 A1 1 0 0 1 22.5 26.5 V27.5 A1 1 0 0 1 21.5 28.5 H10.5 A1 1 0 0 1 9.5 27.5 V26.5 A1 1 0 0 1 10.5 25.5 Z',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            'stroke-width': '1.3',
+            d: 'M11 10.8 H25',
+          },
+        },
+        {
+          tag: 'path',
+          attrs: {
+            fill: 'currentColor',
+            stroke: 'none',
+            d: 'M14.5 17 H21.5 A1 1 0 0 1 22.5 18 V20 A1 1 0 0 1 21.5 21 H14.5 A1 1 0 0 1 13.5 20 V18 A1 1 0 0 1 14.5 17 Z',
+          },
+        },
+      ],
+    },
+  },
+};
+
+export const COMMON_ICONS: Readonly<Record<CommonIconName, IconDrawing>> = {
+  actif: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '16',
+          cy: '16',
+          r: '12',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          cx: '16',
+          cy: '16',
+          r: '6.5',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+    ],
+  },
+  ajouter: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M16 9 V23 M9 16 H23',
+        },
+      },
+    ],
+  },
+  'apres-midi': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M3 26 H29',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '16',
+          cy: '12.5',
+          r: '4.8',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M16 5.2 V2.5 M16 19.8 V22.5 M8.7 12.5 H6 M23.3 12.5 H26 M10.84 7.34 L8.93 5.43 M21.16 7.34 L23.07 5.43 M10.84 17.66 L8.93 19.57 M21.16 17.66 L23.07 19.57',
+        },
+      },
+    ],
+  },
+  aujourdhui: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '5',
+          y: '7',
+          width: '22',
+          height: '21',
+          rx: '2',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M11 4 V9 M21 4 V9',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M5 13 H27',
+        },
+      },
+      {
+        tag: 'rect',
+        attrs: {
+          x: '9',
+          y: '17',
+          width: '6',
+          height: '6',
+          rx: '1',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+    ],
+  },
+  avertissement: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M16 3.5 L29 27 H3 Z',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M16 12.5 V17.8',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          cx: '16',
+          cy: '22.3',
+          r: '1.5',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+    ],
+  },
+  'cadenas-ferme': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '7',
+          y: '14',
+          width: '18',
+          height: '14',
+          rx: '2.5',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M11 14 V10 a5 5 0 0 1 10 0 V14',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          stroke: 'none',
+          d: 'M16 18 A2 2 0 0 1 17.1 21.67 L17.6 24.5 H14.4 L14.9 21.67 A2 2 0 0 1 16 18 Z',
+        },
+      },
+    ],
+  },
+  'cadenas-ouvert': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '7',
+          y: '14',
+          width: '18',
+          height: '14',
+          rx: '2.5',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M11 14 V8.5 a5 5 0 0 1 10 0 V9.5',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          stroke: 'none',
+          d: 'M16 18 A2 2 0 0 1 17.1 21.67 L17.6 24.5 H14.4 L14.9 21.67 A2 2 0 0 1 16 18 Z',
+        },
+      },
+    ],
+  },
+  copier: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '11',
+          y: '11',
+          width: '16',
+          height: '17',
+          rx: '2',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M7 21 a2 2 0 0 1 -2 -2 V6 a2 2 0 0 1 2 -2 H18 a2 2 0 0 1 2 2 V7',
+        },
+      },
+    ],
+  },
+  'declarer-dispos': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M14 26 H6 a2 2 0 0 1 -2 -2 V8 a2 2 0 0 1 2 -2 H22 a2 2 0 0 1 2 2 V13.5',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M9 3 V8 M19 3 V8',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M4 11.5 H24',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          'fill-rule': 'evenodd',
+          stroke: 'none',
+          d: 'M16.5 23 A6.5 6.5 0 1 0 29.5 23 A6.5 6.5 0 1 0 16.5 23 Z M19.17 24.17 L22.29 27.14 L26.71 21.98 L24.89 20.42 L22.11 23.66 L20.83 22.43 Z',
+        },
+      },
+    ],
+  },
+  deplier: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M8 12.5 L16 20.5 L24 12.5',
+        },
+      },
+    ],
+  },
+  'dispo-non': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '16',
+          cy: '16',
+          r: '12',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M9.64 22.36 L22.36 9.64',
+        },
+      },
+    ],
+  },
+  'dispo-oui': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          'fill-rule': 'evenodd',
+          stroke: 'none',
+          d: 'M3 16 A13 13 0 1 0 29 16 A13 13 0 1 0 3 16 Z M8.3 17.7 L14.07 23.47 L23.77 12.63 L21.23 10.37 L13.93 18.53 L10.7 15.3 Z',
+        },
+      },
+    ],
+  },
+  'dispo-partiel': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '16',
+          cy: '16',
+          r: '12',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          stroke: 'none',
+          d: 'M16 7 A9 9 0 0 0 16 25 Z',
+        },
+      },
+    ],
+  },
+  effacer: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '16',
+          cy: '16',
+          r: '12',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M11.5 11.5 L20.5 20.5 M20.5 11.5 L11.5 20.5',
+        },
+      },
+    ],
+  },
+  email: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '4',
+          y: '7',
+          width: '24',
+          height: '18',
+          rx: '2',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M5 8.5 L16 17 L27 8.5',
+        },
+      },
+    ],
+  },
+  fermer: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M8 8 L24 24 M24 8 L8 24',
+        },
+      },
+    ],
+  },
+  filtres: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M4 8 H17.5 M22.5 8 H28 M4 16 H8.5 M13.5 16 H28 M4 24 H15.5 M20.5 24 H28',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '20',
+          cy: '8',
+          r: '2.5',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '11',
+          cy: '16',
+          r: '2.5',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '18',
+          cy: '24',
+          r: '2.5',
+        },
+      },
+    ],
+  },
+  information: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '16',
+          cy: '16',
+          r: '12',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M16 15 V22.5',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          cx: '16',
+          cy: '10',
+          r: '1.6',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+    ],
+  },
+  lien: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M12 10 H9.5 a6 6 0 0 0 0 12 H12 M20 10 H22.5 a6 6 0 0 1 0 12 H20',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M11 16 H21',
+        },
+      },
+    ],
+  },
+  'lien-revoque': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M12 10 H9.5 a6 6 0 0 0 0 12 H12 M20 10 H22.5 a6 6 0 0 1 0 12 H20',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M16 4 V7.5 M16 24.5 V28 M11 4 L12 5.8 M21 4 L20 5.8 M11 28 L12 26.2 M21 28 L20 26.2',
+        },
+      },
+    ],
+  },
+  matin: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M3 26 H29 M10 26 A6 6 0 0 1 22 26',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M8.01 23.09 L5.66 22.24 M11.12 19.04 L9.69 16.99 M20.88 19.04 L22.31 16.99 M23.99 23.09 L26.34 22.24',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M16 14 V5 M12.5 8.5 L16 5 L19.5 8.5',
+        },
+      },
+    ],
+  },
+  'menu-actions': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'circle',
+        attrs: {
+          cx: '16',
+          cy: '7',
+          r: '2.2',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          cx: '16',
+          cy: '16',
+          r: '2.2',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          cx: '16',
+          cy: '25',
+          r: '2.2',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+    ],
+  },
+  'menu-affichage': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M5 8 H27 M5 16 H27 M5 24 H27',
+        },
+      },
+    ],
+  },
+  modifier: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M4.5 27.5 L5.56 22.2 L20.76 7 L25 11.24 L9.8 26.44 Z',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M17.23 10.53 L21.47 14.77',
+        },
+      },
+    ],
+  },
+  oeil: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M3.5 16 A13.44 13.44 0 0 1 28.5 16 A13.44 13.44 0 0 1 3.5 16 Z',
+        },
+      },
+      {
+        tag: 'circle',
+        attrs: {
+          cx: '16',
+          cy: '16',
+          r: '4.5',
+          fill: 'currentColor',
+          stroke: 'none',
+        },
+      },
+    ],
+  },
+  'oeil-barre': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M6.14 11.8 A13.44 13.44 0 0 0 3.5 16 A13.44 13.44 0 0 0 18.59 24.25 M13.41 7.75 A13.44 13.44 0 0 1 28.5 16 A13.44 13.44 0 0 1 25.86 20.2',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M6 6 L26 26',
+        },
+      },
+    ],
+  },
+  ouvrir: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '4',
+          y: '6',
+          width: '24',
+          height: '20',
+          rx: '2',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M19.5 6 V26',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M8 16 H12.5',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          stroke: 'none',
+          d: 'M12 11.5 L16.5 16 L12 20.5 Z',
+        },
+      },
+    ],
+  },
+  precedent: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M19.5 8 L11.5 16 L19.5 24',
+        },
+      },
+    ],
+  },
+  quitter: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M17 9 V5 a1 1 0 0 0 -1 -1 H5 V28 H16 a1 1 0 0 0 1 -1 V23',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M5 4 L13 8 V24 L5 28',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M17 16 H22.5',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          stroke: 'none',
+          d: 'M22 11.5 L28.5 16 L22 20.5 Z',
+        },
+      },
+    ],
+  },
+  rechercher: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'circle',
+        attrs: {
+          'stroke-width': '2',
+          cx: '13.5',
+          cy: '13.5',
+          r: '8.5',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M19.8 19.8 L27 27',
+        },
+      },
+    ],
+  },
+  reinitialiser: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M18.59 6.84 A10 10 0 1 1 7.81 10.76',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          stroke: 'none',
+          d: 'M4.94 8.76 L10.96 6.26 L10.68 12.77 Z',
+        },
+      },
+    ],
+  },
+  replier: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M8 19.5 L16 11.5 L24 19.5',
+        },
+      },
+    ],
+  },
+  retour: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M26 16 H7 M14 9 L7 16 L14 23',
+        },
+      },
+    ],
+  },
+  soir: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M3 26 H29',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M24.5 14.79 A9 9 0 1 1 14.71 5 A7 7 0 0 0 24.5 14.79 Z',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M24 4.8 V9.2 M21.8 7 H26.2',
+        },
+      },
+    ],
+  },
+  suivant: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M12.5 8 L20.5 16 L12.5 24',
+        },
+      },
+    ],
+  },
+  supprimer: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M5 8 H27 M12.5 8 V5.5 a1.5 1.5 0 0 1 1.5 -1.5 H18 a1.5 1.5 0 0 1 1.5 1.5 V8',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M8 12 V26 a2 2 0 0 0 2 2 H22 a2 2 0 0 0 2 -2 V12',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '1.3',
+          d: 'M13 15.5 V24 M19 15.5 V24',
+        },
+      },
+    ],
+  },
+  telecharger: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M16 4 V14 M5 20 V25 a2 2 0 0 0 2 2 H25 a2 2 0 0 0 2 -2 V20',
+        },
+      },
+      {
+        tag: 'path',
+        attrs: {
+          fill: 'currentColor',
+          stroke: 'none',
+          d: 'M9.5 13 H22.5 L16 20 Z',
+        },
+      },
+    ],
+  },
+  valider: {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M6.5 16.5 L13 23 L25.5 10',
+        },
+      },
+    ],
+  },
+  'vue-compacte': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'path',
+        attrs: {
+          'stroke-width': '2',
+          d: 'M5 6.5 H6 M10 6.5 H27 M5 12.83 H6 M10 12.83 H27 M5 19.17 H6 M10 19.17 H27 M5 25.5 H6 M10 25.5 H27',
+        },
+      },
+    ],
+  },
+  'vue-large': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '5',
+          y: '5',
+          width: '9',
+          height: '9',
+          rx: '1.5',
+        },
+      },
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '18',
+          y: '5',
+          width: '9',
+          height: '9',
+          rx: '1.5',
+        },
+      },
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '5',
+          y: '18',
+          width: '9',
+          height: '9',
+          rx: '1.5',
+        },
+      },
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '18',
+          y: '18',
+          width: '9',
+          height: '9',
+          rx: '1.5',
+        },
+      },
+    ],
+  },
+  'vue-moyenne': {
+    viewBox: '0 0 32 32',
+    elements: [
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '5',
+          y: '5',
+          width: '22',
+          height: '9',
+          rx: '1.5',
+        },
+      },
+      {
+        tag: 'rect',
+        attrs: {
+          'stroke-width': '2',
+          x: '5',
+          y: '18',
+          width: '22',
+          height: '9',
+          rx: '1.5',
+        },
+      },
+    ],
+  },
+};

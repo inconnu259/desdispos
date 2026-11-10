@@ -3,8 +3,13 @@
     <h3 class="panel-title">{{ panelTitle }}</h3>
     <span class="panel-slot-label">{{ SLOT_LABELS[form.value.slot || slot()] }}</span>
   </div>
-  <button mat-icon-button type="button" (click)="cancelled.emit()" aria-label="Fermer le panneau">
-    <mat-icon>close</mat-icon>
+  <button
+    mat-icon-button
+    type="button"
+    (click)="cancelled.emit()"
+    [attr.aria-label]="theme.tone()['calendar.constraint_close_aria']"
+  >
+    <app-icon name="fermer" />
   </button>
 </div>
 
@@ -15,8 +20,12 @@
 
   <!-- Créneau -->
   <div class="form-field">
-    <span class="field-label">Créneau</span>
-    <mat-button-toggle-group formControlName="slot" aria-label="Créneau" class="slot-toggle">
+    <span class="field-label">{{ theme.tone()['common.creneau'] }}</span>
+    <mat-button-toggle-group
+      formControlName="slot"
+      [attr.aria-label]="theme.tone()['common.creneau']"
+      class="slot-toggle"
+    >
       <mat-button-toggle value="MORNING">Matin</mat-button-toggle>
       <mat-button-toggle value="AFTERNOON">AM</mat-button-toggle>
       <mat-button-toggle value="EVENING">Soir</mat-button-toggle>
@@ -26,31 +35,53 @@
 
   <!-- Disponibilité -->
   <div class="form-field">
-    <mat-button-toggle-group formControlName="kind" aria-label="Disponibilité" class="kind-toggle">
-      <mat-button-toggle value="UNAVAILABLE">Indisponible</mat-button-toggle>
-      <mat-button-toggle value="AVAILABLE">Disponible</mat-button-toggle>
+    <mat-button-toggle-group
+      formControlName="kind"
+      [attr.aria-label]="theme.tone()['calendar.constraint_kind_aria']"
+      class="kind-toggle"
+    >
+      <mat-button-toggle value="UNAVAILABLE">{{
+        theme.tone()['common.indisponible']
+      }}</mat-button-toggle>
+      <mat-button-toggle value="AVAILABLE">{{
+        theme.tone()['common.disponible']
+      }}</mat-button-toggle>
     </mat-button-toggle-group>
   </div>
 
   <!-- Type de contrainte -->
   <div class="form-field">
-    <span class="field-label">Type</span>
-    <mat-radio-group formControlName="type" aria-label="Type" class="type-radio-group">
-      <mat-radio-button value="PONCTUEL">Ce créneau uniquement</mat-radio-button>
-      <mat-radio-button value="RECURRENT">Récurrent (chaque semaine)</mat-radio-button>
-      <mat-radio-button value="PLAGE">Plage de dates</mat-radio-button>
+    <span class="field-label">{{ theme.tone()['common.type'] }}</span>
+    <mat-radio-group
+      formControlName="type"
+      [attr.aria-label]="theme.tone()['common.type']"
+      class="type-radio-group"
+    >
+      <mat-radio-button value="PONCTUEL">{{
+        theme.tone()['calendar.constraint_type_punctual']
+      }}</mat-radio-button>
+      <mat-radio-button value="RECURRENT">{{
+        theme.tone()['calendar.constraint_type_recurring']
+      }}</mat-radio-button>
+      <mat-radio-button value="PLAGE">{{
+        theme.tone()['calendar.constraint_type_range']
+      }}</mat-radio-button>
     </mat-radio-group>
   </div>
 
   <!-- Plage de dates -->
   @if (form.value.type === 'PLAGE') {
     <div class="form-field">
-      <label class="field-label" for="startDate">Date de début</label>
+      <label class="field-label" for="startDate">{{
+        theme.tone()['calendar.constraint_start_date']
+      }}</label>
       <input id="startDate" type="date" lang="fr" formControlName="startDate" class="date-input"
         [attr.min]="today" required />
     </div>
     <div class="form-field">
-      <label class="field-label" for="endDate">Date de fin</label>
+      <label class="field-label" for="endDate">{{
+        theme.tone()['calendar.constraint_end_date']
+      }}</label>
       <input id="endDate" type="date" lang="fr" formControlName="endDate" class="date-input"
         [attr.min]="form.value.startDate || today" required />
     </div>
@@ -59,7 +90,9 @@
   <!-- Expiration — uniquement pour RÉCURRENT -->
   @if (form.value.type === 'RECURRENT') {
     <div class="form-field">
-      <label class="field-label" for="expiresAt">Expire le</label>
+      <label class="field-label" for="expiresAt">{{
+        theme.tone()['calendar.constraint_expires_on']
+      }}</label>
       <input id="expiresAt" type="date" lang="fr" formControlName="expiresAt" class="date-input"
         [attr.min]="today" required />
     </div>
@@ -71,24 +104,26 @@
     <!-- Supprimer (visible uniquement en dehors des dialogs) -->
     @if (existingDeclaration() && splitDialogAction() === null && conflictData() === null) {
       <button mat-stroked-button type="button" color="warn" (click)="onDeleteClick()" [disabled]="saving()">
-        <mat-icon>delete</mat-icon>
-        Supprimer
+        <app-icon name="supprimer" />
+        {{ theme.tone()['common.supprimer'] }}
       </button>
     }
 
     <!-- Dialog MODIFICATION d'une contrainte récurrente -->
     @if (splitDialogAction() === 'modify') {
       <div class="inline-confirm">
-        <p class="confirm-warn">⚠ Cette contrainte est récurrente. Que souhaitez-vous modifier ?</p>
+        <p class="confirm-warn">
+          <app-icon name="avertissement" /> {{ theme.tone()['calendar.constraint_recurring_modify_prompt'] }}
+        </p>
         <div class="confirm-actions">
           <button mat-button type="button" (click)="splitDialogAction.set(null)" [disabled]="saving()">
-            Annuler
+            {{ theme.tone()['common.annuler'] }}
           </button>
           <button mat-stroked-button type="button" (click)="onSplitThisDay()" [disabled]="saving()">
-            Ce jour uniquement
+            {{ theme.tone()['common.ce_jour_uniquement'] }}
           </button>
           <button mat-flat-button color="primary" type="button" (click)="onSplitAll()" [disabled]="saving()">
-            Toutes les occurrences
+            {{ theme.tone()['calendar.constraint_all_occurrences'] }}
           </button>
         </div>
       </div>
@@ -97,19 +132,21 @@
     <!-- Dialog SUPPRESSION d'une contrainte récurrente -->
     @if (splitDialogAction() === 'delete') {
       <div class="inline-confirm">
-        <p class="confirm-warn">⚠ Cette contrainte est récurrente. Que souhaitez-vous supprimer ?</p>
+        <p class="confirm-warn">
+          <app-icon name="avertissement" /> {{ theme.tone()['calendar.constraint_recurring_delete_prompt'] }}
+        </p>
         <div class="confirm-actions">
           <button mat-button type="button" (click)="splitDialogAction.set(null)" [disabled]="saving()">
-            Annuler
+            {{ theme.tone()['common.annuler'] }}
           </button>
           <button mat-stroked-button type="button" color="warn" (click)="onDeleteThisDay()" [disabled]="saving()">
-            Ce jour uniquement
+            {{ theme.tone()['common.ce_jour_uniquement'] }}
           </button>
           <button mat-stroked-button type="button" color="warn" (click)="onDeleteTail()" [disabled]="saving()">
-            De ce jour jusqu'à la fin
+            {{ theme.tone()['calendar.constraint_from_this_day'] }}
           </button>
           <button mat-flat-button color="warn" type="button" (click)="onDeleteAll()" [disabled]="saving()">
-            Toute la série
+            {{ theme.tone()['calendar.constraint_whole_series'] }}
           </button>
         </div>
       </div>
@@ -118,16 +155,16 @@
     <!-- Dialog CONFLIT lors de la création -->
     @if (conflictData() !== null) {
       <div class="inline-confirm">
-        <p class="confirm-warn">⚠ Des disponibilités contradictoires existent déjà pour cette période.</p>
+        <p class="confirm-warn"><app-icon name="avertissement" /> {{ theme.tone()['calendar.constraint_conflict_prompt'] }}</p>
         <div class="confirm-actions">
           <button mat-button type="button" (click)="onConflictCancel()" [disabled]="saving()">
-            Annuler
+            {{ theme.tone()['common.annuler'] }}
           </button>
           <button mat-stroked-button type="button" (click)="onConflictKeep()" [disabled]="saving()">
-            Garder l'existant
+            {{ theme.tone()['calendar.constraint_keep_existing'] }}
           </button>
           <button mat-flat-button color="warn" type="button" (click)="onConflictOverwrite()" [disabled]="saving()">
-            Écraser
+            {{ theme.tone()['calendar.constraint_overwrite'] }}
           </button>
         </div>
       </div>
@@ -136,10 +173,12 @@
     <!-- Boutons normaux (cachés pendant les dialogs) -->
     @if (splitDialogAction() === null && conflictData() === null) {
       <div class="actions-right">
-        <button mat-button type="button" (click)="cancelled.emit()" [disabled]="saving()">Annuler</button>
+        <button mat-button type="button" (click)="cancelled.emit()" [disabled]="saving()">
+          {{ theme.tone()['common.annuler'] }}
+        </button>
         <button mat-flat-button color="primary" type="submit" [disabled]="!isFormValid || saving()">
           @if (saving()) {
-            Enregistrement…
+            {{ theme.tone()['common.enregistrement'] }}
           } @else {
             {{ theme.tone()['cta.save_constraint'] }}
           }

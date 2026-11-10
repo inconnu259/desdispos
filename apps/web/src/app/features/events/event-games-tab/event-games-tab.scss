@@ -1,0 +1,131 @@
+/* Story 49.1 — onglet des jeux sur place : colonne unique, 640 px au plus (centrée au-delà de 768 px), cibles
+   de 44 px. Aucun jeton neuf, aucun rouge, aucune image (DESIGN.md §4, §8). */
+:host {
+  display: block;
+}
+
+.egt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+/* Région d'annonce : lue par les lecteurs d'écran, jamais vue. Les styles Angular sont encapsulés par composant
+   (`.visually-hidden` n'est pas global) : la règle est donc redéfinie ici. */
+.egt__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.egt__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.egt__empty,
+.egt__error {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+/* Lien discret vers « mon cabinet / coffre / râtelier » : sobre, mais une cible de 44 px. */
+.egt__link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+  font-size: 0.875rem;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Story 49.4 — menu ⋮ d'une ligne : surface du menu de la fiche de personnage (jetons existants, aucun neuf), une
+   entrée de 44 px au moins. Rendu dans le conteneur d'overlays du CDK, avec l'attribut d'encapsulation de l'onglet. */
+.egt-menu {
+  box-sizing: border-box;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  background: var(--mat-sys-surface-container, #1a1428);
+  color: var(--mat-sys-on-surface, inherit);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.65);
+}
+
+.egt-menu__item {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}
+
+/* Story 49.5 — liste des noms d'une Envie : même surface que le menu ⋮ (jetons existants, aucun neuf). */
+.egt-names {
+  box-sizing: border-box;
+  min-width: 160px;
+  max-width: min(320px, calc(100vw - 16px));
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 8px 14px;
+  border: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  background: var(--mat-sys-surface-container, #1a1428);
+  color: var(--mat-sys-on-surface, inherit);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.65);
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
+}
+
+.egt-names__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}

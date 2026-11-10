@@ -1,0 +1,19 @@
+.homme-dragon-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &__back {
+    align-self: flex-start;
+    // Cible tactile ≥ 44 px.
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 0.25rem;
+    color: var(--mat-sys-primary, #6750a4);
+  }
+
+  &__error {
+    color: var(--mat-sys-error, #c00);
+  }
+}

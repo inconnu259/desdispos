@@ -1,0 +1,132 @@
+/* La liste des destinées (Story 44.3). Mise en page seulement : les deux enveloppes (menu ancré, tiroir du
+   bas) portent le fond, la bordure et l'ombre, comme pour le panneau « Affichage ». */
+.destiny-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  /* Un maximum pour le menu ancré ; le tiroir du bas s'étale sur toute la largeur. */
+  max-width: 420px;
+  box-sizing: border-box;
+}
+
+.destiny-list__title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.destiny-list__subtitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.destiny-list__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.destiny-list__group-name {
+  margin: 0.5rem 0 0;
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.destiny-list__row,
+.destiny-list__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  /* Une cible au doigt : 44 px au moins. */
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  box-sizing: border-box;
+  background: var(--mat-sys-surface-container-high, rgba(255, 255, 255, 0.06));
+  color: inherit;
+}
+
+.destiny-list__row {
+  width: 100%;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary, #888);
+    outline-offset: -2px;
+  }
+}
+
+.destiny-list__head {
+  border: 1px solid var(--jdr-status-todo, var(--mat-sys-primary, #888));
+}
+
+.destiny-list__text,
+.destiny-list__head-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.destiny-list__glyph {
+  --app-icon-size: 1rem;
+  vertical-align: middle;
+  color: var(--jdr-status-todo, inherit);
+}
+
+.destiny-list__name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.destiny-list__meta {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.destiny-list__quit {
+  flex-shrink: 0;
+  min-height: 36px;
+  border: 1px solid var(--mat-sys-outline, #999);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  padding: 0.25rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* Les pastilles : le texte dit l'état, la teinte l'accompagne seulement. */
+.destiny-list__pill {
+  flex-shrink: 0;
+  border: 1px solid var(--mat-sys-outline, #999);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+
+  &--todo {
+    border-color: var(--jdr-status-todo, #f0a030);
+    color: var(--jdr-status-todo, inherit);
+  }
+
+  &--answered {
+    border-color: var(--jdr-status-ok, var(--mat-sys-primary, #7ec8a4));
+    color: var(--jdr-status-ok, inherit);
+  }
+
+  &--organizer {
+    border-color: var(--mat-sys-tertiary, #9b6dff);
+    color: var(--mat-sys-tertiary, inherit);
+  }
+}

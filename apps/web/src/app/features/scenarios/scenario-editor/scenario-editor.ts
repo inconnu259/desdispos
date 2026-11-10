@@ -13,7 +13,7 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import type {
   AnnouncementDto,
   CharacterDto,
@@ -32,6 +32,7 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { FieldEditPencil } from '../../characters/character-sheet/field-edit-pencil/field-edit-pencil';
 import { CharacterSummaryCard } from '../../characters/character-summary-card/character-summary-card';
+import { DurationStepper } from '../../../shared/duration-stepper/duration-stepper';
 import { ScenarioStatusBadge } from '../scenario-status-badge/scenario-status-badge';
 import { SeanceList } from '../seance-list/seance-list';
 import { AnnonceCard } from '../../announcements/annonce-card/annonce-card';
@@ -56,8 +57,9 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 @Component({
   selector: 'app-scenario-editor',
   imports: [
+    DurationStepper,
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     FieldEditPencil,
     ScenarioStatusBadge,
     CharacterSummaryCard,
@@ -129,8 +131,12 @@ export class ScenarioEditor implements OnInit {
   protected readonly markCourantPending = signal(false);
   protected readonly closePending = signal(false);
   protected readonly addSeancePending = signal(false);
+  /** Story 47.1 : durée de la séance à ajouter, en créneaux enchaînés. */
+  protected readonly newSeanceDuration = signal(1);
   protected readonly resumeFinPending = signal(false);
   protected readonly members = signal<PartieMemberDto[]>([]);
+  /** Story 54.3 — la liste des membres est chargée : sans elle, le résumé du vote ne nomme pas les absents. */
+  protected readonly membersLoaded = signal(false);
   // Story 9.2 : vue MJ — aucun filtrage de statut (le MJ ne peut pas se spoiler son propre contenu,
   // AC6 protège les joueurs, pas l'auteur).
   protected readonly announcements = signal<AnnouncementDto[]>([]);
@@ -288,17 +294,18 @@ export class ScenarioEditor implements OnInit {
     try {
       this.documents.set(await this.scenarios.listDocuments(this.scenarioInput().id));
     } catch {
-      this.documentsError.set('Impossible de charger les documents. Réessayez.');
+      this.documentsError.set(this.theme.tone()['scenarios.editor_documents_load_error']);
     }
     try {
       this.characters.set(await this.characterService.listByPartie(this.scenarioInput().partieId));
     } catch {
-      this.participantsLoadError.set('Impossible de charger les participants. Réessayez.');
+      this.participantsLoadError.set(this.theme.tone()['scenarios.editor_participants_load_error']);
     }
     try {
       this.members.set(await this.partiesService.members(this.scenarioInput().partieId));
+      this.membersLoaded.set(true);
     } catch {
-      // Liste MJ pour PollStatusPanel (relance de vote) — non-critique, même dégradation silencieuse.
+      // Liste MJ pour nommer les absents du résumé du vote — non-critique : en cas d'échec le résumé retombe sur leur nombre.
     }
     try {
       this.announcements.set(
@@ -331,7 +338,10 @@ export class ScenarioEditor implements OnInit {
       this.scenario.set(await this.scenarios.update(s.id, { [field]: value }));
     } catch (err) {
       this.fieldEditError.set(
-        extractErrorMessage(err, 'Impossible d’enregistrer la modification.'),
+        extractErrorMessage(
+          err,
+          this.theme.tone()['common.impossible_d_enregistrer_la_modification'],
+        ),
       );
     } finally {
       this.setFieldPending(field, false);
@@ -349,7 +359,10 @@ export class ScenarioEditor implements OnInit {
       );
     } catch (err) {
       this.fieldEditError.set(
-        extractErrorMessage(err, 'Impossible d’enregistrer la modification.'),
+        extractErrorMessage(
+          err,
+          this.theme.tone()['common.impossible_d_enregistrer_la_modification'],
+        ),
       );
     } finally {
       this.setFieldPending('description', false);
@@ -390,7 +403,7 @@ export class ScenarioEditor implements OnInit {
       if (s) this.documents.set(await this.scenarios.listDocuments(s.id));
     } catch (err) {
       this.uploadError.set(
-        extractErrorMessage(err, "Impossible d'envoyer le document. Réessayez."),
+        extractErrorMessage(err, this.theme.tone()['scenarios.editor_upload_error']),
       );
     } finally {
       this.uploadPending.set(false);
@@ -406,7 +419,7 @@ export class ScenarioEditor implements OnInit {
       this.scenario.set(await this.scenarios.markCourant(s.id));
     } catch (err) {
       this.markCourantError.set(
-        extractErrorMessage(err, 'Impossible de marquer ce scénario comme Courant.'),
+        extractErrorMessage(err, this.theme.tone()['scenarios.editor_mark_courant_error']),
       );
     } finally {
       this.markCourantPending.set(false);
@@ -421,7 +434,9 @@ export class ScenarioEditor implements OnInit {
     try {
       this.scenario.set(await this.scenarios.close(s.id));
     } catch (err) {
-      this.closeError.set(extractErrorMessage(err, 'Impossible de clôturer ce scénario.'));
+      this.closeError.set(
+        extractErrorMessage(err, this.theme.tone()['scenarios.editor_close_error']),
+      );
     } finally {
       this.closePending.set(false);
     }
@@ -433,9 +448,12 @@ export class ScenarioEditor implements OnInit {
     this.addSeancePending.set(true);
     this.addSeanceError.set(null);
     try {
-      this.scenario.set(await this.scenarios.addSeance(s.id));
+      this.scenario.set(await this.scenarios.addSeance(s.id, this.newSeanceDuration()));
+      this.newSeanceDuration.set(1);
     } catch (err) {
-      this.addSeanceError.set(extractErrorMessage(err, 'Impossible d’ajouter une séance.'));
+      this.addSeanceError.set(
+        extractErrorMessage(err, this.theme.tone()['scenarios.editor_add_seance_error']),
+      );
     } finally {
       this.addSeancePending.set(false);
     }
@@ -450,7 +468,7 @@ export class ScenarioEditor implements OnInit {
       this.scenario.set(await this.scenarios.setResumeFin(s.id, this.resumeFinDraft()));
     } catch (err) {
       this.resumeFinError.set(
-        extractErrorMessage(err, 'Impossible d’enregistrer le résumé de fin.'),
+        extractErrorMessage(err, this.theme.tone()['scenarios.editor_resume_save_error']),
       );
     } finally {
       this.resumeFinPending.set(false);
@@ -476,7 +494,9 @@ export class ScenarioEditor implements OnInit {
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (err) {
-      this.downloadError.set(extractErrorMessage(err, 'Impossible de télécharger le document.'));
+      this.downloadError.set(
+        extractErrorMessage(err, this.theme.tone()['scenarios.editor_download_error']),
+      );
     } finally {
       this.downloadPending.set(false);
     }

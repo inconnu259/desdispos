@@ -2,7 +2,7 @@
   <div
     class="weapon-step__grid"
     role="radiogroup"
-    aria-label="Choisir une catégorie d'arme"
+    [attr.aria-label]="theme.tone()['characters_wizard.weapon_category_aria']"
     appRadioGroupNav
   >
     @for (opt of categoryOptions(); track opt.key) {
@@ -14,15 +14,19 @@
     }
   </div>
 
-  @if (selectedCategoryData(); as category) {
-    <p class="weapon-step__category-description">{{ category.description }}</p>
+  @if (categoryHelp(); as h) {
+    <button
+      type="button"
+      class="weapon-step__detail-trigger"
+      (click)="detail.open(h.title, h.body, $event)"
+    >{{ h.title }}</button>
   }
 
   @if (itemOptions().length > 0) {
     <div
       class="weapon-step__grid"
       role="radiogroup"
-      aria-label="Choisir son arme précise"
+      [attr.aria-label]="theme.tone()['characters_wizard.weapon_item_aria']"
       appRadioGroupNav
     >
       @for (opt of itemOptions(); track opt.key) {
@@ -54,5 +58,15 @@
       Toucher : <strong>{{ weapon.touchFormula }}</strong> · Dégâts :
       <strong>{{ weapon.damageFormula }}</strong>
     </p>
+  }
+  @if (detail.selected(); as d) {
+    <app-detail-surface
+      [title]="d.title"
+      [body]="d.body"
+      [rows]="d.rows ?? []"
+      [narrative]="d.narrative ?? ''"
+      [openToken]="detail.openToken()"
+      (closed)="detail.close()"
+    />
   }
 </div>

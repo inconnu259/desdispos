@@ -8,77 +8,140 @@
     appRadioGroupNav
   >
     @for (opt of options(); track opt.key) {
-      <app-choice-card
-        [option]="opt"
-        [selected]="classId() === opt.key"
-        (selectedOption)="onSelect($event)"
-      />
+      @if (opt.key === classId() && selectedClassData(); as data) {
+        <!-- Piste B (contrat UI 31.4) : la carte choisie se déploie EN PLACE. L'en-tête reste le
+             radio ; le détail est un groupe VOISIN (jamais un enfant du bouton radio). -->
+        <div class="class-step__expanded">
+          <app-choice-card
+            [option]="opt"
+            [selected]="true"
+            [expanded]="true"
+            [expandedHint]="theme.tone()['character.choice_deselect_hint']"
+            (selectedOption)="onSelect($event)"
+          />
+          <app-choice-detail [label]="data.label">
+            <p class="choice-detail__description class-step__description">{{ data.description }}</p>
+
+            <div class="choice-detail__label">{{ theme.tone()['character.choice_talents_label'] }}</div>
+            <ul class="choice-detail__chips">
+              @for (talent of data.talents; track talent.name) {
+                <li>
+                  @if (talentHelp(talent); as h) {
+                    <button
+                      type="button"
+                      class="choice-detail__chip class-step__detail-trigger"
+                      (click)="detail.openContent(h, $event)"
+                    >{{ talent.name }}</button>
+                  } @else {
+                    <span class="choice-detail__tag">{{ talent.name }}</span>
+                  }
+                </li>
+              }
+            </ul>
+
+            <!-- Choix OBLIGATOIRES : toujours visibles, jamais repliés avec la référence. -->
+            @if (data.requiresSpecialty) {
+              <div class="choice-detail__must class-step__specialty">
+                <label for="specialtyTypeId">
+                  {{ data.specialtyLabel ?? "Type d'objet de spécialité" }}
+                  <span class="choice-detail__must-flag">{{ theme.tone()['character.choice_required_flag'] }}</span>
+                </label>
+                <input
+                  id="specialtyTypeId"
+                  type="text"
+                  [ngModel]="specialtyTypeId()"
+                  (ngModelChange)="onSpecialtyInput($event)"
+                />
+              </div>
+            }
+
+            @if (data.requiredChoices; as choices) {
+              @for (choice of choices; track choice.key) {
+                <div class="choice-detail__must class-step__required-choice">
+                  @if (choiceHelp(choice); as h) {
+                    <!-- [Review][Patch] Pas de <label for> ici : un <button> imbriqué dans un <label>
+                         associé à un autre contrôle est un anti-pattern HTML (renvoi de clic natif
+                         imprévisible d'un navigateur à l'autre) — <span id> + aria-labelledby porte la
+                         même association sans nester d'élément interactif dans le label. -->
+                    <span [id]="choice.key + '-label'">
+                      <button
+                        type="button"
+                        class="choice-detail__chip class-step__detail-trigger"
+                        (click)="detail.openContent(h, $event)"
+                      >{{ choice.label }}</button>
+                      <span class="choice-detail__must-flag">{{ theme.tone()['character.choice_required_flag'] }}</span>
+                    </span>
+                  } @else {
+                    <label [for]="choice.key">
+                      {{ choice.label }}
+                      <span class="choice-detail__must-flag">{{ theme.tone()['character.choice_required_flag'] }}</span>
+                    </label>
+                  }
+                  <select
+                    [id]="choice.key"
+                    [attr.aria-labelledby]="choiceHelp(choice) ? choice.key + '-label' : null"
+                    [ngModel]="valueForChoice(choice)"
+                    (ngModelChange)="onChoiceInput(choice, $event)"
+                  >
+                    <option value="" disabled>{{ theme.tone()['common.choisir'] }}</option>
+                    @for (opt of optionsForChoice(choice); track opt.key) {
+                      <option [value]="opt.key">{{ opt.label }}</option>
+                    }
+                  </select>
+                </div>
+              }
+            }
+
+            <!-- Référence (occupations, actions) : repliée par défaut, à un geste. -->
+            <button
+              type="button"
+              class="choice-detail__disclosure"
+              [attr.aria-expanded]="referenceOpen()"
+              (click)="toggleReference()"
+            >
+              <span>{{ theme.tone()['character.choice_reference_toggle'] }}</span>
+              <app-icon [name]="referenceOpen() ? 'replier' : 'deplier'" />
+            </button>
+            @if (referenceOpen()) {
+              <div class="class-step__reference">
+                <div class="class-step__occupations">
+                  <div class="choice-detail__label">Occupations</div>
+                  <ul class="choice-detail__chips">
+                    @for (occupation of data.occupations; track $index) {
+                      <li><span class="choice-detail__tag">{{ occupation }}</span></li>
+                    }
+                  </ul>
+                </div>
+                <div class="class-step__actions">
+                  <div class="choice-detail__label">Actions</div>
+                  <ul class="choice-detail__chips">
+                    @for (action of data.actions; track $index) {
+                      <li><span class="choice-detail__tag">{{ action }}</span></li>
+                    }
+                  </ul>
+                </div>
+              </div>
+            }
+          </app-choice-detail>
+        </div>
+      } @else {
+        <app-choice-card
+          [option]="opt"
+          [selected]="classId() === opt.key"
+          (selectedOption)="onSelect($event)"
+        />
+      }
     }
   </div>
 
-  @if (selectedClassData(); as data) {
-    <div class="class-step__talents">
-      <p class="class-step__description">{{ data.description }}</p>
-      <h3 class="class-step__talents-title">Talents de {{ data.label }}</h3>
-      <ul>
-        @for (talent of data.talents; track talent.name) {
-          <li>
-            <strong>{{ talent.name }}</strong> — {{ talent.effect.description }}
-            <p class="class-step__talent-description">{{ talent.description }}</p>
-          </li>
-        }
-      </ul>
-    </div>
-
-    <div class="class-step__reference">
-      <div class="class-step__occupations">
-        <h3 class="class-step__reference-title">Occupations</h3>
-        <ul>
-          @for (occupation of data.occupations; track $index) {
-            <li>{{ occupation }}</li>
-          }
-        </ul>
-      </div>
-      <div class="class-step__actions">
-        <h3 class="class-step__reference-title">Actions</h3>
-        <ul>
-          @for (action of data.actions; track $index) {
-            <li>{{ action }}</li>
-          }
-        </ul>
-      </div>
-    </div>
-
-    @if (data.requiresSpecialty) {
-      <div class="class-step__specialty">
-        <label for="specialtyTypeId">{{ data.specialtyLabel ?? "Type d'objet de spécialité" }}</label>
-        <input
-          id="specialtyTypeId"
-          type="text"
-          [ngModel]="specialtyTypeId()"
-          (ngModelChange)="onSpecialtyInput($event)"
-        />
-      </div>
-    }
-
-    @if (data.requiredChoices; as choices) {
-      <div class="class-step__required-choices">
-        @for (choice of choices; track choice.key) {
-          <div class="class-step__required-choice">
-            <label [for]="choice.key">{{ choice.label }}</label>
-            <select
-              [id]="choice.key"
-              [ngModel]="valueForChoice(choice)"
-              (ngModelChange)="onChoiceInput(choice, $event)"
-            >
-              <option value="" disabled>-- Choisir --</option>
-              @for (opt of optionsForChoice(choice); track opt.key) {
-                <option [value]="opt.key">{{ opt.label }}</option>
-              }
-            </select>
-          </div>
-        }
-      </div>
-    }
+  @if (detail.selected(); as d) {
+    <app-detail-surface
+      [title]="d.title"
+      [body]="d.body"
+      [rows]="d.rows ?? []"
+      [narrative]="d.narrative ?? ''"
+      [openToken]="detail.openToken()"
+      (closed)="detail.close()"
+    />
   }
 </div>

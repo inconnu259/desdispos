@@ -8,8 +8,28 @@ export {
   computeHommeDragonDerived,
   pendingEveilLevels,
   HOMME_DRAGON_LEVEL_THRESHOLDS,
+  ARTEFACT_CADEAU_LEVEL,
+  SOUFFLES_RITUELS_LEVEL,
 } from './ryuutama/homme-dragon-derived.ts';
 export { mapHommeDragonToPdfFields } from './ryuutama/homme-dragon-pdf-field-map.ts';
+export { flattenVoyageursProteges } from './ryuutama/homme-dragon-voyageurs.ts';
+export {
+  availableSouffles,
+  SOUFFLES_MULTICOLORES_LEVEL,
+} from './ryuutama/homme-dragon-souffles.ts';
+export {
+  reserveCapacity,
+  reserveSouffleKind,
+  reservePlacement,
+  reservePlacements,
+  validateReserve,
+  reserveReasonDejaDans,
+  RESERVE_REASON_TEMPS,
+  RESERVE_REASON_QUOTA_AUTRE_RACE,
+  RESERVE_REASON_RITUEL,
+  RESERVE_REASON_AUTRE_RACE_NIVEAU,
+  RESERVE_REASON_INCONNU,
+} from './ryuutama/homme-dragon-reserve.ts';
 export { mapEquipmentToPdfFields } from './ryuutama/equipment-pdf-field-map.ts';
 export { mapNotesToPdfFields } from './ryuutama/notes-pdf-field-map.ts';
 export { resolveWeaponCategory, resolveWeapon } from './ryuutama/resolve-weapon-category.ts';
@@ -31,9 +51,26 @@ export type {
 } from './ryuutama/validate-homme-dragon.ts';
 export type { HommeDragonDerivedStats } from './ryuutama/homme-dragon-derived.ts';
 export type {
+  HommeDragonVoyageur,
+  HommeDragonAventureVoyageurs,
+} from './ryuutama/homme-dragon-voyageurs.ts';
+export type {
   HommeDragonPdfContent,
   HommeDragonPdfInput,
 } from './ryuutama/homme-dragon-pdf-field-map.ts';
+export type {
+  SouffleFamille,
+  SouffleCatalogEntry,
+  AvailableSouffle,
+  SouffleGroup,
+  SouffleGroupSection,
+} from './ryuutama/homme-dragon-souffles.ts';
+export type {
+  Reserve,
+  ReserveCatalogs,
+  ReserveSouffleKind,
+  ReservePlacement,
+} from './ryuutama/homme-dragon-reserve.ts';
 export type { EquipmentPdfInput } from './ryuutama/equipment-pdf-field-map.ts';
 export type {
   WeaponItemEntry,

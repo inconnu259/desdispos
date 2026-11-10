@@ -1,0 +1,221 @@
+/* Stories 40.1 / 40.2 — champs d'une conjonction (contrat UX : creation-conjonction-*). Une colonne
+   sur mobile, deux champs côte à côte dès 600 px (jour + créneau, lieu + heure). Cibles tactiles de
+   44 px (bascules, compteur). Aucune animation ajoutée. */
+:host {
+  display: block;
+}
+
+.ec {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.ec__full {
+  width: 100%;
+}
+
+.ec__row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+
+  @media (min-width: 600px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.ec__field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ec__label {
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.ec__toggle {
+  --mat-button-toggle-height: 44px;
+  flex-wrap: wrap;
+}
+
+.ec__input {
+  box-sizing: border-box;
+  min-height: 44px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--mat-sys-outline);
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  color-scheme: light dark;
+}
+
+.ec__places {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 4px;
+}
+
+.ec__stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ec__step {
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font-size: 1.1rem;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+}
+
+.ec__places-count {
+  width: 56px;
+  border: none;
+  border-left: 1px solid var(--mat-sys-outline-variant);
+  border-right: 1px solid var(--mat-sys-outline-variant);
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* Story 40.4 — pastilles de membres à qui réserver une place (cibles de 44 px, état écrit). */
+.ec__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ec__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 14px;
+  /* Pictogramme <app-icon> « valider » de la puce réservée (décoratif). */
+  --app-icon-size: 16px;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+}
+
+.ec__chip--on {
+  border: 2px solid var(--jdr-accent-1, var(--mat-sys-primary));
+  font-weight: 600;
+}
+
+.ec__places-hint {
+  font-size: 0.8125rem;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+/* Story 40.5 — créneaux candidats d'un sondage de dates : saisie (jour + créneau + « Ajouter »),
+   résumé écrit, pastilles retirables (cibles de 44 px), échéance. L'état est toujours écrit. */
+.ec__poll {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.ec__poll-add {
+  width: 100%;
+}
+
+.ec__poll-calendar-btn,
+.ec__poll-add-btn {
+  min-height: 44px;
+  padding: 6px 18px;
+  border: 1px solid var(--jdr-accent-1, var(--mat-sys-primary));
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+}
+
+.ec__poll-summary {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.ec__chip--slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 4px;
+  cursor: default;
+}
+
+.ec__chip-remove {
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.ec__poll-deadline-field {
+  margin-top: 4px;
+  width: 100%;
+
+  @media (min-width: 600px) {
+    max-width: calc(50% - 6px);
+  }
+}

@@ -7,11 +7,14 @@ import { ScenariosService } from '../scenarios/scenarios.service';
 import { CharacterService } from '../characters/character.service';
 import { HommeDragonService } from '../homme-dragon/homme-dragon.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { DatableSeancesService } from '../poll/datable-seances.service';
 import { OpenPollsService } from '../poll/open-polls.service';
 import { MyPartiesService } from '../my-parties/my-parties.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { CharacterRolesService } from '../character-roles/character-roles.service';
 import { PartySignalsService } from '../parties/party-signals.service';
+import { AvailabilityReminderService } from '../availability/availability-reminder.service';
+import { BoardGamesService } from '../board-games/board-games.service';
 import { RealtimeService, matchingHandlers, partieTopic, userTopic } from './realtime.service';
 
 class FakeEventSource {
@@ -86,10 +89,13 @@ describe('RealtimeService', () => {
     changed: ReturnType<typeof signal<number>>;
   };
   let openPollsSvc: { notifyChanged: ReturnType<typeof vi.fn> };
+  let datableSeancesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let myPartiesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let availabilitySvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let characterRolesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
   let partySignalsSvc: { notifyChanged: ReturnType<typeof vi.fn> };
+  let boardGamesSvc: { notifyChanged: ReturnType<typeof vi.fn> };
+  let availabilityReminderSvc: { notifyChanged: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     originalEventSource = (globalThis as any).EventSource;
@@ -111,6 +117,7 @@ describe('RealtimeService', () => {
     // Story 22.1 : RealtimeService injecte désormais aussi OpenPollsService (sixième entrée,
     // préfixe 'partie:'). Mock direct.
     openPollsSvc = { notifyChanged: vi.fn() };
+    datableSeancesSvc = { notifyChanged: vi.fn() };
     // Bug fix post-22.1 : ModeService (renommé MyPartiesService, Story 29.1) rebranché sur le
     // préfixe 'user:' (ne représente que l'appartenance, jamais déclenché par une mutation
     // partie-scopée générique).
@@ -121,6 +128,10 @@ describe('RealtimeService', () => {
     characterRolesSvc = { notifyChanged: vi.fn() };
     // Story 29.7 : PartySignalsService ajoutée au préfixe 'user:' SEUL (AD-3/AD-14).
     partySignalsSvc = { notifyChanged: vi.fn() };
+    // Story 48.1 : BoardGamesService ajoutée au préfixe 'user:' SEUL.
+    boardGamesSvc = { notifyChanged: vi.fn() };
+    // Story 52.5 : AvailabilityReminderService ajoutée au préfixe 'user:' SEUL (AD-5).
+    availabilityReminderSvc = { notifyChanged: vi.fn() };
     // RealtimeService injecte désormais PartiesService (Story 18.3, Task 4) — PartiesService
     // injecte lui-même HttpClient, jamais fourni par ce module de test isolé. Mock direct : ce
     // test ne porte pas sur les appels HTTP de PartiesService.
@@ -132,10 +143,13 @@ describe('RealtimeService', () => {
         { provide: HommeDragonService, useValue: hommeDragonSvc },
         { provide: InvitationsService, useValue: invitationsSvc },
         { provide: OpenPollsService, useValue: openPollsSvc },
+        { provide: DatableSeancesService, useValue: datableSeancesSvc },
         { provide: MyPartiesService, useValue: myPartiesSvc },
         { provide: AvailabilityService, useValue: availabilitySvc },
         { provide: CharacterRolesService, useValue: characterRolesSvc },
         { provide: PartySignalsService, useValue: partySignalsSvc },
+        { provide: BoardGamesService, useValue: boardGamesSvc },
+        { provide: AvailabilityReminderService, useValue: availabilityReminderSvc },
       ],
     });
     service = TestBed.inject(RealtimeService);
@@ -194,18 +208,27 @@ describe('RealtimeService', () => {
     expect(charactersSvc.notifyChanged).toHaveBeenCalledTimes(1);
   });
 
-  it("'open' déclenche AUSSI notifyChanged() sur HommeDragonService — quatre handlers au même préfixe (Story 20.2, AC1)", () => {
+  it("un topic 'partie:' ne déclenche JAMAIS HommeDragonService (AD-23) : la fiche n'écoute que 'user:'", () => {
     service.connect(partieTopic('p1'));
 
     FakeEventSource.instances[0].emit('open');
+    FakeEventSource.instances[0].emit('message');
 
-    expect(partiesSvc.notifyChanged).toHaveBeenCalledTimes(1);
-    expect(scenariosSvc.notifyRealtimeChanged).toHaveBeenCalledTimes(1);
-    expect(charactersSvc.notifyChanged).toHaveBeenCalledTimes(1);
-    expect(hommeDragonSvc.notifyChanged).toHaveBeenCalledTimes(1);
+    expect(partiesSvc.notifyChanged).toHaveBeenCalledTimes(2);
+    expect(hommeDragonSvc.notifyChanged).not.toHaveBeenCalled();
   });
 
-  it("'open' déclenche AUSSI notifyChanged() sur OpenPollsService ET AvailabilityService — six handlers au même préfixe 'partie:' (Story 22.1, AC1 ; bug fix calendrier)", () => {
+  it("un topic 'user:' déclenche HommeDragonService.notifyChanged() — niveau et historique suivent un scénario clos (AD-23)", () => {
+    service.connect(userTopic('u1'));
+
+    FakeEventSource.instances[0].emit('open');
+    expect(hommeDragonSvc.notifyChanged).toHaveBeenCalledTimes(1);
+
+    FakeEventSource.instances[0].emit('message');
+    expect(hommeDragonSvc.notifyChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it("'open' déclenche AUSSI notifyChanged() sur AvailabilityService — quatre handlers au même préfixe 'partie:' (Story 22.1, AC1 ; bug fix calendrier)", () => {
     service.connect(partieTopic('p1'));
 
     FakeEventSource.instances[0].emit('open');
@@ -213,9 +236,31 @@ describe('RealtimeService', () => {
     expect(partiesSvc.notifyChanged).toHaveBeenCalledTimes(1);
     expect(scenariosSvc.notifyRealtimeChanged).toHaveBeenCalledTimes(1);
     expect(charactersSvc.notifyChanged).toHaveBeenCalledTimes(1);
-    expect(hommeDragonSvc.notifyChanged).toHaveBeenCalledTimes(1);
-    expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(1);
     expect(availabilitySvc.notifyChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("Story 44.2 : mes sondages ouverts se relisent sur 'user:' (une liste pour toutes mes parties), jamais sur 'partie:'", () => {
+    service.connect(partieTopic('p1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(openPollsSvc.notifyChanged).not.toHaveBeenCalled();
+    service.disconnect(partieTopic('p1'));
+
+    service.connect(userTopic('u1'));
+    FakeEventSource.instances[1].emit('open');
+    expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(1);
+    FakeEventSource.instances[1].emit('message');
+    expect(openPollsSvc.notifyChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it("Story 45.1 : mes rendez-vous à dater se relisent sur 'user:', jamais sur 'partie:'", () => {
+    service.connect(partieTopic('p1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(datableSeancesSvc.notifyChanged).not.toHaveBeenCalled();
+    service.disconnect(partieTopic('p1'));
+
+    service.connect(userTopic('u1'));
+    FakeEventSource.instances[1].emit('open');
+    expect(datableSeancesSvc.notifyChanged).toHaveBeenCalledTimes(1);
   });
 
   it("un topic 'partie:' ne déclenche PAS notifyChanged() sur MyPartiesService (bug fix : préfixe rebranché sur 'user:')", () => {
@@ -267,12 +312,44 @@ describe('RealtimeService', () => {
     expect(partySignalsSvc.notifyChanged).toHaveBeenCalledTimes(1);
   });
 
+  it("Story 52.5 : le rappel « Dispos à déclarer » se relit sur 'user:' (déclaration, préférence, invitation)", () => {
+    service.connect(userTopic('u1'));
+
+    FakeEventSource.instances[0].emit('open');
+
+    expect(availabilityReminderSvc.notifyChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it("un topic 'partie:' ne déclenche JAMAIS le rappel des dispos (préfixe 'user:' seul)", () => {
+    service.connect(partieTopic('p1'));
+
+    FakeEventSource.instances[0].emit('open');
+
+    expect(availabilityReminderSvc.notifyChanged).not.toHaveBeenCalled();
+  });
+
   it("un topic 'partie:' ne déclenche PAS notifyChanged() sur PartySignalsService (préfixe 'user:' seul, AD-14)", () => {
     service.connect(partieTopic('p1'));
 
     FakeEventSource.instances[0].emit('open');
 
     expect(partySignalsSvc.notifyChanged).not.toHaveBeenCalled();
+  });
+
+  it("Story 48.1 : ma Ludothèque se relit sur 'user:' (autres onglets de la même personne)", () => {
+    service.connect(userTopic('u1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(1);
+    FakeEventSource.instances[0].emit('message');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it("Story 48.3 : la feuille d'une Ludothèque se relit AUSSI sur 'partie:' (l'écriture d'un jeu émet pour chaque partie de ralliement)", () => {
+    service.connect(partieTopic('p1'));
+    FakeEventSource.instances[0].emit('open');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(1);
+    FakeEventSource.instances[0].emit('message');
+    expect(boardGamesSvc.notifyChanged).toHaveBeenCalledTimes(2);
   });
 
   it("'open' déclenche AUSSI notifyChanged() sur CharacterRolesService — préfixe 'partie:' (Story 27.3, AC3)", () => {

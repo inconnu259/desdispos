@@ -11,7 +11,7 @@ updated: '2026-07-24'
 
 Ce PRD cadre le Palier 8 : combler l'écart entre le contenu Ryuutama actuellement seedé en base (construit au minimum nécessaire, palier après palier, depuis l'Épic 4) et le contenu réel du *Guide du Voyageur*. Ce n'est pas un simple ajout de texte — plusieurs mécaniques de jeu actuellement absentes ou mal modélisées en dépendent (détaillées en §1 Vision).
 
-**Contrainte permanente du projet (NFR4, inchangée) :** le contenu Ryuutama est gitignoré (droits d'auteur) et seedé depuis des fichiers JSON (`apps/api/game-systems/ryuutama/data/*.json`) au démarrage de l'API (`GameSystemService.onApplicationBootstrap()`), jamais codé en dur, jamais lu directement par le frontend (qui passe par `GET /game-systems/:id/content`). Ce palier respecte et étend ce pattern, ne le change pas.
+**Contrainte permanente du projet (NFR4, révisée le 2026-09-25) :** le contenu Ryuutama est versionné dans le dépôt, ses textes étant reformulés à partir du livre (mécaniques conservées, formulation propre au projet — décision utilisateur ; avant cette date : gitignoré pour droits d'auteur), et seedé depuis des fichiers JSON (`apps/api/game-systems/ryuutama/data/*.json`) au démarrage de l'API (`GameSystemService.onApplicationBootstrap()`), jamais codé en dur, jamais lu directement par le frontend (qui passe par `GET /game-systems/:id/content`). Ce palier respecte et étend ce pattern, ne le change pas.
 
 **Mode opératoire propre à ce palier :** l'utilisateur possède le livre physique et dicte le contenu officiel (valeurs, textes, listes) story par story pendant l'implémentation — ce PRD documente la **forme** attendue des données et les mécaniques qui en dépendent, jamais le texte lui-même. Aucun contenu de règles n'est inventé ou deviné par l'agent.
 

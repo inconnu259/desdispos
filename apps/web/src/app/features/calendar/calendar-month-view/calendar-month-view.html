@@ -1,20 +1,28 @@
 <div class="calendar-month">
   <div class="month-nav">
-    <button mat-icon-button (click)="prevMonth()" aria-label="Mois précédent">
-      <mat-icon>chevron_left</mat-icon>
+    <button
+      mat-icon-button
+      (click)="prevMonth()"
+      [attr.aria-label]="theme.tone()['calendar.month_prev_aria']"
+    >
+      <app-icon name="precedent" />
     </button>
     <h2 class="month-title">{{ monthLabel() }}</h2>
-    <button mat-icon-button (click)="nextMonth()" aria-label="Mois suivant">
-      <mat-icon>chevron_right</mat-icon>
+    <button
+      mat-icon-button
+      (click)="nextMonth()"
+      [attr.aria-label]="theme.tone()['calendar.month_next_aria']"
+    >
+      <app-icon name="suivant" />
     </button>
     <button
       mat-icon-button
       (click)="goToToday()"
-      aria-label="Revenir au mois actuel"
+      [attr.aria-label]="theme.tone()['calendar.month_today_aria']"
       class="today-btn"
       [style.visibility]="isCurrentMonth() ? 'hidden' : 'visible'"
     >
-      <mat-icon>today</mat-icon>
+      <app-icon name="aujourdhui" />
     </button>
   </div>
 
@@ -25,9 +33,7 @@
   </div>
 
   <p id="month-cell-instructions" class="visually-hidden">
-    Espace : sélectionner la journée entière. Touches 1, 2, 3 : sélectionner respectivement le
-    matin, l'après-midi ou le soir. Maj plus flèches : étendre la sélection. Entrée : valider la
-    sélection avec ce qu'affiche la barre. Échap : annuler.
+    {{ theme.tone()['calendar.month_cell_instructions'] }}
   </p>
 
   @if (loading()) {
@@ -37,6 +43,7 @@
   } @else {
     <div
       class="calendar-grid"
+      [class.calendar-grid--declare]="interaction() === 'declaration'"
       tabindex="-1"
       (pointermove)="onGridPointerMove($event)"
       (pointerup)="onGridPointerUp($event)"
@@ -60,11 +67,7 @@
             [class.current]="isCurrentDay(cell)"
             [class.day-cell--dim]="isDimmed(cell)"
             [attr.aria-hidden]="!cell.isCurrentMonth ? 'true' : null"
-            [attr.aria-label]="
-              cell.isCurrentMonth
-                ? cell.date.getDate() + (cell.isToday ? ' (aujourd\'hui)' : '')
-                : null
-            "
+            [attr.aria-label]="cellAriaLabel(cell)"
             [attr.aria-disabled]="cell.isCurrentMonth && cell.isPast ? 'true' : null"
             [attr.role]="
               !cell.isCurrentMonth ? 'presentation' : cell.isPast ? 'presentation' : 'button'
@@ -104,7 +107,7 @@
               Story 36.3, AC1 : le tap n'ouvre plus le panneau de déclaration, il arme une
               sélection d'un créneau. Le panneau se rejoint par « Autre… » dans la barre.
             -->
-            @if (cell.uniform) {
+            @if (!showsSlotBands(cell)) {
               <!-- AC4 (36.2) : trois créneaux au même rang, aucun événement — une seule bande. La
                    cible de créneau disparaît avec elle : le tap vaut la journée entière
                    (collision 8 de la spine d'interactions).
@@ -124,6 +127,7 @@
                   [class.preview]="cell.bands[0].preview !== null"
                   [class.band--selected]="isDaySelected(cell)"
                   [class.band--composed]="isBandComposed(cell, 'FULL_DAY')"
+                  [class.band--window]="isUniformWindow(cell)"
                   [attr.aria-label]="uniformAriaLabel(cell)"
                   role="img"
                   (pointerdown)="
@@ -143,13 +147,25 @@
                     [class.preview]="band.preview !== null"
                     [class.band--selected]="isBandSelected(cell, band.slot)"
                     [class.band--gauge]="bandHasGauge(band)"
+                    [class.band--span-next]="band.span?.continuesAfter"
+                    [class.band--span-prev]="band.span?.continuesBefore"
                     [class.band--composed]="isBandComposed(cell, band.slot)"
-                    [attr.aria-label]="bandAriaLabel(band, isBandComposed(cell, band.slot))"
+                    [class.band--span-preview]="isBandSpanPreview(cell, band.slot)"
+                    [class.band--window]="isBandWindow(cell, band.slot)"
+                    [attr.aria-label]="
+                      bandAriaLabel(
+                        band,
+                        isBandComposed(cell, band.slot),
+                        isBandWindow(cell, band.slot)
+                      )
+                    "
                     role="img"
                     (pointerdown)="
                       $event.stopPropagation(); onBandPointerDown($event, cell, band.slot)
                     "
                     (click)="$event.stopPropagation(); onCellClick(cell.date, band.slot, $event)"
+                    (pointerenter)="onBandHover($event, cell, band.slot)"
+                    (pointerleave)="onBandHover($event, null)"
                   >
                     @if (band.text) {
                       <span class="band__label">{{ band.text }}</span>
@@ -166,6 +182,13 @@
                          Aucune logique de largeur en TypeScript. -->
                     @if (band.vote) {
                       <app-poll-track class="band__track in-month" [vote]="band.vote" />
+                    }
+                    <!-- Story 47.5 — plusieurs plages du même vote se superposent sur ce créneau : « ×n »,
+                         coin haut droit. Décoratif (`aria-hidden`) : le nom de la bande le dit. -->
+                    @if (band.overlap >= 2) {
+                      <span class="band__overlap" aria-hidden="true">{{
+                        overlapMark(band.overlap)
+                      }}</span>
                     }
                     <!-- Story 36.8 — le CANAL SÉPARÉ. 🚨 Émis sans AUCUNE condition de rang :
                          il survit sous une séance et sous un vote (AC2), et c'est tout l'intérêt
@@ -192,7 +215,12 @@
         [scope]="scope()"
         [armedKind]="armedKind()"
         [sealCandidate]="sealCandidate()"
+        [composeMode]="interaction() === 'composer'"
+        [interaction]="interaction()"
+        [fullDayAllowed]="composeFullDay()"
         (scopeChange)="onScopeChange($event)"
+        (composeAdd)="onComposeAdd()"
+        (composeRemove)="onComposeRemove()"
         (armedKindChange)="onArmedKindChange($event)"
         (markAvailable)="onSelectionCommit('AVAILABLE')"
         (markUnavailable)="onSelectionCommit('UNAVAILABLE')"

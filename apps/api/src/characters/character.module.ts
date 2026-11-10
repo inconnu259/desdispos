@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PartiesModule } from '../parties/parties.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 import { GameSystemModule } from '../game-systems/game-system.module';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
@@ -12,7 +13,7 @@ import { EquipmentPdfService } from './equipment-pdf.service';
 import { NotesPdfService } from './notes-pdf.service';
 
 @Module({
-  imports: [PartiesModule, GameSystemModule, UsersModule, EmailModule],
+  imports: [PartiesModule, PermissionsModule, GameSystemModule, UsersModule, EmailModule],
   controllers: [CharactersController, PartieCharactersController, MyCharactersController],
   providers: [CharacterService, RyuutamaPdfService, EquipmentPdfService, NotesPdfService],
   exports: [CharacterService],

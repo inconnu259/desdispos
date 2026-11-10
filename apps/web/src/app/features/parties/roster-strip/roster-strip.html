@@ -38,7 +38,7 @@
         }
       </span>
       <span class="roster-strip__name">
-        @if (!row.character && row.isSelf && !row.isMj) {
+        @if (row.canCreate) {
           {{ theme.tone()['character.create_cta'] }}
         } @else {
           <app-identity-label [characterName]="row.characterLabel" [playerName]="row.playerLabel" />

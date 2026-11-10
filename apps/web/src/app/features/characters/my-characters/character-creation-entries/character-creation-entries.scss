@@ -1,0 +1,115 @@
+// DESIGN.md §4/§7.3 : bordure pointillée + fond transparent, ce qui distingue la ligne « à créer »
+// d'une carte de personnage (bordure pleine, fond surface-high) — jamais la même forme.
+.character-creation-entries {
+  margin-bottom: 14px;
+
+  &__title {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--mat-sys-on-surface-variant, #555);
+  }
+
+  &__grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  // Cible ≥44px, 56px au repos (EXPERIENCE.md §4.3, DESIGN.md §4).
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 56px;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--mat-sys-outline-variant, #ccc);
+    border-radius: 8px;
+    background: transparent;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--mat-sys-primary, #9b6dff);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary, #9b6dff);
+      outline-offset: 2px;
+    }
+  }
+
+  // Ligne d'Homme Dragon (rôle MJ) : même teinte `accent-2` que le `NatureMarker` des cartes
+  // (DESIGN.md §7.4), pour ne jamais la confondre avec la création d'un personnage joueur. La
+  // nature reste portée par le libellé et le marqueur, la couleur n'est qu'un renfort.
+  &__row--dragon {
+    border-color: var(--jdr-accent-2, #a68cf0);
+
+    .character-creation-entries__badge {
+      border-color: var(--jdr-accent-2, #a68cf0);
+      color: var(--jdr-accent-2, #a68cf0);
+    }
+  }
+
+  // Libellé puis marqueur en colonne : le marqueur ne réduit jamais la largeur du libellé.
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px dashed var(--mat-sys-outline-variant, #ccc);
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  &__label {
+    min-width: 0;
+  }
+
+  &__chevron {
+    flex: none;
+    display: inline-flex;
+    /* Pictogramme <app-icon> décoratif (ouvrir) : 20px. */
+    --app-icon-size: 20px;
+    color: var(--mat-sys-on-surface-variant, #555);
+  }
+
+  &__toggle {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 8px;
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--mat-sys-primary, #9b6dff);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+  }
+}
+
+// Desktop (seuil 1024px, DESIGN.md §4) : grille de colonnes de 300px minimum au lieu de la pile.
+@media (min-width: 1024px) {
+  .character-creation-entries__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}

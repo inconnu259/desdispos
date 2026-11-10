@@ -17,7 +17,7 @@
                 <app-identity-label [characterName]="entry.characterLabel" [playerName]="entry.playerLabel" />
                 <span class="xp-history__amount">{{ entry.amount }} XP</span>
                 @if (entry.isBonus) {
-                  <span class="xp-history__bonus-badge">bonus</span>
+                  <span class="xp-history__bonus-badge">{{ theme.tone()['parties.xp_history_bonus_badge'] }}</span>
                 }
               </li>
             }

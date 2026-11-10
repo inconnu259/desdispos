@@ -18,28 +18,28 @@
       mat-icon-button
       type="button"
       class="field-edit-pencil__confirm"
-      aria-label="Valider"
+      [attr.aria-label]="theme.tone()['common.valider']"
       (click)="submit()"
     >
-      ✓
+      <app-icon name="valider" />
     </button>
     <button
       mat-icon-button
       type="button"
       class="field-edit-pencil__cancel"
-      aria-label="Annuler"
+      [attr.aria-label]="theme.tone()['common.annuler']"
       (click)="cancel()"
     >
-      ✕
+      <app-icon name="fermer" />
     </button>
   </span>
 } @else {
   <button
     type="button"
     class="field-edit-pencil__button"
-    [attr.aria-label]="'Modifier ' + label()"
+    [attr.aria-label]="fieldEditAria()"
     (click)="startEdit()"
   >
-    ✎
+    <app-icon name="modifier" />
   </button>
 }

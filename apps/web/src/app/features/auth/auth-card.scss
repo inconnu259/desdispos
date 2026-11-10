@@ -1,0 +1,188 @@
+// Feuille partagée des écrans d'authentification (story 34.3) : connexion, inscription, mot de
+// passe oublié, réinitialisation, confirmation / annulation de changement d'e-mail et « rejoindre
+// par lien ». UNE seule source : chaque `.scss` d'écran se contente de `@use` ce partiel.
+//
+// Hiérarchie : `h1` (titre de carte) → champs → erreur → action principale pleine largeur →
+// rangée d'actions secondaires → (connexion) ligne d'orientation. Couleurs uniquement par les
+// jetons de thème (`--mat-sys-*`, `--jdr-*`) ; hauteurs en `min-height`, tailles en rem.
+
+// L'hôte de chaque écran empile la bande de marque (`app-auth-band`, story 34.4) puis le `<main>` :
+// un hôte en `inline` (défaut d'un élément personnalisé) casserait cette pile.
+:host {
+  display: block;
+}
+
+// Le `<main>` suit la bande de marque : 16 px entre les deux et gouttière de 16 px de chaque côté
+// (mobile : la bande est collée en haut, pleine largeur). Dès 480 px la carte partage la colonne
+// de 448 px de la bande (`max-width` de `.auth-card`, gouttière comprise). Le haut de page (~56 px)
+// appartient à la bande elle-même.
+.auth-page {
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 1rem 1rem 2rem;
+
+  @media (min-width: 480px) {
+    padding-bottom: 4.5rem;
+  }
+}
+
+.auth-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 28rem;
+  overflow-wrap: break-word;
+  background-color: var(--jdr-surface, var(--mat-sys-surface-container));
+  color: var(--jdr-text, var(--mat-sys-on-surface));
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+mat-card-header {
+  padding: 20px 18px 0;
+}
+
+.auth-title {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 600;
+  // Un nom de partie sans espaces ne doit jamais déborder (« rejoindre »).
+  overflow-wrap: anywhere;
+}
+
+mat-card-subtitle {
+  margin: -12px 0 16px;
+  padding: 0 18px;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+mat-card-content {
+  padding: 0 18px 16px;
+  font-size: 1rem;
+  line-height: 1.5;
+
+  p {
+    margin: 0 0 1rem;
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+// Aide (« 8+ caractères ») et message de validation d'un champ : le second remplace la première
+// tant que la règle n'est pas respectée (Material n'affiche que l'un des deux).
+mat-hint,
+mat-error {
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+
+mat-hint {
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+// Erreur du formulaire, sous les champs et au-dessus de l'action principale.
+.error {
+  margin: -4px 0 12px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--mat-sys-error);
+}
+
+// Conteneur persistant `role="status"` (réussites, « Chargement… ») : présent avant l'action pour
+// que l'annonce ne soit pas perdue. Vide, il ne prend aucune place.
+.auth-status {
+  font-size: 1rem;
+  line-height: 1.5;
+
+  p {
+    margin: 0 0 1rem;
+  }
+}
+
+// « Chargement… » de « rejoindre » : seul contenu de la carte, il porte lui-même la marge.
+.auth-status .auth-loading {
+  margin: 0;
+  padding: 20px 18px;
+}
+
+.saved {
+  margin: 0 0 1rem;
+}
+
+// Action principale : une seule par carte, pleine largeur, `min-height` (le libellé passe à la
+// ligne), distinguée des actions secondaires par son aplat.
+.auth-primary {
+  width: 100%;
+  height: auto;
+  min-height: 48px;
+  padding-block: 12px;
+  margin-top: 4px;
+  border-radius: 24px;
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: normal;
+}
+
+// Rangée d'actions secondaires : propre rangée, centrée, retour à la ligne autorisé.
+.auth-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 0 18px 12px;
+  min-height: 0;
+}
+
+// Cible d'au moins 44 px ; l'affordance n'est jamais la couleur seule (soulignement).
+.auth-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  color: var(--jdr-accent-1, var(--mat-sys-primary));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+// Ligne d'orientation (connexion seulement) : texte seul, jamais un lien.
+.auth-orientation {
+  margin: 6px 18px 0;
+  padding: 12px 0 18px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+// Focus visible : contour 2 px accent 1, décalé de 2 px, jamais `outline: none`.
+.auth-primary:focus-visible,
+.auth-secondary-link:focus-visible,
+.auth-status:focus-visible {
+  outline: 2px solid var(--jdr-accent-1, var(--mat-sys-primary));
+  outline-offset: 2px;
+}
+
+// Contraste forcé (Windows) : la pilule n'a sinon aucune frontière.
+@media (forced-colors: active) {
+  .auth-primary {
+    border: 1px solid ButtonText;
+  }
+}

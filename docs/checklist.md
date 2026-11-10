@@ -32,6 +32,11 @@
       composant routé, jamais dédupliquée entre composants — voir `RealtimeService`) : les
       composants imbriqués (ex. `ScenarioTimeline`/`SeanceList` dans une page déjà connectée) se
       contentent en général de l'`effect()`, sans ouvrir leur propre connexion.
+      Cas de la fiche Homme Dragon (AD-23, story 33.8) : elle suit 0..N aventures, donc aucun canal
+      `partie:` n'est ouvert ; la page ouvre `user:{id}` elle-même (`connect` / `disconnect` à la
+      destruction) et `HommeDragonService.notifyChanged` est câblé sur le préfixe `user:`. Les
+      écritures de fiche n'émettent rien (le client se met à jour avec la réponse) ; create, link et
+      unlink émettent `partie:{id}` puis les signaux.
       Patterns établis au Palier 7 (`_bmad-output/implementation-artifacts/21-*.md`, `19-*.md`).
       ⚠️ **Ne jamais câbler un service partagé sur le préfixe générique `'partie:'`/`'user:'` dans
       `RealtimeService.handlers` si le signal ne correspond pas réellement au domaine de la

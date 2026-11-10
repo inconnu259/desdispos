@@ -72,7 +72,7 @@ FR42: Un joueur peut ajuster un recadrage dédié (zoom/repositionnement) de son
 NFR1: Mobile-first — l'interface de déclaration de disponibilités et de réponse au vote est conçue pour mobile (touch targets ≥44px, pas de tableaux larges).
 NFR2: Performance — GET /parties/:id/available-slots retourne un résultat en <1s pour 6 membres sur 8 semaines.
 NFR3: Cohérence des données — un membre retiré d'une partie (Membership supprimé) est exclu du calcul des créneaux pour cette partie ; ses déclarations globales restent intactes.
-NFR4: Confidentialité du seed — les fichiers JSON de contenu de règles Ryuutama ne sont jamais committés dans le dépôt Git.
+NFR4: Confidentialité du seed — les fichiers JSON de contenu de règles Ryuutama ne sont jamais committés dans le dépôt Git. *(NFR4 révisée le 2026-09-25 : contenu versionné, textes reformulés.)*
 NFR5: Architecture réutilisable — l'interface `GameSystemPlugin` implémentée ce palier doit être directement réutilisable pour le prochain système (Conte de Minuit) sans modification de signature.
 NFR6: Mobile-first pour la consultation — l'accès à la fiche en séance se fait principalement sur mobile ; la création peut tolérer une UX plus dense.
 NFR7: Performance — `computeDerived()` s'exécute côté client en temps réel sans appel réseau pendant la création.
@@ -95,7 +95,7 @@ NFR7: Performance — `computeDerived()` s'exécute côté client en temps réel
 - [ARCH] Modèles Prisma `ContentType`/`ContentEntry` (scope BASE/MJ/PARTIE, seul BASE utilisé ce palier) pour le contenu de règles extensible ; `Character` (sheetData/derived en JSONB, + portraitUrl/portraitCropData).
 - [ARCH] `validate(data, mode: "strict" | "mj")` — signature complète conservée dès ce palier (mode "mj" en no-op réservé à P4) pour éviter de la retoucher plus tard.
 - [ARCH] `exportPDF(data, format: "editable" | "2pages"): Buffer` fait partie du contrat `GameSystemPlugin`, pas un mécanisme séparé. Remplit les 126 champs AcroForm du template "edit" via `pdf-lib`, aplatit (`form.flatten()`) uniquement pour le format "2pages".
-- [ARCH] Dossier de seed JSON Ryuutama explicitement gitignoré (contenu sous droits) — README documentant le format attendu.
+- [ARCH] Dossier de seed JSON Ryuutama explicitement gitignoré (contenu sous droits) — README documentant le format attendu. *(NFR4 révisée le 2026-09-25 : contenu versionné, textes reformulés.)*
 - [ARCH] `computeDerived()` et `validate()` vivent dans un nouveau package workspace `packages/game-rules` (fonctions pures, zéro dépendance Angular/Nest), importé par `apps/web` et `apps/api` — pas de duplication de logique de calcul entre front et back.
 - [ARCH] Endpoints `PUT`/`DELETE /characters/:id/portrait` pour l'upload/suppression du portrait.
 
@@ -155,7 +155,7 @@ FR23: Epic 4 — Registre GameSystemRegistry (id/name/version, ryuutama)
 FR24: Epic 4 — Interface GameSystemPlugin (sous-ensemble)
 FR25: Epic 4 — Front générique piloté par schéma
 FR26: Epic 4 — Seed de contenu Ryuutama (ContentType/ContentEntry scope base)
-FR27: Epic 4 — Seed hors dépôt Git (gitignore, contenu sous droits)
+FR27: Epic 4 — Seed hors dépôt Git (gitignore, contenu sous droits) *(NFR4 révisée le 2026-09-25 : contenu versionné, textes reformulés.)*
 FR28: Epic 4 — Choix de la classe (7 classes, 3 talents affichés, sous-choix Artisan)
 FR29: Epic 4 — Choix du type (Attaque/Technique/Magie, notice différée si Magie)
 FR30: Epic 4 — Répartition des attributs (pattern Polyvalent)
@@ -878,7 +878,7 @@ So that character creation and consultation can be built on a stable, schema-dri
 **And** `@@index([partieId])` and `@@index([userId])` exist on `Character`
 **And** `@@unique([userId, partieId, gameSystemId])` exists on `Character` (un seul personnage par joueur et par partie ce palier — cf. Assumption PRD §F3)
 
-**Given** seed JSON files exist in `apps/api/game-systems/ryuutama/data/` (gitignoré, cf. NFR4)
+**Given** seed JSON files exist in `apps/api/game-systems/ryuutama/data/` (gitignoré, cf. NFR4) *(NFR4 révisée le 2026-09-25 : contenu versionné, textes reformulés.)*
 **When** the app démarre
 **Then** un `GameSystem` `{ id: "ryuutama", name: "Ryuutama", version }` est upserted
 **And** les `ContentEntry` scope `BASE` pour les 7 classes (avec leurs 3 talents chacune), les 3 types (Attaque/Technique/Magie), le pattern d'attributs Polyvalent ({8,4,6,6}), et les 5 catégories d'armes favorites sont chargées

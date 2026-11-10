@@ -28,6 +28,7 @@ export function makeAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
     createdAt: '2026-07-01T00:00:00.000Z',
     theme: null,
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesSort: 'urgence',
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',

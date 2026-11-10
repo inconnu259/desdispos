@@ -1,0 +1,451 @@
+<!-- Story 41.1 : les trois blocs (titre + badge, corps, pied) sont rendus soit dans la fenêtre
+     (DetailSurface), soit EN LIGNE sur la page d'une rencontre isolée — une seule source. -->
+<ng-template #head>
+  <h2 class="ed__title" [id]="uid + '-title'">{{ windowTitle() }}</h2>
+  @if (!editing()) {
+    <app-status-badge class="ed__badge" [state]="badge()" />
+  }
+</ng-template>
+
+<!-- Story 49.1 (⚠️ contrat UI) : les blocs existants de la conjonction. Posés tels quels quand l'évènement n'a pas
+     d'onglet des jeux ; sinon ils forment l'onglet « Conjonction ». -->
+<ng-template #blocks>
+
+  @if (editing()) {
+    <app-event-form [prefill]="card()" [soiree]="inline()" (submitted)="save()" />
+  } @else {
+    <!-- Panneau de situation : ma situation (avec « S'inscrire », ou « Complet » écrit quand il n'y a
+         plus de place), puis date, heure et lieu en grand. Pas de vote à ce palier. -->
+    <section
+      class="ed__situation"
+      [class.ed__situation--cancelled]="cancelled()"
+      [attr.aria-labelledby]="uid + '-situation'"
+    >
+      @if (cancelled()) {
+        <!-- Story 42.1 : conjonction annulée — l'état est écrit en tête, sans aucune action. -->
+        <h3 class="ed__situation-label" [id]="uid + '-situation'">
+          {{ theme.tone()['partie.ralliement_event_badge_cancelled'] }}
+        </h3>
+        <p class="ed__situation-text ed__cancelled" role="status">
+          {{ theme.tone()['partie.ralliement_event_cancelled_text'] }}
+        </p>
+      } @else {
+      <h3 class="ed__situation-label" [id]="uid + '-situation'">
+        {{ theme.tone()['situation.ma_situation'] }}
+      </h3>
+      <p class="ed__situation-text">{{ situationText() }}</p>
+      @if (situation(); as value) {
+        <!-- Story 41.4 : la pastille « Ma situation » d'une soirée (en ligne seulement). Story 53.2 :
+             la pastille partagée de toute l'appli. -->
+        <p class="ed__chip-row">
+          <app-situation-pill [value]="value" />
+        </p>
+      }
+      @if (showSignUp()) {
+        <button
+          mat-flat-button
+          type="button"
+          class="ed__signup"
+          [disabled]="busy()"
+          [attr.aria-busy]="busy()"
+          (click)="signUp()"
+        >
+          {{ theme.tone()['partie.ralliement_event_signup_btn'] }}
+        </button>
+      } @else if (showFull()) {
+        <p class="ed__full" role="status">
+          {{ theme.tone()['partie.ralliement_event_situation_full'] }}
+        </p>
+      }
+      @if (showRespond()) {
+        <!-- Story 40.4 : une place est réservée pour moi — l'accepter ou la décliner (la décliner la
+             rend aux autres). -->
+        <div class="ed__respond">
+          <button
+            mat-flat-button
+            type="button"
+            class="ed__accept"
+            [disabled]="busy()"
+            [attr.aria-busy]="busy()"
+            (click)="accept()"
+          >
+            {{ theme.tone()['partie.ralliement_event_accept_btn'] }}
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            class="ed__decline"
+            [disabled]="busy()"
+            [attr.aria-busy]="busy()"
+            (click)="decline()"
+          >
+            {{ theme.tone()['partie.ralliement_event_decline_btn'] }}
+          </button>
+        </div>
+      }
+      }
+      <p class="ed__big ed__big--date">{{ dateLabel() }}</p>
+      @if (timeText(); as time) {
+        <p class="ed__big ed__big--time">{{ time }}</p>
+      }
+      @if (card().seance?.lieu; as lieu) {
+        <p class="ed__big ed__big--place">{{ lieu }}</p>
+      }
+    </section>
+
+    <!-- Story 40.5 : sondage de dates. Membre éligible qui n'a pas voté : cadre « à faire » ; hôte : cadre
+         accent. Résumé calculé à l'écran depuis la carte vivante. Pas de vote dans la fenêtre. -->
+    @if (poll(); as p) {
+      <section
+        class="ed__poll"
+        [class.ed__poll--todo]="p.kind === 'member-todo'"
+        [class.ed__poll--host]="p.kind === 'host'"
+        [attr.aria-labelledby]="uid + '-poll'"
+      >
+        <h3 class="ed__poll-text" [id]="uid + '-poll'">{{ p.text }}</h3>
+        @if (p.answersLine; as line) {
+          <p class="ed__poll-line ed__poll-answers">{{ line }}</p>
+        }
+        @if (p.bestLine; as line) {
+          <p class="ed__poll-line ed__poll-best">{{ line }}</p>
+        }
+        @if (p.waitingLine; as line) {
+          <p class="ed__poll-line ed__poll-waiting">{{ line }}</p>
+        }
+        <!-- Story 40.5b : le vote et la composition des créneaux se font dans le calendrier du groupe. -->
+        @if (showVoteInCalendar()) {
+          <button
+            mat-flat-button
+            type="button"
+            class="ed__poll-calendar ed__poll-vote"
+            (click)="calendarRequested.emit(card().poll?.id ?? null)"
+          >
+            {{ theme.tone()['partie.ralliement_event_vote_in_calendar_btn'] }}
+          </button>
+        }
+        <!-- Story 40.6 : l'hôte scelle la date (confirmation « Votre accord »). -->
+        @if (p.kind === 'host') {
+          <button
+            mat-flat-button
+            type="button"
+            class="ed__poll-fix"
+            [disabled]="!canFix() || busy()"
+            (click)="openFixDate()"
+          >
+            {{ theme.tone()['partie.ralliement_event_fix_date_btn'] }}
+          </button>
+        }
+        <!-- Story 40.7 : l'hôte repousse l'échéance (confirmation « Votre accord »). -->
+        @if (p.kind === 'host') {
+          <button
+            mat-stroked-button
+            type="button"
+            class="ed__poll-extend"
+            [disabled]="!canExtend() || busy()"
+            (click)="openExtendVote()"
+          >
+            {{ theme.tone()['partie.ralliement_event_extend_btn'] }}
+          </button>
+        }
+        @if (showComposeInCalendar()) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="ed__poll-calendar ed__poll-compose"
+            (click)="calendarRequested.emit(null)"
+          >
+            {{ theme.tone()['partie.ralliement_event_compose_in_calendar_btn'] }}
+          </button>
+        }
+      </section>
+    }
+
+    <!-- Fiche : les lignes facultatives vides sont omises. -->
+    <section class="ed__sheet" [attr.aria-labelledby]="uid + '-sheet'">
+      <h3 class="ed__section-title" [id]="uid + '-sheet'">
+        {{ theme.tone()['partie.ralliement_event_sheet_heading'] }}
+      </h3>
+      <dl class="ed__dl">
+        <div class="ed__row ed__row--date">
+          <dt>{{ theme.tone()['partie.ralliement_event_sheet_date'] }}</dt>
+          <dd>{{ dateLabel() }}</dd>
+        </div>
+        <div class="ed__row ed__row--host">
+          <dt>{{ theme.tone()['partie.ralliement_event_sheet_host'] }}</dt>
+          <dd>{{ card().hostDisplayName ?? '—' }}</dd>
+        </div>
+        @if (card().seance?.lieu; as lieu) {
+          <div class="ed__row ed__row--place">
+            <dt>{{ theme.tone()['partie.ralliement_event_sheet_place'] }}</dt>
+            <dd>{{ lieu }}</dd>
+          </div>
+        }
+        @if (card().seance?.heureRdv; as time) {
+          <div class="ed__row ed__row--time">
+            <dt>{{ theme.tone()['partie.ralliement_event_sheet_time'] }}</dt>
+            <dd>{{ time }}</dd>
+          </div>
+        }
+        <div class="ed__row ed__row--participation">
+          <dt>{{ theme.tone()['partie.ralliement_event_sheet_participation'] }}</dt>
+          <dd>{{ participation() }}</dd>
+        </div>
+        @if (card().seance?.notePratique; as note) {
+          <div class="ed__row ed__row--note">
+            <dt>{{ theme.tone()['partie.ralliement_event_sheet_note'] }}</dt>
+            <dd>{{ note }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+
+    @if (slotRows().length > 0) {
+      <!-- Story 40.5 : chaque créneau candidat et le nombre d'inscrits libres (un nombre, jamais des noms). -->
+      <section class="ed__slots" [attr.aria-labelledby]="uid + '-slots'">
+        <h3 class="ed__section-title" [id]="uid + '-slots'">
+          {{ theme.tone()['partie.ralliement_event_poll_slots_heading'] }}
+        </h3>
+        <ul class="ed__slot-list">
+          @for (row of slotRows(); track row.id) {
+            <li class="ed__slot">
+              <span class="ed__slot-label">{{ row.label }}</span>
+              <span class="ed__slot-available">{{ row.available }}</span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (!inline()) {
+      <section class="ed__participants" [attr.aria-labelledby]="uid + '-participants'">
+        <h3 class="ed__section-title" [id]="uid + '-participants'">
+          {{ theme.tone()['partie.ralliement_event_participants_heading'] }}
+        </h3>
+        @if (card().participants.length === 0) {
+          <p class="ed__empty">{{ theme.tone()['partie.ralliement_event_participants_empty'] }}</p>
+        } @else {
+          <ul class="ed__people">
+            @for (p of card().participants; track p.userId) {
+              <li class="ed__person">
+                <!-- ⚠️ Story 48.3 : le nom d'un autre participant (place acceptée) ouvre sa Ludothèque. -->
+                <app-participant-chip
+                  [participant]="p"
+                  [self]="p.userId === currentUserId()"
+                  [libraryEnabled]="true"
+                  (libraryRequested)="openLibrary(p, $event)"
+                />
+                @if (canReserve() && isPending(p)) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="ed__unreserve"
+                    [disabled]="busy()"
+                    [attr.aria-label]="unreserveAria(p)"
+                    (click)="unreserve(p)"
+                  >
+                    {{ theme.tone()['partie.ralliement_event_unreserve_btn'] }}
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    @if (canReserve()) {
+      <!-- Story 40.4 : l'hôte réserve des places à des membres, tant que la conjonction n'est pas passée. -->
+      <section class="ed__reserve" [attr.aria-labelledby]="uid + '-reserve'">
+        <h3 class="ed__section-title" [id]="uid + '-reserve'">
+          {{ theme.tone()['partie.ralliement_event_reserve_label'] }}
+        </h3>
+        @if (candidates().length === 0) {
+          <p class="ed__empty">{{ theme.tone()['partie.ralliement_event_reserve_none'] }}</p>
+        } @else {
+          <ul class="ed__candidates">
+            @for (m of candidates(); track m.userId) {
+              <li>
+                <button
+                  type="button"
+                  class="ed__candidate"
+                  [disabled]="busy() || noPlaceLeft()"
+                  [attr.aria-label]="reserveAria(m)"
+                  (click)="reserve(m)"
+                >
+                  {{ m.displayName }}
+                </button>
+              </li>
+            }
+          </ul>
+          <p class="ed__hint">{{ theme.tone()['partie.ralliement_event_reserve_hint'] }}</p>
+        }
+      </section>
+    }
+  }
+</ng-template>
+
+<ng-template #body>
+  @if (showTabs()) {
+    <!-- Story 49.1 (⚠️ contrat UI) : deux onglets en tête — « Conjonction » (défaut ; tous les blocs, inscrits
+         compris) et les jeux sur place. Seulement tant que la conjonction est ouverte (ni passée, ni annulée,
+         ni figée) : sinon la fenêtre est celle d'avant, sans bandeau d'onglets. L'onglet des jeux reste monté
+         sous « Conjonction » pour tenir son compte à jour. -->
+    <div class="ed__tabs" role="tablist" [attr.aria-labelledby]="uid + '-title'">
+      <button
+        type="button"
+        role="tab"
+        class="ed__tab"
+        [id]="uid + '-tab-main'"
+        [attr.aria-selected]="activeTab() === 'main'"
+        [attr.aria-controls]="uid + '-panel-main'"
+        [attr.tabindex]="activeTab() === 'main' ? 0 : -1"
+        (click)="selectTab('main')"
+        (keydown)="onTabKeydown($event)"
+      >
+        {{ theme.tone()['partie.ralliement_soiree_tab'] }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="ed__tab"
+        [id]="uid + '-tab-games'"
+        [attr.aria-selected]="activeTab() === 'games'"
+        [attr.aria-controls]="uid + '-panel-games'"
+        [attr.tabindex]="activeTab() === 'games' ? 0 : -1"
+        (click)="selectTab('games')"
+        (keydown)="onTabKeydown($event)"
+      >
+        {{ gamesLabel() }}
+      </button>
+    </div>
+    <div
+      role="tabpanel"
+      class="ed__panel"
+      [id]="uid + '-panel-main'"
+      [attr.aria-labelledby]="uid + '-tab-main'"
+      [hidden]="activeTab() !== 'main'"
+    >
+      <ng-container [ngTemplateOutlet]="blocks" />
+    </div>
+    <div
+      role="tabpanel"
+      class="ed__panel"
+      [id]="uid + '-panel-games'"
+      [attr.aria-labelledby]="uid + '-tab-games'"
+      [hidden]="activeTab() !== 'games'"
+    >
+      <app-event-games-tab
+        [partieId]="partieId()"
+        [card]="card()"
+        [currentUserId]="currentUserId()"
+        (countChange)="gamesCount.set($event)"
+      />
+    </div>
+  } @else {
+    <ng-container [ngTemplateOutlet]="blocks" />
+  }
+</ng-template>
+
+<ng-template #foot>
+    @if (error(); as message) {
+      <p class="ed__error" role="alert">{{ message }}</p>
+    }
+    <div class="ed__actions">
+      @if (editing()) {
+        <button mat-stroked-button type="button" class="ed__cancel" (click)="cancelEdit()">
+          {{ theme.tone()['partie.ralliement_event_cancel_btn'] }}
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          class="ed__save"
+          [disabled]="!canSave()"
+          [attr.aria-busy]="busy()"
+          (click)="save()"
+        >
+          {{ theme.tone()['partie.ralliement_event_save_btn'] }}
+        </button>
+      } @else {
+        @if (showUnsubscribe()) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="ed__unsubscribe"
+            [disabled]="busy()"
+            [attr.aria-busy]="busy()"
+            (click)="unsubscribe()"
+          >
+            {{ theme.tone()['partie.ralliement_event_unsubscribe_btn'] }}
+          </button>
+        }
+        @if (canCancel()) {
+          <!-- Story 42.1 : l'hôte ou un administrateur annule (confirmation « Votre accord », bouton rouge). -->
+          <button
+            mat-stroked-button
+            type="button"
+            class="ed__cancel-event"
+            [disabled]="busy()"
+            (click)="openCancel()"
+          >
+            {{ theme.tone()['partie.ralliement_event_cancel_event_btn'] }}
+          </button>
+        }
+        @if (canEdit()) {
+          <button mat-stroked-button type="button" class="ed__edit" (click)="startEdit()">
+            {{ theme.tone()['partie.ralliement_event_edit_btn'] }}
+          </button>
+        }
+        @if (!inline()) {
+          <button mat-flat-button type="button" class="ed__close" (click)="closed.emit()">
+            {{ theme.tone()['partie.ralliement_event_close_btn'] }}
+          </button>
+        }
+      }
+    </div>
+</ng-template>
+
+@if (inline()) {
+  <article class="ed ed--inline" [attr.aria-labelledby]="uid + '-title'">
+    <header class="ed__head">
+      <ng-container [ngTemplateOutlet]="head" />
+    </header>
+    @if (description(); as text) {
+      <p class="ed__description">{{ text }}</p>
+    }
+    <ng-container [ngTemplateOutlet]="body" />
+    @if (showInlineFooter()) {
+      <footer class="ed__footer">
+        <ng-container [ngTemplateOutlet]="foot" />
+      </footer>
+    }
+  </article>
+} @else {
+  <app-detail-surface
+    [title]="windowTitle()"
+    [custom]="true"
+    [hasHeader]="true"
+    [hasFooter]="hasFooter()"
+    [wide]="true"
+    [portal]="true"
+    [openToken]="1"
+    (closed)="closed.emit()"
+  >
+    <div detail-header class="ed__head">
+      <ng-container [ngTemplateOutlet]="head" />
+    </div>
+    <ng-container [ngTemplateOutlet]="body" />
+    <div detail-footer class="ed__footer">
+      <ng-container [ngTemplateOutlet]="foot" />
+    </div>
+  </app-detail-surface>
+}
+
+@if (library(); as target) {
+  <!-- ⚠️ Story 48.3 : la Ludothèque de la personne touchée, en tiroir modal au-dessus de la fenêtre. -->
+  <app-library-sheet
+    [userId]="target.userId"
+    [name]="target.name"
+    [returnFocus]="target.trigger"
+    (closed)="closeLibrary()"
+  />
+}

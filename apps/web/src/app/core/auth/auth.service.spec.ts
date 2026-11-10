@@ -21,6 +21,7 @@ describe('AuthService (front)', () => {
     // syncTheme() — les cas theme: null (push-once) sont testés séparément avec leur propre fixture.
     theme: 'grimoire-emeraude',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesSort: 'urgence',
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',
@@ -123,6 +124,7 @@ describe('AuthService (front) — synchronisation du thème (AC1, AC2, AC4)', ()
     createdAt: '2026-01-01T00:00:00.000Z',
     theme: 'grimoire-emeraude',
     hideFinishedParties: false,
+    availabilityReminder: true,
     partiesSort: 'urgence',
     partiesViewMode: 'medium',
     charactersViewMode: 'medium',
@@ -146,7 +148,7 @@ describe('AuthService (front) — synchronisation du thème (AC1, AC2, AC4)', ()
   }
 
   it('login avec un compte portant un thème → ThemeToneService applique ce thème, écrase le local (AC2/AC4)', async () => {
-    localStorage.setItem('jdr-theme', 'medieval-steampunk');
+    localStorage.setItem('jdr-theme', 'atelier-cuivre');
     const { service: svc, http: httpCtrl } = freshService();
 
     const p = svc.login('a@b.c', 'pw');
@@ -223,7 +225,7 @@ describe('AuthService (front) — synchronisation du thème (AC1, AC2, AC4)', ()
     // ThemeSelector, qui appelle themeSvc.setTheme() directement) — le local avance avant que la
     // réponse (périmée) n'arrive. Écrire localStorage seul ne suffirait pas : activeTheme() est un
     // signal qui ne se met à jour que via setTheme(), jamais en lisant localStorage a posteriori.
-    TestBed.inject(ThemeToneService).setTheme('medieval-steampunk');
+    TestBed.inject(ThemeToneService).setTheme('atelier-cuivre');
 
     // Réponse tardive du push-once, avec l'ancienne valeur poussée au moment de l'appel.
     pushReq.flush({ ...user, theme: 'grimoire-emeraude' });

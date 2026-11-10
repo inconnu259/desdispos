@@ -1,0 +1,54 @@
+<h2 mat-dialog-title>{{ theme.tone()['parties.confirm_title'] }}</h2>
+
+<mat-dialog-content>
+  <p class="dfd__heading" id="dfd-heading">{{ heading() }}</p>
+
+  <!-- Les créneaux, du plus au moins plébiscité : le meilleur est présélectionné. L'état est écrit
+       (« n oui · n peut-être · n non »), jamais porté par la couleur seule. -->
+  <div class="dfd__slots" role="radiogroup" aria-labelledby="dfd-heading">
+    @for (row of rows(); track row.id) {
+      <label
+        class="dfd__slot"
+        [class.dfd__slot--selected]="selected() === row.id"
+        [class.dfd__slot--past]="row.past"
+      >
+        <input
+          type="radio"
+          class="dfd__radio"
+          name="dfd-slot"
+          [value]="row.id"
+          [checked]="selected() === row.id"
+          [disabled]="busy() || row.past"
+          (change)="select(row.id)"
+        />
+        <span class="dfd__label">{{ row.label }}</span>
+        <span class="dfd__counts">{{ row.counts }}</span>
+        @if (row.past) {
+          <span class="dfd__past">{{ theme.tone()['partie.ralliement_event_fix_past'] }}</span>
+        }
+      </label>
+    }
+  </div>
+
+  <p class="dfd__warning">{{ theme.tone()['partie.ralliement_event_fix_warning'] }}</p>
+
+  @if (error(); as message) {
+    <p class="dfd__error" role="alert">{{ message }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" class="dfd__cancel" [disabled]="busy()" (click)="cancel()">
+    {{ theme.tone()['partie.ralliement_event_cancel_btn'] }}
+  </button>
+  <button
+    mat-flat-button
+    type="button"
+    class="dfd__confirm"
+    [disabled]="busy() || !selected()"
+    [attr.aria-busy]="busy()"
+    (click)="confirm()"
+  >
+    {{ theme.tone()['partie.ralliement_event_fix_confirm_btn'] }}
+  </button>
+</mat-dialog-actions>

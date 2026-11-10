@@ -3,6 +3,9 @@ import { vi } from 'vitest';
 import type { CharacterSnapshotDto, GameSystemContentDto } from '@master-jdr/shared';
 import { HistoryTab } from './history-tab';
 import { CharacterService } from '../../../../core/characters/character.service';
+import { TONE_MAP } from '../../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function makeSnapshot(overrides: Partial<CharacterSnapshotDto> = {}): CharacterSnapshotDto {
   return {
@@ -53,7 +56,7 @@ describe('HistoryTab', () => {
 
     const entries = fixture.nativeElement.querySelectorAll('.history-tab__entry');
     expect(entries.length).toBe(2);
-    expect(entries[0].textContent).toContain('modifié par le MJ');
+    expect(entries[0].textContent).toContain(GRIMOIRE_TONE['evolution.mj_edit_trace']);
     expect(entries[0].textContent).toContain('MJ a corrigé une erreur');
     expect(entries[1].textContent).toContain('Niveau 2');
   });

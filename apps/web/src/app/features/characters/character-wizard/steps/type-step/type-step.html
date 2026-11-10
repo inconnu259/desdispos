@@ -8,23 +8,55 @@
     appRadioGroupNav
   >
     @for (opt of options(); track opt.key) {
-      <app-choice-card
-        [option]="opt"
-        [selected]="typeId() === opt.key"
-        (selectedOption)="onSelect($event)"
-      />
+      @if (opt.key === typeId() && selectedTypeData(); as data) {
+        <!-- Piste B (contrat UI 31.4) : la carte choisie se déploie en place ; le détail est un
+             groupe voisin du bouton radio, jamais un enfant. -->
+        <div class="type-step__expanded">
+          <app-choice-card
+            [option]="opt"
+            [selected]="true"
+            [expanded]="true"
+            [expandedHint]="theme.tone()['character.choice_deselect_hint']"
+            (selectedOption)="onSelect($event)"
+          />
+          <app-choice-detail [label]="data.label">
+            <p class="choice-detail__description type-step__description">{{ data.description }}</p>
+            <div class="choice-detail__label">{{ theme.tone()['character.choice_advantages_label'] }}</div>
+            <ul class="choice-detail__chips">
+              @for (adv of data.advantages; track adv.name) {
+                <li>
+                  @if (help(adv.name, adv.effect); as h) {
+                    <button
+                      type="button"
+                      class="choice-detail__chip type-step__detail-trigger"
+                      (click)="detail.open(h.title, h.body, $event)"
+                    >{{ adv.name }}</button>
+                  } @else {
+                    <span class="choice-detail__tag">{{ adv.name }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          </app-choice-detail>
+        </div>
+      } @else {
+        <app-choice-card
+          [option]="opt"
+          [selected]="typeId() === opt.key"
+          (selectedOption)="onSelect($event)"
+        />
+      }
     }
   </div>
 
-  @if (selectedTypeData(); as data) {
-    <div class="type-step__advantages">
-      <p class="type-step__description">{{ data.description }}</p>
-      <h3>Avantages de {{ data.label }}</h3>
-      <ul>
-        @for (adv of data.advantages; track adv.name) {
-          <li><strong>{{ adv.name }}</strong> — {{ adv.effect }}</li>
-        }
-      </ul>
-    </div>
+  @if (detail.selected(); as d) {
+    <app-detail-surface
+      [title]="d.title"
+      [body]="d.body"
+      [rows]="d.rows ?? []"
+      [narrative]="d.narrative ?? ''"
+      [openToken]="detail.openToken()"
+      (closed)="detail.close()"
+    />
   }
 </div>

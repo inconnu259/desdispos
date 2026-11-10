@@ -1,5 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { CalendarLegend } from './calendar-legend';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 async function createLegend(overrides: Record<string, unknown> = {}) {
   await TestBed.configureTestingModule({ imports: [CalendarLegend] }).compileComponents();
@@ -24,7 +27,10 @@ describe('CalendarLegend', () => {
     const titles = [...fixture.nativeElement.querySelectorAll('.legend__group-title')].map(
       (e: any) => e.textContent.trim(),
     );
-    expect(titles).toEqual(['Se passent d’explication', 'Demandent la légende']);
+    expect(titles).toEqual([
+      GRIMOIRE_TONE['calendar.legend.group_obvious'],
+      GRIMOIRE_TONE['calendar.legend.group_needs'],
+    ]);
   });
 
   it('AC6 — le groupe « évident » ne porte que disponible et indisponible', async () => {
@@ -100,7 +106,7 @@ describe('CalendarLegend', () => {
       e.textContent.trim(),
     );
     expect(labels).toEqual([
-      'Séance confirmée — tu es pris',
+      GRIMOIRE_TONE['calendar.legend.entry.seance'],
       'Créneau proposé au vote',
       'Participation : la piste = la troupe',
       'Disponibilité du groupe',

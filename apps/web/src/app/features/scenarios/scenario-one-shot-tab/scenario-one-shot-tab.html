@@ -1,12 +1,12 @@
 @if (loadError()) {
   <p class="error">{{ loadError() }}</p>
 } @else if (notFound()) {
-  <p class="empty">Aucun scénario trouvé pour cette Partie.</p>
+  <p class="empty">{{ theme.tone()['scenarios.one_shot_not_found'] }}</p>
 } @else if (scenario(); as s) {
   @if (s.status === 'BROUILLON') {
     <div class="open-bar">
       <button mat-flat-button type="button" [disabled]="opening()" (click)="openToPlayers()">
-        Ouvrir aux joueurs
+        {{ theme.tone()['common.ouvrir_aux_joueurs'] }}
       </button>
       @if (openError()) {
         <p class="error">{{ openError() }}</p>

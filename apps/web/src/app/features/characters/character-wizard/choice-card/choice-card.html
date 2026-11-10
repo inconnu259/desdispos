@@ -2,10 +2,30 @@
   type="button"
   class="choice-card"
   [class.choice-card--selected]="selected()"
+  [class.choice-card--center]="align() === 'center'"
+  [class.choice-card--expanded]="expanded()"
+  [class.choice-card--tint]="tint()"
+  [class.choice-card--full-detail]="fullDetail()"
   role="radio"
   [attr.aria-checked]="selected()"
-  [attr.aria-label]="option().detail ? option().label + ' : ' + option().detail : option().label"
+  [attr.aria-label]="option().label"
+  [attr.aria-describedby]="showDetail() ? detailId : null"
   (click)="onClick()"
 >
-  <span class="choice-card__label">{{ option().label }}</span>
+  @if (tint()) {
+    <span class="choice-card__head">
+      <span class="choice-card__gem" aria-hidden="true"></span>
+      <span class="choice-card__label">{{ option().label }}</span>
+    </span>
+    @if (badge()) {
+      <span class="choice-card__badge">{{ badge() }}</span>
+    }
+  } @else {
+    <span class="choice-card__label">{{ option().label }}</span>
+  }
+  @if (expanded() && expandedHint()) {
+    <span class="choice-card__hint">{{ expandedHint() }}</span>
+  } @else if (showDetail(); as text) {
+    <span class="choice-card__detail" [id]="detailId">{{ text }}</span>
+  }
 </button>

@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 @Component({
   selector: 'app-scenario-form',
@@ -23,6 +24,7 @@ import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 export class ScenarioForm {
   private readonly fb = inject(FormBuilder);
   private readonly scenarios = inject(ScenariosService);
+  protected readonly theme = inject(ThemeToneService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -58,7 +60,7 @@ export class ScenarioForm {
       this.error.set(
         err instanceof HttpErrorResponse && typeof err.error?.message === 'string'
           ? err.error.message
-          : "Impossible d'enregistrer le scénario.",
+          : this.theme.tone()['scenarios.form_save_error'],
       );
     } finally {
       this.saving.set(false);

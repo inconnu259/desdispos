@@ -15,9 +15,9 @@ describe('PartiesService (front)', () => {
     kind: 'ONE_SHOT',
     gameSystemId: 'draconis',
     description: null,
-    mjId: 'mj1',
-    mjPseudo: 'mj-pseudo',
-    mjDisplayName: 'MJ Nom',
+    ownerId: 'mj1',
+    ownerPseudo: 'mj-pseudo',
+    ownerDisplayName: 'MJ Nom',
     createdAt: '2026-01-01T00:00:00.000Z',
     nextSessionDate: null,
     nextSessionSlot: null,
@@ -25,6 +25,7 @@ describe('PartiesService (front)', () => {
     status: 'EN_COURS',
     isFavorite: false,
     coverImageVersion: null,
+    can: { coverUpdate: true },
   };
 
   beforeEach(() => {
@@ -46,6 +47,24 @@ describe('PartiesService (front)', () => {
     expect(await p).toEqual([partie]);
   });
 
+  it('list() sans rôle → GET /parties (toutes les parties, sans paramètre) avec withCredentials (Story 38.5)', async () => {
+    const p = service.list();
+    const req = http.expectOne(`${API}/parties`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush([partie]);
+    expect(await p).toEqual([partie]);
+  });
+
+  it('hide → PUT /parties/:id/hidden, sans corps utile, avec withCredentials (Story 42.5)', async () => {
+    const p = service.hide('p1');
+    const req = http.expectOne(`${API}/parties/p1/hidden`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush({ ok: true });
+    expect(await p).toEqual({ ok: true });
+  });
+
   it('create → POST avec le payload', async () => {
     const payload = { name: 'La Nuit', kind: 'ONE_SHOT' as const, gameSystemId: 'draconis' };
     const p = service.create(payload);
@@ -64,6 +83,24 @@ describe('PartiesService (front)', () => {
     await p;
   });
 
+  it('leave → DELETE /parties/:id/members/me avec withCredentials, sans confirmation de suppression (Story 39.5)', async () => {
+    const p = service.leave('p1');
+    const req = http.expectOne((r) => r.url === `${API}/parties/p1/members/me`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.params.has('deleteIfLastAdmin')).toBe(false);
+    req.flush({ ok: true, deleted: false });
+    expect(await p).toEqual({ ok: true, deleted: false });
+  });
+
+  it('leave(id, true) → envoie deleteIfLastAdmin=true (Story 39.5)', async () => {
+    const p = service.leave('p1', true);
+    const req = http.expectOne((r) => r.url === `${API}/parties/p1/members/me`);
+    expect(req.request.params.get('deleteIfLastAdmin')).toBe('true');
+    req.flush({ ok: true, deleted: true });
+    expect(await p).toEqual({ ok: true, deleted: true });
+  });
+
   it('close → PATCH /parties/:id/close avec withCredentials (Story 29.6)', async () => {
     const p = service.close('p1');
     const req = http.expectOne(`${API}/parties/p1/close`);
@@ -80,6 +117,27 @@ describe('PartiesService (front)', () => {
     expect(req.request.withCredentials).toBe(true);
     req.flush(partie);
     expect(await p).toEqual(partie);
+  });
+
+  it('getVisibilityLocks → GET /parties/:id/visibility-locks avec withCredentials (Story 31.7)', async () => {
+    const locks = [{ fieldKey: 'classId', subField: null }];
+    const p = service.getVisibilityLocks('p1');
+    const req = http.expectOne(`${API}/parties/p1/visibility-locks`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(locks);
+    expect(await p).toEqual(locks);
+  });
+
+  it('setVisibilityLocks → PUT /parties/:id/visibility-locks avec le payload et withCredentials (Story 31.7)', async () => {
+    const paths = [{ fieldKey: 'attributes', subField: 'AGI' }];
+    const p = service.setVisibilityLocks('p1', paths);
+    const req = http.expectOne(`${API}/parties/p1/visibility-locks`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ paths });
+    expect(req.request.withCredentials).toBe(true);
+    req.flush(paths);
+    expect(await p).toEqual(paths);
   });
 
   it('notifyChanged() incrémente changed() (Story 18.3, AD-4)', () => {

@@ -1,0 +1,43 @@
+<div class="seance-situation" [class.seance-situation--mj]="isMj()">
+  <app-situation-line [value]="situation()" />
+  <p class="seance-situation__text">{{ text() }}</p>
+  @switch (box()) {
+    @case ('se_desinscrire') {
+      <button
+        mat-button
+        type="button"
+        class="seance-situation__action"
+        [disabled]="busy()"
+        (click)="action.emit()"
+      >
+        {{ actionLabel() }}
+      </button>
+    }
+    @case ('reinitialiser_la_date') {
+      <button
+        mat-stroked-button
+        type="button"
+        class="seance-situation__action"
+        [disabled]="busy()"
+        (click)="action.emit()"
+      >
+        {{ actionLabel() }}
+      </button>
+    }
+    @default {
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        class="seance-situation__action"
+        [disabled]="busy()"
+        (click)="action.emit()"
+      >
+        @if (box() === 'lancer_le_vote') {
+          <app-icon name="vote" />
+        }
+        {{ actionLabel() }}
+      </button>
+    }
+  }
+</div>

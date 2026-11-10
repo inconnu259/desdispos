@@ -1,6 +1,6 @@
 <div class="portrait-cropper">
   <label class="portrait-cropper__file-label">
-    Choisir une image
+    {{ theme.tone()['portrait.cropper_choose_image'] }}
     <input
       type="file"
       accept="image/jpeg,image/png,image/webp"
@@ -15,7 +15,7 @@
       [style.aspect-ratio]="effectiveShape() === 'rect' ? aspectRatio : null"
       tabindex="0"
       role="application"
-      aria-label="Zone de recadrage du portrait. Flèches pour déplacer, plus/moins pour zoomer."
+      [attr.aria-label]="theme.tone()['portrait.cropper_area_aria']"
       (keydown)="onKeydown($event)"
       (pointerdown)="onPointerDown($event)"
       (pointermove)="onPointerMove($event)"
@@ -32,7 +32,7 @@
     </div>
 
     <label class="portrait-cropper__zoom">
-      Zoom
+      {{ theme.tone()['portrait.cropper_zoom'] }}
       <input
         type="range"
         min="1"
@@ -46,12 +46,12 @@
 
   <div class="portrait-cropper__actions">
     @if (showSkip()) {
-      <button mat-button type="button" (click)="skipStep()">Passer cette étape</button>
+      <button mat-button type="button" (click)="skipStep()">{{ theme.tone()['common.passer_cette_etape'] }}</button>
     } @else {
-      <button mat-button type="button" (click)="cancel()">Annuler</button>
+      <button mat-button type="button" (click)="cancel()">{{ theme.tone()['common.annuler'] }}</button>
     }
     <button mat-flat-button color="primary" type="button" [disabled]="!file()" (click)="save()">
-      Enregistrer
+      {{ theme.tone()['common.enregistrer'] }}
     </button>
   </div>
 </div>

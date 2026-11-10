@@ -184,6 +184,57 @@ function makeThemeService() {
     tone: () => ({
       'character.create_cta': 'Créer un voyageur',
       'character.step_portrait_intro': 'Ajoute un portrait si tu le souhaites.',
+      'character.recap_button': 'Récap',
+      'character.recap_title': 'Récapitulatif',
+      'character.recap_cart_title': 'Panier',
+      'character.recap_remove': 'Retirer',
+      'character.recap_total': 'Total',
+      'character.recap_empty_hint':
+        'Les statistiques dérivées apparaîtront une fois les attributs assignés.',
+      'common.precedent': 'Précédent',
+      'common.suivant': 'Suivant',
+      'common.annuler': 'Annuler',
+      'common.enregistrer': 'Enregistrer',
+      'common.ajouter': 'Ajouter',
+      'common.passer_cette_etape': 'Passer cette étape',
+      'common.choisir': '-- Choisir --',
+      'common.une_erreur_inattendue_est_survenue_reessayez':
+        'Une erreur inattendue est survenue. Réessayez.',
+      'characters_wizard.loading': "Chargement de l'assistant…",
+      'characters_wizard.step_prev_aria': 'Étape précédente',
+      'characters_wizard.step_next_aria': 'Étape suivante',
+      'characters_wizard.step_progress': 'Étape {index}/{total} · {label}',
+      'characters_wizard.submitting': 'Création…',
+      'characters_wizard.summary_aria': 'Récapitulatif du voyageur',
+      'characters_wizard.summary_default_title': 'Voyageur',
+      'characters_wizard.load_error_no_module':
+        "Ce système de jeu n'a pas encore d'assistant de création.",
+      'characters_wizard.load_error':
+        "Impossible de charger l'assistant de création. Vérifiez votre connexion et réessayez.",
+      'characters_wizard.portrait_upload_warning':
+        "Personnage créé, mais le portrait n'a pas pu être enregistré. Réessayez depuis la fiche.",
+      'characters_wizard.already_has_character': 'Vous avez déjà un personnage sur cette partie',
+      'characters_wizard.invalid_data': 'Données invalides. Vérifiez votre saisie.',
+      'characters_wizard.attributes_profile_aria': "Profil d'attributs",
+      'characters_wizard.attributes_banner_profile': 'Profil',
+      'characters_wizard.attributes_banner_one': '— {n} valeur sur {total} placée',
+      'characters_wizard.attributes_banner_many': '— {n} valeurs sur {total} placées',
+      'characters_wizard.attributes_chip_remaining': '{value}, encore {n} à placer',
+      'characters_wizard.equipment_mode_aria': "Choisir un mode d'équipement",
+      'characters_wizard.equipment_mode_kit': 'Nécessaire pré-fait',
+      'characters_wizard.equipment_mode_shopping': 'Achat libre',
+      'characters_wizard.equipment_filter_aria': 'Filtre du catalogue',
+      'characters_wizard.weapon_category_aria': "Choisir une catégorie d'arme",
+      'characters_wizard.weapon_item_aria': 'Choisir son arme précise',
+      'characters_wizard.weapon_custom_card': 'Créer une arme libre',
+      'portrait.cropper_choose_image': 'Choisir une image',
+      'portrait.cropper_area_aria':
+        'Zone de recadrage du portrait. Flèches pour déplacer, plus/moins pour zoomer.',
+      'portrait.cropper_zoom': 'Zoom',
+      'portrait.panel_alt': 'Portrait complet de {name}',
+      'portrait.panel_caption': 'Portrait complet',
+      'portrait.avatar_aria': 'Portrait de {name}',
+      'portrait.avatar_aria_empty': 'Portrait de {name} (aucune image)',
     }),
   };
 }
@@ -812,5 +863,179 @@ describe('CharacterWizard', () => {
     const before = comp.currentStepIndex();
     comp.goNext();
     expect(comp.currentStepIndex()).toBe(before);
+  });
+});
+
+// ── Système de jeu sans module (ex. Draconis) : message explicite, pas « vérifiez votre connexion » ──
+
+describe('CharacterWizard — système sans module', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function mountWith(opts: {
+    schemaError: unknown;
+    partiesGet?: ReturnType<typeof vi.fn>;
+    gameSystemIdParam?: string | null;
+  }) {
+    const characterSvc = {
+      getGameSystemSchema: vi.fn().mockRejectedValue(opts.schemaError),
+      getGameSystemContent: vi.fn().mockRejectedValue(opts.schemaError),
+      create: vi.fn(),
+    };
+    await TestBed.configureTestingModule({
+      imports: [CharacterWizard],
+      providers: [
+        provideAnimationsAsync(),
+        { provide: CharacterService, useValue: characterSvc },
+        {
+          provide: PartiesService,
+          useValue: {
+            get: opts.partiesGet ?? vi.fn().mockResolvedValue({ gameSystemId: 'draconis' }),
+          },
+        },
+        { provide: ThemeToneService, useValue: makeThemeService() },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: { get: () => 'p1' },
+              queryParamMap: { get: () => opts.gameSystemIdParam ?? null },
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(CharacterWizard);
+    fixture.detectChanges();
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      fixture.detectChanges();
+    }
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('404 sur le schéma → message explicite « pas encore d’assistant de création »', async () => {
+    const fixture = await mountWith({
+      schemaError: new HttpErrorResponse({ status: 404, statusText: 'Not Found' }),
+      gameSystemIdParam: 'draconis',
+    });
+    const message = (fixture.componentInstance as any).loadError() as string;
+    expect(message).toContain("pas encore d'assistant de création");
+    expect(message).not.toContain('connexion');
+    expect(fixture.nativeElement.textContent).toContain(message);
+  });
+
+  it('autre erreur HTTP (500) → le message générique reste', async () => {
+    const fixture = await mountWith({
+      schemaError: new HttpErrorResponse({ status: 500, statusText: 'Server Error' }),
+      gameSystemIdParam: 'ryuutama',
+    });
+    expect((fixture.componentInstance as any).loadError()).toContain('Vérifiez votre connexion');
+  });
+
+  it('404 de la PARTIE (pas du système) → message générique, pas « système sans module »', async () => {
+    const fixture = await mountWith({
+      schemaError: new Error('inutilisé'),
+      partiesGet: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 404 })),
+      gameSystemIdParam: null,
+    });
+    const message = (fixture.componentInstance as any).loadError() as string;
+    expect(message).not.toContain("pas encore d'assistant");
+    expect(message).toContain('Impossible de charger');
+  });
+});
+
+// ── Story 31.4 : récapitulatif du voyageur (colonne de droite / feuille « Récap ») ──────────────
+
+describe('CharacterWizard — récapitulatif et désélection (Story 31.4)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('le récapitulatif est rendu dans la colonne de droite et se remplit avec la classe choisie', async () => {
+    const { fixture } = await createComponent();
+    const comp = fixture.componentInstance as any;
+    comp.updateSheetData({ classId: 'chasseur' });
+    fixture.detectChanges();
+    const aside = fixture.nativeElement.querySelector('.wizard__summary') as HTMLElement;
+    expect(aside.querySelector('app-wizard-summary')).not.toBeNull();
+    expect(aside.textContent).toContain('Classe');
+  });
+
+  it('le bouton « Récap » ouvre la feuille (même récapitulatif) et Fermer ramène le focus au bouton', async () => {
+    const { fixture } = await createComponent();
+    const el = fixture.nativeElement as HTMLElement;
+    const btn = el.querySelector<HTMLButtonElement>('.wizard__recap-btn')!;
+    expect(el.querySelector('.detail-surface-panel')).toBeNull();
+
+    btn.click();
+    fixture.detectChanges();
+    const panel = el.querySelector('.detail-surface-panel')!;
+    expect(panel.querySelector('app-wizard-summary')).not.toBeNull();
+    expect(panel.textContent).not.toContain('Aucune description disponible');
+
+    (panel.querySelector('.detail-surface-close') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await Promise.resolve();
+    expect(el.querySelector('.detail-surface-panel')).toBeNull();
+    expect(document.activeElement).toBe(btn);
+  });
+
+  it('la pastille du bouton « Récap » compte les exemplaires d’équipement choisis', async () => {
+    const { fixture } = await createComponent();
+    const comp = fixture.componentInstance as any;
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.wizard__recap-badge')).toBeNull();
+    comp.onStartingEquipmentChange([
+      { key: 'corde', quantity: 2 },
+      { key: 'rations', quantity: 4 },
+    ]);
+    fixture.detectChanges();
+    expect(el.querySelector('.wizard__recap-badge')!.textContent).toContain('6');
+  });
+
+  it('désélectionner la classe (classId undefined) efface spécialité et choix obligatoires, et re-bloque « Suivant »', async () => {
+    const { fixture } = await createComponent();
+    const comp = fixture.componentInstance as any;
+    comp.updateSheetData({ classId: 'artisan' });
+    comp.updateSheetData({ specialtyTypeId: 'Cordonnerie' });
+    comp.onClassChoiceChange({ key: 'x', value: 'y' });
+    expect(comp.canGoNext()).toBe(true);
+
+    comp.updateSheetData({ classId: undefined });
+    expect(comp.sheetData().classId).toBeUndefined();
+    expect(comp.sheetData().specialtyTypeId).toBeUndefined();
+    expect(comp.sheetData().classChoices).toBeUndefined();
+    expect(comp.canGoNext()).toBe(false);
+  });
+
+  it('la navigation porte les pictogrammes precedent / suivant, en haut (boutons nommés) et en bas (avant / après le libellé)', async () => {
+    const { fixture } = await createComponent();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const top = Array.from(el.querySelectorAll('.wizard__nav-btn')) as HTMLButtonElement[];
+    expect(top.map((b) => b.querySelector('app-icon')?.getAttribute('data-icon'))).toEqual([
+      'precedent',
+      'suivant',
+    ]);
+    // Icône seule : le nom du bouton reste son aria-label, l'icône est décorative.
+    expect(top.every((b) => b.hasAttribute('aria-label'))).toBe(true);
+    expect(top[0].querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(top.map((b) => b.textContent?.trim())).toEqual(['', '']);
+
+    const bottom = el.querySelector('.wizard__nav-bottom') as HTMLElement;
+    const prev = bottom.querySelectorAll('button')[0] as HTMLButtonElement;
+    const next = bottom.querySelectorAll('button')[1] as HTMLButtonElement;
+    expect(prev.querySelector('app-icon')?.getAttribute('data-icon')).toBe('precedent');
+    expect(next.querySelector('app-icon')?.getAttribute('data-icon')).toBe('suivant');
+    // Ordre : l'icône précède le libellé de « précédent », le suit pour « suivant ».
+    const prevLabel = prev.textContent!.trim();
+    const nextLabel = next.textContent!.trim();
+    expect(prev.innerHTML.indexOf('<app-icon')).toBeLessThan(prev.innerHTML.indexOf(prevLabel));
+    expect(next.innerHTML.indexOf('<app-icon')).toBeGreaterThan(next.innerHTML.indexOf(nextLabel));
+    expect(bottom.textContent).not.toMatch(/[❮❯]/);
+    // Étape 1 : « précédent » reste désactivé comme avant.
+    expect(prev.disabled).toBe(true);
   });
 });

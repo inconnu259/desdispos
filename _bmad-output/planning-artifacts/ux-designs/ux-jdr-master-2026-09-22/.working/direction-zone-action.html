@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Zone Action — 3 directions</title>
+<style>
+  :root {
+    --jdr-bg: #0d0a14;
+    --jdr-surface: #1a1428;
+    --jdr-surface-2: #221c35;
+    --jdr-accent-1: #7ec8a4;
+    --jdr-accent-2: #9b6dff;
+    --jdr-text: #e8e0f0;
+    --jdr-text-muted: #9b8fb0;
+    --jdr-border: #2a2340;
+    --jdr-gradient-cta: linear-gradient(135deg, #7ec8a4, #9b6dff);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: #050308;
+    color: var(--jdr-text);
+    font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+    margin: 0;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+  h1.page-title { font-size: 1rem; color: var(--jdr-text-muted); font-weight: 500; margin: 0; }
+  .direction {
+    max-width: 30rem;
+    background: var(--jdr-bg);
+    border: 1px solid var(--jdr-border);
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.25rem 1.5rem;
+  }
+  .direction__label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--jdr-accent-1);
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+  }
+  .direction__caption {
+    font-size: 0.82rem;
+    color: var(--jdr-text-muted);
+    margin: 0 0 1.25rem;
+    line-height: 1.4;
+  }
+  .zone-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--jdr-text-muted);
+    margin: 0 0 0.75rem;
+  }
+  button {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 0.4rem;
+    cursor: pointer;
+  }
+  .btn-flat {
+    background: var(--jdr-accent-1);
+    color: #062018;
+    border: none;
+    padding: 0.6rem 1.1rem;
+  }
+  .btn-stroked {
+    background: transparent;
+    color: var(--jdr-accent-1);
+    border: 1px solid var(--jdr-accent-1);
+    padding: 0.55rem 1.05rem;
+  }
+
+  /* ── Direction A : minimal, plus d'air ── */
+  .dirA .scheduling {
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--jdr-border);
+  }
+  .dirA .scheduling p { margin: 0.4rem 0; font-size: 0.9rem; }
+  .dirA .scheduling .muted { color: var(--jdr-text-muted); }
+  .dirA .action-block { margin-top: 1.75rem; }
+  .dirA .action-block h4 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--jdr-text-muted); margin: 0 0 0.6rem; font-weight: 600;
+  }
+
+  /* ── Direction B : encadrés distincts ── */
+  .dirB .card {
+    background: var(--jdr-surface);
+    border: 1px solid var(--jdr-border);
+    border-radius: 0.6rem;
+    padding: 1rem 1.1rem;
+    margin-top: 0.9rem;
+  }
+  .dirB .card:first-of-type { margin-top: 0; }
+  .dirB .card h4 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--jdr-accent-1); margin: 0 0 0.5rem; font-weight: 700;
+  }
+  .dirB .card p { margin: 0.3rem 0; font-size: 0.88rem; }
+  .dirB .card .muted { color: var(--jdr-text-muted); font-size: 0.82rem; }
+
+  /* ── Direction C : barre d'actions rapides (liberté créative) ── */
+  .dirC .quickbar {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+  .dirC .quickbar button {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.9rem;
+    background: var(--jdr-surface-2);
+    color: var(--jdr-text);
+    border: 1px solid var(--jdr-border);
+    font-size: 0.82rem;
+  }
+  .dirC .quickbar button.primary {
+    background: var(--jdr-gradient-cta);
+    color: #0d0a14;
+    border: none;
+    font-weight: 700;
+  }
+  .dirC .quickbar .icon { font-size: 1rem; line-height: 1; }
+  .dirC .session-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.8rem 1rem;
+    background: var(--jdr-surface);
+    border-left: 3px solid var(--jdr-accent-2);
+    border-radius: 0.4rem;
+    font-size: 0.88rem;
+  }
+  .dirC .session-line .muted { color: var(--jdr-text-muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+  <h1 class="page-title">Vue de partie — onglet Détails, zone « Action » — 3 directions</h1>
+
+  <div class="direction dirA">
+    <p class="direction__label">Direction A — Minimal, plus d'air</p>
+    <p class="direction__caption">Même disposition empilée qu'aujourd'hui, marges verticales augmentées entre le titre de zone, le widget séance et chaque bloc d'action ; un séparateur fin distingue le widget séance des actions MJ.</p>
+    <p class="zone-title">Action</p>
+    <div class="scheduling">
+      <p style="font-weight:600;">Prochaine séance</p>
+      <p class="muted">Aucune séance convoquée. Consultez l'oracle des créneaux.</p>
+      <button class="btn-flat" style="margin-top:0.5rem;">Consulter l'oracle des créneaux</button>
+    </div>
+    <div class="action-block">
+      <h4>Expérience</h4>
+      <button class="btn-stroked">Distribuer de l'XP</button>
+    </div>
+    <div class="action-block">
+      <h4>Annonces</h4>
+      <button class="btn-stroked">Proclamer une annonce</button>
+    </div>
+  </div>
+
+  <div class="direction dirB">
+    <p class="direction__label">Direction B — Encadrés distincts</p>
+    <p class="direction__caption">Chaque action (séance, XP, annonce) dans son propre encadré à fond légèrement plus clair — regroupement visuel fort, chaque carte se scanne indépendamment.</p>
+    <p class="zone-title">Action</p>
+    <div class="card">
+      <h4>Prochaine séance</h4>
+      <p class="muted">Aucune séance convoquée.</p>
+      <button class="btn-flat" style="margin-top:0.4rem;">Consulter l'oracle des créneaux</button>
+    </div>
+    <div class="card">
+      <h4>Distribuer de l'XP</h4>
+      <p class="muted">Récompensez la troupe après une séance.</p>
+      <button class="btn-stroked" style="margin-top:0.4rem;">Distribuer de l'XP</button>
+    </div>
+    <div class="card">
+      <h4>Publier une annonce</h4>
+      <p class="muted">Prévenez la troupe d'un imprévu.</p>
+      <button class="btn-stroked" style="margin-top:0.4rem;">Proclamer une annonce</button>
+    </div>
+  </div>
+
+  <div class="direction dirC">
+    <p class="direction__label">Direction C — Barre d'actions rapides (liberté créative)</p>
+    <p class="direction__caption">Rupture avec l'empilement vertical : les actions MJ (XP, annonce) deviennent une barre d'icônes compacte en tête de zone, façon boîte à outils ; le contexte de séance reste en dessous, mis en avant par un liseré de couleur plutôt qu'un bouton plein.</p>
+    <p class="zone-title">Action</p>
+    <div class="quickbar">
+      <button class="primary"><span class="icon">✦</span> Distribuer de l'XP</button>
+      <button><span class="icon">✎</span> Proclamer une annonce</button>
+    </div>
+    <div class="session-line">
+      <span style="font-weight:600;">Prochaine séance —</span>
+      <span class="muted">aucune convoquée ·</span>
+      <a href="#" style="color: var(--jdr-accent-1);">consulter l'oracle des créneaux</a>
+    </div>
+  </div>
+</body>
+</html>

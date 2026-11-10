@@ -1,19 +1,28 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { CALENDAR_LAYER_KEYS, type CalendarLayerKey } from '@master-jdr/shared';
+import { AppIcon } from '../../core/icons/app-icon';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountService } from '../../core/account/account.service';
+import { BoardGamesService } from '../../core/board-games/board-games.service';
+import { AvailabilityReminderService } from '../../core/availability/availability-reminder.service';
+import { formatBoardGameCount } from '../board-games/board-game-measures';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
+import { DeleteAccountDialog } from './delete-account-dialog/delete-account-dialog';
 import { ThemeSelector } from './theme-selector/theme-selector';
 import { FieldEditPencil } from '../characters/character-sheet/field-edit-pencil/field-edit-pencil';
+import { PasswordReveal } from '../../shared/password-reveal/password-reveal';
+import { PasswordToggle } from '../../shared/password-reveal/password-toggle';
 
 const DISPLAY_NAME_MAX_LENGTH = 60;
 
@@ -51,23 +60,30 @@ const CALENDAR_INTENTS: readonly CalendarIntent[] = [
   selector: 'app-account',
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatCheckboxModule,
+    AppIcon,
     ThemeSelector,
     FieldEditPencil,
+    PasswordReveal,
+    PasswordToggle,
   ],
   templateUrl: './account.html',
   styleUrl: './account.scss',
 })
-export class Account {
+export class Account implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly account = inject(AccountService);
   private readonly router = inject(Router);
   private readonly contextualNav = inject(ContextualNavService);
+  private readonly dialog = inject(MatDialog);
+  private readonly boardGames = inject(BoardGamesService);
+  private readonly reminder = inject(AvailabilityReminderService);
 
   protected readonly theme = inject(ThemeToneService);
 
@@ -83,6 +99,18 @@ export class Account {
   protected readonly calendarLayerKeys = CALENDAR_LAYER_KEYS;
 
   protected readonly calendarIntents = CALENDAR_INTENTS;
+
+  /** Story 52.6 (AD-5) — « Me rappeler de déclarer mes dispos » : lue sur le compte, donc cochée par défaut. Le bandeau
+   *  du tableau de bord écrit la même préférence par la même méthode : une seule valeur, deux écrans. */
+  protected readonly reminderEnabled = computed(
+    () => this.auth.currentUser()?.availabilityReminder ?? true,
+  );
+
+  /** Cocher ou décocher passe par l'UNIQUE écrivain (`setEnabled`) : valeur affichée aussitôt, retour arrière en cas
+   *  d'échec seulement si aucun autre choix n'a été fait depuis. Ne touche jamais aux signaux des cartes. */
+  protected onReminderToggle(enabled: boolean): void {
+    void this.reminder.setEnabled(enabled);
+  }
 
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -108,6 +136,55 @@ export class Account {
   protected readonly emailSaving = signal(false);
   protected readonly emailError = signal<string | null>(null);
   protected readonly emailSaved = signal(false);
+
+  // Story 43.1 — zone sensible : l'aperçu est relu à CHAQUE ouverture (on peut aller nommer un autre
+  // administrateur puis revenir) ; en cas d'échec aucune fenêtre ne s'ouvre. L'effacement lui-même est
+  // celui de la fenêtre (Story 43.2).
+  protected readonly deleteLoading = signal(false);
+  protected readonly deleteError = signal<string | null>(null);
+
+  // ⚠️ Story 48.1 — ligne « {titre du thème} · {n} jeu(x) › » vers la Ludothèque : le décompte est lu
+  // une fois à l'ouverture de l'écran ; tant qu'il n'est pas connu (ou si la lecture échoue), seul le
+  // titre s'affiche.
+  protected readonly boardGamesCount = signal<number | null>(null);
+  protected readonly boardGamesRowTitle = computed(() => {
+    const tone = this.theme.tone();
+    const n = this.boardGamesCount();
+    const title = tone['board_games.title'];
+    return n === null ? title : `${title} · ${formatBoardGameCount(n, tone)}`;
+  });
+
+  ngOnInit(): void {
+    this.boardGames
+      .list()
+      .then((games) => this.boardGamesCount.set(games.length))
+      .catch(() => {
+        // non-bloquant — la ligne reste utilisable sans son décompte
+      });
+  }
+
+  async openDeleteAccount(): Promise<void> {
+    if (this.deleteLoading()) return;
+    this.deleteLoading.set(true);
+    this.deleteError.set(null);
+    let closed: Promise<boolean | undefined>;
+    try {
+      const impact = await this.account.getDeletionImpact();
+      const ref = this.dialog.open(DeleteAccountDialog, { data: { pseudo: this.pseudo, impact } });
+      closed = firstValueFrom(ref.afterClosed());
+    } catch {
+      this.deleteError.set(this.theme.tone()['account.danger_load_error']);
+      return;
+    } finally {
+      this.deleteLoading.set(false);
+    }
+    // Story 43.2 : la fenêtre ne se ferme sur `true` que si le compte est effacé. Plus de session : on
+    // oublie l'utilisateur local et on arrive sur l'accueil public avec un message qui le confirme.
+    if (await closed) {
+      this.auth.currentUser.set(null);
+      void this.router.navigate(['/login'], { queryParams: { compte: 'efface' } });
+    }
+  }
 
   constructor() {
     // Revue de code Story 29.4 : effect() plutôt qu'un appel statique en ngOnInit — cet écran

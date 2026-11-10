@@ -2,210 +2,489 @@
   @if (loadError()) {
     <p class="error">{{ loadError() }}</p>
   } @else if (hommeDragon() === undefined) {
-    <p class="muted">Chargement...</p>
-  } @else if (hommeDragon() === null) {
-    <form class="homme-dragon-sheet__create-form">
-      <label>
-        {{ theme.tone()['homme-dragon.race_label'] }}
-        <select
-          [ngModel]="race()"
-          name="race"
-          (ngModelChange)="onRaceChange($event)"
-        >
-          <option [ngValue]="null" disabled>—</option>
-          @for (r of races; track r) {
-            <option [ngValue]="r">{{ raceLabel(r) }}</option>
-          }
-        </select>
-      </label>
-
-      @if (race()) {
-        <label>
-          {{ theme.tone()['homme-dragon.artefact_label'] }}
-          <select [ngModel]="artefactKey()" name="artefact" (ngModelChange)="artefactKey.set($event)">
-            <option [ngValue]="null" disabled>—</option>
-            @for (a of artefactsForRace(); track a.key) {
-              <option [ngValue]="a.key">{{ $any(a.data).label }}</option>
-            }
-          </select>
-        </label>
-      }
-
-      <label>
-        Nom
-        <input type="text" [ngModel]="nom()" name="nom" (ngModelChange)="nom.set($event)" />
-      </label>
-      <label>
-        Apparence
-        <input type="text" [ngModel]="apparence()" name="apparence" (ngModelChange)="apparence.set($event)" />
-      </label>
-      <label>
-        Caractère
-        <input type="text" [ngModel]="caractere()" name="caractere" (ngModelChange)="caractere.set($event)" />
-      </label>
-      <label>
-        Vocation
-        <input type="text" [ngModel]="vocation()" name="vocation" (ngModelChange)="vocation.set($event)" />
-      </label>
-      <label>
-        Demeure
-        <input type="text" [ngModel]="demeure()" name="demeure" (ngModelChange)="demeure.set($event)" />
-      </label>
-      <label>
-        Avatar
-        <input type="text" [ngModel]="avatar()" name="avatar" (ngModelChange)="avatar.set($event)" />
-      </label>
-      <label>
-        Mondes protégés
-        <input
-          type="text"
-          [ngModel]="mondesProteges()"
-          name="mondesProteges"
-          (ngModelChange)="mondesProteges.set($event)"
-        />
-      </label>
-
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        [disabled]="!isValid() || creating()"
-        (click)="onSubmit()"
-      >
-        {{ theme.tone()['homme-dragon.create_cta'] }}
-      </button>
-
-      @if (createError()) {
-        <p class="error">{{ createError() }}</p>
-      }
-    </form>
+    <p class="muted">{{ theme.tone()['common.chargement_2'] }}</p>
   } @else {
     <div class="homme-dragon-sheet__fiche">
       @if (justCreated()) {
         <p class="notice">{{ theme.tone()['homme-dragon.created_notice'] }}</p>
       }
 
-      <h3>{{ hommeDragon()!.sheetData.nom }}</h3>
-      <p>{{ theme.tone()['homme-dragon.race_label'] }} : {{ raceLabel(hommeDragon()!.sheetData.race) }}</p>
-
-      <button mat-stroked-button type="button" [disabled]="exporting()" (click)="onExportPdf()">
-        Exporter en PDF
-      </button>
+      <header class="homme-dragon-sheet__header">
+        <div class="homme-dragon-sheet__header-info">
+          <h1 class="homme-dragon-sheet__name">{{ displayName() }}</h1>
+          <p class="homme-dragon-sheet__meta">
+            {{ theme.tone()['homme-dragon.race_label'] }} : {{ raceLabel(hommeDragon()!.sheetData.race) }}
+          </p>
+        </div>
+        <div class="homme-dragon-sheet__export">
+          <button
+            mat-stroked-button
+            type="button"
+            class="homme-dragon-sheet__export-trigger"
+            aria-haspopup="menu"
+            aria-controls="homme-dragon-export-menu"
+            [attr.aria-expanded]="exportMenuOpen()"
+            [disabled]="exporting()"
+            (click)="toggleExportMenu()"
+          >
+            {{ theme.tone()['hd.sheet_export_pdf'] }} <app-icon name="deplier" />
+          </button>
+          @if (exportMenuOpen()) {
+            <div class="homme-dragon-sheet__export-backdrop" aria-hidden="true" (click)="closeExportMenu()"></div>
+            <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -- les touches remontent des boutons du menu, seuls éléments focalisables -->
+            <div
+              id="homme-dragon-export-menu"
+              class="homme-dragon-sheet__export-menu"
+              role="menu"
+              [attr.aria-label]="theme.tone()['hd.sheet_export_menu_aria']"
+              (keydown)="onExportMenuKeydown($event)"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                class="homme-dragon-sheet__export-item"
+                (click)="onExportPdf('editable')"
+              >
+                {{ theme.tone()['hd.sheet_export_editable'] }}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                class="homme-dragon-sheet__export-item"
+                (click)="onExportPdf('2pages')"
+              >
+                {{ theme.tone()['hd.sheet_export_2pages'] }}
+              </button>
+            </div>
+          }
+        </div>
+      </header>
       @if (exportError()) {
         <p class="error">{{ exportError() }}</p>
       }
 
-      @if (!editingArtefact()) {
-        <p>
-          {{ theme.tone()['homme-dragon.artefact_label'] }} :
-          {{ hommeDragon()!.sheetData.artefact.nom || hommeDragon()!.sheetData.artefact.key }}
-          <button mat-button type="button" (click)="openArtefactEdit()">Modifier</button>
-        </p>
-      } @else {
-        <div class="homme-dragon-sheet__artefact-edit">
-          <select [ngModel]="editArtefactKey()" name="editArtefact" (ngModelChange)="editArtefactKey.set($event)">
-            @for (a of artefactsForExistingRace(); track a.key) {
-              <option [ngValue]="a.key">{{ $any(a.data).label }}</option>
-            }
-          </select>
-          <button mat-flat-button color="primary" type="button" [disabled]="updating()" (click)="onArtefactSubmit()">
-            Confirmer
-          </button>
-          <button mat-button type="button" (click)="editingArtefact.set(false)">Annuler</button>
-          @if (updateError()) {
-            <p class="error">{{ updateError() }}</p>
-          }
-        </div>
-      }
-
-      @if (hommeDragon()!.sheetData.apparence) {
-        <p>Apparence : {{ hommeDragon()!.sheetData.apparence }}</p>
-      }
-      @if (hommeDragon()!.sheetData.caractere) {
-        <p>Caractère : {{ hommeDragon()!.sheetData.caractere }}</p>
-      }
-      @if (hommeDragon()!.sheetData.vocation) {
-        <p>Vocation : {{ hommeDragon()!.sheetData.vocation }}</p>
-      }
-      @if (hommeDragon()!.sheetData.demeure) {
-        <p>Demeure : {{ hommeDragon()!.sheetData.demeure }}</p>
-      }
-      @if (hommeDragon()!.sheetData.avatar) {
-        <p>Avatar : {{ hommeDragon()!.sheetData.avatar }}</p>
-      }
-      @if (hommeDragon()!.sheetData.mondesProteges) {
-        <p>Mondes protégés : {{ hommeDragon()!.sheetData.mondesProteges }}</p>
-      }
-
-      @if (currentPendingLevel()) {
-        <section class="homme-dragon-sheet__eveil-prompt">
-          <p>Niveau {{ currentPendingLevel() }} atteint — choisissez un pouvoir d'éveil parmi ceux restants :</p>
-          @if (eveilPowersForCurrentLevel().length === 0) {
-            <p class="muted">Aucun pouvoir d'éveil disponible.</p>
-          } @else {
-            <select [ngModel]="selectedEveilPowerKey()" name="eveilPower" (ngModelChange)="selectedEveilPowerKey.set($event)">
-              <option [ngValue]="null" disabled>—</option>
-              @for (p of eveilPowersForCurrentLevel(); track p.key) {
-                <option [ngValue]="p.key">{{ eveilPowerLabel(p.key) }}</option>
+      <div class="homme-dragon-sheet__body">
+        <div class="homme-dragon-sheet__column">
+          <section class="homme-dragon-sheet__card">
+            <h2 class="homme-dragon-sheet__card-title">{{ theme.tone()['homme-dragon.artefact_label'] }}</h2>
+            @if (!editingArtefact()) {
+              <p>
+                @if (artefactDetail(); as d) {
+                  <button
+                    type="button"
+                    class="homme-dragon-sheet__detail-trigger"
+                    (click)="detail.open(d.title, d.body, $event)"
+                  >{{ d.title }}</button>
+                } @else {
+                  {{ artefactLabel() }}
+                }
+                <button mat-button type="button" (click)="openArtefactEdit()">{{ theme.tone()['common.modifier'] }}</button>
+              </p>
+              @if (artefactCadeau(); as cadeau) {
+                <p class="homme-dragon-sheet__cadeau">
+                  <span class="homme-dragon-sheet__cadeau-label">Artefact cadeau :</span>
+                  @if (cadeau.detail; as d) {
+                    <button
+                      type="button"
+                      class="homme-dragon-sheet__detail-trigger"
+                      (click)="detail.open(d.title, d.body, $event)"
+                    >{{ d.title }}</button>
+                  } @else {
+                    {{ cadeau.label }}
+                  }
+                  @if (cadeau.raceLabel) {
+                    <span class="homme-dragon-sheet__souffle-note">({{ cadeau.raceLabel }})</span>
+                  }
+                </p>
               }
-            </select>
-            <button
-              mat-flat-button
-              color="primary"
-              type="button"
-              [disabled]="!selectedEveilPowerKey() || choosingEveilPower()"
-              (click)="onChooseEveilPower()"
-            >
-              Confirmer
-            </button>
+            } @else {
+              <div class="homme-dragon-sheet__artefact-edit">
+                <select [ngModel]="editArtefactKey()" name="editArtefact" (ngModelChange)="editArtefactKey.set($event)">
+                  @for (a of artefactsForExistingRace(); track a.key) {
+                    <option [ngValue]="a.key">{{ $any(a.data).label }}</option>
+                  }
+                </select>
+                <button mat-flat-button color="primary" type="button" [disabled]="updating()" (click)="onArtefactSubmit()">
+                  {{ theme.tone()['common.confirmer'] }}
+                </button>
+                <button mat-button type="button" (click)="editingArtefact.set(false)">{{ theme.tone()['common.annuler'] }}</button>
+                @if (updateError()) {
+                  <p class="error">{{ updateError() }}</p>
+                }
+              </div>
+            }
+          </section>
+
+          @if (
+            hommeDragon()!.sheetData.apparence ||
+            hommeDragon()!.sheetData.caractere ||
+            hommeDragon()!.sheetData.vocation ||
+            hommeDragon()!.sheetData.demeure ||
+            hommeDragon()!.sheetData.avatar ||
+            hommeDragon()!.sheetData.mondesProteges
+          ) {
+            <section class="homme-dragon-sheet__card">
+              <h2 class="homme-dragon-sheet__card-title">Présentation</h2>
+              @if (hommeDragon()!.sheetData.apparence) {
+                <p class="homme-dragon-sheet__detail">Apparence : {{ hommeDragon()!.sheetData.apparence }}</p>
+              }
+              @if (hommeDragon()!.sheetData.caractere) {
+                <p class="homme-dragon-sheet__detail">Caractère : {{ hommeDragon()!.sheetData.caractere }}</p>
+              }
+              @if (hommeDragon()!.sheetData.vocation) {
+                <p class="homme-dragon-sheet__detail">Vocation : {{ hommeDragon()!.sheetData.vocation }}</p>
+              }
+              @if (hommeDragon()!.sheetData.demeure) {
+                <p class="homme-dragon-sheet__detail">Demeure : {{ hommeDragon()!.sheetData.demeure }}</p>
+              }
+              @if (hommeDragon()!.sheetData.avatar) {
+                <p class="homme-dragon-sheet__detail">Avatar : {{ hommeDragon()!.sheetData.avatar }}</p>
+              }
+              @if (hommeDragon()!.sheetData.mondesProteges) {
+                <p class="homme-dragon-sheet__detail">Mondes protégés : {{ hommeDragon()!.sheetData.mondesProteges }}</p>
+              }
+            </section>
           }
-          @if (eveilPowerError()) {
-            <p class="error">{{ eveilPowerError() }}</p>
+
+          @if (acquiredCapacities().length > 0) {
+            <section class="homme-dragon-sheet__card homme-dragon-sheet__capacities">
+              <h2 class="homme-dragon-sheet__card-title">Capacités de niveau</h2>
+              <ul class="homme-dragon-sheet__talent-list">
+                @for (c of acquiredCapacities(); track c.key) {
+                  <li class="homme-dragon-sheet__capacity">
+                    <span class="homme-dragon-sheet__capacity-name">{{ c.label }}</span>
+                    <span class="stat-pill">Niveau {{ c.level }}</span>
+                    @if (c.description) {
+                      <p class="homme-dragon-sheet__capacity-text">{{ c.description }}</p>
+                    }
+                  </li>
+                }
+              </ul>
+            </section>
           }
-        </section>
-      }
 
-      @if (hommeDragon()!.eveilPowers.length > 0) {
-        <section class="homme-dragon-sheet__eveil-powers">
-          <h4>Pouvoirs d'éveil</h4>
-          <ul>
-            @for (ep of hommeDragon()!.eveilPowers; track ep.level) {
-              <li>Niveau {{ ep.level }} : {{ eveilPowerLabel(ep.key) }}</li>
+          @if (canChooseCadeau()) {
+            <section class="homme-dragon-sheet__card homme-dragon-sheet__cadeau-prompt">
+              <h2 class="homme-dragon-sheet__card-title">Artefact cadeau à choisir</h2>
+              <p>
+                Niveau {{ artefactCadeauLevel }} atteint — les hommes-dragons des autres races vous offrent un
+                artefact. Choisissez-en un parmi ceux des trois autres races.
+              </p>
+              @if (cadeauOptions().length === 0) {
+                <p class="muted">{{ theme.tone()['hd.sheet_cadeau_empty'] }}</p>
+              } @else if (!confirmingCadeau()) {
+                <div
+                  class="homme-dragon-sheet__cadeau-grid"
+                  role="radiogroup"
+                  aria-label="Artefact cadeau"
+                  appRadioGroupNav
+                >
+                  @for (o of cadeauOptions(); track o.option.key) {
+                    <div
+                      class="homme-dragon-sheet__cadeau-option"
+                      [class.homme-dragon-sheet__cadeau-option--vert]="o.race === 'DRAGON_VERT'"
+                      [class.homme-dragon-sheet__cadeau-option--bleu]="o.race === 'DRAGON_BLEU'"
+                      [class.homme-dragon-sheet__cadeau-option--rouge]="o.race === 'DRAGON_ROUGE'"
+                      [class.homme-dragon-sheet__cadeau-option--noir]="o.race === 'DRAGON_NOIR'"
+                    >
+                      <app-choice-card
+                        [option]="o.option"
+                        [selected]="selectedCadeauKey() === o.option.key"
+                        [tint]="true"
+                        [badge]="o.tag"
+                        [fullDetail]="true"
+                        (selectedOption)="selectCadeau($event)"
+                      />
+                    </div>
+                  }
+                </div>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  class="homme-dragon-sheet__cadeau-next"
+                  [disabled]="!selectedCadeauKey()"
+                  (click)="askCadeauConfirmation()"
+                >
+                  {{ theme.tone()['hd.sheet_cadeau_choose_btn'] }}
+                </button>
+              } @else {
+                <div class="homme-dragon-sheet__cadeau-confirm" role="alertdialog" tabindex="-1" aria-labelledby="cadeau-confirm-title">
+                  <p id="cadeau-confirm-title">
+                    <strong>{{ theme.tone()['hd.sheet_cadeau_confirm_strong'] }}</strong>
+                    {{ cadeauConfirmText() }}
+                  </p>
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    [disabled]="choosingCadeau()"
+                    (click)="onConfirmCadeau()"
+                  >
+                    {{ theme.tone()['hd.sheet_cadeau_confirm_btn'] }}
+                  </button>
+                  <button mat-button type="button" [disabled]="choosingCadeau()" (click)="cancelCadeauConfirmation()">
+                    {{ theme.tone()['hd.sheet_cadeau_back_btn'] }}
+                  </button>
+                </div>
+              }
+              @if (cadeauError()) {
+                <p class="error" role="alert">{{ cadeauError() }}</p>
+              }
+            </section>
+          }
+
+          @if (currentPendingLevel()) {
+            <section class="homme-dragon-sheet__card homme-dragon-sheet__eveil-prompt">
+              <h2 class="homme-dragon-sheet__card-title">Pouvoir d'éveil à choisir</h2>
+              <p>Niveau {{ currentPendingLevel() }} atteint — choisissez un pouvoir d'éveil parmi ceux restants :</p>
+              @if (eveilPowersForCurrentLevel().length === 0) {
+                <p class="muted">{{ theme.tone()['hd.sheet_eveil_empty'] }}</p>
+              } @else {
+                <select [ngModel]="selectedEveilPowerKey()" name="eveilPower" (ngModelChange)="selectedEveilPowerKey.set($event)">
+                  <option [ngValue]="null" disabled>—</option>
+                  @for (p of eveilPowersForCurrentLevel(); track p.key) {
+                    <option [ngValue]="p.key">{{ eveilPowerLabel(p.key) }}</option>
+                  }
+                </select>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!selectedEveilPowerKey() || choosingEveilPower()"
+                  (click)="onChooseEveilPower()"
+                >
+                  {{ theme.tone()['common.confirmer'] }}
+                </button>
+              }
+              @if (eveilPowerError()) {
+                <p class="error">{{ eveilPowerError() }}</p>
+              }
+            </section>
+          }
+
+          @if (hommeDragon()!.eveilPowers.length > 0) {
+            <section class="homme-dragon-sheet__card homme-dragon-sheet__eveil-powers">
+              <h2 class="homme-dragon-sheet__card-title">Pouvoirs d'éveil</h2>
+              <ul class="homme-dragon-sheet__talent-list">
+                @for (ep of hommeDragon()!.eveilPowers; track ep.level) {
+                  <li>
+                    Niveau {{ ep.level }} :
+                    @if (eveilPowerDetail(ep.key); as d) {
+                      <button
+                        type="button"
+                        class="homme-dragon-sheet__detail-trigger"
+                        (click)="detail.open(d.title, d.body, $event)"
+                      >{{ d.title }}</button>
+                    } @else {
+                      {{ eveilPowerLabel(ep.key) }}
+                    }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          <!-- Story 33.6 : réserve de souffles (MJ seul — la fiche entière lui est réservée), juste
+               avant le catalogue de lecture « Souffles ». -->
+          <app-reserve-section
+            [hommeDragonId]="hommeDragonId()"
+            [hommeDragon]="hommeDragon()!"
+            [souffleCatalog]="souffleCatalog()"
+            [ritualCatalog]="ritualCatalog()"
+            (updated)="hommeDragon.set($event)"
+          />
+
+          @if (hasSouffles()) {
+            <section class="homme-dragon-sheet__card homme-dragon-sheet__souffles">
+              <h2 class="homme-dragon-sheet__card-title">Souffles</h2>
+
+              @for (g of commonSouffleGroups(); track g.famille) {
+                <div class="homme-dragon-sheet__souffle-group" [attr.data-famille]="g.famille">
+                  <h3 class="homme-dragon-sheet__souffle-group-title">{{ g.label }}</h3>
+                  @if (g.consigne) {
+                    <p class="homme-dragon-sheet__souffle-consigne">{{ g.consigne }}</p>
+                  }
+                  <ng-container *ngTemplateOutlet="souffleList; context: { $implicit: g.souffles }" />
+                </div>
+              }
+
+              @if (raceSouffles().length > 0) {
+                <div class="homme-dragon-sheet__souffle-group homme-dragon-sheet__souffles-race">
+                  <h3 class="homme-dragon-sheet__souffle-group-title">
+                    Souffles du {{ raceLabel(hommeDragon()!.sheetData.race) }}
+                  </h3>
+                  <ng-container *ngTemplateOutlet="souffleList; context: { $implicit: raceSouffles() }" />
+                </div>
+              }
+
+              @if (otherRaceSouffleGroups().length > 0) {
+                <details class="homme-dragon-sheet__souffles-autres-races">
+                  <summary>Souffles des autres races</summary>
+                  @for (g of otherRaceSouffleGroups(); track g.race) {
+                    <div class="homme-dragon-sheet__souffle-group" [attr.data-race]="g.race">
+                      <h3 class="homme-dragon-sheet__souffle-group-title">Souffles du {{ raceLabel(g.race) }}</h3>
+                      <ng-container *ngTemplateOutlet="souffleList; context: { $implicit: g.souffles }" />
+                    </div>
+                  }
+                </details>
+              }
+            </section>
+          }
+
+          @if (rituals().length > 0) {
+            <section class="homme-dragon-sheet__card homme-dragon-sheet__rituals">
+              <h2 class="homme-dragon-sheet__card-title">Souffles rituels</h2>
+              <p class="homme-dragon-sheet__souffle-consigne">
+                Mère-dragon : ces souffles peuvent être placés dans la réserve, sans décompte.
+              </p>
+              <ng-container *ngTemplateOutlet="souffleList; context: { $implicit: rituals() }" />
+            </section>
+          }
+
+          <ng-template #souffleList let-souffles>
+            <ul class="homme-dragon-sheet__talent-list">
+              @for (s of souffles; track s.key) {
+                <li>
+                  @if (souffleDetail(s); as d) {
+                    <button
+                      type="button"
+                      class="homme-dragon-sheet__detail-trigger"
+                      (click)="detail.open(d.title, d.body, $event)"
+                    >{{ d.title }}</button>
+                  } @else {
+                    {{ souffleLabel(s) }}
+                  }
+                  @if (souffleCost(s); as cost) {
+                    <span class="stat-pill">{{ cost }}</span>
+                  }
+                  @if (souffleNonReservable(s)) {
+                    <span class="homme-dragon-sheet__souffle-note">non réservable</span>
+                  }
+                </li>
+              }
+            </ul>
+          </ng-template>
+        </div>
+
+        <div class="homme-dragon-sheet__column">
+          <section class="homme-dragon-sheet__card homme-dragon-sheet__derived">
+            <h2 class="homme-dragon-sheet__card-title">Statistiques dérivées</h2>
+            <div class="homme-dragon-sheet__pill-grid">
+              <span class="stat-pill">Niveau : {{ hommeDragon()!.derived.level }}</span>
+              <span class="stat-pill">Points de Souffle : {{ hommeDragon()!.derived.PS }}</span>
+            </div>
+          </section>
+
+          <!-- Story 33.8 (AD-23) : un Homme Dragon suit 0..N aventures. Chaque aventure porte ses
+               voyageurs protégés, un lien vers la partie et « Retirer » (confirmation : le niveau
+               peut baisser, rien n'est purgé) ; « Ajouter une aventure » lit les signaux déjà
+               calculés (HOMME_DRAGON_A_CREER). -->
+          <section class="homme-dragon-sheet__card homme-dragon-sheet__aventures">
+            <h2 class="homme-dragon-sheet__card-title">Aventures</h2>
+            @if (aventures().length === 0) {
+              <p class="muted">{{ theme.tone()['hd.sheet_aventures_empty'] }}</p>
+            } @else {
+              <ul class="homme-dragon-sheet__aventure-list">
+                @for (a of aventures(); track a.partieId) {
+                  <li class="homme-dragon-sheet__aventure">
+                    <div class="homme-dragon-sheet__aventure-header">
+                      <a class="homme-dragon-sheet__aventure-name" [routerLink]="['/parties', a.partieId]">{{ a.nom }}</a>
+                      <button
+                        mat-button
+                        type="button"
+                        class="homme-dragon-sheet__aventure-remove"
+                        [disabled]="aventureBusy()"
+                        [attr.aria-label]="removeAventureAria(a.nom)"
+                        (click)="onRemoveAventure(a)"
+                      >
+                        {{ theme.tone()['common.retirer'] }}
+                      </button>
+                    </div>
+                    <p class="homme-dragon-sheet__aventure-voyageurs-title">Voyageurs protégés</p>
+                    @if (a.voyageurs.length === 0) {
+                      <p class="muted">{{ theme.tone()['hd.sheet_voyageurs_empty'] }}</p>
+                    } @else {
+                      <ul class="homme-dragon-sheet__voyageurs">
+                        @for (v of a.voyageurs; track v.userId) {
+                          <li>
+                            <app-identity-label
+                              [playerName]="v.displayName"
+                              [pseudo]="v.pseudo"
+                              [ambiguous]="isAmbiguous(a.partieId, v.userId)"
+                            />
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </li>
+                }
+              </ul>
             }
-          </ul>
-        </section>
-      }
 
-      <section class="homme-dragon-sheet__derived">
-        <p>Niveau : {{ hommeDragon()!.derived.level }}</p>
-        <p>Points de Souffle : {{ hommeDragon()!.derived.PS }}</p>
-      </section>
+            <div class="homme-dragon-sheet__aventure-add">
+              @if (eligibleAventures().length === 0) {
+                <p class="muted">{{ theme.tone()['hd.sheet_aventure_add_empty'] }}</p>
+              } @else {
+                <label for="homme-dragon-add-aventure">{{ theme.tone()['common.ajouter_une_aventure'] }}</label>
+                <select
+                  id="homme-dragon-add-aventure"
+                  name="addAventure"
+                  [ngModel]="selectedAventureId()"
+                  (ngModelChange)="selectedAventureId.set($event)"
+                >
+                  <option [ngValue]="null" disabled>—</option>
+                  @for (p of eligibleAventures(); track p.id) {
+                    <option [ngValue]="p.id">{{ p.name }}</option>
+                  }
+                </select>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!selectedAventureId() || aventureBusy()"
+                  (click)="onAddAventure()"
+                >
+                  {{ theme.tone()['common.ajouter_une_aventure'] }}
+                </button>
+              }
+              @if (aventureError()) {
+                <p class="error" role="alert">{{ aventureError() }}</p>
+              }
+            </div>
+          </section>
 
-      <section class="homme-dragon-sheet__voyageurs">
-        <h4>Voyageurs protégés</h4>
-        @if (hommeDragon()!.voyageursProteges.length === 0) {
-          <p class="muted">Aucun voyageur pour l'instant.</p>
-        } @else {
-          <ul>
-            @for (v of hommeDragon()!.voyageursProteges; track v.userId) {
-              <li>{{ v.pseudo }}</li>
+          <section class="homme-dragon-sheet__card homme-dragon-sheet__historique">
+            <h2 class="homme-dragon-sheet__card-title">Historique</h2>
+            @if (hommeDragon()!.historique.length === 0) {
+              <p class="muted">{{ theme.tone()['hd.sheet_historique_empty'] }}</p>
+            } @else {
+              <ul>
+                @for (h of hommeDragon()!.historique; track h.partieId + h.scenarioTitle + h.date) {
+                  <li>
+                    {{ h.scenarioTitle }}
+                    @if (aventureName(h.partieId); as nom) {
+                      <span class="homme-dragon-sheet__historique-aventure">({{ nom }})</span>
+                    }
+                    — {{ h.date | date: 'longDate' }} — {{ h.participants.join(', ') }}
+                  </li>
+                }
+              </ul>
             }
-          </ul>
-        }
-      </section>
-
-      <section class="homme-dragon-sheet__historique">
-        <h4>Historique</h4>
-        @if (hommeDragon()!.historique.length === 0) {
-          <p class="muted">Aucun scénario joué pour l'instant.</p>
-        } @else {
-          <ul>
-            @for (h of hommeDragon()!.historique; track h.scenarioTitle + h.date) {
-              <li>{{ h.scenarioTitle }} — {{ h.date | date: 'longDate' }} — {{ h.participants.join(', ') }}</li>
-            }
-          </ul>
-        }
-      </section>
+          </section>
+        </div>
+      </div>
     </div>
+  }
+
+  @if (detail.selected(); as d) {
+    <app-detail-surface
+      [title]="d.title"
+      [body]="d.body"
+      [rows]="d.rows ?? []"
+      [narrative]="d.narrative ?? ''"
+      [openToken]="detail.openToken()"
+      (closed)="detail.close()"
+    />
   }
 </div>

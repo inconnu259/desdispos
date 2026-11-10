@@ -3,6 +3,9 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { vi } from 'vitest';
 import { PortraitCropper, type PortraitCropperData } from './portrait-cropper';
 import { CharacterService } from '../../../core/characters/character.service';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function makeCharacterService(overrides: Partial<CharacterService> = {}) {
   return {
@@ -265,7 +268,7 @@ describe('PortraitCropper', () => {
     const skipBtn: HTMLButtonElement = fixture.nativeElement.querySelector(
       '.portrait-cropper__actions button:not([color="primary"])',
     );
-    expect(skipBtn.textContent?.trim()).toBe('Passer cette étape');
+    expect(skipBtn.textContent?.trim()).toBe(GRIMOIRE_TONE['common.passer_cette_etape']);
     skipBtn.click();
     expect(skipSpy).toHaveBeenCalled();
   });
@@ -290,7 +293,7 @@ describe('PortraitCropper', () => {
     const cancelBtn: HTMLButtonElement = fixture.nativeElement.querySelector(
       '.portrait-cropper__actions button:not([color="primary"])',
     );
-    expect(cancelBtn.textContent?.trim()).toBe('Annuler');
+    expect(cancelBtn.textContent?.trim()).toBe(GRIMOIRE_TONE['common.annuler']);
     cancelBtn.click();
     expect(close).toHaveBeenCalledWith(null);
   });

@@ -1,28 +1,23 @@
 import { Component, computed, input } from '@angular/core';
 import type { ScenarioStatus } from '@master-jdr/shared';
+import { scenarioState } from '../../../core/status/status-derivation';
+import { StatusBadge } from '../../../shared/status-badge/status-badge';
 
-interface StatusPresentation {
-  label: string;
-  cssClass: string;
-}
-
-// Microcopy joueur : COURANT s'affiche "En cours", jamais littéralement "Courant" (nom technique
-// du statut, cf. EXPERIENCE.md §3). Aucune nouvelle couleur — classes CSS mappées aux tokens
-// existants dans scenario-status-badge.scss (--jdr-accent-1/--color-unknown/--jdr-text-muted).
-const PRESENTATION: Record<ScenarioStatus, StatusPresentation> = {
-  BROUILLON: { label: 'Brouillon', cssClass: 'status-brouillon' },
-  A_VENIR: { label: 'À venir', cssClass: 'status-a-venir' },
-  COURANT: { label: 'En cours', cssClass: 'status-courant' },
-  PASSE: { label: 'Passé', cssClass: 'status-passe' },
-};
-
+/**
+ * Story 32.3 — simple ADAPTATEUR : `ScenarioStatus` → état, puis la `StatusBadge` partagée.
+ *
+ * Ce composant ne porte plus ni libellé, ni couleur, ni feuille de style propre (les trois ont
+ * rejoint `core/status` et `shared/status-badge`). Il survit parce que ses trois sites d'appel —
+ * la chronologie, l'éditeur et le dialogue de lecture — passent un `status`, pas un état : les
+ * réaligner d'un coup ne demandait donc de toucher aucun de ces trois gabarits.
+ */
 @Component({
   selector: 'app-scenario-status-badge',
+  imports: [StatusBadge],
   templateUrl: './scenario-status-badge.html',
-  styleUrl: './scenario-status-badge.scss',
 })
 export class ScenarioStatusBadge {
   readonly status = input.required<ScenarioStatus>();
 
-  protected readonly presentation = computed(() => PRESENTATION[this.status()]);
+  protected readonly state = computed(() => scenarioState(this.status()));
 }

@@ -1,0 +1,63 @@
+<div class="wizard-summary">
+  <section class="wizard-summary__card" aria-labelledby="wizard-summary-title">
+    <h2 id="wizard-summary-title" class="wizard-summary__title">{{ title() }}</h2>
+
+    @if (derived(); as stats) {
+      <div class="wizard-summary__pills">
+        <span class="stat-pill">PV {{ stats.PV }}</span>
+        <span class="stat-pill">PE {{ stats.PE }}</span>
+        <span class="stat-pill">Condition {{ stats.Condition }}</span>
+        <span class="stat-pill">Initiative {{ stats.Initiative }}</span>
+        <span class="stat-pill">Encombrement max {{ stats.Encombrement }}</span>
+      </div>
+    } @else {
+      <p class="wizard-summary__hint">{{ theme.tone()['character.recap_empty_hint'] }}</p>
+    }
+
+    @if (rows().length > 0) {
+      <dl class="wizard-summary__rows">
+        @for (row of rows(); track row.label) {
+          <dt>{{ row.label }}</dt>
+          <dd>{{ row.value }}</dd>
+        }
+      </dl>
+    }
+
+    @if (attributes(); as attrs) {
+      <div class="wizard-summary__attrs">
+        @for (attr of ATTRS; track attr) {
+          <div class="wizard-summary__attr">
+            <small>{{ attr }}</small>
+            <b>{{ attrs[attr] }}</b>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  @if (cart().length > 0) {
+    <section class="wizard-summary__card" aria-labelledby="wizard-summary-cart">
+      <h2 id="wizard-summary-cart" class="wizard-summary__title">
+        {{ theme.tone()['character.recap_cart_title'] }}
+        <span class="wizard-summary__count">· {{ cartCount() }}</span>
+      </h2>
+      <ul class="wizard-summary__cart">
+        @for (line of cart(); track line.key) {
+          <li>
+            <span>{{ line.quantity }}× {{ line.label }}</span>
+            <button
+              type="button"
+              class="wizard-summary__remove"
+              [attr.aria-label]="theme.tone()['character.recap_remove'] + ' ' + line.label"
+              (click)="remove(line.key)"
+            >{{ theme.tone()['character.recap_remove'] }}</button>
+          </li>
+        }
+      </ul>
+      <div class="wizard-summary__total">
+        <span>{{ theme.tone()['character.recap_total'] }}</span>
+        <span>{{ cartTotal() }} Po</span>
+      </div>
+    </section>
+  }
+</div>

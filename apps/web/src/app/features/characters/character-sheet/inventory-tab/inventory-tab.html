@@ -1,9 +1,15 @@
 <div class="inventory-tab">
-  <app-encumbrance-bar [totalWeight]="totalWeight()" [limit]="character().derived.Encombrement" />
+  @if (equipmentHidden()) {
+    <p class="inventory-tab__empty">{{ theme.tone()['evolution.hidden_marker'] }}</p>
+  } @else if (character().derived) {
+    <app-encumbrance-bar [totalWeight]="totalWeight()" [limit]="character().derived.Encombrement" />
+  }
 
   <section class="inventory-tab__section">
     <h3>Objets</h3>
-    @if (individual().length === 0) {
+    @if (equipmentHidden()) {
+      <p class="inventory-tab__empty">{{ theme.tone()['evolution.hidden_marker'] }}</p>
+    } @else if (individual().length === 0) {
       <p class="inventory-tab__empty">{{ theme.tone()['evolution.inventory_empty'] }}</p>
     } @else {
       <ul class="inventory-tab__list">
@@ -21,13 +27,13 @@
                 />
                 <input
                   type="text"
-                  placeholder="Prix (facultatif)"
+                  [placeholder]="theme.tone()['common.prix_facultatif']"
                   [value]="editPrice() ?? ''"
                   (input)="editPrice.set($any($event.target).value)"
                 />
                 <input
                   type="text"
-                  placeholder="Effet (facultatif)"
+                  [placeholder]="theme.tone()['common.effet_facultatif']"
                   [value]="editEffect() ?? ''"
                   (input)="editEffect.set($any($event.target).value)"
                 />
@@ -36,9 +42,9 @@
                   type="button"
                   (click)="isOwner() ? submitEdit(item.id) : submitMjEdit(item.id)"
                 >
-                  Valider
+                  {{ theme.tone()['common.valider'] }}
                 </button>
-                <button mat-button type="button" (click)="cancelEdit()">Annuler</button>
+                <button mat-button type="button" (click)="cancelEdit()">{{ theme.tone()['common.annuler'] }}</button>
               </div>
             } @else {
               <app-inventory-item-row
@@ -62,7 +68,7 @@
       <form class="inventory-tab__add-form" (submit)="$event.preventDefault(); submitAdd()">
         <input
           type="text"
-          placeholder="Nom de l'objet"
+          [placeholder]="theme.tone()['common.nom_de_l_objet']"
           [value]="newItemName()"
           (input)="newItemName.set($any($event.target).value)"
         />
@@ -70,19 +76,19 @@
           type="number"
           min="0"
           step="0.1"
-          placeholder="Poids"
+          [placeholder]="theme.tone()['common.poids']"
           [value]="newItemWeight()"
           (input)="newItemWeight.set($any($event.target).valueAsNumber || undefined)"
         />
         <input
           type="text"
-          placeholder="Prix (facultatif)"
+          [placeholder]="theme.tone()['common.prix_facultatif']"
           [value]="newItemPrice() ?? ''"
           (input)="newItemPrice.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Effet (facultatif)"
+          [placeholder]="theme.tone()['common.effet_facultatif']"
           [value]="newItemEffect() ?? ''"
           (input)="newItemEffect.set($any($event.target).value)"
         />
@@ -96,7 +102,7 @@
       <form class="inventory-tab__mj-add-form" (submit)="$event.preventDefault(); submitMjAdd()">
         <input
           type="text"
-          placeholder="Nom de l'objet"
+          [placeholder]="theme.tone()['common.nom_de_l_objet']"
           [value]="newItemName()"
           (input)="newItemName.set($any($event.target).value)"
         />
@@ -104,19 +110,19 @@
           type="number"
           min="0"
           step="0.1"
-          placeholder="Poids"
+          [placeholder]="theme.tone()['common.poids']"
           [value]="newItemWeight()"
           (input)="newItemWeight.set($any($event.target).valueAsNumber || undefined)"
         />
         <input
           type="text"
-          placeholder="Prix (facultatif)"
+          [placeholder]="theme.tone()['common.prix_facultatif']"
           [value]="newItemPrice() ?? ''"
           (input)="newItemPrice.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Effet (facultatif)"
+          [placeholder]="theme.tone()['common.effet_facultatif']"
           [value]="newItemEffect() ?? ''"
           (input)="newItemEffect.set($any($event.target).value)"
         />
@@ -129,8 +135,10 @@
 
   <section class="inventory-tab__section">
     <h3>Contenants</h3>
-    @if (contenants().length === 0) {
-      <p class="inventory-tab__empty">Aucun contenant pour le moment.</p>
+    @if (equipmentHidden()) {
+      <p class="inventory-tab__empty">{{ theme.tone()['evolution.hidden_marker'] }}</p>
+    } @else if (contenants().length === 0) {
+      <p class="inventory-tab__empty">{{ theme.tone()['characters_sheet.inventory_contenants_empty'] }}</p>
     } @else {
       <ul class="inventory-tab__list">
         @for (item of contenants(); track item.id) {
@@ -152,13 +160,13 @@
                 />
                 <input
                   type="text"
-                  placeholder="Prix (facultatif)"
+                  [placeholder]="theme.tone()['common.prix_facultatif']"
                   [value]="editContenantPrice() ?? ''"
                   (input)="editContenantPrice.set($any($event.target).value)"
                 />
                 <input
                   type="text"
-                  placeholder="Effet (facultatif)"
+                  [placeholder]="theme.tone()['common.effet_facultatif']"
                   [value]="editContenantEffect() ?? ''"
                   (input)="editContenantEffect.set($any($event.target).value)"
                 />
@@ -167,9 +175,9 @@
                   type="button"
                   (click)="isOwner() ? submitEditContenant(item.id) : submitMjEditContenant(item.id)"
                 >
-                  Valider
+                  {{ theme.tone()['common.valider'] }}
                 </button>
-                <button mat-button type="button" (click)="cancelEditContenant()">Annuler</button>
+                <button mat-button type="button" (click)="cancelEditContenant()">{{ theme.tone()['common.annuler'] }}</button>
               </div>
             } @else {
               <app-inventory-item-row
@@ -193,7 +201,7 @@
       <form class="inventory-tab__add-form" (submit)="$event.preventDefault(); submitAddContenant()">
         <input
           type="text"
-          placeholder="Nom du contenant"
+          [placeholder]="theme.tone()['common.nom_du_contenant']"
           [value]="newContenantName()"
           (input)="newContenantName.set($any($event.target).value)"
         />
@@ -202,24 +210,24 @@
           min="0"
           step="0.1"
           required
-          placeholder="Poids"
+          [placeholder]="theme.tone()['common.poids']"
           [value]="newContenantWeight()"
           (input)="onNewContenantWeightInput($any($event.target).valueAsNumber)"
         />
         <input
           type="text"
-          placeholder="Prix (facultatif)"
+          [placeholder]="theme.tone()['common.prix_facultatif']"
           [value]="newContenantPrice() ?? ''"
           (input)="newContenantPrice.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Effet (facultatif)"
+          [placeholder]="theme.tone()['common.effet_facultatif']"
           [value]="newContenantEffect() ?? ''"
           (input)="newContenantEffect.set($any($event.target).value)"
         />
         <button mat-flat-button type="submit" [disabled]="contenantSubmitting()">
-          + Ajouter un contenant
+          {{ theme.tone()['characters_sheet.inventory_add_contenant_cta'] }}
         </button>
       </form>
     }
@@ -228,7 +236,7 @@
       <form class="inventory-tab__mj-add-form" (submit)="$event.preventDefault(); submitMjAddContenant()">
         <input
           type="text"
-          placeholder="Nom du contenant"
+          [placeholder]="theme.tone()['common.nom_du_contenant']"
           [value]="newContenantName()"
           (input)="newContenantName.set($any($event.target).value)"
         />
@@ -237,24 +245,24 @@
           min="0"
           step="0.1"
           required
-          placeholder="Poids"
+          [placeholder]="theme.tone()['common.poids']"
           [value]="newContenantWeight()"
           (input)="onNewContenantWeightInput($any($event.target).valueAsNumber)"
         />
         <input
           type="text"
-          placeholder="Prix (facultatif)"
+          [placeholder]="theme.tone()['common.prix_facultatif']"
           [value]="newContenantPrice() ?? ''"
           (input)="newContenantPrice.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Effet (facultatif)"
+          [placeholder]="theme.tone()['common.effet_facultatif']"
           [value]="newContenantEffect() ?? ''"
           (input)="newContenantEffect.set($any($event.target).value)"
         />
         <button mat-flat-button type="submit" [disabled]="contenantSubmitting()">
-          + Ajouter un contenant (MJ)
+          {{ theme.tone()['characters_sheet.inventory_mj_add_contenant_cta'] }}
         </button>
       </form>
     }
@@ -262,8 +270,10 @@
 
   <section class="inventory-tab__section">
     <h3>Animaux</h3>
-    @if (animaux().length === 0) {
-      <p class="inventory-tab__empty">Aucun animal pour le moment.</p>
+    @if (equipmentHidden()) {
+      <p class="inventory-tab__empty">{{ theme.tone()['evolution.hidden_marker'] }}</p>
+    } @else if (animaux().length === 0) {
+      <p class="inventory-tab__empty">{{ theme.tone()['characters_sheet.inventory_animaux_empty'] }}</p>
     } @else {
       <ul class="inventory-tab__list">
         @for (item of animaux(); track item.id) {
@@ -277,13 +287,13 @@
                 />
                 <input
                   type="text"
-                  placeholder="Prix (facultatif)"
+                  [placeholder]="theme.tone()['common.prix_facultatif']"
                   [value]="editAnimalPrice() ?? ''"
                   (input)="editAnimalPrice.set($any($event.target).value)"
                 />
                 <input
                   type="text"
-                  placeholder="Effet (facultatif)"
+                  [placeholder]="theme.tone()['common.effet_facultatif']"
                   [value]="editAnimalEffect() ?? ''"
                   (input)="editAnimalEffect.set($any($event.target).value)"
                 />
@@ -292,9 +302,9 @@
                   type="button"
                   (click)="isOwner() ? submitEditAnimal(item.id) : submitMjEditAnimal(item.id)"
                 >
-                  Valider
+                  {{ theme.tone()['common.valider'] }}
                 </button>
-                <button mat-button type="button" (click)="cancelEditAnimal()">Annuler</button>
+                <button mat-button type="button" (click)="cancelEditAnimal()">{{ theme.tone()['common.annuler'] }}</button>
               </div>
             } @else {
               <app-inventory-item-row
@@ -318,24 +328,24 @@
       <form class="inventory-tab__add-form" (submit)="$event.preventDefault(); submitAddAnimal()">
         <input
           type="text"
-          placeholder="Nom de l'animal"
+          [placeholder]="theme.tone()['common.nom_de_l_animal']"
           [value]="newAnimalName()"
           (input)="newAnimalName.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Prix (facultatif)"
+          [placeholder]="theme.tone()['common.prix_facultatif']"
           [value]="newAnimalPrice() ?? ''"
           (input)="newAnimalPrice.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Effet (facultatif)"
+          [placeholder]="theme.tone()['common.effet_facultatif']"
           [value]="newAnimalEffect() ?? ''"
           (input)="newAnimalEffect.set($any($event.target).value)"
         />
         <button mat-flat-button type="submit" [disabled]="animalSubmitting()">
-          + Ajouter un animal
+          {{ theme.tone()['characters_sheet.inventory_add_animal_cta'] }}
         </button>
       </form>
     }
@@ -344,24 +354,24 @@
       <form class="inventory-tab__mj-add-form" (submit)="$event.preventDefault(); submitMjAddAnimal()">
         <input
           type="text"
-          placeholder="Nom de l'animal"
+          [placeholder]="theme.tone()['common.nom_de_l_animal']"
           [value]="newAnimalName()"
           (input)="newAnimalName.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Prix (facultatif)"
+          [placeholder]="theme.tone()['common.prix_facultatif']"
           [value]="newAnimalPrice() ?? ''"
           (input)="newAnimalPrice.set($any($event.target).value)"
         />
         <input
           type="text"
-          placeholder="Effet (facultatif)"
+          [placeholder]="theme.tone()['common.effet_facultatif']"
           [value]="newAnimalEffect() ?? ''"
           (input)="newAnimalEffect.set($any($event.target).value)"
         />
         <button mat-flat-button type="submit" [disabled]="animalSubmitting()">
-          + Ajouter un animal (MJ)
+          {{ theme.tone()['characters_sheet.inventory_mj_add_animal_cta'] }}
         </button>
       </form>
     }

@@ -7,6 +7,10 @@ import {
   type AgendaEntry,
   type AgendaSealRequest,
 } from './calendar-agenda-view';
+import { TONE_MAP } from '../../../core/theme/tones';
+import { fillTone } from '../../../core/theme/tone-format';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 /** Toutes les dates des fixtures sont relatives à ce jour, injecté — aucun `new Date()` réel
  *  n'entre dans ces tests (piège n°14 de la story). */
@@ -109,7 +113,7 @@ describe('CalendarAgendaView — les trois sections (AC1, AC10)', () => {
   it('AC1 : trois sections, dans l’ordre contractuel', async () => {
     const fixture = await createAgenda([SEANCE, VOTE, INSCRIPTION, PASSEE]);
     expect(sectionTitles(fixture)).toEqual([
-      'Ce qui t’attend',
+      GRIMOIRE_TONE['dashboard.section_awaiting'],
       'Ce qui est annoncé',
       'Ce qui est révolu',
     ]);
@@ -129,14 +133,14 @@ describe('CalendarAgendaView — les trois sections (AC1, AC10)', () => {
 
   it('AC10 : une section sans entrée n’est pas rendue du tout', async () => {
     const fixture = await createAgenda([VOTE]);
-    expect(sectionTitles(fixture)).toEqual(['Ce qui t’attend']);
+    expect(sectionTitles(fixture)).toEqual([GRIMOIRE_TONE['dashboard.section_awaiting']]);
     expect(fixture.nativeElement.querySelectorAll('.agenda-section')).toHaveLength(1);
   });
 
   it('AC10 : rien à afficher → un message unique, aucune section', async () => {
     const fixture = await createAgenda([]);
     expect(fixture.nativeElement.querySelector('.agenda-view__empty').textContent).toContain(
-      'Rien ne t’attend',
+      GRIMOIRE_TONE['calendar.agenda.empty'],
     );
     expect(fixture.nativeElement.querySelectorAll('.agenda-section')).toHaveLength(0);
   });
@@ -191,10 +195,10 @@ describe('CalendarAgendaView — la date est une propriété de la ligne (AC2, A
 
   it('AC3 : une inscription sans date figure dans « Ça t’attend » et le dit', async () => {
     const fixture = await createAgenda([INSCRIPTION]);
-    expect(sectionTitles(fixture)).toEqual(['Ce qui t’attend']);
+    expect(sectionTitles(fixture)).toEqual([GRIMOIRE_TONE['dashboard.section_awaiting']]);
     const meta = fixture.nativeElement.querySelector('.agenda-entry__meta').textContent;
     expect(meta).toContain('3/5 inscrits');
-    expect(meta).toContain('sans date');
+    expect(meta).toContain(GRIMOIRE_TONE['calendar.agenda.no_date']);
   });
 
   it('AC3 : une entrée sans date ne rend aucun séparateur orphelin', async () => {
@@ -313,7 +317,9 @@ describe('CalendarAgendaView — activer une ligne (AC5, AC12)', () => {
 
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('.agenda-entry__open');
     expect(button).toBeTruthy();
-    expect(button.getAttribute('aria-label')).toContain('Ouvrir le scénario Le Convoi du Nord');
+    expect(button.getAttribute('aria-label')).toContain(
+      fillTone(GRIMOIRE_TONE['common.ouvrir_le_scenario_label'], { label: 'Le Convoi du Nord' }),
+    );
     expect(button.getAttribute('aria-label')).not.toContain('séance');
 
     button.click();
@@ -359,7 +365,9 @@ describe('CalendarAgendaView — le sélecteur de réponse survit à la refonte 
 
     expect(fixture.nativeElement.querySelector('app-poll-track')).toBeTruthy();
     const action: HTMLButtonElement = fixture.nativeElement.querySelector('.agenda-option__answer');
-    expect(action.getAttribute('aria-label')).toContain('Répondre au vote');
+    expect(action.getAttribute('aria-label')).toContain(
+      GRIMOIRE_TONE['common.repondre_au_vote_label'].split(' — ')[0],
+    );
     expect(action.getAttribute('aria-haspopup')).toBe('menu');
 
     action.click();
@@ -515,7 +523,9 @@ describe('CalendarAgendaView — les options dépliées (AC3, AC4)', () => {
     // Émise par `<app-poll-track>`, qui produit les DEUX formulations — la surface n'en
     // reformule aucune (36.6).
     expect(fixture.nativeElement.querySelector('app-poll-track .mine').textContent.trim()).toBe(
-      'tu as dit oui',
+      fillTone(GRIMOIRE_TONE['calendar.util_answer_mine'], {
+        answer: GRIMOIRE_TONE['calendar.util_answer_yes'],
+      }),
     );
   });
 });
@@ -607,12 +617,16 @@ describe('CalendarAgendaView — la méta d’une ligne de vote (AC14)', () => {
 
   it('au-delà de deux, ils sont résumés', async () => {
     const fixture = await createAgenda(options(0, 0, 0));
-    expect(meta(fixture)).toContain('3 créneaux proposés');
+    expect(meta(fixture)).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.agenda.slots_proposed'], { n: 3 }),
+    );
   });
 
   it('le compteur est celui du VOTE — le minimum sur les options, jamais la somme', async () => {
     const fixture = await createAgenda(options(3, 1, 0));
-    expect(meta(fixture)).toContain('0 sur 4 ont répondu');
+    expect(meta(fixture)).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.agenda.responded_count'], { n: 0, total: 4 }),
+    );
   });
 
   it('🚨 aucune piste au niveau du vote : une piste agrégée affirmerait un avis inexistant', async () => {
@@ -622,7 +636,9 @@ describe('CalendarAgendaView — la méta d’une ligne de vote (AC14)', () => {
 
   it('côté MJ, la méta nomme qui manque', async () => {
     const fixture = await createMjAgenda(options(1, 0, 0), { poll1: ['Léa', 'Tom'] });
-    expect(meta(fixture)).toContain('il manque Léa, Tom');
+    expect(meta(fixture)).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.agenda.missing_voters'], { names: 'Léa, Tom' }),
+    );
   });
 
   it('au-delà de trois manquants, elle en nomme trois et compte le reste', async () => {
@@ -655,10 +671,10 @@ describe('CalendarAgendaView — la séance sans date proposée (AC5, AC13)', ()
     const fixture = await createMjAgenda([SANS_DATE]);
     expect(entryTitles(fixture)).toEqual(['Le Convoi du Nord — Séance 4']);
     expect(fixture.nativeElement.querySelector('.agenda-entry__meta').textContent).toContain(
-      'Aucune date proposée',
+      GRIMOIRE_TONE['calendar.agenda.no_date_proposed'],
     );
     expect(fixture.nativeElement.querySelector('.agenda-entry__launch').textContent.trim()).toBe(
-      'Lancer un vote',
+      GRIMOIRE_TONE['calendar.agenda.action_launch_poll'],
     );
   });
 
@@ -679,5 +695,91 @@ describe('CalendarAgendaView — la séance sans date proposée (AC5, AC13)', ()
   it('elle se range en fin de « Ça t’attend », comme toute ligne sans date', async () => {
     const fixture = await createMjAgenda([SANS_DATE, ...options(1, 0, 0)]);
     expect(entryTitles(fixture)).toEqual(['Les Cendres d’Ashal', 'Le Convoi du Nord — Séance 4']);
+  });
+});
+
+describe('CalendarAgendaView — une plage tient en UNE ligne (Story 47.3)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const WEEKEND: AgendaEntry = {
+    key: 'seance-w',
+    type: 'mes-seances',
+    date: '2026-09-04',
+    slot: 'EVENING',
+    endDate: '2026-09-06',
+    endSlot: 'AFTERNOON',
+    label: 'Week-end jeux',
+    partieId: 'p1',
+    scenarioId: 'sc1',
+    seanceId: 'w',
+  };
+
+  it('une seule ligne « début → fin », dans la section de son début', async () => {
+    const fixture = await createAgenda([WEEKEND]);
+    expect(entryTitles(fixture)).toEqual(['Week-end jeux']);
+    const meta = fixture.nativeElement.querySelector('.agenda-entry__meta').textContent;
+    expect(meta).toContain('ven. 4 sept. soir → dim. 6 sept. après-midi');
+  });
+
+  it('commencée mais pas finie : encore « à venir » ; finie : elle quitte cette section', async () => {
+    const started = await createAgenda(
+      [{ ...WEEKEND, date: '2026-08-21', endDate: '2026-08-23', compteRenduManquant: true }],
+      false,
+      TODAY,
+    );
+    expect(sectionTitles(started)).toEqual([GRIMOIRE_TONE['calendar.agenda.section_scheduled']]);
+    TestBed.resetTestingModule();
+
+    const ended = await createAgenda(
+      [{ ...WEEKEND, date: '2026-08-19', endDate: '2026-08-21', compteRenduManquant: true }],
+      false,
+      TODAY,
+    );
+    expect(sectionTitles(ended)).not.toContain(GRIMOIRE_TONE['calendar.agenda.section_scheduled']);
+  });
+
+  it('un créneau seul : la ligne d’avant', async () => {
+    const fixture = await createAgenda([{ ...WEEKEND, endDate: undefined, endSlot: undefined }]);
+    const meta = fixture.nativeElement.querySelector('.agenda-entry__meta').textContent;
+    expect(meta).not.toContain('→');
+  });
+});
+
+describe('CalendarAgendaView — options de plusieurs créneaux, écrites de bout en bout (Story 47.5)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const spanned = (): AgendaEntry[] =>
+    options(0, 3, 1).map((o) => ({
+      ...o,
+      slot: 'EVENING' as const,
+      endDate: (
+        {
+          '2026-08-28': '2026-08-30',
+          '2026-08-29': '2026-08-31',
+          '2026-08-30': '2026-09-01',
+        } as Record<string, string>
+      )[o.date],
+      endSlot: 'AFTERNOON' as const,
+    }));
+
+  it('chaque option dépliée dit son début et sa fin', async () => {
+    const fixture = await createAgenda(spanned());
+    expect(optionLabels(fixture)).toEqual([
+      'sam. 29 août soir → lun. 31 août après-midi',
+      'dim. 30 août soir → mar. 1 sept. après-midi',
+      'ven. 28 août soir → dim. 30 août après-midi',
+    ]);
+  });
+
+  it('la demande de scellement porte la plage écrite', async () => {
+    const fixture = await createMjAgenda(spanned());
+    const requests: { dateLabel: string; optionId: string }[] = [];
+    fixture.componentInstance.sealRequested.subscribe(
+      (r: { dateLabel: string; optionId: string }) => requests.push(r),
+    );
+    (fixture.nativeElement.querySelector('.agenda-option__seal') as HTMLButtonElement).click();
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0].dateLabel).toBe('sam. 29 août soir → lun. 31 août après-midi');
   });
 });

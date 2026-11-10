@@ -168,4 +168,23 @@ describe('EquipmentPdfService', () => {
 
     expect(warnSpy).not.toHaveBeenCalled();
   });
+
+  it("derived absent (cadenas de visibilité Story 31.6, attributes/levelUps verrouillé) → aucun crash, champ 'limite_enc' omis (jamais un 0 trompeur)", async () => {
+    // `character.derived` reste typé plein (`CharacterDto`) mais peut être ABSENT à l'exécution
+    // pour un fellow player dont le MJ a verrouillé attributes/levelUps (cf. `hiddenFields`).
+    mockMapFields.mockReturnValue([
+      { field: 'joueur', value: 'Alice', kind: 'text' },
+      { field: 'limite_enc', value: '0', kind: 'text' },
+    ]);
+    const character = makeCharacter({ derived: undefined as never });
+
+    await expect(service.fillEquipmentPdf(character)).resolves.toBeInstanceOf(Buffer);
+
+    // Le `?? 0` (nécessaire pour ne pas crasher `EquipmentPdfInput.encombrementLimit: number`)
+    // reste transmis à mapEquipmentToPdfFields, mais le champ PDF qui en dépend est retiré ensuite
+    // — jamais écrit dans le formulaire (revue de code, cohérent avec RyuutamaPdfService).
+    expect(mockMapFields).toHaveBeenCalledWith(expect.objectContaining({ encombrementLimit: 0 }));
+    expect(mockForm.getTextField).not.toHaveBeenCalledWith('limite_enc');
+    expect(mockForm.getTextField).toHaveBeenCalledWith('joueur');
+  });
 });

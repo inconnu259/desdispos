@@ -183,7 +183,7 @@ describe('PartyBanner — dérivation (Story 29.10, AC1, AC2, AC3)', () => {
       emeraude.fixture.nativeElement.querySelector('.party-banner__monogram').textContent.trim(),
     ).toBe('CK');
 
-    emeraude.themeSvc.activeTheme.set('medieval-steampunk');
+    emeraude.themeSvc.activeTheme.set('atelier-cuivre');
     emeraude.fixture.detectChanges();
     await emeraude.fixture.whenStable();
 
@@ -196,7 +196,7 @@ describe('PartyBanner — dérivation (Story 29.10, AC1, AC2, AC3)', () => {
     const { fixture, themeSvc } = await render('large');
     const emeraudeComposition = composition(fixture);
 
-    themeSvc.activeTheme.set('medieval-steampunk');
+    themeSvc.activeTheme.set('atelier-cuivre');
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -215,7 +215,7 @@ describe('PartyBanner — dérivation (Story 29.10, AC1, AC2, AC3)', () => {
   it('les identifiants SVG sont uniques par instance — deux bannières ne partagent pas leurs défs', async () => {
     await TestBed.configureTestingModule({
       imports: [PartyBanner],
-      providers: [{ provide: ThemeToneService, useValue: makeThemeService('medieval-steampunk') }],
+      providers: [{ provide: ThemeToneService, useValue: makeThemeService('atelier-cuivre') }],
     }).compileComponents();
 
     const makeOne = () => {
@@ -273,8 +273,8 @@ describe('PartyBanner — composition par thème (Story 29.10, AC6)', () => {
     expect(leaves + motes).toBeGreaterThan(0);
   });
 
-  it('medieval-steampunk → grille constante et manomètre présents sur toute bannière', async () => {
-    const { fixture } = await render('large', makeThemeService('medieval-steampunk'));
+  it('atelier-cuivre → grille constante et manomètre présents sur toute bannière', async () => {
+    const { fixture } = await render('large', makeThemeService('atelier-cuivre'));
     expect(fixture.nativeElement.querySelector('.party-banner__grid')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.party-banner__gauge')).not.toBeNull();
     expect(
@@ -282,8 +282,8 @@ describe('PartyBanner — composition par thème (Story 29.10, AC6)', () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
-  it('medieval-steampunk → le manomètre est dessiné APRÈS les rouages (il reste au-dessus)', async () => {
-    const { fixture } = await render('large', makeThemeService('medieval-steampunk'));
+  it('atelier-cuivre → le manomètre est dessiné APRÈS les rouages (il reste au-dessus)', async () => {
+    const { fixture } = await render('large', makeThemeService('atelier-cuivre'));
     const svg = fixture.nativeElement.querySelector('svg.party-banner');
     const nodes = Array.from(svg.querySelectorAll('.party-banner__gear, .party-banner__gauge'));
     expect((nodes[nodes.length - 1] as Element).classList.contains('party-banner__gauge')).toBe(
@@ -313,7 +313,7 @@ describe('PartyBanner — portée de l’animation (Story 29.11, AC1, AC2, AC3)'
   });
 
   it('les rouages reçoivent leur vitesse tirée et leur sens dérivé', async () => {
-    const { fixture } = await render('large', makeThemeService('medieval-steampunk'));
+    const { fixture } = await render('large', makeThemeService('atelier-cuivre'));
     const spins = Array.from(
       fixture.nativeElement.querySelectorAll('.party-banner__gear-spin'),
     ) as SVGElement[];
@@ -362,7 +362,7 @@ describe('PartyBanner — portée de l’animation (Story 29.11, AC1, AC2, AC3)'
   });
 
   it('AC3 : même invariant sur l’aiguille du manomètre (Review Findings — piège réellement rencontré)', async () => {
-    const { fixture } = await render('large', makeThemeService('medieval-steampunk'));
+    const { fixture } = await render('large', makeThemeService('atelier-cuivre'));
     const pivot = fixture.nativeElement.querySelector(
       '.party-banner__gauge-needle-pivot',
     ) as SVGElement;

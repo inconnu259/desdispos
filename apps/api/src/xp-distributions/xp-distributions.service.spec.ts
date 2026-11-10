@@ -12,10 +12,11 @@ jest.mock('@master-jdr/game-rules', () => ({
 }));
 
 import { PrismaService } from '../prisma/prisma.service';
-import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
 import { CharacterService } from '../characters/character.service';
 import { XpDistributionsService } from './xp-distributions.service';
 import { objectLike } from '../common/test-utils/jest-typed';
+import { testGrant } from '../common/test-utils/grant';
 
 function makePrisma() {
   return {
@@ -24,8 +25,8 @@ function makePrisma() {
   };
 }
 
-function makeParties() {
-  return { getOwned: jest.fn() };
+function makePermissions() {
+  return { assert: jest.fn() };
 }
 
 function makeCharacters() {
@@ -35,19 +36,19 @@ function makeCharacters() {
 describe('XpDistributionsService', () => {
   let service: XpDistributionsService;
   let prisma: ReturnType<typeof makePrisma>;
-  let parties: ReturnType<typeof makeParties>;
+  let permissions: ReturnType<typeof makePermissions>;
   let characters: ReturnType<typeof makeCharacters>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     prisma = makePrisma();
-    parties = makeParties();
+    permissions = makePermissions();
     characters = makeCharacters();
     const module = await Test.createTestingModule({
       providers: [
         XpDistributionsService,
         { provide: PrismaService, useValue: prisma },
-        { provide: PartiesService, useValue: parties },
+        { provide: PermissionService, useValue: permissions },
         { provide: CharacterService, useValue: characters },
       ],
     }).compile();
@@ -55,19 +56,22 @@ describe('XpDistributionsService', () => {
   });
 
   describe('createDistribution()', () => {
-    it('non-MJ → 403 (getOwned rejette), aucune écriture', async () => {
-      parties.getOwned.mockRejectedValue(new ForbiddenException());
+    it('non-MJ → 403 (permissions.assert rejette), aucune écriture', async () => {
+      permissions.assert.mockRejectedValue(new ForbiddenException());
 
       await expect(
         service.createDistribution('p1', 'stranger', {
           entries: [{ characterId: 'c1', amount: 100 }],
         }),
       ).rejects.toThrow(ForbiddenException);
+      expect(permissions.assert).toHaveBeenCalledWith('stranger', 'XP_DISTRIBUTION_CREATE', {
+        partieId: 'p1',
+      });
       expect(prisma.xpDistribution.create).not.toHaveBeenCalled();
     });
 
     it("characterId n'appartenant pas à la Partie → 400, aucune écriture, applyXpDelta jamais appelé", async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.character.findMany.mockResolvedValue([
         { id: 'c1', partieId: 'p1' },
         { id: 'c2', partieId: 'AUTRE_PARTIE' },
@@ -86,7 +90,7 @@ describe('XpDistributionsService', () => {
     });
 
     it('succès → crée la distribution et appelle applyXpDelta une fois par entrée', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.character.findMany.mockResolvedValue([
         { id: 'c1', partieId: 'p1' },
         { id: 'c2', partieId: 'p1' },
@@ -160,7 +164,7 @@ describe('XpDistributionsService', () => {
     });
 
     it('montant + bonus du même personnage agrégés en un seul appel applyXpDelta (évite un double e-mail level-up)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.character.findMany.mockResolvedValue([{ id: 'c1', partieId: 'p1' }]);
       prisma.xpDistribution.create.mockResolvedValue({
         id: 'd1',
@@ -199,7 +203,7 @@ describe('XpDistributionsService', () => {
     });
 
     it('un échec isolé de applyXpDelta est loggé et n’interrompt pas les increments restants', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.character.findMany.mockResolvedValue([
         { id: 'c1', partieId: 'p1' },
         { id: 'c2', partieId: 'p1' },
@@ -246,12 +250,15 @@ describe('XpDistributionsService', () => {
 
   describe('listForPartie()', () => {
     it('non-MJ → 403', async () => {
-      parties.getOwned.mockRejectedValue(new ForbiddenException());
+      permissions.assert.mockRejectedValue(new ForbiddenException());
       await expect(service.listForPartie('p1', 'stranger')).rejects.toThrow(ForbiddenException);
+      expect(permissions.assert).toHaveBeenCalledWith('stranger', 'XP_DISTRIBUTION_READ', {
+        partieId: 'p1',
+      });
     });
 
     it('trie par createdAt desc avec tie-breaker id (déterministe, Story 17.1)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.xpDistribution.findMany.mockResolvedValue([]);
 
       await service.listForPartie('p1', 'mj1');
@@ -276,7 +283,7 @@ describe('XpDistributionsService', () => {
     });
 
     it('résout ownerPseudo/ownerDisplayName de chaque entrée depuis Character.userId → User', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.xpDistribution.findMany.mockResolvedValue([
         {
           id: 'd1',
@@ -305,7 +312,7 @@ describe('XpDistributionsService', () => {
     });
 
     it('skip/take fournis → transmis tels quels à Prisma (AC1)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.xpDistribution.findMany.mockResolvedValue([]);
 
       await service.listForPartie('p1', 'mj1', { skip: 20, take: 10 });
@@ -316,7 +323,7 @@ describe('XpDistributionsService', () => {
     });
 
     it('skip/take absents → aucune limite appliquée (comportement par défaut inchangé)', async () => {
-      parties.getOwned.mockResolvedValue({ id: 'p1', mjId: 'mj1' });
+      permissions.assert.mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1' }));
       prisma.xpDistribution.findMany.mockResolvedValue([]);
 
       await service.listForPartie('p1', 'mj1');

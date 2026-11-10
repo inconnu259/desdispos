@@ -1,0 +1,83 @@
+.dfd__heading {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.dfd__slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+/* Une ligne par créneau : le radio, la date en toutes lettres, puis le décompte. Le cadre épais du
+   créneau retenu double la coche — l'état n'est jamais porté par la couleur seule. */
+.dfd__slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--mat-sys-outline-variant, rgba(127, 127, 127, 0.4));
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dfd__slot--selected {
+  border-width: 2px;
+  padding: 9px 11px;
+  border-color: var(--mat-sys-primary, currentColor);
+}
+
+/* Un jour passé ne peut plus être retenu : estompé ET écrit (« Jour passé »), jamais la couleur seule. */
+.dfd__slot--past {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.dfd__past {
+  flex-basis: 100%;
+  padding-left: 30px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.dfd__radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.dfd__label {
+  font-weight: 600;
+}
+
+.dfd__counts {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.dfd__warning {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.dfd__error {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--mat-sys-error, #b00020);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .dfd__counts {
+    margin-left: 30px;
+    width: 100%;
+  }
+}

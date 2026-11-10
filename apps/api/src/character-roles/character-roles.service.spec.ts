@@ -1,7 +1,8 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
-import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
+import { testGrant } from '../common/test-utils/grant';
 import { GameSystemService } from '../game-systems/game-system.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { CharacterRolesService } from './character-roles.service';
@@ -17,10 +18,12 @@ function makePrisma() {
   };
 }
 
-function makeParties() {
+/** Story 37.7 : les droits sont décidés par `PermissionService.assert()`, simulé ici. */
+function makePermissions() {
   return {
-    getOwned: jest.fn().mockResolvedValue({ id: 'p1', mjId: 'mj1', gameSystemId: 'ryuutama' }),
-    getViewable: jest.fn().mockResolvedValue({ id: 'p1', mjId: 'mj1', gameSystemId: 'ryuutama' }),
+    assert: jest
+      .fn()
+      .mockResolvedValue(testGrant({ id: 'p1', ownerId: 'mj1', gameSystemId: 'ryuutama' })),
   };
 }
 
@@ -55,21 +58,21 @@ function makeRole(overrides: Record<string, unknown> = {}) {
 describe('CharacterRolesService', () => {
   let service: CharacterRolesService;
   let prisma: ReturnType<typeof makePrisma>;
-  let parties: ReturnType<typeof makeParties>;
+  let permissions: ReturnType<typeof makePermissions>;
   let gameSystems: ReturnType<typeof makeGameSystems>;
   let realtimeEvents: ReturnType<typeof makeRealtimeEvents>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     prisma = makePrisma();
-    parties = makeParties();
+    permissions = makePermissions();
     gameSystems = makeGameSystems();
     realtimeEvents = makeRealtimeEvents();
     const module = await Test.createTestingModule({
       providers: [
         CharacterRolesService,
         { provide: PrismaService, useValue: prisma },
-        { provide: PartiesService, useValue: parties },
+        { provide: PermissionService, useValue: permissions },
         { provide: GameSystemService, useValue: gameSystems },
         { provide: RealtimeEventsService, useValue: realtimeEvents },
       ],
@@ -84,7 +87,9 @@ describe('CharacterRolesService', () => {
 
       const result = await service.assign('p1', 'mj1', 'char1', 'cartographe');
 
-      expect(parties.getOwned).toHaveBeenCalledWith('p1', 'mj1');
+      expect(permissions.assert).toHaveBeenCalledWith('mj1', 'GROUP_ROLE_ASSIGN', {
+        partieId: 'p1',
+      });
       expect(prisma.characterGroupRole.create).toHaveBeenCalledWith({
         data: { characterId: 'char1', partieId: 'p1', roleKey: 'cartographe' },
       });
@@ -98,8 +103,8 @@ describe('CharacterRolesService', () => {
       });
     });
 
-    it('non-MJ → parties.getOwned rejette, propagation, aucune écriture', async () => {
-      parties.getOwned.mockRejectedValue(new Error('forbidden'));
+    it('non-MJ → permissions.assert rejette, propagation, aucune écriture', async () => {
+      permissions.assert.mockRejectedValue(new Error('forbidden'));
 
       await expect(service.assign('p1', 'stranger', 'char1', 'cartographe')).rejects.toThrow(
         'forbidden',
@@ -184,7 +189,9 @@ describe('CharacterRolesService', () => {
 
       await service.unassign('p1', 'mj1', 'char1');
 
-      expect(parties.getOwned).toHaveBeenCalledWith('p1', 'mj1');
+      expect(permissions.assert).toHaveBeenCalledWith('mj1', 'GROUP_ROLE_UNASSIGN', {
+        partieId: 'p1',
+      });
       expect(prisma.characterGroupRole.deleteMany).toHaveBeenCalledWith({
         where: { partieId: 'p1', characterId: 'char1' },
       });
@@ -198,8 +205,8 @@ describe('CharacterRolesService', () => {
       expect(realtimeEvents.emit).not.toHaveBeenCalled();
     });
 
-    it('non-MJ → parties.getOwned rejette, aucune écriture', async () => {
-      parties.getOwned.mockRejectedValue(new Error('forbidden'));
+    it('non-MJ → permissions.assert rejette, aucune écriture', async () => {
+      permissions.assert.mockRejectedValue(new Error('forbidden'));
 
       await expect(service.unassign('p1', 'stranger', 'char1')).rejects.toThrow('forbidden');
       expect(prisma.characterGroupRole.deleteMany).not.toHaveBeenCalled();
@@ -207,12 +214,14 @@ describe('CharacterRolesService', () => {
   });
 
   describe('listForPartie()', () => {
-    it('membre (pas MJ) → getViewable appelé, liste retournée', async () => {
+    it('membre (pas MJ) → GROUP_ROLE_READ vérifié, liste retournée', async () => {
       prisma.characterGroupRole.findMany.mockResolvedValue([makeRole()]);
 
       const result = await service.listForPartie('p1', 'joueur1');
 
-      expect(parties.getViewable).toHaveBeenCalledWith('p1', 'joueur1');
+      expect(permissions.assert).toHaveBeenCalledWith('joueur1', 'GROUP_ROLE_READ', {
+        partieId: 'p1',
+      });
       expect(prisma.characterGroupRole.findMany).toHaveBeenCalledWith({
         where: { partieId: 'p1' },
         orderBy: { assignedAt: 'asc' },
@@ -228,8 +237,8 @@ describe('CharacterRolesService', () => {
       ]);
     });
 
-    it('non-membre → getViewable rejette, propagation', async () => {
-      parties.getViewable.mockRejectedValue(new Error('forbidden'));
+    it('non-membre → permissions.assert rejette, propagation', async () => {
+      permissions.assert.mockRejectedValue(new Error('forbidden'));
 
       await expect(service.listForPartie('p1', 'stranger')).rejects.toThrow('forbidden');
     });

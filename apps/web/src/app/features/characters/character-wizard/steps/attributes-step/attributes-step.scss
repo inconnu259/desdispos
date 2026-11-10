@@ -40,13 +40,19 @@
 }
 
 .value-chip {
+  position: relative;
   flex: 1;
+  min-width: 44px;
   min-height: 44px;
   border: 1px solid var(--mat-sys-outline-variant, #ccc);
   border-radius: 6px;
   background: var(--mat-sys-surface-container, #fff);
   cursor: pointer;
+  // 🚨 Trouvé à l'écran (31.4, Task 9) : sans `font: inherit` les chiffres s'affichaient dans la
+  // police par défaut du navigateur (empattements), pas celle de l'application.
+  font: inherit;
   font-weight: 600;
+  color: inherit;
 
   &:disabled {
     opacity: 0.35;
@@ -57,4 +63,21 @@
     border-color: var(--mat-sys-primary, #9b6dff);
     background: var(--mat-sys-primary-container, #ece3ff);
   }
+}
+
+// Badge « ×N » (Story 31.4, DESIGN §7.3) : exemplaires encore à placer d'une valeur multiple.
+.value-chip__count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--mat-sys-tertiary, #7ec8a4);
+  color: var(--mat-sys-on-tertiary, #0d0a14);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
 }

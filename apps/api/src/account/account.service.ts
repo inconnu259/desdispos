@@ -1,14 +1,81 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { AnnouncementDto, Theme } from '@master-jdr/shared';
+import {
+  GAME_SYSTEMS,
+  type AccountDeletionImpactDto,
+  type AnnouncementDto,
+  type Theme,
+} from '@master-jdr/shared';
+import { AuthService } from '../auth/auth.service';
+import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
+import { RELEASED_ANNOUNCEMENT_WHERE, isSpoilRestricted } from '../permissions/scenario-visibility';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeEventsService, userTopic } from '../realtime/realtime-events.service';
 import { toDto as toAnnouncementDto } from '../announcements/announcements.service';
 import { toAuthUser } from '../users/to-auth-user.util';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 
+/** Identifiants des systèmes d'une famille, lus dans le registre (Story 43.1) : la famille n'est pas
+ *  une colonne, le filtre SQL passe donc par la liste des systèmes qui la portent. */
+function systemIdsOfFamily(family: 'jdr' | 'ralliement'): string[] {
+  return GAME_SYSTEMS.filter((g) => g.family === family).map((g) => g.id);
+}
+const RALLIEMENT_SYSTEM_IDS = systemIdsOfFamily('ralliement');
+const JDR_SYSTEM_IDS = systemIdsOfFamily('jdr');
+
+/** `groupBy` → table `partieId → nombre`. */
+function countsByPartie(
+  rows: { partieId: string; _count: { _all: number } }[],
+): Map<string, number> {
+  return new Map(rows.map((r) => [r.partieId, r._count._all]));
+}
+
 @Injectable()
 export class AccountService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Story 37.7 (AD-6) : toute décision de droit sur une partie passe par ce service.
+    private readonly permissions: PermissionService,
+    // Story 43.2 : mot de passe et sessions restent à `AuthService` (AD-11) ; la sortie des parties à
+    // la procédure unique de `PartiesService` (AD-17).
+    private readonly auth: AuthService,
+    private readonly parties: PartiesService,
+    // Story 52.4 (AD-5) : changer la préférence du rappel réveille les appareils du compte (`user:{id}`).
+    private readonly realtimeEvents: RealtimeEventsService,
+  ) {}
+
+  private readonly logger = new Logger(AccountService.name);
+
+  /**
+   * Story 43.2 (AD-11) — efface le compte `userId`. Mot de passe vérifié d'abord, par `AuthService` : un
+   * faux mot de passe est refusé (401) sans rien modifier. Puis UNE transaction : parties de JDR possédées
+   * supprimées, procédure de départ pour chaque groupe, sessions coupées, compte supprimé. Émissions et
+   * e-mails d'annulation viennent après la validation uniquement.
+   */
+  async deleteAccount(userId: string, password: string): Promise<{ ok: true }> {
+    await this.auth.verifyPassword(userId, password);
+    // Lu avant l'effacement : l'e-mail d'annulation de ses conjonctions nomme encore leur hôte.
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    });
+    if (!user) throw new NotFoundException('Compte introuvable');
+
+    const effects = await this.prisma.$transaction(
+      async (tx) => {
+        const done = await this.parties.eraseMembershipsInTx(tx, userId);
+        await this.auth.revokeSessions(tx, userId);
+        await tx.user.delete({ where: { id: userId } });
+        return done;
+      },
+      // Beaucoup de groupes verrouillés l'un après l'autre : au-delà des 5 s par défaut.
+      { timeout: 30_000 },
+    );
+
+    await this.parties.announceAccountErasure(userId, user.displayName, effects);
+    return { ok: true };
+  }
 
   async updateDisplayName(userId: string, displayName: string) {
     let user;
@@ -90,13 +157,103 @@ export class AccountService {
       }
       throw e;
     }
+    // Story 52.4 (AD-5) — faire taire ou réactiver le rappel est lu par tous les appareils du compte : `user:{id}`,
+    // après l'écriture, et seulement quand ce champ est dans la requête. Jamais un échec d'émission ne fait croire
+    // que l'écriture a échoué.
+    if (dto.availabilityReminder !== undefined) {
+      try {
+        this.realtimeEvents.emit(userTopic(userId));
+      } catch (err) {
+        this.logger.warn(
+          `Échec de l'émission temps réel après changement du rappel des dispos (userId=${userId}) : ${String(err)}`,
+        );
+      }
+    }
     return toAuthUser(user);
   }
 
+  /**
+   * Story 43.1 (AD-11) — ce que l'effacement du compte emporterait, en lecture seule et pour
+   * `userId` seul : les groupes et rencontres isolées dont il est le SEUL administrateur (un groupe
+   * qui garde un autre administrateur survit, il n'est pas listé) et les parties de JDR qu'il
+   * possède. Lectures groupées, jamais une requête par partie.
+   */
+  async getDeletionImpact(userId: string): Promise<AccountDeletionImpactDto> {
+    const [adminships, ownedJdr] = await Promise.all([
+      this.prisma.membership.findMany({
+        where: { userId, role: 'ADMIN', partie: { gameSystemId: { in: RALLIEMENT_SYSTEM_IDS } } },
+        select: { partie: { select: { id: true, name: true } } },
+      }),
+      this.prisma.partie.findMany({
+        where: { ownerId: userId, gameSystemId: { in: JDR_SYSTEM_IDS } },
+        select: { id: true, name: true },
+      }),
+    ]);
+    const groupIds = adminships.map((a) => a.partie.id);
+    const jdrIds = ownedJdr.map((p) => p.id);
+
+    const [adminRows, memberRows, eventRows, characterRows] = await Promise.all([
+      groupIds.length
+        ? this.prisma.membership.groupBy({
+            by: ['partieId'],
+            where: { partieId: { in: groupIds }, role: 'ADMIN' },
+            _count: { _all: true },
+          })
+        : [],
+      groupIds.length
+        ? this.prisma.membership.groupBy({
+            by: ['partieId'],
+            where: { partieId: { in: groupIds } },
+            _count: { _all: true },
+          })
+        : [],
+      groupIds.length
+        ? this.prisma.event.groupBy({
+            by: ['partieId'],
+            where: { partieId: { in: groupIds } },
+            _count: { _all: true },
+          })
+        : [],
+      // Un joueur ne perd ses personnages que s'il en a : on compte les joueurs distincts, MJ exclu.
+      jdrIds.length
+        ? this.prisma.character.findMany({
+            where: { partieId: { in: jdrIds }, userId: { not: userId } },
+            select: { partieId: true, userId: true },
+            distinct: ['partieId', 'userId'],
+          })
+        : [],
+    ]);
+
+    const admins = countsByPartie(adminRows);
+    const members = countsByPartie(memberRows);
+    const events = countsByPartie(eventRows);
+    const players = new Map<string, number>();
+    for (const c of characterRows) players.set(c.partieId, (players.get(c.partieId) ?? 0) + 1);
+
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'fr');
+    return {
+      // Le recomptage des administrateurs fait foi : un autre ADMIN sauve le groupe.
+      groups: adminships
+        .filter((a) => (admins.get(a.partie.id) ?? 0) <= 1)
+        .map((a) => ({
+          id: a.partie.id,
+          name: a.partie.name,
+          memberCount: members.get(a.partie.id) ?? 0,
+          eventCount: events.get(a.partie.id) ?? 0,
+        }))
+        .sort(byName),
+      jdrParties: ownedJdr
+        .map((p) => ({ id: p.id, name: p.name, playerCount: players.get(p.id) ?? 0 }))
+        .sort(byName),
+    };
+  }
+
   /** Idempotent (sémantique PUT) : un favori déjà posé n'est jamais une erreur (P2002 absorbé).
-   *  Aucune vérification d'appartenance à la partie — un favori sur une partie non visible par
-   *  l'utilisateur n'a aucun effet observable (listForUser() ne liste que ses propres parties). */
+   *  Story 37.7 : l'utilisateur doit avoir un rôle sur la partie (`PARTIE_READ`) — 404 si elle
+   *  n'existe pas, 403 s'il n'y est ni MJ ni membre : aucune ligne n'est écrite pour une partie
+   *  étrangère. */
   async addFavorite(userId: string, partieId: string): Promise<{ ok: true }> {
+    await this.permissions.assert(userId, 'PARTIE_READ', { partieId });
     try {
       await this.prisma.partieFavorite.create({ data: { userId, partieId } });
     } catch (e) {
@@ -123,23 +280,43 @@ export class AccountService {
   async getUnseenAnnouncements(userId: string): Promise<AnnouncementDto[]> {
     const announcements = await this.prisma.announcement.findMany({
       where: {
-        partie: {
-          OR: [{ mjId: userId }, { memberships: { some: { userId } } }],
-        },
+        // Anti-spoil serveur : propriétaire (MJ) → toutes les annonces ; simple membre (joueur) →
+        // seulement celles de toute la partie ou ciblées sur un scénario `COURANT`/`PASSE`.
+        OR: [
+          { partie: { ownerId: userId } },
+          { AND: [{ partie: { memberships: { some: { userId } } } }, RELEASED_ANNOUNCEMENT_WHERE] },
+        ],
         reads: { none: { userId } },
       },
       orderBy: { createdAt: 'desc' },
       include: {
         partie: {
-          select: { mj: { select: { pseudo: true, displayName: true } } },
+          select: { owner: { select: { pseudo: true, displayName: true } } },
         },
       },
     });
-    return announcements.map((a) => toAnnouncementDto(a, a.partie.mj));
+    // Une partie sans propriétaire (AD-5, compte supprimé — inatteignable aujourd'hui) n'a plus
+    // d'auteur à afficher : ses annonces sont écartées en attendant l'affichage « compte supprimé ».
+    return announcements.flatMap((a) =>
+      a.partie.owner ? [toAnnouncementDto(a, a.partie.owner)] : [],
+    );
   }
 
-  /** Idempotent (sémantique PUT), même pattern que addFavorite(). */
+  /** Idempotent (sémantique PUT), même pattern que addFavorite(). Story 37.7 : un rôle sur la
+   *  partie de l'annonce est exigé (`ANNOUNCEMENT_MARK_READ`, partie résolue depuis l'annonce) —
+   *  aucune ligne de lecture n'est écrite pour l'annonce d'une partie étrangère. */
   async markAnnouncementRead(userId: string, announcementId: string): Promise<{ ok: true }> {
+    const grant = await this.permissions.assert(userId, 'ANNOUNCEMENT_MARK_READ', {
+      announcementId,
+    });
+    // Anti-spoil serveur : hors MJ, une annonce ciblée sur un scénario non diffusé n'existe pas —
+    // 404 comme une annonce inconnue (sinon 200/404 permettrait de sonder son existence).
+    if (isSpoilRestricted(grant.role)) {
+      const visible = await this.prisma.announcement.count({
+        where: { AND: [{ id: announcementId }, RELEASED_ANNOUNCEMENT_WHERE] },
+      });
+      if (visible === 0) throw new NotFoundException('Annonce introuvable');
+    }
     try {
       await this.prisma.announcementRead.create({
         data: { userId, announcementId },

@@ -1,18 +1,33 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <title>Web</title>
+    <title>Dés Dispos</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <!-- Favicon « Dés Dispos » (SVG statique, hors thème). `favicon.ico` reste en repli, déclaré EN
+         PREMIER avec une taille explicite : sinon Chromium pourrait retenir l'ancienne icône par
+         défaut au lieu du SVG (`sizes="any"`). -->
+    <link rel="icon" type="image/x-icon" sizes="32x32" href="favicon.ico" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <!--
+      Fond sombre neutre, AVANT le démarrage d'Angular : les trois thèmes sont sombres, la page ne doit
+      jamais s'afficher un instant sur fond clair. Seul code couleur en dur hors thème (exception
+      documentée, aucune liste de thèmes ici) ; la règle cesse de s'appliquer dès que la classe `theme-*`
+      est posée sur <body> par ThemeToneService, et sa spécificité l'emporte sur le `body` de styles.scss.
+    -->
+    <style>
+      body:not([class*="theme-"]) {
+        background-color: #16151b;
+        color-scheme: dark;
+      }
+    </style>
   </head>
   <body>
     <app-root></app-root>

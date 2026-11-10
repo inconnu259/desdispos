@@ -74,7 +74,7 @@ Les 7 classes, leurs talents, les 3 types, le pattern d'attributs Polyvalent (se
 
 **FR-2.2 — Localisation du seed, hors dépôt Git**
 
-Les fichiers JSON de seed vivent dans un dossier dédié (ex. `apps/api/game-systems/ryuutama/data/`), **explicitement ajouté au `.gitignore`**. Raison : contenu sous droits d'auteur (règles officielles Ryuutama). Chaque instance de jdr-master doit fournir son propre seed localement — non distribué avec le dépôt public. Un `README` dans le dossier documente le format attendu et où se procurer le contenu légalement.
+*(Révisé le 2026-09-25 : dossier versionné, textes reformulés.)* Les fichiers JSON de seed vivent dans un dossier dédié (ex. `apps/api/game-systems/ryuutama/data/`), **explicitement ajouté au `.gitignore`**. Raison : contenu sous droits d'auteur (règles officielles Ryuutama). Chaque instance de jdr-master doit fournir son propre seed localement — non distribué avec le dépôt public. Un `README` dans le dossier documente le format attendu et où se procurer le contenu légalement.
 
 **Out of Scope :** homebrew MJ (`scope: "mj"` / `"partie"`), pas de mécanisme de gestion de contenu personnalisé ce palier.
 
@@ -194,7 +194,7 @@ Tous les endpoints nécessitent une session active (`AuthenticatedGuard`). `GET 
 
 ## Exigences non fonctionnelles
 
-**NFR-1 — Confidentialité du seed.** Les fichiers JSON de contenu de règles Ryuutama (classes/talents/formules officielles) ne sont **jamais committés** dans le dépôt Git (contenu sous droits). `.gitignore` couvre le dossier de seed dès la première migration. Documentation claire dans le dossier sur comment fournir son propre seed localement.
+**NFR-1 — Confidentialité du seed.** *(Révisée le 2026-09-25 : les JSON sont désormais versionnés, avec des textes reformulés — voir NFR4 du PRD 2026-07-24.)* Les fichiers JSON de contenu de règles Ryuutama (classes/talents/formules officielles) ne sont **jamais committés** dans le dépôt Git (contenu sous droits). `.gitignore` couvre le dossier de seed dès la première migration. Documentation claire dans le dossier sur comment fournir son propre seed localement.
 
 **NFR-2 — Architecture réutilisable.** L'interface `GameSystemPlugin` implémentée ce palier doit être directement réutilisable pour le prochain système (Conte de Minuit) sans modification de signature — seule l'implémentation concrète du plugin change.
 

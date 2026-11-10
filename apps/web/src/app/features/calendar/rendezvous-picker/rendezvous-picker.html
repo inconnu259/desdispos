@@ -1,0 +1,15 @@
+<div class="rendezvous-picker">
+  <p class="rendezvous-picker__title">{{ theme.tone()['calendar.rendezvous_picker_title'] }}</p>
+
+  @for (group of groups(); track group.name) {
+    <section class="rendezvous-picker__group">
+      <h3 class="rendezvous-picker__group-name">{{ group.name }}</h3>
+      @for (row of group.rows; track row.seanceId) {
+        <button type="button" class="rendezvous-picker__row" (click)="chosen.emit(row)">
+          <span class="rendezvous-picker__name">{{ row.title }}</span>
+          <span class="rendezvous-picker__meta">{{ natureLabel(row) }}</span>
+        </button>
+      }
+    </section>
+  }
+</div>

@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { CharacterDto, GameSystemContentDto } from '@master-jdr/shared';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../../core/theme/tone-format';
 import { ChoiceCard, type ChoiceCardOption } from '../../character-wizard/choice-card/choice-card';
 import {
   LEVEL_TABLE_LOCAL,
@@ -130,6 +131,20 @@ export class LevelUpWizard {
     this.selectedContentKey.set(null);
   }
 
+  /** Suffixe du titre (« — Niveau N »), lu du registre pour suivre le thème. */
+  protected levelTitleSuffix(level: number): string {
+    return fillTone(this.theme.tone()['characters_sheet.levelup_title_level'], { level });
+  }
+
+  /** aria-label des boutons − / + d'une statistique (le nom de la statistique reste un libellé de fiche). */
+  protected statAria(direction: 'decrease' | 'increase', stat: string): string {
+    const key =
+      direction === 'decrease'
+        ? 'characters_sheet.levelup_decrease_aria'
+        : 'characters_sheet.levelup_increase_aria';
+    return fillTone(this.theme.tone()[key], { stat });
+  }
+
   protected isAttributeDisabled(attr: string): boolean {
     const value = this.attributes()?.[attr] ?? 0;
     if (value < 12) return false;
@@ -195,7 +210,7 @@ export class LevelUpWizard {
         this.dialogRef.close(updated);
       }
     } catch {
-      this.submitError.set('La montée de niveau n’a pas pu être enregistrée. Réessayez.');
+      this.submitError.set(this.theme.tone()['characters_sheet.levelup_save_error']);
     } finally {
       this.submitting.set(false);
     }

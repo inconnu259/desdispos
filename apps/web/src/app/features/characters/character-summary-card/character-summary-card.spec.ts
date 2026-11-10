@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto, MyHommeDragonDto } from '@master-jdr/shared';
 import { CharacterSummaryCard } from './character-summary-card';
 import { API_BASE } from '../../../core/api-base';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';
+import { hommeDragonAventuresLabel } from '../../../core/homme-dragon/homme-dragon.util';
+import { TONE_MAP } from '../../../core/theme/tones';
 
 const CHARACTER: CharacterDto = makeCharacterDto({
   id: 'c1',
@@ -27,6 +29,21 @@ describe('CharacterSummaryCard', () => {
     expect(text).toContain('PE 12');
     expect(text).toContain('Initiative 10');
     expect(text).toContain('Encombrement max 11');
+  });
+
+  it('derived absent (cadenas de visibilité, Story 31.6) : aucun badge PV/PE/Initiative/Encombrement, aucune erreur', async () => {
+    const masked: CharacterDto = {
+      ...CHARACTER,
+      derived: undefined as never,
+      hiddenFields: ['derived'],
+    };
+    TestBed.configureTestingModule({ imports: [CharacterSummaryCard] });
+    const fixture = TestBed.createComponent(CharacterSummaryCard);
+    fixture.componentRef.setInput('character', masked);
+    expect(() => fixture.detectChanges()).not.toThrow();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('.character-summary-card__badges')).toBeNull();
   });
 
   it('émet selected() au clic', async () => {
@@ -346,6 +363,139 @@ describe('CharacterSummaryCard', () => {
       await fixture.whenStable();
 
       expect(fixture.nativeElement.querySelector('.character-summary-card__partie')).toBeNull();
+    });
+  });
+
+  describe('Homme Dragon (Story 33.5)', () => {
+    const DRAGON: MyHommeDragonDto = {
+      id: 'hd1',
+      aventures: [{ partieId: 'p1', nom: 'Le Convoi du Nord' }],
+      gameSystemId: 'ryuutama',
+      nom: 'Skarn',
+      race: 'DRAGON_VERT',
+      avatar: 'Écailles sombres',
+      createdAt: '2026-07-16T00:00:00.000Z',
+    };
+
+    async function renderDragon(density?: 'large' | 'medium' | 'compact', dragon = DRAGON) {
+      TestBed.configureTestingModule({ imports: [CharacterSummaryCard] });
+      const fixture = TestBed.createComponent(CharacterSummaryCard);
+      fixture.componentRef.setInput('hommeDragon', dragon);
+      fixture.componentRef.setInput(
+        'partieName',
+        hommeDragonAventuresLabel(
+          dragon.aventures,
+          TONE_MAP['grimoire-emeraude']['core.homme_dragon_sans_aventure'],
+        ),
+      );
+      fixture.componentRef.setInput('showStats', false);
+      if (density) fixture.componentRef.setInput('density', density);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      return fixture;
+    }
+
+    it('moyen : nom, marqueur icône + « Homme Dragon », partie d’origine', async () => {
+      const fixture = await renderDragon('medium');
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelector('.character-summary-card__name')?.textContent).toContain('Skarn');
+      expect(el.querySelector('.nature-marker__label')?.textContent?.trim()).toBe('Homme Dragon');
+      expect(el.querySelector('.character-summary-card__partie')?.textContent?.trim()).toBe(
+        'Le Convoi du Nord',
+      );
+    });
+
+    it('deux aventures : une seule carte, les noms joints, le texte complet porté par title (Story 33.8)', async () => {
+      const fixture = await renderDragon('medium', {
+        ...DRAGON,
+        aventures: [
+          { partieId: 'p1', nom: 'Les Vents du Nord' },
+          { partieId: 'p2', nom: "L'Archipel" },
+        ],
+      });
+      const partie = fixture.nativeElement.querySelector(
+        '.character-summary-card__partie',
+      ) as HTMLElement;
+
+      expect(partie.textContent?.trim()).toBe("Les Vents du Nord · L'Archipel");
+      expect(partie.getAttribute('title')).toBe("Les Vents du Nord · L'Archipel");
+    });
+
+    it('sans aventure : l’état se lit sans ouvrir la fiche (« Sans aventure », en texte)', async () => {
+      const fixture = await renderDragon('medium', { ...DRAGON, aventures: [] });
+
+      expect(
+        fixture.nativeElement.querySelector('.character-summary-card__partie')?.textContent?.trim(),
+      ).toBe('Sans aventure');
+    });
+
+    it('compact : sans aventure, la sous-ligne le dit aussi', async () => {
+      const fixture = await renderDragon('compact', { ...DRAGON, aventures: [] });
+
+      expect(
+        fixture.nativeElement.querySelector('.character-summary-card__compact-sub')?.textContent,
+      ).toContain('Sans aventure');
+    });
+
+    it('grand : même marqueur avec le mot', async () => {
+      const fixture = await renderDragon('large');
+
+      expect(fixture.nativeElement.querySelector('.nature-marker__label')).not.toBeNull();
+    });
+
+    it('compact : icône seule + aria-label, partie dans la sous-ligne', async () => {
+      const fixture = await renderDragon('compact');
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelector('.nature-marker__label')).toBeNull();
+      expect(el.querySelector('.nature-marker')?.getAttribute('aria-label')).toBe('Homme Dragon');
+      expect(el.querySelector('.character-summary-card__compact-sub')?.textContent).toContain(
+        'Le Convoi du Nord',
+      );
+    });
+
+    it('ni pastille de niveau, ni bulle de montée de niveau, ni statistiques', async () => {
+      const fixture = await renderDragon('large');
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelector('.character-summary-card__level')).toBeNull();
+      expect(el.querySelector('.character-summary-card__levelup-badge')).toBeNull();
+      expect(el.querySelector('.character-summary-card__badges')).toBeNull();
+    });
+
+    it('nom vide → repli « Homme Dragon sans nom »', async () => {
+      const fixture = await renderDragon('medium', { ...DRAGON, nom: '  ' });
+
+      expect(
+        fixture.nativeElement.querySelector('.character-summary-card__name')?.textContent,
+      ).toContain('Homme Dragon sans nom');
+    });
+
+    it('n’affiche aucun portrait (l’avatar du dragon est un texte) : initiales de repli', async () => {
+      const fixture = await renderDragon('medium');
+
+      expect(fixture.nativeElement.querySelector('.character-avatar__img')).toBeNull();
+    });
+
+    it('émet selected() au clic', async () => {
+      const fixture = await renderDragon('medium');
+      let emitted = false;
+      fixture.componentInstance.selected.subscribe(() => (emitted = true));
+
+      (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+
+      expect(emitted).toBe(true);
+    });
+
+    it('une carte de personnage n’affiche jamais le marqueur de nature (comportement inchangé)', async () => {
+      TestBed.configureTestingModule({ imports: [CharacterSummaryCard] });
+      const fixture = TestBed.createComponent(CharacterSummaryCard);
+      fixture.componentRef.setInput('character', CHARACTER);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.querySelector('.nature-marker')).toBeNull();
     });
   });
 });

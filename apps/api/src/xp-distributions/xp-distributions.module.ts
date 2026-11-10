@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PartiesModule } from '../parties/parties.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 import { CharacterModule } from '../characters/character.module';
 import { XpDistributionsController } from './xp-distributions.controller';
 import { XpDistributionsService } from './xp-distributions.service';
 
 @Module({
-  imports: [PartiesModule, CharacterModule],
+  imports: [PermissionsModule, CharacterModule],
   controllers: [XpDistributionsController],
   providers: [XpDistributionsService],
 })

@@ -1,0 +1,151 @@
+[
+  {
+    "key": "passe",
+    "label": "Passé",
+    "famille": "temps",
+    "ps": 2,
+    "reservable": false,
+    "description": "Fait remonter le temps. Par exemple, si un combat tourne à l'hécatombe à cause de jets de dés malheureux, l'affrontement reprend depuis son début."
+  },
+  {
+    "key": "futur",
+    "label": "Futur",
+    "famille": "temps",
+    "ps": 2,
+    "reservable": false,
+    "description": "Fait avancer le temps. Par exemple, quand le temps presse dans un scénario, les voyageurs sont conduits directement au moment décisif, voire au dénouement ; ou, une fois l'objectif atteint, le trajet du retour est écourté."
+  },
+  {
+    "key": "chance",
+    "label": "Chance",
+    "famille": "destin",
+    "ps": 1,
+    "description": "Le test devient automatiquement une réussite critique (valeur maximale)."
+  },
+  {
+    "key": "malchance",
+    "label": "Malchance",
+    "famille": "destin",
+    "ps": 1,
+    "description": "Le test donne automatiquement un double 1."
+  },
+  {
+    "key": "ennemi-jure",
+    "label": "Ennemi juré",
+    "famille": "pnj",
+    "ps": 1,
+    "description": "Le monstre gagne (niveau × 3) PV supplémentaires et ne peut plus subir aucun état ; un état dont il souffrait déjà disparaît aussitôt."
+  },
+  {
+    "key": "nuee-grouillante",
+    "label": "Nuée grouillante",
+    "famille": "pnj",
+    "ps": 1,
+    "description": "Plusieurs créatures identiques ne forment plus qu'un seul monstre. Par tranche de 3 monstres supplémentaires, la nuée obtient une attaque de plus et +1 au toucher et aux dégâts ; sa dépouille peut aussi être plus importante."
+  },
+  {
+    "key": "guet-apens",
+    "label": "Guet-apens",
+    "famille": "pnj",
+    "ps": 1,
+    "description": "Au premier tour du combat, toutes les attaques des PNJ touchent automatiquement."
+  },
+  {
+    "key": "retrouvailles",
+    "label": "Retrouvailles",
+    "famille": "pnj",
+    "ps": 1,
+    "description": "Un PNJ que l'on croyait mort est en réalité vivant."
+  },
+  {
+    "key": "fuite",
+    "label": "Fuite",
+    "famille": "pnj",
+    "ps": 1,
+    "description": "Un PNJ parvient à s'échapper, sans condition ni test, y compris face aux personnages."
+  },
+  {
+    "key": "nostalgie",
+    "label": "Nostalgie",
+    "race": "DRAGON_VERT",
+    "ps": 1,
+    "description": "Jusqu'à deux voyageurs qui ont clairement exprimé le mal de leur pays natal sont guéris de tout état psychologique."
+  },
+  {
+    "key": "route",
+    "label": "Route",
+    "race": "DRAGON_VERT",
+    "ps": 1,
+    "description": "Un ou deux voyageurs qui ont clairement affirmé vouloir atteindre leur destination ignorent, le temps d'un test, tous les modificateurs liés au climat."
+  },
+  {
+    "key": "voyage",
+    "label": "Voyage",
+    "race": "DRAGON_VERT",
+    "ps": 1,
+    "description": "En fin de séance, jusqu'à deux voyageurs dont les joueurs tiennent un journal de bord reçoivent une prime de 300 pièces d'or (Po) × leur niveau."
+  },
+  {
+    "key": "amour",
+    "label": "Amour",
+    "race": "DRAGON_BLEU",
+    "ps": 1,
+    "description": "Un ou deux voyageurs amoureux gagnent 1 point de protection."
+  },
+  {
+    "key": "bonte",
+    "label": "Bonté",
+    "race": "DRAGON_BLEU",
+    "ps": 1,
+    "description": "L'Esprit d'un ou deux personnages qui aident quelqu'un sans rien attendre en retour augmente d'un cran."
+  },
+  {
+    "key": "emotion",
+    "label": "Émotion",
+    "race": "DRAGON_BLEU",
+    "ps": 1,
+    "description": "Le meneur reçoit cinq jetons à offrir aux joueurs dont l'interprétation l'a ému ; ces jetons s'utilisent comme des points de maladresse."
+  },
+  {
+    "key": "defi",
+    "label": "Défi",
+    "race": "DRAGON_ROUGE",
+    "ps": 1,
+    "description": "Tous les personnages qui ont un rival voient leur VIG augmenter d'un cran."
+  },
+  {
+    "key": "courage",
+    "label": "Courage",
+    "race": "DRAGON_ROUGE",
+    "ps": 1,
+    "description": "Une fois par séance, un voyageur qui vient de recevoir une blessure mortelle revient aussitôt à la vie, et tout le groupe récupère l'intégralité de ses points de vie."
+  },
+  {
+    "key": "renaissance",
+    "label": "Renaissance",
+    "race": "DRAGON_ROUGE",
+    "ps": 1,
+    "description": "Une fois par séance et par voyageur, un personnage dont les PV redeviennent positifs après être passés en négatif augmente d'un cran l'attribut de son choix."
+  },
+  {
+    "key": "massacre",
+    "label": "Massacre",
+    "race": "DRAGON_NOIR",
+    "ps": 1,
+    "description": "Les personnages qui tuent un animal de plus d'un mètre gagnent 2 PE."
+  },
+  {
+    "key": "obeissance",
+    "label": "Obéissance",
+    "race": "DRAGON_NOIR",
+    "ps": 1,
+    "description": "Un ou deux personnages qui contribuent pleinement au bon déroulement de l'histoire obtiennent +1 à leur test de condition."
+  },
+  {
+    "key": "vengeance",
+    "label": "Vengeance",
+    "race": "DRAGON_NOIR",
+    "ps": 1,
+    "description": "Un ou deux voyageurs animés d'une haine profonde et qui cherchent à accomplir leur vengeance obtiennent +1 au toucher."
+  }
+]

@@ -9,9 +9,9 @@ import { SearchUsersDto } from './dto/search-users.dto';
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
-  /** Recherche par email ou pseudo exact (pour inviter un joueur). */
+  /** Recherche par pseudo, correspondance partielle insensible à la casse (pour inviter un joueur). */
   @Get('search')
   search(@Query() dto: SearchUsersDto): Promise<UserSearchResultDto[]> {
-    return this.users.searchByEmailOrPseudo(dto.q);
+    return this.users.searchByPseudo(dto.q);
   }
 }

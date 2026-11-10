@@ -1,5 +1,7 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { API_BASE } from '../../../core/api-base';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../core/theme/tone-format';
 
 export interface PortraitCropData {
   scale: number;
@@ -21,6 +23,8 @@ export class CharacterAvatar {
   /** Simple indicateur de présence d'un portrait (valeur elle-même non utilisée pour l'URL, cf. `characterId`). */
   readonly portraitUrl = input<string | null>(null);
   readonly cropData = input<PortraitCropData | null>(null);
+
+  private readonly theme = inject(ThemeToneService);
 
   private static readonly FONT_SIZE_BY_SIZE: Record<26 | 38 | 44 | 64, number> = {
     26: 10,
@@ -49,6 +53,9 @@ export class CharacterAvatar {
   });
 
   protected readonly ariaLabel = computed(() =>
-    this.portraitUrl() ? `Portrait de ${this.name()}` : `Portrait de ${this.name()} (aucune image)`,
+    fillTone(
+      this.theme.tone()[this.portraitUrl() ? 'portrait.avatar_aria' : 'portrait.avatar_aria_empty'],
+      { name: this.name() },
+    ),
   );
 }

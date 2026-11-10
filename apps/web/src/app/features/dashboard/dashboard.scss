@@ -1,12 +1,11 @@
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-}
 .empty {
   color: var(--mat-sys-on-surface-variant, #666);
   margin-top: 1.5rem;
+}
+// Icônes des boutons d'invitation (accepter / refuser) : taille d'une icône de bouton Material (18 px),
+// sinon <app-icon> prend les 24 px par défaut. Le texte du bouton porte le nom, l'icône est décorative.
+mat-card-actions app-icon {
+  --app-icon-size: 1.125rem;
 }
 .grid {
   display: grid;
@@ -97,7 +96,9 @@
 // Vignette atténuée + monogramme (Story 29.10) — s'intercale entre la pastille d'état et le
 // texte, sans faire grandir la ligne : 28 px est plus bas que la hauteur de deux lignes de texte.
 .row__vignette {
+  position: relative;
   flex: none;
+  display: block;
 }
 .row__txt {
   flex: 1;
@@ -148,6 +149,8 @@
   min-width: 0;
 }
 .tile__vignette {
+  position: relative;
+  flex: none;
   margin: 1rem 0 0 1rem;
 }
 // Story 29.6 (AC5) : « en retrait » — teinte --jdr-status-done (Story 29.0) en accent de bord,
@@ -165,9 +168,7 @@
   font-size: 0.85em;
 }
 .role-icon {
-  font-size: 1rem;
-  width: 1rem;
-  height: 1rem;
+  --app-icon-size: 1rem;
 }
 
 // Story 29.7 (AC8) : teinte --jdr-status-todo (Story 29.0) pour une partie qui réclame une
@@ -205,10 +206,8 @@
   background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 20%, transparent);
   border: 1px solid var(--jdr-status-todo, #f0a030);
 
-  mat-icon {
-    font-size: 0.9rem;
-    width: 0.9rem;
-    height: 0.9rem;
+  app-icon {
+    --app-icon-size: 0.9rem;
   }
 }
 .signal-badge--more {
@@ -255,12 +254,156 @@
   vertical-align: middle;
   color: var(--mat-sys-on-surface-variant, #666);
 
-  mat-icon {
-    font-size: 1.1rem;
-    width: 1.1rem;
-    height: 1.1rem;
+  app-icon {
+    --app-icon-size: 1.1rem;
   }
 }
 .favorite-btn--active {
   color: var(--jdr-status-soon, #ff7ad9);
+}
+
+// Pastille texte du système (Story 38.5) : informative, non interactive, après le rôle.
+.system-chip {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 1px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: color-mix(in srgb, currentColor 85%, transparent);
+  white-space: nowrap;
+}
+.row__subline {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  .row__sub {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .system-chip {
+    flex: none;
+    margin-left: 0.4rem;
+  }
+}
+
+// Badge rond du système (Story 38.5) : coin bas-droit de la vignette, décalage -6/-6 (le retrait
+// de 1 rem de la vignette moyenne évite le rognage par `.tile`). Mode grand : 6 px dans le coin.
+.system-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  pointer-events: none;
+}
+.system-badge--inset {
+  right: 6px;
+  bottom: 6px;
+}
+.tile__banner {
+  position: relative;
+}
+
+// Story 42.2 (UX-DR16) : carte et ligne d'une rencontre annulée — contenu estompé, trait diagonal rouge
+// semi-transparent, filet rouge. Le mot « Annulée » (.status-indicator--cancelled, ou la sous-ligne en mode
+// liste) porte le sens : le trait ne le porte JAMAIS seul. La carte reste cliquable (`pointer-events: none`).
+.tile--cancelled {
+  position: relative;
+  border-left: 3px solid var(--color-unavailable, #e74c3c);
+
+  .tile__banner,
+  .tile__vignette,
+  mat-card-title,
+  .signal-badges {
+    opacity: 0.5;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      color-mix(in srgb, var(--color-unavailable, #e74c3c) 60%, transparent) calc(50% - 1px),
+      color-mix(in srgb, var(--color-unavailable, #e74c3c) 60%, transparent) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    );
+  }
+}
+.status-indicator--cancelled {
+  color: var(--color-cancelled-text, #f26a5c);
+  font-weight: 600;
+}
+.row--cancelled {
+  position: relative;
+  border-left: 3px solid var(--color-unavailable, #e74c3c);
+
+  .row__vignette,
+  .row__name {
+    opacity: 0.5;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      color-mix(in srgb, var(--color-unavailable, #e74c3c) 60%, transparent) calc(50% - 1px),
+      color-mix(in srgb, var(--color-unavailable, #e74c3c) 60%, transparent) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    );
+  }
+}
+.row__dot--cancelled {
+  background: var(--color-unavailable, #e74c3c);
+}
+
+// Story 42.5 : « Retirer de ma liste » — même gabarit discret que le favori, à sa droite.
+.hide-btn {
+  margin-left: 0.15rem;
+}
+
+// Story 52.5 (AD-5) : le rappel « Dispos à déclarer ». Le patron du bandeau de la Destinée (`.calendar-notice`) ; couleurs
+// par les seules variables `--jdr-*` existantes. Titre, phrase et action passent à la ligne sur téléphone.
+.reminder-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--jdr-status-todo);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--jdr-status-todo) 12%, transparent);
+}
+
+.reminder-banner__title {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reminder-banner__body {
+  flex: 1 1 16rem;
+  margin: 0;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--jdr-text, #e8e0f0);
+  overflow-wrap: anywhere;
+}
+
+.reminder-banner__action {
+  flex: none;
+}
+
+// Story 52.6 : « Ne plus me le rappeler » — bouton texte discret, à côté de l'action principale.
+.reminder-banner__silence {
+  flex: none;
 }

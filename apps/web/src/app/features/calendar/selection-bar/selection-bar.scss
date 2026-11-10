@@ -82,3 +82,21 @@
     box-shadow: inset 0 0 0 1px var(--mat-sys-primary);
   }
 }
+
+/* Story 45.3 — l'indication écrite qui accompagne « Ajouter au vote » désactivé (jamais un bouton muet). */
+.selection-bar__hint {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* Story 52.3 : en mode déclaration la barre reste visible même quand la grille dépasse l'écran. Fond, ombre et marges
+   par les seules variables `--jdr-*` existantes. */
+:host(.selection-bar-sticky) {
+  display: block;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding: 8px 12px;
+  background: var(--jdr-surface, #1a1428);
+  box-shadow: 0 -4px 16px color-mix(in srgb, var(--jdr-bg, #0d0a14) 70%, transparent);
+}

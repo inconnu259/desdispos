@@ -1,0 +1,82 @@
+<section class="destiny-board" [attr.aria-label]="model().title">
+  <h2 class="destiny-board__title">
+    <app-icon class="destiny-board__glyph" name="destinee" /> {{ model().title }}
+  </h2>
+  <p class="destiny-board__subtitle">{{ model().subtitle }}</p>
+
+  <ul class="destiny-board__slots" [attr.aria-label]="model().slotsAria">
+    @for (slot of model().slots; track slot.optionId) {
+      <li>
+        <!-- Le créneau courant est dit par `aria-current`, jamais par le seul contour (P-1). -->
+        <button
+          type="button"
+          class="destiny-board__slot"
+          [class.destiny-board__slot--current]="slot.current"
+          [attr.aria-current]="slot.current ? 'true' : null"
+          (click)="slotChosen.emit(slot.optionId)"
+        >
+          <span class="destiny-board__slot-head">
+            <span class="destiny-board__slot-label">{{ slot.label }}</span>
+            @if (slot.best) {
+              <span class="destiny-board__best">{{ model().bestLabel }}</span>
+            }
+            <span class="destiny-board__yes">{{ slot.yesText }}</span>
+          </span>
+          @if (slot.availabilityText) {
+            <span class="destiny-board__availability">{{ slot.availabilityText }}</span>
+          }
+          <span class="destiny-board__bar" aria-hidden="true">
+            <span class="destiny-board__bar-fill" [style.width.%]="slot.ratio * 100"></span>
+          </span>
+        </button>
+      </li>
+    }
+  </ul>
+
+  @if (model().absent; as absent) {
+    <p class="destiny-board__absent">
+      {{ absent.text }}
+      @if (absent.whoLabel) {
+        <button type="button" class="destiny-board__who" (click)="whoRequested.emit()">
+          {{ absent.whoLabel }}
+        </button>
+      }
+    </p>
+  }
+
+  <!-- Story 44.6 — les actions de l'organisateur, même après la fin du vote : le serveur reste juge. -->
+  @if (model().actions; as actions) {
+    <div class="destiny-board__actions">
+      @if (actions.fixLabel) {
+        <button type="button" class="destiny-board__fix" (click)="fixRequested.emit()">
+          {{ actions.fixLabel }}
+        </button>
+      }
+      @if (actions.extendLabel) {
+        <button type="button" class="destiny-board__extend" (click)="extendRequested.emit()">
+          {{ actions.extendLabel }}
+        </button>
+      }
+      @if (actions.modifyLabel) {
+        <button type="button" class="destiny-board__modify" (click)="modifyRequested.emit()">
+          {{ actions.modifyLabel }}
+        </button>
+      }
+    </div>
+    <!-- Story 45.6 — sous les actions : proposer des dates pour un AUTRE rendez-vous (le nouveau vote devient la destinée). -->
+    @if (actions.otherLabel) {
+      <button type="button" class="destiny-board__other" (click)="otherRequested.emit()">
+        {{ actions.otherLabel }}
+      </button>
+    }
+  }
+
+  @if (model().reopenHint; as hint) {
+    <p class="destiny-board__reopen">{{ hint }}</p>
+  }
+
+  <!-- Annonce du créneau courant : vide au montage, réécrite à chaque changement. -->
+  @if (announce()) {
+    <p class="destiny-board__sr" aria-live="polite">{{ model().announcement }}</p>
+  }
+</section>

@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { AnnouncementDto } from '@master-jdr/shared';
 import type { Announcement } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
+import { RELEASED_ANNOUNCEMENT_WHERE, isSpoilRestricted } from '../permissions/scenario-visibility';
 import { ScenariosService } from '../scenarios/scenarios.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
@@ -28,7 +29,7 @@ export function toDto(
 export class AnnouncementsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly parties: PartiesService,
+    private readonly permissions: PermissionService,
     private readonly scenarios: ScenariosService,
     private readonly realtimeEvents: RealtimeEventsService,
   ) {}
@@ -38,14 +39,15 @@ export class AnnouncementsService {
     mjId: string,
     dto: CreateAnnouncementDto,
   ): Promise<AnnouncementDto> {
-    await this.parties.getOwned(partieId, mjId);
+    await this.permissions.assert(mjId, 'ANNOUNCEMENT_CREATE', { partieId });
 
     if (dto.scenarioId !== undefined) {
       await this.scenarios.verifyScenarioBelongsToPartie(dto.scenarioId, partieId);
     }
 
-    // L'auteur est toujours le MJ de la Partie (seul autorisé à publier, cf. getOwned ci-dessus) —
-    // Announcement n'a aucune relation vers User, dérivé plutôt que stocké (AD-2, Story 28.2).
+    // L'auteur est toujours le MJ de la Partie (seul autorisé à publier, cf. ANNOUNCEMENT_CREATE
+    // ci-dessus) — Announcement n'a aucune relation vers User, dérivé plutôt que stocké (AD-2,
+    // Story 28.2).
     // Résolu AVANT la création (revue de code 28.2) : un MJ introuvable échoue alors sans avoir rien
     // persisté, et l'émission temps réel reste immédiatement après le create — une requête glissée
     // entre les deux aurait laissé l'annonce écrite sans jamais notifier les autres membres.
@@ -69,20 +71,24 @@ export class AnnouncementsService {
     return toDto(announcement, mj);
   }
 
-  /** Story 9.2 (AD-9/AD-6) : lecture ouverte à tout membre (getViewable), retourne TOUTES les
-   * annonces de la Partie sans filtrage de statut de scénario — l'anti-spoil (AC6) est un rendu
-   * Angular conditionnel côté consommateur, jamais un filtrage serveur. */
+  /** Story 9.2 (AD-9/AD-6) : lecture ouverte à tout membre (ANNOUNCEMENT_READ). Le MJ reçoit TOUTES
+   * les annonces de la Partie. Anti-spoil serveur : un joueur ne reçoit pas les annonces ciblées sur
+   * un scénario qui n'est ni `COURANT` ni `PASSE` ; les annonces de toute la partie restent. */
   async findAll(partieId: string, userId: string): Promise<AnnouncementDto[]> {
-    await this.parties.getViewable(partieId, userId);
-    const announcements = await this.prisma.announcement.findMany({
-      where: { partieId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        partie: {
-          select: { mj: { select: { pseudo: true, displayName: true } } },
-        },
-      },
+    const { partie, role } = await this.permissions.assert(userId, 'ANNOUNCEMENT_READ', {
+      partieId,
     });
-    return announcements.map((a) => toDto(a, a.partie.mj));
+    // Une partie sans propriétaire (AD-5, compte supprimé — inatteignable aujourd'hui) n'a plus
+    // d'auteur à afficher : ses annonces sont écartées en attendant l'affichage « compte
+    // supprimé ».
+    const author = await this.permissions.ownerOf(partie);
+    if (!author) return [];
+    const announcements = await this.prisma.announcement.findMany({
+      where: isSpoilRestricted(role)
+        ? { AND: [{ partieId }, RELEASED_ANNOUNCEMENT_WHERE] }
+        : { partieId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return announcements.map((a) => toDto(a, author));
   }
 }

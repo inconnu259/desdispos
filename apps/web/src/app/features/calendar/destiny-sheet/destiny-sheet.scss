@@ -1,0 +1,172 @@
+/* Le tiroir de la destinée (Story 44.5), sous 768 px. Posé au-dessus de la barre de navigation basse du shell
+   (`--shell-nav-bar-height`, hauteur de la barre mobile) et sous les fenêtres et overlays. NON modal : pas de
+   fond assombri, la grille reste utilisable derrière. */
+:host {
+  display: contents;
+}
+
+.destiny-sheet {
+  position: fixed;
+  right: 0;
+  left: 0;
+  bottom: calc(var(--shell-nav-bar-height, 4rem) + env(safe-area-inset-bottom));
+  z-index: 11;
+  box-sizing: border-box;
+  /* Replié, le tiroir ne couvre jamais toute la grille ; déplié, il garde le haut de l'écran. */
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0.75rem 0.5rem;
+  border-top: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+  border-radius: 18px 18px 0 0;
+  background: var(--mat-sys-surface-container-high, #221c35);
+  color: var(--mat-sys-on-surface, inherit);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.5);
+}
+
+.destiny-sheet__peek {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.destiny-sheet__handle {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1rem;
+  min-width: 0;
+  /* Une cible au doigt : 44 px au moins. */
+  min-height: 44px;
+  padding: 0.25rem 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.destiny-sheet__grip {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  margin-bottom: 0.35rem;
+  border-radius: 2px;
+  background: var(--mat-sys-outline, #6e6383);
+}
+
+.destiny-sheet__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.destiny-sheet__summary {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #9b8fb0);
+}
+
+.destiny-sheet__pill {
+  flex: none;
+  align-self: flex-end;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--mat-sys-outline, #999);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.destiny-sheet__pill--todo {
+  border-color: var(--jdr-status-todo, #f0a030);
+  color: var(--jdr-status-todo, #f0a030);
+}
+
+.destiny-sheet__pill--answered {
+  border-color: var(--mat-sys-tertiary, #7ec8a4);
+  color: var(--mat-sys-tertiary, #7ec8a4);
+}
+
+.destiny-sheet__pill--organizer {
+  border-color: var(--mat-sys-primary, #9b6dff);
+  color: var(--mat-sys-primary, #9b6dff);
+}
+
+.destiny-sheet__body {
+  min-height: 0;
+  margin-top: 0.25rem;
+  overflow-y: auto;
+  animation: destiny-sheet-rise 0.18s ease-out;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.destiny-sheet__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+/* Story 44.6 — « Fixer la date… », la seule action pleine du tiroir replié. */
+.destiny-sheet__fix {
+  flex: 1;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mat-sys-primary, #9b6dff);
+  border-radius: 999px;
+  background: var(--mat-sys-primary, #9b6dff);
+  color: var(--mat-sys-on-primary, #fff);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.destiny-sheet__toggle {
+  --app-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mat-sys-outline, #6e6383);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@keyframes destiny-sheet-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* `prefers-reduced-motion` : la hauteur change, sans animation. */
+@media (prefers-reduced-motion: reduce) {
+  .destiny-sheet__body {
+    animation: none;
+  }
+}
+
+/* Lisible par un lecteur d'écran, invisible à l'œil : l'annonce du créneau courant. */
+.destiny-sheet__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

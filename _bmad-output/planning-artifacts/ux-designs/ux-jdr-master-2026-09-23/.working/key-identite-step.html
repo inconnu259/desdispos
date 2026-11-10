@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Key screen — Étape « Identité » du wizard Homme Dragon</title>
+<style>
+/*
+  Gouverne cette planche :
+
+  Memlog (.../ux-jdr-master-2026-09-23/.memlog.md) :
+    - "Découpage en 5 écrans confirmé : ... 3) Identité (Nom, Apparence, Caractère) ..."
+      → bandeau d'étape 3/5 ici.
+    - "Infos manquantes = texte explicatif ... un texte par CHAMP pour dire ce qu'on attend
+      (... Apparence, Caractère ...)" → aide sous chaque champ, en placeholder explicite.
+    - "Intention du parcours : accompagner, ne pas donner trop d'info d'un coup, que le MJ
+      comprenne ce qu'il doit indiquer ... avant d'agir" → une étape ciblée (3 champs), pas le
+      mur plat de 7 champs de l'écran actuel.
+    - "Trouvaille Material" : le formulaire actuel utilise des <input>/<select> natifs bruts
+      (FormsModule) au lieu de mat-form-field/mat-select — rattrapage appliqué ici : les trois
+      champs Nom/Apparence/Caractère passent en <mat-form-field appearance="outline"> avec
+      matInput, conformément à {radius.input} (base DESIGN.md §6, "Angular Material override").
+      Champs sources : apps/web/.../homme-dragon-sheet.html (labels natifs "Nom" / "Apparence"
+      / "Caractère" actuellement rendus en <input type="text"> bruts).
+
+  Wizard delta ux-jdr-master-2026-08-31 :
+    - DESIGN.md §4 Layout & Spacing : cible tactile 44px, seuil desktop 1024px.
+    - EXPERIENCE.md §8 Responsive & Platform : bandeau d'étape collant, barre d'actions fixe
+      (Précédent/Suivant) — patron repris du mock contractuel du wizard perso
+      (mockups/contrat-ui-wizard-creation.html).
+    - Ton éditorial de la base (léger, JDR) pour les textes d'aide, sans inventer de lore.
+
+  Base ux-jdr-master-20260626/DESIGN.md :
+    - §2 Colors (thème grimoire-emeraude) — valeurs alignées sur apps/web/src/styles.scss
+      (.theme-grimoire-emeraude), source de vérité réelle des tokens.
+    - §3 Typography, §4 spacing, §6 Shapes (radius.input = 4px).
+*/
+:root{
+  --bg:            #0d0a14;
+  --surface:       #1a1428;
+  --surface-high:  #221c35;
+  --accent-1:      #7ec8a4;
+  --accent-2:      #9b6dff;
+  --accent-2-rgb:  155,109,255;
+  --text:          #e8e0f0;
+  --text-muted:    #9b8fb0;
+  --gradient-cta:  linear-gradient(135deg,#7ec8a4,#9b6dff);
+  --border-subtle: rgba(255,255,255,.08);
+  --outline:       #5a5070;
+
+  --text-sm: 12px; --text-base: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 26px;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:12px; --sp-base:16px; --sp-lg:24px; --sp-xl:32px;
+  --r-card:10px; --r-input:4px; --r-button:8px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:#050308; color:var(--text);
+  font:var(--text-base)/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:var(--sp-xl);
+}
+h1{font-size:var(--text-2xl);margin:0 0 4px;font-weight:700}
+p.lead{color:var(--text-muted);max-width:760px;margin:0 0 var(--sp-lg)}
+
+.browser{width:1080px;background:#020103;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.7);border:1px solid #241a30}
+.chrome{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#150f20;border-bottom:1px solid var(--border-subtle)}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot.r{background:#e05252}.dot.y{background:#f0a030}.dot.g{background:#7ec8a4}
+.url{margin-left:10px;flex:1;background:#0d0a14;border:1px solid var(--border-subtle);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text-muted)}
+
+.viewport{background:var(--bg)}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:var(--surface-high);font-weight:600;font-size:13px}
+.nav i{font-style:normal;color:var(--text-muted);width:28px;text-align:center}
+.prog{height:4px;background:#2a2438}
+.prog>div{height:100%;background:var(--gradient-cta)}
+
+.step-body{padding:var(--sp-lg) var(--sp-xl) var(--sp-xl);display:flex;justify-content:center}
+.panel{
+  width:100%;max-width:640px;
+  background:var(--surface);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--r-card);
+  padding:var(--sp-lg);
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
+}
+.intro{font-style:italic;color:var(--text-muted);margin:0 0 var(--sp-lg);font-size:13px}
+
+/* Champ Material outline — simulation visuelle (mat-form-field appearance="outline" + matInput) */
+.field{margin-bottom:var(--sp-lg)}
+.mat-outline{
+  position:relative;
+  border:1px solid var(--outline);
+  border-radius:var(--r-input);
+  padding:14px var(--sp-base) 8px;
+  min-height:44px;
+  background:transparent;
+}
+.mat-outline .label{
+  position:absolute; top:-9px; left:12px;
+  background:var(--surface);
+  padding:0 6px;
+  font-size:11px;
+  color:var(--text-muted);
+  letter-spacing:.01em;
+}
+.mat-outline .value{font-size:var(--text-base);color:var(--text);min-height:20px}
+.mat-outline .value.placeholder{color:var(--text-muted)}
+
+.field.focused .mat-outline{border-color:var(--accent-2);border-width:2px;padding-top:13px}
+.field.focused .mat-outline .label{color:var(--accent-2)}
+.field.focused .mat-outline::after{
+  content:'';position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;border-radius:50%;border:2px solid var(--accent-2);
+}
+
+.helper{margin:6px 2px 0;font-size:var(--text-sm);color:var(--text-muted);line-height:1.4}
+
+.bar{display:flex;gap:var(--sp-sm);padding:var(--sp-sm) var(--sp-xl) var(--sp-lg)}
+.bar div{min-height:44px;padding:0 18px;border-radius:var(--r-button);display:flex;align-items:center;justify-content:center;font-weight:600;border:1px solid var(--border-subtle);font-size:13px}
+.bar .go{background:var(--gradient-cta);color:#0d0a14;border:0;margin-left:auto}
+
+.note{max-width:1080px;font-size:12px;color:var(--text-muted);margin-top:var(--sp-sm)}
+.note b{color:var(--accent-1)}
+.note code{color:var(--text)}
+</style>
+</head>
+<body>
+
+<h1>Étape « Identité » — wizard de création de l'Homme Dragon (3/5)</h1>
+<p class="lead">
+  Un seul groupe de champs à la fois (Nom, Apparence, Caractère), sur fond de carte identique
+  au reste du wizard — au lieu du mur plat de 7 champs natifs de l'écran actuel. Chaque champ
+  passe en <code>mat-form-field appearance="outline"</code> + <code>matInput</code>, conformément
+  au token <code>{radius.input}</code> déjà défini par le spine.
+</p>
+
+<div class="browser">
+  <div class="chrome">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <div class="url">app.jdr-master.local/parties/voie-des-brumes/hommes-dragons/nouveau</div>
+  </div>
+  <div class="viewport">
+    <div class="nav"><i>❮</i><span>Étape 3/5 · Identité</span><i>❯</i></div>
+    <div class="prog"><div style="width:60%"></div></div>
+    <div class="step-body">
+      <div class="panel">
+        <p class="intro">[Texte d'introduction de l'étape — dire au MJ ce qu'on attend de lui ici, avant qu'il ne remplisse quoi que ce soit]</p>
+
+        <div class="field focused">
+          <div class="mat-outline">
+            <span class="label">Nom</span>
+            <div class="value">Corvenn</div>
+          </div>
+          <p class="helper">Le nom sous lequel ton Homme Dragon sera connu des voyageurs qu'il protège — ce texte est un espace réservé.</p>
+        </div>
+
+        <div class="field">
+          <div class="mat-outline">
+            <span class="label">Apparence</span>
+            <div class="value placeholder">Décris son allure…</div>
+          </div>
+          <p class="helper">Comment se manifeste ton Homme Dragon aux yeux des voyageurs ? — ce texte est un espace réservé.</p>
+        </div>
+
+        <div class="field">
+          <div class="mat-outline">
+            <span class="label">Caractère</span>
+            <div class="value placeholder">Décris son tempérament…</div>
+          </div>
+          <p class="helper">Quelques traits qui disent qui est ton Homme Dragon, au-delà de son rôle protecteur — ce texte est un espace réservé.</p>
+        </div>
+      </div>
+    </div>
+    <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+  </div>
+</div>
+<p class="note">Champ « Nom » présenté en <b>état focus</b> (contour <code>accent-2</code> épaissi, libellé teinté) pour montrer l'affordance Material ; « Apparence » et « Caractère » au repos, avec texte d'espace réservé en <code>text-muted</code>. Source du gap : <code>apps/web/src/app/features/homme-dragon/homme-dragon-sheet/homme-dragon-sheet.html</code>, où ces trois champs sont aujourd'hui des <code>&lt;input type="text"&gt;</code> bruts sous <code>&lt;label&gt;</code> natif.</p>
+
+</body>
+</html>

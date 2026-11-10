@@ -6,6 +6,9 @@ import { vi } from 'vitest';
 import type { ScenarioDto } from '@master-jdr/shared';
 import { ScenarioForm } from './scenario-form';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const SCENARIO: ScenarioDto = {
   id: 's1',
@@ -71,7 +74,7 @@ describe('ScenarioForm', () => {
     scenariosSvc.create.mockRejectedValueOnce(new Error('fail'));
     comp.form.patchValue({ title: 'Titre' });
     await comp.submit();
-    expect(comp.error()).toBe("Impossible d'enregistrer le scénario.");
+    expect(comp.error()).toBe(GRIMOIRE_TONE['scenarios.form_save_error']);
     expect(router.navigate).not.toHaveBeenCalled();
   });
 

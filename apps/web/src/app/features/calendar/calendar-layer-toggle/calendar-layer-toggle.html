@@ -1,4 +1,8 @@
-<div class="layer-toggle" role="group" aria-label="Couches affichées du calendrier">
+<div
+  class="layer-toggle"
+  role="group"
+  [attr.aria-label]="theme.tone()['calendar.layer_group_aria']"
+>
   @for (key of keys(); track key) {
     <button
       type="button"

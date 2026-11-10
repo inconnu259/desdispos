@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dés Dispos — écran de connexion (référence)</title>
+<!--
+  KEY SCREEN — CONNEXION (écran de référence, story 34.3, passe UX 2026-10-05)
+  Sections du futur DESIGN.md illustrées :
+    - Brand & Style : nom « Dés Dispos », logo G (d20 à coche, monochrome = couleur de texte), emblème E1 par thème en filigrane,
+      accroche par thème, scène animée par thème (principes des bannières de partie).
+    - Layout & Spacing : mise en page P1bis (bande 196 px, carte sous la bande, marges 16, colonne 448 en bureau), tailles de texte.
+    - Components : bande d'authentification, bloc-marque, carte d'authentification (titre, champ avec bouton œil, bouton principal
+      pleine largeur, rangée d'actions secondaires, ligne d'orientation).
+  Sections du futur EXPERIENCE.md illustrées :
+    - Key Flows : recevoir un lien d'invitation et se connecter (écran « Connexion » ; la variante d'erreur illustre l'état
+      « service indisponible », clé auth.login_unavailable du thème Forêt Ancienne).
+  Chaînes : accroches = .memlog.md ; libellés = apps/web/src/app/features/auth/login/login.html ; message d'erreur = tones.ts.
+  Valeurs hexadécimales, hauteur de bande, espacements, tailles de police : voir le commentaire en tête de <style>.
+  Données de démonstration : la valeur « marie@exemple.fr » du champ de la variante d'erreur n'est pas du contenu produit.
+-->
+<style>
+/*
+  ÉCRAN DE RÉFÉRENCE — MOCK (un seul petit script : pause au clic sur la scène ; aucun réseau, polices système). Les spines (DESIGN.md, EXPERIENCE.md) l'emportent sur cette planche.
+  Sections du futur DESIGN.md / EXPERIENCE.md illustrées : voir le commentaire HTML en tête de fichier.
+
+  VALEURS HEXADÉCIMALES (jetons réels de apps/web/src/styles.scss ; aucune couleur littérale dans les dessins)
+
+  Grimoire Émeraude  .th-em
+    --bg #0d0a14 · --surface #1a1428 · accent-1 #7ec8a4 · accent-2 #9b6dff
+    --text #e8e0f0 · --muted #9b8fb0 · on-primary #062018
+    --outline #6e6383 · --outline-variant #2a2340 · --glow #463271 · --scrim rgba(13,10,20,.6)
+  Forêt Ancienne  .th-fo
+    --bg #080f0a · --surface #0f1f12 · accent-1 #2ecc71 · accent-2 #f0c040
+    --text #d4f0dc · --muted #7aa885 · on-primary #062518
+    --outline #54735c · --outline-variant #1a2e1f · --glow #5c5622 · --scrim rgba(8,15,10,.6)
+  Atelier Cuivré (clé medieval-steampunk)  .th-at
+    --bg #1a1008 · --surface #2a1e10 · accent-1 #cd7f32 · accent-2 #4a7c59
+    --text #f0e6d0 · --muted #b39569 · on-primary #1a0800
+    --outline #8b6541 · --outline-variant #3a2810 · --glow #353e29 · --scrim rgba(26,16,8,.6)
+    --todo #ffd21f (aiguille du manomètre, comme party-banner.scss)
+  Couleur d'erreur (identique dans les 3 thèmes) : --mat-sys-error #cf6679
+  Logo G (d20 à coche) : monochrome, peint en currentColor = couleur de texte du thème.
+  Masque SVG (#fff / #000) : luminance seulement (coche évidée du d20), jamais peint.
+  Hors produit (cadres de démonstration) : téléphone #050505 / #34323a · navigateur #1c1b22 #26252d #17161c #3a3844 #4a4853 #a39ead
+    page #0e0d12 · texte #ece6da · légende #17161d bord #2c2a35
+
+  VALEURS DE MISE EN PAGE RETENUES (px)
+    Viewports : 375 et 320 (téléphone), colonne d'authentification 448 centrée (≥ 480 de large).
+    Bande : hauteur 196, bord bas 1 (outline-variant) ; en bureau, 4 coins arrondis 14.
+      Scène animée : viewBox 440x180, preserveAspectRatio xMidYMid slice.
+      Filigrane (embleme E1) : 200x200 en (245,-12) dans la scène, opacité .30, déborde à droite.
+      Voile (scrim) : dégradé radial 62% x 78% centré à 30% / 55% (garantit le contraste du texte).
+      Contenu : aligné à gauche, padding 10 22, centré verticalement.
+    Bloc-marque : logo G 46x46, écart 11, nom 32/1 Georgia gras (+.01em) ; accroche 14/1.3 Georgia italique,
+      largeur max 232, 12 sous le bloc-marque ; aucun texte tronqué, l'accroche passe à la ligne.
+    Carte : marge 16 (mobile) / 0 (bureau, largeur 448), 16 sous la bande ; padding 20 18 16 ; rayon 14 ;
+      bord 1 outline-variant ; fond surface.
+    Titre de carte 20/1.2 (600) · sous-titre 14 · corps 16/1.5 · libellé flottant 12 · saisie 16 · lien 14 · aide 13.
+    Champ : hauteur 56, rayon 8, écart 16, bouton œil 44x44. Bouton principal : pleine largeur, hauteur 48,
+      pilule (rayon 24), 15/1 (600). Action secondaire : lien centré 14 souligné, cible 45 de haut.
+    Ligne d'orientation : filet haut 1, 6 + 12 de marge/padding, centrée, 13.
+    Cadres : téléphone 375 -> cadre 399 (padding 12) ; 320 -> cadre 344 ; navigateur 1280.
+  MOUVEMENT : seulement transform et opacity ; décor aria-hidden ; .fly (comète) à opacity 0 de base (rien de lumineux ne chevauche
+    le logo ni le texte au repos) ;
+    @media (prefers-reduced-motion: reduce) => animation: none (composition au repos complète, sans comète) ;
+    clic / toucher sur la scène => animation-play-state: paused (gel sur place, état non mémorisé, aucun bouton).
+  STRUCTURE (chaque cadre = un écran) : <header> bande frère de <main aria-labelledby> ; <main> contient la carte ; titre de carte = <h1>.
+*/
+*{box-sizing:border-box}
+html{background:#0e0d12}
+body{margin:0;background:#0e0d12;color:#ece6da;font:15px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1360px;margin:0 auto;padding:28px 20px 72px}
+.board-title{margin:0 0 6px;font:700 28px/1.2 Georgia,"Times New Roman",serif;color:#ece6da}
+h2{margin:48px 0 6px;font:700 22px/1.25 Georgia,"Times New Roman",serif;padding-top:18px;border-top:1px solid #2c2a35}
+p{margin:4px 0 10px;color:#c9c3b6}
+.legend{margin:14px 0 0;padding:12px 18px 12px 34px;background:#17161d;border:1px solid #2c2a35;border-radius:10px;font-size:14px;color:#d8d2c5}
+.legend li{margin:2px 0}
+
+/* ───── Thèmes (rôles) ───── */
+.th-em{--bg:#0d0a14;--surface:#1a1428;--a1:#7ec8a4;--a2:#9b6dff;--text:#e8e0f0;--muted:#9b8fb0;--on-primary:#062018;--outline:#6e6383;--outline-v:#2a2340;--glow:#463271;--scrim:rgba(13,10,20,.6);--todo:#f0a030;--err:#cf6679}
+.th-fo{--bg:#080f0a;--surface:#0f1f12;--a1:#2ecc71;--a2:#f0c040;--text:#d4f0dc;--muted:#7aa885;--on-primary:#062518;--outline:#54735c;--outline-v:#1a2e1f;--glow:#5c5622;--scrim:rgba(8,15,10,.6);--todo:#ff8a3d;--err:#cf6679}
+.th-at{--bg:#1a1008;--surface:#2a1e10;--a1:#cd7f32;--a2:#4a7c59;--text:#f0e6d0;--muted:#b39569;--on-primary:#1a0800;--outline:#8b6541;--outline-v:#3a2810;--glow:#353e29;--scrim:rgba(26,16,8,.6);--todo:#ffd21f;--err:#cf6679}
+
+/* Rôles de couleur pour les SVG (aucune couleur littérale dans les dessins) */
+.f1{fill:var(--a1)} .f2{fill:var(--a2)} .ft{fill:var(--text)} .fsurf{fill:var(--surface)}
+.k1{stroke:var(--a1)} .k2{stroke:var(--a2)} .kt{stroke:var(--text)} .ks{stroke:var(--surface)} .kn{stroke:var(--todo)}
+.nf{fill:none} .rc{stroke-linecap:round;stroke-linejoin:round}
+.sa1{stop-color:var(--a1)} .sa2{stop-color:var(--a2)} .st{stop-color:var(--text)}
+
+/* ───── Cadres de démonstration ───── */
+.theme-row{margin-top:26px}
+.frames{display:flex;flex-wrap:wrap;gap:30px;margin-top:12px;align-items:flex-start}
+figure.fr{margin:0}
+figure.fr figcaption{max-width:399px;min-height:60px;margin:0 0 8px;font-size:13px;color:#cfc9bb}
+figure.fr.n320 figcaption{max-width:344px}
+figure.fr figcaption b{color:#fff}
+figure.fr.w figcaption{max-width:1000px;min-height:0}
+.phone{width:399px;padding:12px;border-radius:40px;background:#050505;border:2px solid #34323a;box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.phone .screen{width:375px;min-height:667px;border-radius:28px;overflow:hidden;background:var(--bg);color:var(--text);padding-bottom:16px}
+.n320 .phone{width:344px}
+.n320 .phone .screen{width:320px;min-height:568px}
+.browser{border-radius:10px;border:1px solid #3a3844;background:#1c1b22;overflow:hidden;box-shadow:0 18px 44px rgba(0,0,0,.55);width:1282px;max-width:none}
+.browser .chrome{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#26252d}
+.browser .dots{display:flex;gap:6px}
+.browser .dots i{display:block;width:10px;height:10px;border-radius:50%;background:#4a4853}
+.browser .url{flex:1;background:#17161c;border-radius:12px;font:12px/1.4 ui-monospace,Consolas,monospace;color:#a39ead;padding:3px 12px}
+.browser .screen{width:1280px;background:var(--bg);color:var(--text);padding:56px 0 72px}
+.col{width:100%}
+.desk .col{width:448px;margin:0 auto}
+
+/* ───── Bande d'authentification (P1bis) ───── */
+.band{position:relative;height:196px;overflow:hidden;background:radial-gradient(ellipse 80% 95% at 50% 30%,var(--glow),var(--bg));border-bottom:1px solid var(--outline-v)}
+.desk .band{border:1px solid var(--outline-v);border-radius:14px}
+.scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.band::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 62% 78% at 30% 55%,var(--scrim),transparent 82%);pointer-events:none}
+.brand{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:10px 22px;text-align:left}
+.bm{display:inline-flex;align-items:center;gap:11px;color:var(--text)}
+.bm svg{display:block;flex:none;width:46px;height:46px;color:var(--text)}
+.bm .nm{font:700 32px/1 Georgia,"Times New Roman",serif;letter-spacing:.01em;text-shadow:0 1px 10px var(--bg)}
+.brand .tag{margin:12px 0 0;max-width:232px;font:italic 14px/1.3 Georgia,"Times New Roman",serif;color:var(--text);opacity:.93;text-shadow:0 1px 8px var(--bg)}
+.bgemb{opacity:.3}
+/* Pause / reprise au clic ou au toucher sur la scène (EXPERIENCE.md §4) : la scène reçoit le clic ; le voile et le bloc-marque ne déclenchent rien. */
+.brand{pointer-events:none}
+.brand .bm,.brand .tag{pointer-events:auto}
+
+/* ───── Carte d'authentification ───── */
+.card{margin:16px;padding:20px 18px 16px;background:var(--surface);border:1px solid var(--outline-v);border-radius:14px}
+.desk .card{margin:16px 0 0}
+.card h1.ct{margin:0 0 16px;padding:0;border:0;font:600 20px/1.2 system-ui,"Segoe UI",sans-serif;color:var(--text)}
+.card h1.ct.has-sub{margin-bottom:4px}
+.card .sub{margin:0 0 16px;font-size:14px;line-height:1.3;color:var(--muted)}
+.card .body{margin:0 0 20px;font-size:16px;line-height:1.5;color:var(--text)}
+.field{position:relative;display:flex;align-items:center;justify-content:space-between;height:56px;margin-bottom:16px;padding:0 6px 0 14px;border:1px solid var(--outline);border-radius:8px;color:var(--text)}
+.field .lbl{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;line-height:1.2;color:var(--muted)}
+.field.filled .lbl{top:-9px;left:10px;transform:none;padding:0 5px;background:var(--surface);font-size:12px}
+.field .val{font-size:16px;color:var(--text)}
+.field .val.pw{letter-spacing:.12em}
+.field .eye{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:transparent;color:var(--muted);padding:0;margin-left:auto}
+.err{margin:-4px 0 12px;font-size:14px;line-height:1.4;color:var(--err)}
+.field.has-msg{margin-bottom:4px}
+.fmsg{margin:0 0 12px;padding:0 14px;font-size:13px;line-height:1.3;color:var(--err)}
+.card .err.solo{margin:0}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:48px;margin-top:4px;border:0;border-radius:24px;background:var(--a1);color:var(--on-primary);font:600 15px/1 system-ui,"Segoe UI",sans-serif;letter-spacing:.01em}
+.sec{display:flex;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.sec .lnk{padding:12px;font-size:14px;line-height:21px;color:var(--a1);text-decoration:underline;text-underline-offset:3px}
+.hint{margin:6px 0 0;padding-top:12px;border-top:1px solid var(--outline-v);text-align:center;font-size:13px;color:var(--muted)}
+
+/* ───── Mouvement (principes des bannières, transform + opacity seulement) ───── */
+@keyframes dd-spin{to{transform:rotate(360deg)}}
+@keyframes dd-spin-rev{to{transform:rotate(-360deg)}}
+@keyframes dd-twinkle{0%,100%{opacity:.22}50%{opacity:.95}}
+@keyframes dd-glow{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+@keyframes dd-fly{0%{transform:translateX(-60px);opacity:0}12%{opacity:1}76%{opacity:1}100%{transform:translateX(var(--tr,260px));opacity:0}}
+@keyframes dd-drift{0%{transform:translate(0,0);opacity:0}14%{opacity:.9}82%{opacity:.45}100%{transform:translate(var(--dx,10px),-96px);opacity:0}}
+@keyframes dd-puff{0%{transform:translate(0,0) scale(.6);opacity:0}22%{opacity:1}100%{transform:translate(12px,-42px) scale(1.7);opacity:0}}
+@keyframes dd-needle{0%,100%{transform:rotate(-40deg)}44%{transform:rotate(28deg)}60%{transform:rotate(15deg)}}
+.star{fill:var(--text);opacity:.5;animation:dd-twinkle 3.4s ease-in-out infinite}
+.halo{opacity:.75;animation:dd-glow 6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.fly{opacity:0;animation:dd-fly 7s ease-in-out infinite}
+.mote{opacity:.8;animation:dd-drift 8.5s linear infinite}
+.spin{animation:dd-spin 16s linear infinite}
+.spin.rev{animation-name:dd-spin-rev}
+.spin.slow{animation-duration:24s}
+.spin.fast{animation-duration:11s}
+.puff{opacity:.9;animation:dd-puff 5s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.needle{animation:dd-needle 5.5s ease-in-out infinite}
+.gc1{color:var(--a1);opacity:.7} .gc2{color:var(--a2);opacity:.95}
+.grid-rect{opacity:.22}
+.rivet{opacity:.85}
+.dl1{animation-delay:-.3s}.dl2{animation-delay:-1.1s}.dl3{animation-delay:-2s}.dl4{animation-delay:-2.9s}
+.dl5{animation-delay:-3.7s}.dl6{animation-delay:-4.6s}.dl7{animation-delay:-5.8s}.dl8{animation-delay:-7s}
+/* Pause : gel sur place (animation-play-state: paused), état non mémorisé. Une comète ou une luciole figée peut rester sous l'accroche (écart accepté). */
+.band.is-paused .scene *{animation-play-state:paused !important}
+@media (prefers-reduced-motion: reduce){
+  .scene *{animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<!-- Définitions partagées (SVG invisible) : logo G (d20 à coche), emblèmes E1, rouage, repris à l'identique de logos-et-emblemes-2.html -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <mask id="g-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M26 34 L30.5 38.5 L38.2 29.2" fill="none" stroke="#000" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+    <symbol id="mark-g" viewBox="0 0 64 64">
+      <path d="M32 2.5 L57.55 17.25 V46.75 L32 61.5 L6.45 46.75 V17.25 Z" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linejoin="round"/>
+      <path d="M32 13 V2.5 M32 13 L57.55 17.25 M32 13 L6.45 17.25 M48.45 41.5 L57.55 17.25 M48.45 41.5 L57.55 46.75 M48.45 41.5 L32 61.5 M15.55 41.5 L32 61.5 M15.55 41.5 L6.45 46.75 M15.55 41.5 L6.45 17.25" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M32 13 L48.45 41.5 H15.55 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" mask="url(#g-cut)"/>
+    </symbol>
+    <g id="gear-b">
+      <g fill="currentColor">
+        <rect x="46" y="2" width="8" height="14" rx="1.5"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(30 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(60 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(90 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(120 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(150 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(180 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(210 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(240 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(270 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(300 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(330 50 50)"/>
+      </g>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" stroke-width="7"/>
+      <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="5"/>
+    </g>
+    <symbol id="emb-em" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+      <path class="f1" d="M32 51 C26 47 16 46 9 48 L9 28 C16 26 26 27 32 32 Z"/>
+      <path class="f1" d="M32 51 C38 47 48 46 55 48 L55 28 C48 27 38 26 32 32 Z"/>
+      <path class="nf ks rc" stroke-width="1.6" d="M32 32 V51"/>
+      <path class="nf ks rc" stroke-width="1.6" d="M14 34 C18 33 23 34 27 36 M14 39.5 C18 38.5 23 39.5 27 41.5 M50 34 C46 33 41 34 37 36 M50 39.5 C46 38.5 41 39.5 37 41.5"/>
+      <path class="nf k1 rc" stroke-width="2.6" d="M7 52 C16 50 26 51 32 56 C38 51 48 50 57 52"/>
+      <path class="f2" d="M32 4 L34.8 11.2 L42 14 L34.8 16.8 L32 24 L29.2 16.8 L22 14 L29.2 11.2 Z"/>
+      <circle class="f2" cx="46" cy="9" r="1.5"/><circle class="f2" cx="18" cy="10" r="1.5"/>
+    </symbol>
+    <symbol id="emb-fo" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+      <path class="f1 k1 rc" fill-opacity=".22" stroke-width="3.2" d="M32 7 C36 7 37 12 39 13 C42 12 46 13 46 17 C46 21 44 22 43 24 C47 24 51 27 50 31 C50 35 46 36 44 37 C47 39 49 42 47 45 C45 48 40 47 38 47 C37 50 35 52 32 53 C29 52 27 50 26 47 C24 47 19 48 17 45 C15 42 17 39 20 37 C18 36 14 35 14 31 C13 27 17 24 21 24 C20 22 18 21 18 17 C18 13 22 12 25 13 C27 12 28 7 32 7 Z"/>
+      <path class="nf k1 rc" stroke-width="3.2" d="M32 53 V60"/>
+      <path class="nf k1 rc" stroke-width="2.2" d="M32 51 V34"/>
+      <circle class="nf k2" stroke-width="1.6" stroke-opacity=".55" cx="32" cy="27" r="9"/>
+      <circle class="f2" cx="32" cy="27" r="5"/>
+    </symbol>
+    <symbol id="emb-at" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+      <g class="f1">
+        <rect x="28" y="4" width="8" height="12" rx="2"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(45 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(90 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(135 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(180 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(225 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(270 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(315 32 32)"/>
+      </g>
+      <circle class="f1" cx="32" cy="32" r="23"/>
+      <rect class="f2 ks" stroke-width="2.4" x="19" y="19" width="26" height="26" rx="6"/>
+      <g class="ft"><circle cx="25.5" cy="25.5" r="2.5"/><circle cx="38.5" cy="25.5" r="2.5"/><circle cx="32" cy="32" r="2.5"/><circle cx="25.5" cy="38.5" r="2.5"/><circle cx="38.5" cy="38.5" r="2.5"/></g>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="board-title">Dés Dispos — écran de connexion</div>
+  <ul class="legend">
+    <li><b>Mise en page P1bis</b> : bande animée de <b>196 px</b> (scène 440x180, filigrane de l'emblème E1 à 30 %), bloc-marque seul au premier plan (logo G 46 px + « Dés Dispos » 32 px Georgia gras), accroche 14 px italique dessous, puis la carte (marge 16, padding 20 / 18 / 16, rayon 14).</li>
+    <li><b>Carte</b> : titre 20 px · libellés 12 px (flottants) / 16 px (au repos) · saisie 16 px · champ 56 px · bouton principal 48 px pleine largeur, pilule · lien secondaire 14 px · ligne d'orientation 13 px. Colonne de 448 px centrée à partir de 480 px de large.</li>
+    <li><b>Mouvement</b> : transform et opacité seulement, décor aria-hidden ; « réduire les animations » coupe l'animation d'office (composition au repos complète, sans comète : <code>.fly</code> à <code>opacity: 0</code> de base). <b>Clic ou toucher sur le fond animé</b> : pause sur place (<code>animation-play-state: paused</code>), un second clic relance ; aucun bouton, état non mémorisé. Une comète ou une luciole figée peut rester sous l'accroche (écart accepté, EXPERIENCE.md §11). Essayez : cliquez sur le fond d'une bande.</li>
+    <li><b>Structure</b> : chaque cadre est un écran : <code>&lt;header&gt;</code> (bande) frère de <code>&lt;main&gt;</code> ; le <code>&lt;main&gt;</code> est le conteneur de la carte et porte <code>aria-labelledby</code> vers le <code>&lt;h1&gt;</code> du titre de carte. Bord des champs : jeton corrigé <code>--mat-sys-outline</code> (3,1 à 3,3:1).</li>
+  </ul>
+  <h2>Téléphone 375 px — un cadre par thème</h2>
+  <p>Écran de connexion au repos : champs vides (libellé au repos), aucune sélection de thème, thème tiré parmi les trois.</p>
+  <div class="frames">
+    <figure class="fr th-em">
+      <figcaption><b>Grimoire Émeraude · 375 px.</b> Bande animée, grimoire-étoile en filigrane, bloc-marque seul, accroche du thème.</figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="c375em-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="c375em-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <linearGradient id="c375em-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+              <radialGradient id="c375em-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="345" cy="52" r="84" fill="url(#c375em-h2)"/>
+            <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#c375em-h1)"/>
+            <use href="#emb-em" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+            <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+            <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+            <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+            <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#c375em-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#c375em-head)"/></g></g>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct1">
+        <div class="card">
+          <h1 class="ct" id="ct1">Connexion</h1>
+          <div class="field"><span class="lbl">Email ou pseudo</span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+    <figure class="fr th-fo">
+      <figcaption><b>Forêt Ancienne · 375 px.</b> Lucioles et halos, feuille-lumière en filigrane ; l'accroche passe sur deux lignes.</figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="c375fo-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="c375fo-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <radialGradient id="c375fo-mote"><stop offset="0" class="sa2" stop-opacity=".95"/><stop offset=".35" class="sa2" stop-opacity=".7"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="82" cy="70" r="76" fill="url(#c375fo-h1)"/>
+            <circle class="halo dl5" cx="362" cy="124" r="74" fill="url(#c375fo-h2)"/>
+            <circle class="halo dl2" cx="250" cy="14" r="46" fill="url(#c375fo-h1)"/>
+            <use href="#emb-fo" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="mote dl1" cx="62" cy="150" r="5" fill="url(#c375fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl4" cx="108" cy="168" r="4" fill="url(#c375fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl7" cx="150" cy="140" r="5" fill="url(#c375fo-mote)" style="--dx:14px"/>
+            <circle class="mote dl2" cx="44" cy="96" r="4" fill="url(#c375fo-mote)" style="--dx:-8px"/>
+            <circle class="mote dl5" cx="196" cy="170" r="4" fill="url(#c375fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl8" cx="262" cy="158" r="5" fill="url(#c375fo-mote)" style="--dx:-14px"/>
+            <circle class="mote dl3" cx="318" cy="172" r="4" fill="url(#c375fo-mote)" style="--dx:12px"/>
+            <circle class="mote dl6" cx="372" cy="150" r="5" fill="url(#c375fo-mote)" style="--dx:-10px"/>
+            <circle class="mote dl1" cx="404" cy="112" r="4" fill="url(#c375fo-mote)" style="--dx:8px"/>
+            <circle class="mote dl7" cx="346" cy="96" r="4" fill="url(#c375fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl4" cx="128" cy="92" r="3.5" fill="url(#c375fo-mote)" style="--dx:10px"/>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Un feu de camp, des amis, et une date qui arrange tout le monde</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct2">
+        <div class="card">
+          <h1 class="ct" id="ct2">Connexion</h1>
+          <div class="field"><span class="lbl">Email ou pseudo</span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+    <figure class="fr th-at">
+      <figcaption><b>Atelier Cuivré · 375 px.</b> Rouages, vapeur et manomètre ; rouage-dé en filigrane.</figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <pattern id="c375at-grid" width="13" height="13" patternUnits="userSpaceOnUse"><path d="M13 0H0V13" class="nf k1" stroke-width=".5"/></pattern>
+              <radialGradient id="c375at-steam"><stop offset="0" class="st" stop-opacity=".3"/><stop offset="1" class="st" stop-opacity="0"/></radialGradient>
+            </defs>
+            <rect class="grid-rect" x="0" y="0" width="440" height="180" fill="url(#c375at-grid)"/>
+            <g transform="translate(-14 100) scale(.85)"><g class="spin" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <g transform="translate(352 96) scale(.8)"><g class="spin rev slow" style="transform-origin:50px 50px"><use href="#gear-b" class="gc2"/></g></g>
+            <g transform="translate(380 51) scale(.5)"><g class="spin fast" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <use href="#emb-at" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="rivet f1" cx="44" cy="12" r="2"/><circle class="rivet f1" cx="396" cy="12" r="2"/><circle class="rivet f1" cx="44" cy="168" r="2"/><circle class="rivet f1" cx="396" cy="168" r="2"/>
+            <circle class="puff dl1" cx="306" cy="160" r="9" fill="url(#c375at-steam)"/>
+            <circle class="puff dl4" cx="318" cy="164" r="7" fill="url(#c375at-steam)"/>
+            <circle class="puff dl7" cx="298" cy="166" r="8" fill="url(#c375at-steam)"/>
+            <g transform="translate(58 18)"><circle cx="20" cy="20" r="20" class="fsurf"/><circle cx="20" cy="20" r="18.5" class="nf k1" stroke-width="3"/>
+              <g transform="translate(20 20)"><g class="needle"><line x1="0" y1="0" x2="-5.9" y2="-10" class="kn rc" stroke-width="2"/></g></g><circle cx="20" cy="20" r="2.5" class="f1"/></g>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">On cale tout le monde, et on lance la machine&#160;!</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct3">
+        <div class="card">
+          <h1 class="ct" id="ct3">Connexion</h1>
+          <div class="field"><span class="lbl">Email ou pseudo</span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+  </div>
+  <h2>Forêt Ancienne — variante « erreur »</h2>
+  <p>Après un envoi : le message du thème (<code>auth.login_unavailable</code>) apparaît sous les champs, au-dessus du bouton, en couleur d'erreur #cf6679 (<code>role="alert"</code>) ; le reste de l'écran ne bouge pas.</p>
+  <div class="frames">
+    <figure class="fr th-fo">
+      <figcaption><b>Forêt Ancienne · erreur « service indisponible ».</b> Champs renseignés (données de démonstration), message sous les champs.</figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="e375fo-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="e375fo-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <radialGradient id="e375fo-mote"><stop offset="0" class="sa2" stop-opacity=".95"/><stop offset=".35" class="sa2" stop-opacity=".7"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="82" cy="70" r="76" fill="url(#e375fo-h1)"/>
+            <circle class="halo dl5" cx="362" cy="124" r="74" fill="url(#e375fo-h2)"/>
+            <circle class="halo dl2" cx="250" cy="14" r="46" fill="url(#e375fo-h1)"/>
+            <use href="#emb-fo" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="mote dl1" cx="62" cy="150" r="5" fill="url(#e375fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl4" cx="108" cy="168" r="4" fill="url(#e375fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl7" cx="150" cy="140" r="5" fill="url(#e375fo-mote)" style="--dx:14px"/>
+            <circle class="mote dl2" cx="44" cy="96" r="4" fill="url(#e375fo-mote)" style="--dx:-8px"/>
+            <circle class="mote dl5" cx="196" cy="170" r="4" fill="url(#e375fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl8" cx="262" cy="158" r="5" fill="url(#e375fo-mote)" style="--dx:-14px"/>
+            <circle class="mote dl3" cx="318" cy="172" r="4" fill="url(#e375fo-mote)" style="--dx:12px"/>
+            <circle class="mote dl6" cx="372" cy="150" r="5" fill="url(#e375fo-mote)" style="--dx:-10px"/>
+            <circle class="mote dl1" cx="404" cy="112" r="4" fill="url(#e375fo-mote)" style="--dx:8px"/>
+            <circle class="mote dl7" cx="346" cy="96" r="4" fill="url(#e375fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl4" cx="128" cy="92" r="3.5" fill="url(#e375fo-mote)" style="--dx:10px"/>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Un feu de camp, des amis, et une date qui arrange tout le monde</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct4">
+        <div class="card">
+          <h1 class="ct" id="ct4">Connexion</h1>
+          <div class="field filled"><span class="lbl">Email ou pseudo</span><span class="val">marie@exemple.fr</span></div>
+          <div class="field filled"><span class="lbl">Mot de passe</span><span class="val pw">••••••••</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <p class="err" role="alert">Le carnet est indisponible pour le moment. Réessaie dans quelques instants.</p>
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+  </div>
+  <h2>Variante « envoi invalide » — messages de validation</h2>
+  <p>Envoi d'un formulaire invalide : <code>markAllAsTouched()</code>, un court message écrit par règle non respectée sous chaque champ invalide (<code>{colors.error}</code>), focus sur le premier champ invalide. Sur l'écran de connexion, seule la règle « champ requis » existe. L'aide « 8+ caractères » (<code>mat-hint</code>) n'apparaît que sous les champs de mot de passe de l'inscription et de la réinitialisation, non maquettées ici.</p>
+  <div class="frames">
+    <figure class="fr th-em">
+      <figcaption><b>Grimoire Émeraude · 375 px — envoi invalide.</b> Les deux champs requis sont vides : un court message écrit sous chaque champ (texte neutre de référence ; les textes thématiques restent à rédiger, EXPERIENCE.md §3), focus sur le premier champ, aucun appel serveur.</figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="v375em-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="v375em-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <linearGradient id="v375em-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+              <radialGradient id="v375em-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="345" cy="52" r="84" fill="url(#v375em-h2)"/>
+            <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#v375em-h1)"/>
+            <use href="#emb-em" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+            <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+            <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+            <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+            <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#v375em-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#v375em-head)"/></g></g>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct5">
+        <div class="card">
+          <h1 class="ct" id="ct5">Connexion</h1>
+          <div class="field has-msg"><span class="lbl">Email ou pseudo</span></div>
+          <p class="fmsg" id="v-msg1">Renseignez ce champ.</p>
+          <div class="field has-msg"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <p class="fmsg" id="v-msg2">Renseignez ce champ.</p>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+  </div>
+  <h2>Téléphone 320 px — la largeur la plus étroite visée</h2>
+  <p>Aucun texte tronqué : le filigrane déborde et le voile garantit le contraste ; le bloc-marque (46 + 11 + nom 32 px) tient sur la largeur utile de 276 px.</p>
+  <div class="frames">
+    <figure class="fr th-em n320">
+      <figcaption><b>Grimoire Émeraude · 320 px.</b></figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="c320em-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="c320em-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <linearGradient id="c320em-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+              <radialGradient id="c320em-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="345" cy="52" r="84" fill="url(#c320em-h2)"/>
+            <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#c320em-h1)"/>
+            <use href="#emb-em" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+            <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+            <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+            <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+            <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#c320em-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#c320em-head)"/></g></g>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct6">
+        <div class="card">
+          <h1 class="ct" id="ct6">Connexion</h1>
+          <div class="field"><span class="lbl">Email ou pseudo</span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+    <figure class="fr th-fo n320">
+      <figcaption><b>Forêt Ancienne · 320 px.</b> Accroche la plus longue, à la ligne.</figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="c320fo-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="c320fo-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <radialGradient id="c320fo-mote"><stop offset="0" class="sa2" stop-opacity=".95"/><stop offset=".35" class="sa2" stop-opacity=".7"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="82" cy="70" r="76" fill="url(#c320fo-h1)"/>
+            <circle class="halo dl5" cx="362" cy="124" r="74" fill="url(#c320fo-h2)"/>
+            <circle class="halo dl2" cx="250" cy="14" r="46" fill="url(#c320fo-h1)"/>
+            <use href="#emb-fo" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="mote dl1" cx="62" cy="150" r="5" fill="url(#c320fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl4" cx="108" cy="168" r="4" fill="url(#c320fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl7" cx="150" cy="140" r="5" fill="url(#c320fo-mote)" style="--dx:14px"/>
+            <circle class="mote dl2" cx="44" cy="96" r="4" fill="url(#c320fo-mote)" style="--dx:-8px"/>
+            <circle class="mote dl5" cx="196" cy="170" r="4" fill="url(#c320fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl8" cx="262" cy="158" r="5" fill="url(#c320fo-mote)" style="--dx:-14px"/>
+            <circle class="mote dl3" cx="318" cy="172" r="4" fill="url(#c320fo-mote)" style="--dx:12px"/>
+            <circle class="mote dl6" cx="372" cy="150" r="5" fill="url(#c320fo-mote)" style="--dx:-10px"/>
+            <circle class="mote dl1" cx="404" cy="112" r="4" fill="url(#c320fo-mote)" style="--dx:8px"/>
+            <circle class="mote dl7" cx="346" cy="96" r="4" fill="url(#c320fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl4" cx="128" cy="92" r="3.5" fill="url(#c320fo-mote)" style="--dx:10px"/>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Un feu de camp, des amis, et une date qui arrange tout le monde</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct7">
+        <div class="card">
+          <h1 class="ct" id="ct7">Connexion</h1>
+          <div class="field"><span class="lbl">Email ou pseudo</span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+    <figure class="fr th-at n320">
+      <figcaption><b>Atelier Cuivré · 320 px.</b></figcaption>
+      <div class="phone"><div class="screen"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <pattern id="c320at-grid" width="13" height="13" patternUnits="userSpaceOnUse"><path d="M13 0H0V13" class="nf k1" stroke-width=".5"/></pattern>
+              <radialGradient id="c320at-steam"><stop offset="0" class="st" stop-opacity=".3"/><stop offset="1" class="st" stop-opacity="0"/></radialGradient>
+            </defs>
+            <rect class="grid-rect" x="0" y="0" width="440" height="180" fill="url(#c320at-grid)"/>
+            <g transform="translate(-14 100) scale(.85)"><g class="spin" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <g transform="translate(352 96) scale(.8)"><g class="spin rev slow" style="transform-origin:50px 50px"><use href="#gear-b" class="gc2"/></g></g>
+            <g transform="translate(380 51) scale(.5)"><g class="spin fast" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <use href="#emb-at" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="rivet f1" cx="44" cy="12" r="2"/><circle class="rivet f1" cx="396" cy="12" r="2"/><circle class="rivet f1" cx="44" cy="168" r="2"/><circle class="rivet f1" cx="396" cy="168" r="2"/>
+            <circle class="puff dl1" cx="306" cy="160" r="9" fill="url(#c320at-steam)"/>
+            <circle class="puff dl4" cx="318" cy="164" r="7" fill="url(#c320at-steam)"/>
+            <circle class="puff dl7" cx="298" cy="166" r="8" fill="url(#c320at-steam)"/>
+            <g transform="translate(58 18)"><circle cx="20" cy="20" r="20" class="fsurf"/><circle cx="20" cy="20" r="18.5" class="nf k1" stroke-width="3"/>
+              <g transform="translate(20 20)"><g class="needle"><line x1="0" y1="0" x2="-5.9" y2="-10" class="kn rc" stroke-width="2"/></g></g><circle cx="20" cy="20" r="2.5" class="f1"/></g>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">On cale tout le monde, et on lance la machine&#160;!</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct8">
+        <div class="card">
+          <h1 class="ct" id="ct8">Connexion</h1>
+          <div class="field"><span class="lbl">Email ou pseudo</span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+      </div></div></div>
+    </figure>
+  </div>
+  <h2>Navigateur 1280 px — Grimoire Émeraude</h2>
+  <p>Même composition : bande et carte forment une colonne de 448 px centrée sur le fond du thème (proposition de mise en page bureau, non décidée dans le mémo : à confirmer).</p>
+  <div class="frames">
+    <figure class="fr w th-em">
+      <figcaption><b>Grimoire Émeraude · 1280 px.</b> Colonne 448 px centrée ; bande aux coins arrondis (14 px) ; carte à 16 px sous la bande.</figcaption>
+      <div class="browser">
+        <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">…/login</span></div>
+        <div class="screen desk"><div class="col">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="d1280em-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="d1280em-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <linearGradient id="d1280em-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+              <radialGradient id="d1280em-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="345" cy="52" r="84" fill="url(#d1280em-h2)"/>
+            <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#d1280em-h1)"/>
+            <use href="#emb-em" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+            <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+            <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+            <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+            <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#d1280em-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#d1280em-head)"/></g></g>
+          </svg>
+          <div class="brand">
+            <div class="bm"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+          </div>
+        </header>
+        <main aria-labelledby="ct9">
+        <div class="card">
+          <h1 class="ct" id="ct9">Connexion</h1>
+          <div class="field"><span class="lbl">Email ou pseudo</span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+          </div>
+        </main>
+        </div></div>
+      </div>
+    </figure>
+  </div>
+</div>
+<script>
+/* Pause / reprise : un clic ou un toucher sur la scène (jamais sur le bloc-marque) fige ou relance les animations de SA bande.
+   Aucun bouton, état non mémorisé (EXPERIENCE.md §4). */
+document.querySelectorAll('.scene').forEach(function (scene) {
+  scene.addEventListener('click', function () {
+    scene.closest('.band').classList.toggle('is-paused');
+  });
+});
+</script>
+</body>
+</html>

@@ -1,8 +1,18 @@
+:host {
+  display: block;
+}
+
 .choice-card {
+  // 🚨 Trouvé à l'écran (31.4, Task 9) : un bouton garde une largeur « au contenu » — les cartes à
+  // libellé court (profils d'attributs) rétrécissaient et se dispersaient dans la grille.
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1rem;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.125rem;
+  padding: 0.5rem 0.75rem;
   min-height: 44px;
   border: 1px solid var(--mat-sys-outline-variant, #ccc);
   border-radius: 8px;
@@ -10,7 +20,7 @@
   color: var(--mat-sys-on-surface, #1a1428);
   cursor: pointer;
   font: inherit;
-  text-align: center;
+  text-align: left;
   transition:
     border-color 0.15s,
     background-color 0.15s;
@@ -25,7 +35,138 @@
     color: var(--mat-sys-on-primary-container, #2a1a4a);
   }
 
+  &--selected &__detail {
+    color: inherit;
+  }
+
+  // Carte déployée : en-tête d'un bloc à deux parties (avec `app-choice-detail`) — coins bas droits,
+  // pas de filet bas, libellé à gauche et indication à droite.
+  &--expanded {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-bottom-color: transparent;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  &__hint {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-align: right;
+    color: inherit;
+    opacity: 0.85;
+  }
+
+  &--center {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
   &__label {
     font-weight: 500;
+  }
+
+  // Variante teintée (Story 33.3, DESIGN Homme Dragon §7) : liséré 2 px, lueur de coin au repos,
+  // gemme décorative et étiquette à contour. Palette fournie par le parent en variables CSS ;
+  // les repli neutres ci-dessous ne servent qu'à ne rien casser si elles manquent.
+  // Le padding perd 1 px par côté pour que le liséré de 2 px ne grossisse pas la carte.
+  &--tint {
+    position: relative;
+    overflow: hidden;
+    border: 2px solid var(--h, var(--mat-sys-outline-variant, #ccc));
+    padding: calc(0.5rem - 1px) calc(0.75rem - 1px);
+    gap: 0.375rem;
+
+    // Lueur de coin : disparaît à l'état sélectionné (le halo `primary` prend le relais).
+    &:not(.choice-card--selected)::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: radial-gradient(
+        130px 100px at 10% -8%,
+        var(--glow, transparent) 0%,
+        transparent 70%
+      );
+    }
+
+    &.choice-card--selected {
+      border-color: var(--mat-sys-primary, #9b6dff);
+    }
+  }
+
+  &__head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  // Gemme : décorative (aria-hidden) — le nom et l'étiquette portent seuls l'information.
+  &__gem {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, var(--hl, rgba(255, 255, 255, 0.85)) 0%, transparent 40%),
+      conic-gradient(from 200deg, var(--g1, #888), var(--g2, #ccc), var(--g1, #888));
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+  }
+
+  // Étiquette : contour teinté. Le TEXTE utilise `--h-text` (teinte éclaircie pour le rouge et le
+  // noir, dont la teinte de liséré tombe sous 4,5:1 sur les surfaces des 3 thèmes) ; à l'état
+  // sélectionné il hérite de `on-primary-container`, sur lequel aucune teinte ne tient 4,5:1.
+  &__badge {
+    position: relative;
+    display: inline-block;
+    padding: 2px 7px;
+    border: 1px solid var(--h, currentColor);
+    border-radius: 6px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--h-text, var(--h, inherit));
+  }
+
+  &--selected &__badge {
+    color: inherit;
+  }
+
+  // Sous-titre descriptif (Story 31.4, DESIGN §7.1) : 2 lignes maximum, coupé par une ellipse.
+  // Contraste 12px MESURÉ (AC13, 2026-09-20) : `on-surface-variant` sur `surface-container` =
+  // 5,92 / 6,34 / 5,74:1 (grimoire / forêt / steampunk) ✓ ; mais sur le fond SÉLECTIONNÉ
+  // (`primary-container`) il tombe à 3,42 / 4,36 / 4,48:1 ✗ — d'où `color: inherit` ci-dessous
+  // (`on-primary-container` : 6,41 / 7,57 / 5,81:1).
+  &__detail {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    font-weight: 400;
+    color: var(--mat-sys-on-surface-variant, #555);
+  }
+
+  // Carte teintée : la description de race tient sur 3 lignes (DESIGN Homme Dragon, mock).
+  &--tint &__detail {
+    position: relative;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
+  // Sous-titre complet (Story 33.3) : déclaré après les coupes ci-dessus pour les remplacer.
+  &--full-detail &__detail {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
   }
 }

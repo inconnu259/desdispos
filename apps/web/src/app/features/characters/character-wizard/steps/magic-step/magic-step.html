@@ -25,7 +25,7 @@
     </h3>
     <ul class="magic-step__spells">
       @for (spell of ritualSpellChoices(); track spell.key) {
-        <li>
+        <li class="magic-step__spell-row">
           <label
             class="magic-step__spell"
             [class.magic-step__spell--selected]="isSpellSelected(spell.key)"
@@ -37,10 +37,28 @@
               (change)="onToggleSpell(spell.key)"
             />
             <span class="magic-step__spell-name">{{ spell.name }}</span>
-            <span class="magic-step__spell-detail">{{ spell.peCost }} PE — {{ spell.description }}</span>
+            <span class="magic-step__spell-detail">{{ spell.peCost }} PE</span>
           </label>
+          @if (spellHelp(spell); as h) {
+            <button
+              type="button"
+              class="magic-step__detail-trigger"
+              [attr.aria-label]="h.title"
+              (click)="detail.open(h.title, h.body, $event)"
+            >ⓘ</button>
+          }
         </li>
       }
     </ul>
   </div>
+  @if (detail.selected(); as d) {
+    <app-detail-surface
+      [title]="d.title"
+      [body]="d.body"
+      [rows]="d.rows ?? []"
+      [narrative]="d.narrative ?? ''"
+      [openToken]="detail.openToken()"
+      (closed)="detail.close()"
+    />
+  }
 </div>

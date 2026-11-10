@@ -1,4 +1,15 @@
-import { IsString, Matches, MaxLength, ValidateIf } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { DURATION_CAP_MESSAGE } from '../../events/seance-span';
 
 /** `HH:MM` en 24 h, heures et minutes paddées. Volontairement strict : la valeur n'est
  *  jamais reparsée en aval, donc c'est ici — et seulement ici — qu'on garantit sa forme. */
@@ -47,4 +58,12 @@ export class SetInfosPratiquesDto {
     message: 'La note pratique ne peut pas être une chaîne vide',
   })
   notePratique!: string | null;
+
+  /** Story 47.1 : nouvelle durée du rendez-vous, en créneaux enchaînés ; absente = inchangée (contrairement
+   *  aux trois champs ci-dessus, qui sont toujours envoyés ensemble). */
+  @IsOptional()
+  @IsInt({ message: 'La durée doit être un entier d’au moins 1 créneau' })
+  @Min(1, { message: 'La durée doit être un entier d’au moins 1 créneau' })
+  @Max(MAX_SLOT_WINDOW_SLOTS, { message: DURATION_CAP_MESSAGE })
+  durationSlots?: number;
 }

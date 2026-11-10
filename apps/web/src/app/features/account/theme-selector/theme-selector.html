@@ -1,5 +1,5 @@
 <div class="appearance-section">
-  <span class="section-label">Apparence</span>
+  <span class="section-label">{{ themeSvc.tone()['account.appearance_label'] }}</span>
   @for (t of themeSvc.themes; track t) {
     <button
       class="theme-option"
@@ -11,7 +11,7 @@
       <span class="swatch" [style.background]="gradients[t]"></span>
       <span class="name">{{ themeSvc.themeNames[t] }}</span>
       @if (themeSvc.activeTheme() === t) {
-        <mat-icon class="check">check</mat-icon>
+        <app-icon class="check" name="actif" />
       }
     </button>
   }

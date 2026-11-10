@@ -39,39 +39,54 @@
       }
     </section>
   } @else {
-    <!-- Identité visuelle : présente dès la création (AC3), pas seulement à l'édition. -->
+    <!-- Identité visuelle : présente dès la création (AC3), pas seulement à l'édition. Bannière
+         d'aperçu pleine largeur (Story 38.3, ⚠️ planche UI) : les puces « Changer » / « Retirer »
+         sont posées sur la bannière, sœurs d'elle (jamais dedans : elle est aria-hidden). -->
     <section class="cover-section">
-      @if (pendingCoverPreview(); as preview) {
-        <img class="cover-preview cover-preview--file" [src]="preview" alt="" />
-      } @else {
-        <app-party-banner
-          class="cover-preview"
-          [partieId]="editId() ?? 'nouvelle-partie'"
-          [partieName]="editId() ? partieName() : form.controls.name.value"
-          [coverImageVersion]="coverImageVersion()"
-          mode="medium"
-        />
-      }
-
-      <div class="cover-actions">
-        <label class="cover-upload-label">
-          {{
-            coverImageVersion() || pendingCoverFile()
-              ? theme.tone()['partie.cover_change']
-              : theme.tone()['partie.cover_add']
-          }}
-          <input
-            type="file"
-            [accept]="'image/jpeg,image/png,image/webp'"
-            [disabled]="coverSaving()"
-            (change)="onCoverFileSelected($event)"
+      <div class="cover-frame">
+        @if (pendingCoverPreview(); as preview) {
+          <img class="cover-image" [src]="preview" alt="" />
+        } @else {
+          <app-party-banner
+            class="cover-banner"
+            [partieId]="editId() ?? 'nouvelle-partie'"
+            [partieName]="editId() ? partieName() : form.controls.name.value"
+            [coverImageVersion]="coverImageVersion()"
+            mode="large"
           />
-        </label>
-        @if (coverImageVersion() || pendingCoverFile()) {
-          <button mat-button type="button" [disabled]="coverSaving()" (click)="removeCoverImage()">
-            {{ theme.tone()['partie.cover_remove'] }}
-          </button>
         }
+
+        <div class="cover-chips">
+          @if (hasPersonalCover()) {
+            <button
+              type="button"
+              class="cover-chip"
+              [disabled]="coverLocked()"
+              [attr.aria-label]="
+                theme.tone()['common.retirer'] + ' — ' + theme.tone()['partie.cover_remove']
+              "
+              (click)="removeCoverImage()"
+            >
+              {{ theme.tone()['common.retirer'] }}
+            </button>
+          }
+          <!-- Le champ fichier natif couvre la puce en opacité 0 : jamais display:none ni hidden,
+               pour que Tab l'atteigne et que Entrée/Espace ouvre le sélecteur de fichier. -->
+          <label class="cover-chip" [class.cover-chip--disabled]="coverLocked()">
+            <app-icon class="cover-chip__icon" name="modifier" />
+            <span>{{ theme.tone()['common.changer'] }}</span>
+            <input
+              type="file"
+              class="cover-file-input"
+              [accept]="'image/jpeg,image/png,image/webp'"
+              [disabled]="coverLocked()"
+              [attr.aria-label]="
+                theme.tone()['common.changer'] + ' — ' + theme.tone()['partie.cover_change']
+              "
+              (change)="onCoverFileSelected($event)"
+            />
+          </label>
+        </div>
       </div>
     </section>
 
@@ -86,34 +101,82 @@
     }
 
     <form [formGroup]="form" (ngSubmit)="submit()">
+      <!-- Ordre fixe (planche validée, Story 38.2) : couverture, nom, bascule, champs du mode,
+           description (toujours dernière). -->
       <mat-form-field appearance="outline">
-        <mat-label>{{ theme.tone()['partie.name_label'] }}</mat-label>
+        <mat-label>{{
+          isRalliement()
+            ? theme.tone()['partie.ralliement_name_label']
+            : theme.tone()['partie.name_label']
+        }}</mat-label>
         <input matInput formControlName="name" />
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>{{ theme.tone()['partie.system_label'] }}</mat-label>
-        <mat-select formControlName="gameSystemId">
-          @for (s of systems; track s.id) {
-            <mat-option [value]="s.id">{{ s.name }}</mat-option>
+      @if (!editId()) {
+        <!-- Le mode se choisit à la création et reste définitif : aucune bascule à l'édition. Le
+             changer reconfigure les champs suivants sans effacer le nom ni la description. -->
+        <mat-button-toggle-group
+          class="mode-toggle"
+          [value]="mode()"
+          (change)="setMode($event.value)"
+          [attr.aria-label]="theme.tone()['partie.mode_label']"
+          hideSingleSelectionIndicator
+        >
+          @for (option of modeOptions; track option) {
+            <!-- ⚠️ Story 45.7 — deux lignes : le nom du thème, puis ce qu'il désigne en clair (identique partout). -->
+            <mat-button-toggle [value]="option">
+              <span class="option-name">{{
+                option === 'ralliement'
+                  ? theme.tone()['partie.mode_ralliement']
+                  : theme.tone()['partie.mode_quete']
+              }}</span>
+              <span class="option-plain">{{
+                option === 'ralliement'
+                  ? theme.tone()['partie.mode_plain_ralliement']
+                  : theme.tone()['partie.mode_plain_quete']
+              }}</span>
+            </mat-button-toggle>
           }
-        </mat-select>
-      </mat-form-field>
+        </mat-button-toggle-group>
+      }
+
+      @if (!isRalliement()) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ theme.tone()['partie.system_label'] }}</mat-label>
+          <mat-select formControlName="gameSystemId">
+            @for (s of systems(); track s.id) {
+              <mat-option [value]="s.id">{{ s.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
 
       <fieldset class="kind-field">
-        <legend class="lbl">{{ theme.tone()['partie.kind_label'] }}</legend>
+        <legend class="lbl">
+          {{
+            isRalliement()
+              ? theme.tone()['partie.ralliement_kind_label']
+              : theme.tone()['partie.kind_label']
+          }}
+        </legend>
         <!-- Groupe vertical : « Campagne épisodique » ne tient pas sur une ligne de 375 px, et un
              groupe horizontal y tronquait le libellé (AC1). -->
         <mat-button-toggle-group
           formControlName="kind"
           class="kind-toggle"
-          [attr.aria-label]="theme.tone()['partie.kind_label']"
+          [attr.aria-label]="
+            isRalliement()
+              ? theme.tone()['partie.ralliement_kind_label']
+              : theme.tone()['partie.kind_label']
+          "
           hideSingleSelectionIndicator
           vertical
         >
           @for (option of kindAvailability(); track option.kind) {
+            <!-- Story 45.7 — sous chaque nature, ce qu'elle crée : la ligne reste visible, choisie ou non. -->
             <mat-button-toggle [value]="option.kind" [disabled]="option.disabled">
-              {{ theme.tone()['partie.kind_' + option.kind] }}
+              <span class="option-name">{{ kindLabel(option.kind) }}</span>
+              <span class="option-plain">{{ kindPlain(option.kind) }}</span>
             </mat-button-toggle>
           }
         </mat-button-toggle-group>
@@ -122,7 +185,7 @@
         @for (option of kindAvailability(); track option.kind) {
           @if (option.reason) {
             <p class="kind-reason">
-              <strong>{{ theme.tone()['partie.kind_' + option.kind] }}</strong> —
+              <strong>{{ kindLabel(option.kind) }}</strong> —
               {{ option.reason }}
             </p>
           }
@@ -143,7 +206,13 @@
           {{ theme.tone()['partie.cancel_btn'] }}
         </button>
         <button mat-flat-button type="submit" [disabled]="saving()">
-          {{ editId() ? theme.tone()['partie.save_btn'] : theme.tone()['nav.create_game'] }}
+          {{
+            editId()
+              ? theme.tone()['partie.save_btn']
+              : isRalliement()
+                ? theme.tone()['partie.ralliement_submit_btn']
+                : theme.tone()['nav.create_game']
+          }}
         </button>
       </div>
     </form>

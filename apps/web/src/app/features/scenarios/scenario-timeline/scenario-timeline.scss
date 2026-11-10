@@ -1,45 +1,229 @@
+/* Story 32.4 — refonte du rendu de la chronologie.
+
+   🚨 La ligne n'est plus un décor posé DERRIÈRE les cartes : chaque nœud dessine son propre
+   segment, et sa pastille est ancrée dessus. C'est ce qui rend l'ancrage structurel — un
+   `::before` unique porté par le conteneur ne suivait ni le défilement horizontal (il se limitait
+   à la largeur visible) ni la hauteur réelle de la colonne verticale. */
+
+$line-color: var(--color-border-subtle, #444);
+/* Gouttière entre deux nœuds desktop. Les segments de ligne débordent de la MOITIÉ de cette valeur
+   de chaque côté : ils se rejoignent exactement, sans trou ni recouvrement. */
+$desktop-gap: 1.5rem;
+$desktop-gap-half: 0.75rem;
+/* Hauteur FIXE de l'en-tête de nœud (DESIGN.md §4) et position de la ligne en son sein. */
+$head-height: 40px;
+$line-offset: 11px;
+/* Demi-diamètre de la pastille : la ligne commence et s'arrête sur son CENTRE. */
+$dot-radius: 7px;
+
+/* ── En-tête d'onglet : titre + compteur (patron de `scenario-list`) ──────────────────────── */
+.timeline-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 1rem 1rem 0;
+}
+.timeline-header__title {
+  margin: 0;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--jdr-text-muted, #9b8fb0);
+}
+.timeline-header__count {
+  font-size: 0.8rem;
+  color: var(--jdr-text-muted, #9b8fb0);
+}
+
+.empty {
+  padding: 1rem;
+  color: var(--jdr-text-muted, #9b8fb0);
+}
+
+/* ── Pastille de nœud ─────────────────────────────────────────────────────────────────────────
+   Elle porte la TEINTE de l'état (`--jdr-status-*`, jamais une valeur réinventée) et n'est jamais
+   seule : le badge à libellé de la story 32.3 la double systématiquement sur la carte.
+   🚨 Un brouillon se signale par sa FORME (contour tireté), jamais par une cinquième teinte —
+   même arbitrage que `.status-badge--draft`, et lisible en niveaux de gris. */
+.node__dot {
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--jdr-text-muted, #9b8fb0);
+  /* 🚨 `transparent`, jamais `--jdr-bg` : la chronologie est rendue sur la surface d'une
+     `mat-card`, où le fond de PAGE dessinerait un disque plus sombre que son entourage. */
+  background: transparent;
+}
+.node__dot--done {
+  border-color: var(--jdr-status-done, #5a5a6a);
+  background: var(--jdr-status-done, #5a5a6a);
+}
+.node__dot--live {
+  border-color: var(--jdr-status-live, #3fd4ff);
+  background: var(--jdr-status-live, #3fd4ff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--jdr-status-live, #3fd4ff) 18%, transparent);
+}
+/* Pas de `--todo` : `scenarioState()` ne rend cette teinte que pour BROUILLON, que
+   `nodeDotClass()` route vers `--draft`. Une règle `--todo` serait morte d'avance. */
+.node__dot--soon {
+  border-color: var(--jdr-status-soon, #ff7ad9);
+}
+.node__dot--draft {
+  border-color: var(--jdr-text-muted, #9b8fb0);
+  border-style: dashed;
+  background: transparent;
+}
+
+.node__date {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jdr-text-muted, #9b8fb0);
+}
+
+.node__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ── Carte de scénario ───────────────────────────────────────────────────────────────────── */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  cursor: pointer;
+  padding: 0.625rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid $line-color;
+  transition: border-color 120ms ease-out;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--jdr-accent-1, #7ec8a4);
+  }
+}
+.title {
+  font-weight: 500;
+}
+
+/* Séances imbriquées : un filet à gauche les rattache visuellement à leur scénario, sans en faire
+   une seconde chronologie. Une ligne = « Séance N · date » + le badge d'état partagé. */
+.card-seances {
+  list-style: none;
+  margin: 0.125rem 0 0;
+  padding: 0 0 0 0.625rem;
+  border-left: 2px solid $line-color;
+  align-self: stretch;
+}
+/* Story 53.3 — une séance = deux lignes : « Séance N · date » + badge d'état, puis « Ma situation »
+   (libellé + pastille). La seconde passe à la ligne plutôt que de déborder (vertical sous 768 px). */
+.card-seances__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid color-mix(in srgb, $line-color 60%, transparent);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+.card-seances__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.card-seances__label {
+  color: var(--jdr-text-muted, #9b8fb0);
+}
+.card-seances__label b {
+  font-weight: 500;
+  color: var(--jdr-text, #e8e0f0);
+}
+
+/* ── Orientation HORIZONTALE (≥768px) ─────────────────────────────────────────────────────── */
 .timeline-desktop {
   position: relative;
 }
 
 .track {
   display: flex;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: $desktop-gap;
   overflow-x: auto;
-  padding: 40px 0.5rem 0.5rem;
+  padding: 0.25rem 1rem 1rem;
   cursor: grab;
   position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 34px;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: var(--color-border-subtle, #444);
-  }
 
   &.dragging {
     cursor: grabbing;
   }
 }
 
-.node {
-  flex: 0 0 200px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.card {
+.timeline-desktop .node {
+  /* La colonne s'élargit autant qu'il le faut pour loger les séances, sans jamais devenir un pavé
+     illisible : le nœud grandit entre ces deux bornes, il n'est plus figé à 200px. */
+  flex: 0 1 auto;
+  min-width: 15rem;
+  max-width: 22rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid var(--color-border-subtle, #444);
+}
+
+.timeline-desktop .node__head {
+  position: relative;
+  height: $head-height;
+  flex: 0 0 $head-height; /* hauteur FIXE : la carte peut varier, la ligne ne bouge pas */
+
+  /* Le segment de ligne appartient au nœud et déborde d'une demi-gouttière de chaque côté : bout à
+     bout, les segments forment une ligne continue qui suit réellement le défilement. */
+  &::before {
+    content: '';
+    position: absolute;
+    top: $line-offset;
+    left: -$desktop-gap-half;
+    right: -$desktop-gap-half;
+    height: 2px;
+    background: $line-color;
+  }
+}
+/* La ligne commence à la PREMIÈRE pastille et s'arrête à la DERNIÈRE : aucun segment ne part dans
+   le vide avant le premier nœud ni après le dernier (même règle qu'en vertical). */
+.timeline-desktop .node:first-child .node__head::before {
+  left: $dot-radius;
+}
+.timeline-desktop .node:last-child .node__head::before {
+  right: auto;
+  width: calc(#{$desktop-gap-half} + #{$dot-radius});
+}
+/* Nœud unique : il n'y a rien à relier, donc aucune ligne à tracer. */
+.timeline-desktop .node:only-child .node__head::before {
+  display: none;
+}
+
+.timeline-desktop .node__dot {
+  position: absolute;
+  top: $line-offset;
+  left: 0;
+  transform: translateY(-50%);
+}
+.timeline-desktop .node__date {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  white-space: nowrap;
+}
+
+.timeline-desktop .node:focus-visible {
+  outline: 2px solid var(--jdr-accent-1, #7ec8a4);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .fade {
@@ -58,27 +242,66 @@
   background: linear-gradient(to left, var(--jdr-accent-2, #333), transparent);
 }
 
+/* ── Orientation VERTICALE (<768px) ───────────────────────────────────────────────────────────
+   Implémentation distincte du mode horizontal (DESIGN.md §4) : ligne à gauche, pastille sur la
+   ligne, carte à droite. Le segment est porté par le nœud, jamais par le conteneur — il suit donc
+   exactement la hauteur réelle du nœud, quelle que soit la taille de la carte. */
 .timeline-mobile {
   list-style: none;
   margin: 0;
-  padding: 0 0 0 28px;
+  padding: 0.5rem 1rem 1rem;
+}
+.timeline-mobile .node {
   position: relative;
+  padding-left: 28px;
+  padding-bottom: 1.25rem;
 
   &::before {
     content: '';
     position: absolute;
+    left: 6px;
     top: 0;
     bottom: 0;
-    left: 9px;
-    width: 1px;
-    background: var(--color-border-subtle, #444);
+    width: 2px;
+    background: $line-color;
+  }
+
+  /* Le dernier nœud n'a plus rien à relier : la ligne s'arrête à sa pastille plutôt que de pendre
+     dans le vide. */
+  &:last-child {
+    padding-bottom: 0;
+
+    &::before {
+      bottom: auto;
+      height: $line-offset;
+    }
   }
 }
-
-.timeline-mobile .node {
-  margin-bottom: 1rem;
+.timeline-mobile .node__head {
+  position: relative;
+  min-height: 18px;
+  margin-bottom: 0.375rem;
+}
+.timeline-mobile .node__dot {
+  position: absolute;
+  left: -28px;
+  top: $line-offset;
+  transform: translateY(-50%);
 }
 
 .error {
+  padding: 1rem;
   color: var(--mat-sys-error, #b00020);
+}
+
+/* 🚨 `prefers-reduced-motion` : la seule animation que cette feuille produit est la transition de
+   bordure des cartes, coupée ici. Le défilement, lui, n'est jamais déclaré `smooth` en CSS — il
+   n'est fluide que quand `scrollIntoView()` le demande, et c'est `ScenarioTimeline.scrollBehavior()`
+   qui lit la même media query côté TS pour le refuser. Une règle `scroll-behavior` ici serait
+   inerte. Aucune information ne dépend d'une animation : l'état reste porté par la pastille ET par
+   le libellé du badge. */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
 }

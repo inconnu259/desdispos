@@ -1,15 +1,28 @@
 <div class="calendar-week">
   <div class="week-nav">
-    <button mat-icon-button (click)="prevWeek()" aria-label="Semaine précédente">
-      <mat-icon>chevron_left</mat-icon>
+    <button
+      mat-icon-button
+      (click)="prevWeek()"
+      [attr.aria-label]="theme.tone()['calendar.week_prev_aria']"
+    >
+      <app-icon name="precedent" />
     </button>
     <h2 class="week-title">{{ weekLabel() }}</h2>
-    <button mat-icon-button (click)="nextWeek()" aria-label="Semaine suivante">
-      <mat-icon>chevron_right</mat-icon>
+    <button
+      mat-icon-button
+      (click)="nextWeek()"
+      [attr.aria-label]="theme.tone()['calendar.week_next_aria']"
+    >
+      <app-icon name="suivant" />
     </button>
-    <button mat-icon-button (click)="goToToday()" class="today-btn" aria-label="Revenir à la semaine actuelle"
-            [style.visibility]="isCurrentWeek() ? 'hidden' : 'visible'">
-      <mat-icon>today</mat-icon>
+    <button
+      mat-icon-button
+      (click)="goToToday()"
+      class="today-btn"
+      [attr.aria-label]="theme.tone()['calendar.week_today_aria']"
+      [style.visibility]="isCurrentWeek() ? 'hidden' : 'visible'"
+    >
+      <app-icon name="aujourdhui" />
     </button>
   </div>
 
@@ -18,6 +31,7 @@
   } @else {
     <div
       class="week-grid"
+      [class.week-grid--declare]="interaction() === 'declaration'"
       role="grid"
       tabindex="-1"
       (pointermove)="onGridPointerMove($event)"
@@ -33,6 +47,11 @@
              en-tête net et se lirait comme un jour mis en avant. -->
         <div
           class="grid-cell col-header"
+          (click)="onHeaderClick(cell)"
+          [attr.role]="interaction() === 'declaration' ? 'button' : null"
+          [attr.tabindex]="interaction() === 'declaration' && !cell.isPast ? 0 : null"
+          (keydown.enter)="onHeaderClick(cell)"
+          (keydown.space)="$event.preventDefault(); onHeaderClick(cell)"
           [class.today]="cell.isToday"
           [class.col-header--dim]="isDayDimmed(cell)"
         >
@@ -48,20 +67,13 @@
         <div class="grid-cell row-label">
           @switch (row.slot) {
             @case ('MORNING') {
-              <svg class="slot-icon" viewBox="0 0 24 24" role="img" [attr.aria-label]="row.label">
-                <path d="M12 5v3M5.6 9.6l2 2M18.4 9.6l-2 2M3 18h18M7 18a5 5 0 0 1 10 0" />
-              </svg>
+              <app-icon class="slot-icon" name="matin" [label]="row.label" />
             }
             @case ('AFTERNOON') {
-              <svg class="slot-icon" viewBox="0 0 24 24" role="img" [attr.aria-label]="row.label">
-                <circle cx="12" cy="12" r="4.2" />
-                <path d="M12 3v2M12 19v2M3 12h2M19 12h2" />
-              </svg>
+              <app-icon class="slot-icon" name="apres-midi" [label]="row.label" />
             }
             @case ('EVENING') {
-              <svg class="slot-icon" viewBox="0 0 24 24" role="img" [attr.aria-label]="row.label">
-                <path d="M20 14.5A7.5 7.5 0 0 1 9.5 4a7.5 7.5 0 1 0 10.5 10.5z" />
-              </svg>
+              <app-icon class="slot-icon" name="soir" [label]="row.label" />
             }
           }
         </div>
@@ -70,23 +82,38 @@
             class="grid-cell slot-cell"
             [attr.data-cell-date]="cell.date.getTime()"
             [attr.data-cell-slot]="row.slot"
-            [attr.data-status]="(getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status)"
+            [attr.data-status]="
+              getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status
+            "
             [attr.data-winner]="cellWinner(getSlotData(cell, row.key))"
             [class.past]="cell.isPast"
             [class.today-col]="cell.isToday"
             [class.preview]="getSlotData(cell, row.key).preview !== null"
-            [class.unknown]="(getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status) === 'UNKNOWN'"
+            [class.unknown]="
+              (getSlotData(cell, row.key).preview ?? getSlotData(cell, row.key).status) ===
+              'UNKNOWN'
+            "
             [class.selected]="isCellSelected(cell, row.slot)"
             [class.slot-cell--composed]="isCellComposed(cell, row.slot)"
+            [class.slot-cell--span-preview]="isCellSpanPreview(cell, row.slot)"
+            [class.slot-cell--window]="isCellWindow(cell, row.slot)"
             [class.current]="isCurrentCell(cell, row.slot)"
             [class.slot-cell--dim]="isDayDimmed(cell)"
-            [class.has-event]="!!eventTitle(getSlotData(cell, row.key))"
+            [class.has-event]="
+              !!eventTitle(getSlotData(cell, row.key)) || !!getSlotData(cell, row.key).detail?.span
+            "
+            [class.slot-cell--span-next]="spanNext(getSlotData(cell, row.key))"
+            [class.slot-cell--span-prev]="spanPrev(getSlotData(cell, row.key))"
             [attr.role]="cell.isPast ? 'presentation' : 'button'"
             [attr.tabindex]="cell.isPast ? null : 0"
             [attr.aria-label]="
-              cell.isPast ? null : cellAriaLabel(cell, getSlotData(cell, row.key), row.label, row.slot)
+              cell.isPast
+                ? null
+                : cellAriaLabel(cell, getSlotData(cell, row.key), row.label, row.slot)
             "
             (pointerdown)="onCellPointerDown($event, cell, row.slot)"
+            (pointerenter)="onCellHover($event, cell, row.slot)"
+            (pointerleave)="onCellHover($event, null)"
             (keyup.enter)="onCellEnterKey()"
             (keydown.space)="$event.preventDefault()"
             (keyup.space)="onCellKeySelect(cell, row.slot)"
@@ -114,6 +141,13 @@
             @if (eventVote(getSlotData(cell, row.key)); as vote) {
               <app-poll-track class="ev-track in-week track-sm" [vote]="vote" />
             }
+            <!-- Story 47.5 — plusieurs plages du même vote se superposent sur ce créneau : « ×n », coin haut
+                 droit. Décoratif (`aria-hidden`) : le nom de la cellule le dit. -->
+            @if (eventOverlap(getSlotData(cell, row.key)); as overlap) {
+              @if (overlap >= 2) {
+                <span class="ev-overlap" aria-hidden="true">{{ overlapMark(overlap) }}</span>
+              }
+            }
             <!-- Story 36.8 — le CANAL SÉPARÉ. 🚨 Aucune garde de rang : il survit sous une
                  séance et sous un vote (AC2). Descendante de `.slot-cell` (qui porte
                  `data-cell-date`) et en `pointer-events: none`, comme tout ce que cette cellule
@@ -132,7 +166,12 @@
         [scope]="scope()"
         [armedKind]="armedKind()"
         [sealCandidate]="sealCandidate()"
+        [composeMode]="interaction() === 'composer'"
+        [interaction]="interaction()"
+        [fullDayAllowed]="composeFullDay()"
         (scopeChange)="onScopeChange($event)"
+        (composeAdd)="onComposeAdd()"
+        (composeRemove)="onComposeRemove()"
         (armedKindChange)="onArmedKindChange($event)"
         (markAvailable)="onSelectionCommit('AVAILABLE')"
         (markUnavailable)="onSelectionCommit('UNAVAILABLE')"

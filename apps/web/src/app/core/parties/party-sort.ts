@@ -1,6 +1,6 @@
 import type { PartieDto, PartieSort, PartySignalsDto } from '@master-jdr/shared';
 import { dominantCategory, type SignalCategory } from './party-signal-priority';
-import { partieKindLabel } from './parties.util';
+import { partieKindSortRank } from './parties.util';
 
 /** Ordre des catégories de priorité pour le tri 'urgence' (Story 29.7, réutilisé tel quel) —
  *  une partie sans signal se comporte comme « aucune catégorie », classée après 'informative'. */
@@ -15,12 +15,13 @@ const STATUS_ORDER: Record<PartieDto['status'], number> = {
   A_VENIR: 0,
   EN_COURS: 1,
   TERMINEE: 2,
+  ANNULEE: 3,
 };
 
 function categoryRank(partie: PartieDto, signalsMap: Map<string, PartySignalsDto>): number {
   // Une partie terminée n'est jamais « urgente » (cf. party-signal-priority.ts, PARTIE_TERMINEE
   // toujours hors-catégorie/dernier) — classée après toute autre partie, quel que soit son signal.
-  if (partie.status === 'TERMINEE') return CATEGORY_ORDER.length;
+  if (partie.status === 'TERMINEE' || partie.status === 'ANNULEE') return CATEGORY_ORDER.length;
   const signals = signalsMap.get(partie.id)?.signals ?? [];
   const category = dominantCategory(signals);
   const idx = category ? CATEGORY_ORDER.indexOf(category) : -1;
@@ -48,7 +49,9 @@ export function sortParties(
     case 'nom':
       return copy.sort((a, b) => a.name.localeCompare(b.name));
     case 'type':
-      return copy.sort((a, b) => partieKindLabel(a.kind).localeCompare(partieKindLabel(b.kind)));
+      // Rang explicite par type (Campagne < Campagne épisodique < One-shot) : l'ordre ne dépend
+      // ni du thème actif ni de l'orthographe d'une clé de ton.
+      return copy.sort((a, b) => partieKindSortRank(a.kind) - partieKindSortRank(b.kind));
     case 'statut':
       return copy.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
     default:

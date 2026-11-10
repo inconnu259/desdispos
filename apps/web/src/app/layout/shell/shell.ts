@@ -1,22 +1,27 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
+import { AppIcon } from '../../core/icons/app-icon';
 import { MyPartiesService } from '../../core/my-parties/my-parties.service';
 import { OpenPollsService } from '../../core/poll/open-polls.service';
 import { UnseenAnnouncementsService } from '../../core/announcements/unseen-announcements.service';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
+import { fillTone } from '../../core/theme/tone-format';
+import { BrandLogo } from '../../shared/brand/brand-logo';
+import { CreateIcon } from '../../shared/create-icon/create-icon';
 
 @Component({
   selector: 'app-shell',
   imports: [
+    AppIcon,
+    BrandLogo,
+    CreateIcon,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
     MatToolbarModule,
-    MatIconModule,
     MatBadgeModule,
   ],
   templateUrl: './shell.html',
@@ -29,6 +34,9 @@ export class Shell implements OnInit {
   // Injecter pour déclencher l'initialisation du thème (apply CSS class + localStorage) dès le Shell.
   protected readonly theme = inject(ThemeToneService);
   protected readonly contextualNav = inject(ContextualNavService);
+
+  // Story 38.1 : libellé de thème du bouton de création (texte visible sur la barre, `aria-label` partout).
+  protected readonly createLabel = computed(() => this.theme.tone()['nav.create_game']);
 
   protected readonly openPollsCount = this.openPollsSvc.count;
   protected readonly unseenAnnouncementsCount = this.unseenAnnouncementsSvc.count;
@@ -45,8 +53,11 @@ export class Shell implements OnInit {
     const parts: string[] = [];
     const polls = this.openPollsCount();
     const announcements = this.unseenAnnouncementsCount();
-    if (polls > 0) parts.push(`${polls} vote(s) en attente de réponse`);
-    if (announcements > 0) parts.push(`${announcements} annonce(s) non lue(s)`);
+    const tone = this.theme.tone();
+    if (polls > 0) parts.push(fillTone(tone['shell.badge_polls_aria'], { n: polls }));
+    if (announcements > 0) {
+      parts.push(fillTone(tone['shell.badge_announcements_aria'], { n: announcements }));
+    }
     return parts.join(', ');
   });
 
@@ -65,6 +76,11 @@ export class Shell implements OnInit {
     return { announcement, partieName };
   });
 
+  /** Libellé accessible du bouton de fermeture du bandeau (nom de la Partie dans le gabarit). */
+  protected bannerCloseLabel(partieName: string): string {
+    return fillTone(this.theme.tone()['shell.banner_close_aria'], { partie: partieName });
+  }
+
   /** Fermer le bandeau = j'ai vu l'info, décision utilisateur explicite (2026-08-13) : équivaut à
    *  ouvrir l'annonce (même état persisté que le clic sur AnnonceCard), ne réapparaît jamais. */
   protected dismissBanner(announcementId: string): void {
@@ -73,7 +89,6 @@ export class Shell implements OnInit {
 
   // Charge les parties (alimente la liste unifiée du dashboard, Story 29.1).
   ngOnInit(): void {
-    void this.myPartiesSvc.refreshMjParties();
-    void this.myPartiesSvc.refreshPlayerParties();
+    void this.myPartiesSvc.refreshAll();
   }
 }

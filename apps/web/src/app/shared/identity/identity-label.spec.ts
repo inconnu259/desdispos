@@ -1,9 +1,12 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { IdentityLabel } from './identity-label';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 
 function makeThemeService() {
   return {
+    // `activeTheme` : `<app-icon>` (icônes de rôle « de sens », story 51.7) lit le thème actif.
+    activeTheme: signal('grimoire-emeraude'),
     tone: () => ({
       'identity.character_label': 'Personnage',
       'identity.player_label': 'Joueur',
@@ -59,6 +62,7 @@ describe('IdentityLabel', () => {
     const svg = el.querySelector('svg');
     expect(svg).not.toBeNull();
     expect(svg.getAttribute('aria-hidden')).toBe('true');
+    expect(el.querySelector('app-icon')?.getAttribute('data-icon')).toBe('role-mj');
     const wrapper = el.querySelector('.identity-label--single');
     expect(wrapper.getAttribute('aria-label')).toBe('Personnage Ombreflèche');
   });
@@ -70,6 +74,7 @@ describe('IdentityLabel', () => {
     const wrapper = el.querySelector('.identity-label--single');
     expect(wrapper.getAttribute('aria-label')).toBe('Joueur Incon');
     expect(el.querySelector('svg')).not.toBeNull();
+    expect(el.querySelector('app-icon')?.getAttribute('data-icon')).toBe('role-joueur');
   });
 
   it('mode single-player + ambiguous=true + pseudo fourni : pseudo visible en complément (AC3)', async () => {
@@ -120,5 +125,19 @@ describe('IdentityLabel', () => {
     });
     const el = fixture.nativeElement;
     expect(el.querySelector('.identity-label__pseudo')).toBeNull();
+  });
+
+  it('story 51.7 : l’icône de rôle suit le thème en place (silhouette et écu), jamais de <svg> en ligne', async () => {
+    const joueur = await createComponent({ playerName: 'Incon' });
+    const icon = joueur.nativeElement.querySelector('app-icon') as HTMLElement;
+    const before = icon.querySelector('svg')!.innerHTML;
+
+    (
+      TestBed.inject(ThemeToneService) as unknown as { activeTheme: { set(t: string): void } }
+    ).activeTheme.set('foret-ancienne');
+    joueur.detectChanges();
+    expect(icon.getAttribute('data-icon')).toBe('role-joueur');
+    expect(icon.querySelector('svg')!.innerHTML).not.toBe(before);
+    expect(icon.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
   });
 });

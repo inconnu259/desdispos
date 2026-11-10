@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dés Dispos — déclinaisons du logo G (d20 coché)</title>
+<style>
+/*
+  VALEURS HEXADÉCIMALES UTILISÉES
+  (jetons réels de apps/web/src/styles.scss, repris du rendu logos-et-emblemes-2.html ; aucune couleur de thème n'est peinte
+   dans les dessins : le logo est monochrome, en currentColor)
+
+  Fond neutre sombre : fond #16151b · logo #f4efe6
+  Fond clair         : fond #f4efe6 · logo #16151b   (choix de ce rendu pour un support clair ; l'application n'a pas de thème clair)
+
+  Grimoire Émeraude  .theme-grimoire-emeraude : --jdr-bg #0d0a14 · --jdr-text #e8e0f0 · accent-1 #7ec8a4 · accent-2 #9b6dff · on-primary #062018
+  Forêt Ancienne     .theme-foret-ancienne    : --jdr-bg #080f0a · --jdr-text #d4f0dc · accent-1 #2ecc71 · accent-2 #f0c040 · on-primary #062518
+  Atelier Cuivré     .theme-medieval-steampunk: --jdr-bg #1a1008 · --jdr-text #f0e6d0 · accent-1 #cd7f32 · accent-2 #4a7c59 · on-primary #1a0800
+
+  Monochromes : #f4efe6 / #16151b (ci-dessus), #000000 / #ffffff (impression)
+  Tuile d'icône et favicon (statiques, ne suivent pas le thème) : tuile #16151b, glyphe #f4efe6
+  Cadres de démonstration (hors produit) : page #0e0d12, texte #ece6da, légende #17161d bord #2c2a35,
+    onglet sombre barre #202124 onglet #35363a texte #e8eaed, onglet clair barre #dee1e6 onglet #ffffff texte #202124
+  Schéma de zone de protection : marge minimale #7ec8a4, marge recommandée #9b6dff (étiquette #b79cff), repère #f4efe6 (couleurs de schéma uniquement)
+  Encadré de limites : liseré #f0a030
+*/
+*{box-sizing:border-box}
+html{background:#0e0d12}
+body{margin:0;background:#0e0d12;color:#ece6da;font:15px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 72px}
+h1{margin:0 0 6px;font:700 28px/1.2 Georgia,"Times New Roman",serif}
+h2{margin:44px 0 6px;font:700 22px/1.25 Georgia,"Times New Roman",serif;padding-top:18px;border-top:1px solid #2c2a35}
+p{margin:4px 0 10px;color:#c9c3b6}
+b{color:#fff}
+code{font:13px ui-monospace,Consolas,monospace}
+.legend{margin:14px 0 0;padding:12px 18px 12px 34px;background:#17161d;border:1px solid #2c2a35;border-radius:10px;font-size:14px;color:#d8d2c5}
+.legend li{margin:2px 0}
+
+/* Thèmes (rôles) : seulement fond et texte, le logo est monochrome */
+.th-neutral,.mono-a{--bg:#16151b;--text:#f4efe6}
+.th-em{--bg:#0d0a14;--text:#e8e0f0}
+.th-fo{--bg:#080f0a;--text:#d4f0dc}
+.th-at{--bg:#1a1008;--text:#f0e6d0}
+.th-light,.mono-b{--bg:#f4efe6;--text:#16151b}
+.mono-c{--bg:#ffffff;--text:#000000}
+.mono-d{--bg:#000000;--text:#ffffff}
+
+/* Marque : mêmes règles que dans les fichiers SVG de logo/ */
+.dd-s{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+.dd-f{fill:currentColor}
+.dd-wm{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:42px;fill:currentColor}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px;margin-top:12px}
+.tile{background:var(--bg);color:var(--text);border:1px solid #34323c;border-radius:12px;padding:14px 16px 14px;display:flex;flex-direction:column;gap:14px;min-height:150px}
+.cap{font:600 11px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;opacity:.62}
+.stage{display:flex;align-items:center;justify-content:center;flex:1;min-height:100px;padding:6px 0}
+.row,.row0{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 22px}
+.row{border-top:1px dashed color-mix(in srgb,var(--text) 22%,transparent);padding-top:10px;align-items:center}
+.row .cap{width:100%}
+.row0{flex:1;align-items:flex-end;padding-top:4px}
+.pic,.bloc{display:block;flex:none;color:var(--text)}
+.bloc{max-width:100%;height:auto;flex:0 1 auto}
+.fv{display:inline-flex;flex-direction:column;align-items:center;gap:6px;color:var(--text)}
+.fv i{font:normal 600 10px/1.1 system-ui,sans-serif;opacity:.65;text-align:center}
+.sep{align-self:stretch;width:0;border-left:1px dashed color-mix(in srgb,var(--text) 35%,transparent);margin:0 2px}
+.note{font:600 11px/1.2 ui-monospace,Consolas,monospace;opacity:.7;margin-left:auto;align-self:center}
+
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:12px}
+.card{background:#16151b;border:1px solid #34323c;border-radius:12px;padding:16px;color:#f4efe6}
+.card .zone{display:block;max-width:100%;height:auto;margin:10px auto 0}
+.card h3{margin:0 0 4px;font:700 16px/1.3 system-ui,"Segoe UI",sans-serif;color:#f4efe6}
+.card p{color:#c9c3b6;font-size:14px}
+.tablewrap{overflow-x:auto;margin-top:12px}
+.sizes{width:100%;border-collapse:collapse;font-size:14px}
+.sizes th,.sizes td{text-align:left;padding:8px 10px;border-bottom:1px solid #2c2a35;vertical-align:middle}
+.sizes th{font:600 11px/1.2 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#a39ead}
+.smp{background:#16151b;color:#f4efe6;border-radius:6px;padding:6px 10px;display:inline-flex;align-items:flex-end;gap:10px}
+.smp .pic,.smp .bloc{color:#f4efe6}
+.zl{font:600 9.5px/1 system-ui,sans-serif}
+
+/* Icônes */
+.fav{display:inline-flex;align-items:center;justify-content:center;background:#16151b;color:#f4efe6;flex:none}
+.fav .pic{color:#f4efe6}
+.f16{width:16px;height:16px;border-radius:3.5px}
+.f32{width:32px;height:32px;border-radius:7px}
+.f64{width:64px;height:64px;border-radius:15px}
+.iconrow{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-end;margin-top:14px}
+.ic{display:flex;flex-direction:column;align-items:center;gap:8px;font:600 10px/1.2 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#a39ead;text-align:center}
+.tabwrap{display:flex;flex-direction:column;gap:6px}
+.tabwrap .cap{color:#a39ead;margin-bottom:2px}
+.tabbar{width:min(100%,340px);padding:8px 8px 0;border-radius:10px 10px 0 0}
+.tabbar.dark{background:#202124}
+.tabbar.light{background:#dee1e6}
+.tab{display:flex;align-items:center;gap:8px;width:210px;max-width:100%;height:34px;padding:0 12px;border-radius:9px 9px 0 0;font:12px/1 system-ui,"Segoe UI",sans-serif}
+.dark .tab{background:#35363a;color:#e8eaed}
+.light .tab{background:#ffffff;color:#202124}
+.tabpage{width:min(100%,340px);height:26px;border-radius:0 0 10px 10px}
+.tabpage.dark{background:#35363a}
+.tabpage.light{background:#ffffff}
+.tabwrap{gap:0}
+.warn{margin:18px 0 0;padding:12px 16px;border-left:3px solid #f0a030;background:#17161d;border-radius:0 8px 8px 0;font-size:14px;color:#d8d2c5}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Piste G, dessin identique à logos-et-emblemes-2.html ; la coche est évidée par remplissage evenodd (plus de masque) -->
+    <symbol id="dd-g-full" viewBox="0 0 64 64">
+      <path class="dd-s" stroke-width="3.6" d="M32 2.5 L57.55 17.25 V46.75 L32 61.5 L6.45 46.75 V17.25 Z"/>
+      <path class="dd-s" stroke-width="2.2" d="M32 13 V2.5 M32 13 L57.55 17.25 M32 13 L6.45 17.25 M48.45 41.5 L57.55 17.25 M48.45 41.5 L57.55 46.75 M48.45 41.5 L32 61.5 M15.55 41.5 L32 61.5 M15.55 41.5 L6.45 46.75 M15.55 41.5 L6.45 17.25"/>
+      <path class="dd-f" fill-rule="evenodd" d="M32.87 12.5 L49.32 41 A1 1 0 0 1 48.45 42.5 L15.55 42.5 A1 1 0 0 1 14.68 41 L31.13 12.5 A1 1 0 0 1 32.87 12.5 Z M24.52 35.48 L29.02 39.98 A2.1 2.1 0 0 0 32.12 39.84 L39.82 30.54 A2.1 2.1 0 0 0 36.58 27.86 L30.35 35.38 L27.48 32.52 A2.1 2.1 0 0 0 24.52 35.48 Z"/>
+    </symbol>
+    <!-- Variante simplifiée : silhouette + facette centrale, sans coche ni arêtes -->
+    <symbol id="dd-g-simple" viewBox="0 0 64 64">
+      <path class="dd-s" stroke-width="5" d="M32 3 L57.11 17.5 L57.11 46.5 L32 61 L6.89 46.5 L6.89 17.5 Z"/>
+      <path class="dd-f" d="M33.04 10.88 L50.81 41.66 A1.2 1.2 0 0 1 49.77 43.46 L14.23 43.46 A1.2 1.2 0 0 1 13.19 41.66 L30.96 10.88 A1.2 1.2 0 0 1 33.04 10.88 Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Dés Dispos — déclinaisons du logo G (d20 coché)</h1>
+  <p>Le dessin de la piste G est repris à l'identique ; seule la coche est évidée autrement (sans masque), pour livrer des SVG autonomes. Marque constante : une seule couleur, celle du texte du contexte.</p>
+  <ul class="legend">
+    <li><b>1</b> bloc-marque complet · <b>2</b> pictogramme seul 64 / 48 / 32 / 24 px · <b>3</b> variante simplifiée 32 / 24 / 16 px face au complet à 16 px · <b>4</b> monochromes · <b>5</b> zone de protection et tailles minimales · <b>6</b> tuile d'icône et favicon.</li>
+    <li>Tout est affiché à l'échelle réelle (1 px = 1 px CSS) : regarder à 100 % de zoom. Fichiers livrés dans <code>.working/logo/</code> : <code>logo-picto.svg</code>, <code>logo-picto-simplifie.svg</code>, <code>logo-bloc-marque.svg</code>.</li>
+  </ul>
+
+  <h2>1 · Bloc-marque complet</h2>
+  <p>Pictogramme + « Dés Dispos » (deux mots, accent sur le é), en couleur de texte du thème, sur fond neutre sombre, sur les trois thèmes et sur fond clair.</p>
+  <div class="tiles"><div class="tile th-neutral"><span class="cap">Fond neutre sombre #16151b</span><div class="stage"><svg class="bloc " width="317.0" height="64" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row"><span class="cap">petit · hauteur 28 px</span><svg class="bloc " width="138.7" height="28" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div></div><div class="tile th-em"><span class="cap">Grimoire Émeraude</span><div class="stage"><svg class="bloc " width="317.0" height="64" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row"><span class="cap">petit · hauteur 28 px</span><svg class="bloc " width="138.7" height="28" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div></div><div class="tile th-fo"><span class="cap">Forêt Ancienne</span><div class="stage"><svg class="bloc " width="317.0" height="64" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row"><span class="cap">petit · hauteur 28 px</span><svg class="bloc " width="138.7" height="28" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div></div><div class="tile th-at"><span class="cap">Atelier Cuivré</span><div class="stage"><svg class="bloc " width="317.0" height="64" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row"><span class="cap">petit · hauteur 28 px</span><svg class="bloc " width="138.7" height="28" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div></div><div class="tile th-light"><span class="cap">Fond clair #f4efe6</span><div class="stage"><svg class="bloc " width="317.0" height="64" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row"><span class="cap">petit · hauteur 28 px</span><svg class="bloc " width="138.7" height="28" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div></div></div>
+
+  <h2>2 · Pictogramme seul, version complète (avec coche)</h2>
+  <p>64, 48, 32 et 24 px, sur les mêmes fonds. À 24 px la coche est déjà à la limite : c'est pourquoi la version complète est recommandée à partir de 28 px (voir la section 5).</p>
+  <div class="tiles"><div class="tile th-neutral"><span class="cap">Fond neutre sombre #16151b</span><div class="row0"><span class="fv"><svg class="pic " width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>64 px</i></span><span class="fv"><svg class="pic " width="48" height="48" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>48 px</i></span><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>24 px</i></span></div></div><div class="tile th-em"><span class="cap">Grimoire Émeraude</span><div class="row0"><span class="fv"><svg class="pic " width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>64 px</i></span><span class="fv"><svg class="pic " width="48" height="48" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>48 px</i></span><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>24 px</i></span></div></div><div class="tile th-fo"><span class="cap">Forêt Ancienne</span><div class="row0"><span class="fv"><svg class="pic " width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>64 px</i></span><span class="fv"><svg class="pic " width="48" height="48" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>48 px</i></span><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>24 px</i></span></div></div><div class="tile th-at"><span class="cap">Atelier Cuivré</span><div class="row0"><span class="fv"><svg class="pic " width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>64 px</i></span><span class="fv"><svg class="pic " width="48" height="48" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>48 px</i></span><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>24 px</i></span></div></div><div class="tile th-light"><span class="cap">Fond clair #f4efe6</span><div class="row0"><span class="fv"><svg class="pic " width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>64 px</i></span><span class="fv"><svg class="pic " width="48" height="48" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>48 px</i></span><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>24 px</i></span></div></div></div>
+
+  <h2>3 · Variante simplifiée (sans coche) pour les petites tailles</h2>
+  <p>Silhouette du d20 et facette centrale pleine. À droite du pointillé : la version complète à 16 px, pour juger de la différence.</p>
+  <div class="tiles"><div class="tile th-neutral"><span class="cap">Fond neutre sombre #16151b</span><div class="row0"><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 24 px</i></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 16 px</i></span><span class="sep" aria-hidden="true"></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>complet 16 px</i></span></div></div><div class="tile th-em"><span class="cap">Grimoire Émeraude</span><div class="row0"><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 24 px</i></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 16 px</i></span><span class="sep" aria-hidden="true"></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>complet 16 px</i></span></div></div><div class="tile th-fo"><span class="cap">Forêt Ancienne</span><div class="row0"><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 24 px</i></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 16 px</i></span><span class="sep" aria-hidden="true"></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>complet 16 px</i></span></div></div><div class="tile th-at"><span class="cap">Atelier Cuivré</span><div class="row0"><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 24 px</i></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 16 px</i></span><span class="sep" aria-hidden="true"></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>complet 16 px</i></span></div></div><div class="tile th-light"><span class="cap">Fond clair #f4efe6</span><div class="row0"><span class="fv"><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 32 px</i></span><span class="fv"><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 24 px</i></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><i>simplifié 16 px</i></span><span class="sep" aria-hidden="true"></span><span class="fv"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><i>complet 16 px</i></span></div></div></div>
+
+  <h2>4 · Versions monochromes</h2>
+  <p>Une seule couleur pour tout le logo (la même que le texte du contexte). Le dessin ne contient ni dégradé ni demi-teinte : il tient en photocopie ou en gravure.</p>
+  <div class="tiles"><div class="tile mono-a"><span class="cap">Crème sur sombre</span><div class="stage"><svg class="bloc " width="277.4" height="56" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row0"><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><span class="note">#f4efe6 sur #16151b</span></div></div><div class="tile mono-b"><span class="cap">Sombre sur clair</span><div class="stage"><svg class="bloc " width="277.4" height="56" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row0"><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><span class="note">#16151b sur #f4efe6</span></div></div><div class="tile mono-c"><span class="cap">Noir sur blanc (impression)</span><div class="stage"><svg class="bloc " width="277.4" height="56" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row0"><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><span class="note">#000000 sur #ffffff</span></div></div><div class="tile mono-d"><span class="cap">Blanc sur noir (négatif)</span><div class="stage"><svg class="bloc " width="277.4" height="56" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></div><div class="row0"><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><svg class="pic " width="40" height="40" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><span class="note">#ffffff sur #000000</span></div></div></div>
+
+  <h2>5 · Zone de protection et taille minimale</h2>
+  <p>Unité : <b>H</b> = hauteur du pictogramme (le bloc-marque a la même hauteur que le pictogramme, 64 unités de viewBox).</p>
+  <div class="cols">
+    <div class="card"><h3>Bloc-marque</h3><p>Aucun autre élément (texte, bord de page, image, autre logo) dans la marge de ¼ H autour du bloc ; viser ½ H dès que la place le permet (bande d'authentification, en-tête de document).</p><svg class="zone" viewBox="-66 -44 443 152" width="443" height="152" role="img" aria-label="Zone de protection du bloc-marque : un quart de la hauteur H du pictogramme au minimum, une demi-hauteur recommandée">
+      <path d="M-32 -32 H349 V96 H-32 Z M-16 -16 H333 V80 H-16 Z" fill="#9b6dff" fill-opacity=".14" fill-rule="evenodd"/>
+      <path d="M-16 -16 H333 V80 H-16 Z M0 0 H317 V64 H0 Z" fill="#7ec8a4" fill-opacity=".16" fill-rule="evenodd"/>
+      <rect x="-32" y="-32" width="381" height="128" fill="none" stroke="#9b6dff" stroke-width="1" stroke-dasharray="4 3"/>
+      <rect x="-16" y="-16" width="349" height="96" fill="none" stroke="#7ec8a4" stroke-width="1" stroke-dasharray="4 3"/>
+      <rect x="0" y="0" width="317" height="64" fill="none" stroke="#f4efe6" stroke-opacity=".35" stroke-width=".75"/>
+      <g style="color:#f4efe6">
+        <use href="#dd-g-full" x="0" y="0" width="64" height="64"/>
+        <text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text>
+      </g>
+      <g stroke="#f4efe6" stroke-width="1" fill="none"><path d="M-48 0 V64 M-52 0 H-44 M-52 64 H-44"/></g>
+      <text class="zl" x="-58" y="36" text-anchor="middle" fill="#f4efe6">H</text>
+      <text class="zl" x="2" y="-5" fill="#7ec8a4">¼ H : marge minimale</text>
+      <text class="zl" x="2" y="-21" fill="#b79cff">½ H : marge recommandée</text>
+    </svg></div>
+    <div class="card"><h3>Pictogramme seul</h3><p>Même règle : ¼ H au minimum, ½ H recommandé. Ne pas le rogner dans un cercle ou un carré qui coupe les pointes du d20 (haut et bas).</p><svg class="zone" viewBox="-44 -44 152 152" width="152" height="152" role="img" aria-label="Zone de protection du pictogramme seul">
+      <path d="M-32 -32 H96 V96 H-32 Z M-16 -16 H80 V80 H-16 Z" fill="#9b6dff" fill-opacity=".14" fill-rule="evenodd"/>
+      <path d="M-16 -16 H80 V80 H-16 Z M0 0 H64 V64 H0 Z" fill="#7ec8a4" fill-opacity=".16" fill-rule="evenodd"/>
+      <rect x="-32" y="-32" width="128" height="128" fill="none" stroke="#9b6dff" stroke-width="1" stroke-dasharray="4 3"/>
+      <rect x="-16" y="-16" width="96" height="96" fill="none" stroke="#7ec8a4" stroke-width="1" stroke-dasharray="4 3"/>
+      <rect x="0" y="0" width="64" height="64" fill="none" stroke="#f4efe6" stroke-opacity=".35" stroke-width=".75"/>
+      <g style="color:#f4efe6"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/></g>
+    </svg></div>
+  </div>
+
+  <div class="tablewrap"><table class="sizes">
+    <thead><tr><th>Déclinaison</th><th>Taille minimale</th><th>À l'échelle réelle</th></tr></thead>
+    <tbody>
+      <tr><td><b>Bloc-marque</b> (pictogramme complet + nom)</td><td>pictogramme de 28 px de haut (≈ 139 px de large) ; en dessous, passer au pictogramme seul</td><td><span class="smp"><svg class="bloc " width="138.7" height="28" viewBox="0 0 317 64" role="img" aria-label="Dés Dispos"><use href="#dd-g-full" x="0" y="0" width="64" height="64"/><text class="dd-wm" x="78" y="46.5" textLength="238.5" lengthAdjust="spacingAndGlyphs">Dés Dispos</text></svg></span></td></tr>
+      <tr><td><b>Pictogramme complet</b> (avec coche)</td><td>28 px (impression : 8 mm) ; 32 px recommandé ; en dessous de 28 px la coche se bouche, utiliser la variante simplifiée</td><td><span class="smp"><svg class="pic " width="28" height="28" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg><svg class="pic " width="32" height="32" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg></span></td></tr>
+      <tr><td><b>Pictogramme simplifié</b> (sans coche)</td><td>16 px (impression : 4 mm) ; à employer de 16 à 27 px, avec le fond sombre ou clair indifféremment</td><td><span class="smp"><svg class="pic " width="16" height="16" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg><svg class="pic " width="24" height="24" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg></span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>6 · Tuile d'icône d'application et favicon (variante simplifiée)</h2>
+  <p>Icône et favicon sont statiques : ils ne suivent pas le thème (tuile #16151b, glyphe #f4efe6). La tuile garantit le contraste sur un onglet clair comme sur un onglet sombre.</p>
+  <div class="iconrow">
+    <div class="ic"><span class="fav f64"><svg class="pic " width="46" height="46" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg></span>tuile 64 px</div>
+    <div class="ic"><span class="fav f32"><svg class="pic " width="28" height="28" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg></span>favicon 32 px</div>
+    <div class="ic"><span class="fav f16"><svg class="pic " width="14" height="14" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg></span>favicon 16 px</div>
+    <div class="ic"><span class="fav f64"><svg class="pic " width="46" height="46" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-full"/></svg></span>complet 64 px (comparaison)</div>
+  </div>
+  <div class="iconrow">
+    <div class="tabwrap"><span class="cap">Onglet sombre</span><div class="tabbar dark"><div class="tab"><span class="fav f16"><svg class="pic " width="14" height="14" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg></span><span>Dés Dispos</span></div></div><div class="tabpage dark"></div></div>
+    <div class="tabwrap"><span class="cap">Onglet clair</span><div class="tabbar light"><div class="tab"><span class="fav f16"><svg class="pic " width="14" height="14" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dd-g-simple"/></svg></span><span>Dés Dispos</span></div></div><div class="tabpage light"></div></div>
+  </div>
+  <p class="warn"><b>Limites.</b> La coche (4,2 unités de large sur 64) mesure 1,8 px à 28 px et 1,6 px à 24 px : elle se bouche en dessous de 28 px, d'où la variante simplifiée. Cette dernière, hexagone et triangle plein, perd l'indice du « dispo » et ressemble davantage à un pictogramme générique (lecture d20 portée surtout par la silhouette) : le nom et l'accroche restent nécessaires à côté. Les icônes de grande taille (écran d'accueil mobile, 180 px et plus) peuvent reprendre le pictogramme complet. Le texte « Dés Dispos » dépend de Georgia (ou du repli du système) : le figer en tracés avant tout export d'image.</p>
+</div>
+</body>
+</html>

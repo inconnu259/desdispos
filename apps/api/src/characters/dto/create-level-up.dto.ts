@@ -7,15 +7,19 @@ import {
   IsObject,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { MaxJsonSize } from '../../common/dto/max-json-size.validator';
 
 class CapabilityDto {
   @IsString()
+  @MaxLength(50)
   type!: string;
 
   @IsObject()
+  @MaxJsonSize(2000)
   params!: Record<string, unknown>;
 }
 

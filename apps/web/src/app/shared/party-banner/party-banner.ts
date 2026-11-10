@@ -131,7 +131,7 @@ export class PartyBanner {
   });
   protected readonly steampunk = computed<SteampunkBanner | null>(() => {
     const p = this.params();
-    return p.theme === 'medieval-steampunk' ? p : null;
+    return p.theme === 'atelier-cuivre' ? p : null;
   });
 
   protected readonly monogram = computed(() => partyMonogram(this.partieName()));

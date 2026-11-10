@@ -1,0 +1,74 @@
+/* Story 40.1 — onglet des conjonctions d'un groupe (maquettes groupe-*-B-onglet-conjonctions) :
+   en-tête titre + pilule pleine, sections « À venir » / « Passées », grille de cartes de 250 px
+   minimum, écart 12 px, une seule colonne sous 520 px. */
+:host {
+  display: block;
+}
+
+.conjonctions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.conjonctions__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.conjonctions__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.conjonctions__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.conjonctions__calendar,
+.conjonctions__new {
+  min-height: 44px;
+  border-radius: 999px;
+}
+
+.conjonctions__section h3 {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jdr-text-muted, var(--mat-sys-on-surface-variant));
+}
+
+.conjonctions__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+
+  @media (max-width: 519.98px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.muted {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.conjonctions__empty {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.conjonctions__error {
+  margin: 0;
+  color: var(--mat-sys-error, #b3261e);
+}

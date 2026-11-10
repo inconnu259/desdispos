@@ -202,9 +202,9 @@
    teinte tomberaient à 2,2:1 (DESIGN.md §7.1).
    ⚠️ ÉCART MESURÉ, ASSUMÉ : le fond descend à 12 % là où la planche dit 26 %. `status-done` est
    plus CLAIR que la surface dans les trois thèmes ; à 26 % il rapproche le fond du texte muet et
-   fait tomber le contraste (3,45:1 en Médiéval Steampunk, 4,83:1 en Grimoire). À 12 % les trois
+   fait tomber le contraste (3,45:1 en Atelier Cuivré, 4,83:1 en Grimoire). À 12 % les trois
    gagnent ~0,6 point sans rien perdre du caractère « en retrait ». À répercuter par `bmad-ux`.
-   Reste dû, hors périmètre : `--jdr-text-muted` du thème Steampunk plafonne à ~4,4:1 sur sa
+   Reste dû, hors périmètre : `--jdr-text-muted` du thème Atelier Cuivré plafonne à ~4,4:1 sur sa
    propre surface, donc AA n'y est pas atteint même à fond nul — c'est la PALETTE qu'il faudrait
    corriger, pas ce badge. */
 .agenda-badge--done {

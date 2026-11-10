@@ -256,7 +256,7 @@ export interface RivetParams {
 }
 
 export interface SteampunkBanner extends BannerBase {
-  theme: 'medieval-steampunk';
+  theme: 'atelier-cuivre';
   gauge: GaugeParams;
   gears: GearParams[];
   rivets: RivetParams[];
@@ -508,7 +508,7 @@ function drawSteampunk(rng: () => number, base: BannerBase): SteampunkBanner {
 
   const steam = rng() < 0.5;
 
-  return { ...base, theme: 'medieval-steampunk', gauge, gears, rivets, steam };
+  return { ...base, theme: 'atelier-cuivre', gauge, gears, rivets, steam };
 }
 
 /**
@@ -533,7 +533,7 @@ export function bannerParams(partieId: string, theme: Theme): BannerParams {
       return drawEmeraude(rng, base);
     case 'foret-ancienne':
       return drawForet(rng, base);
-    case 'medieval-steampunk':
+    case 'atelier-cuivre':
       return drawSteampunk(rng, base);
   }
 }

@@ -1,56 +1,31 @@
-<h2 mat-dialog-title>
-  @if (data.mode === 'new') {
-    Lancer le vote
-  } @else {
-    Modifier les créneaux du vote
-  }
-</h2>
+<h2 mat-dialog-title>{{ title() }}</h2>
 
 <mat-dialog-content>
-  <p class="compose-confirm__summary">
-    {{ data.slotCount }} créneau{{ data.slotCount > 1 ? 'x' : '' }} proposé{{
-      data.slotCount > 1 ? 's' : ''
-    }}.
-  </p>
+  <p class="compose-confirm__summary">{{ summary() }}</p>
 
-  @if (data.mode === 'new') {
-    <!-- AC11 : un vote appartient TOUJOURS à une séance. La question est posée ici, après la
-         désignation des créneaux, et non plus dans un sélecteur en marge du calendrier (AC9). -->
-    <label class="compose-confirm__field">
-      Pour quelle séance ?
-      <select
-        class="compose-confirm__select"
-        [value]="seanceId() ?? ''"
-        (change)="onSeanceChange($event)"
-      >
-        <option value="">Choisir une séance…</option>
-        @for (s of data.seances; track s.seanceId) {
-          <option [value]="s.seanceId">{{ s.label }}</option>
-        }
-      </select>
-    </label>
-  } @else if (data.voterCount > 0) {
+  @if (data.voterCount > 0) {
     <!-- AC6 : l'avertissement précède l'écriture et NOMME le nombre de réponses supprimées. -->
     <p class="compose-confirm__warning" role="alert">{{ warning() }}</p>
-    <p class="compose-confirm__note">
-      Les réponses portées par les créneaux conservés ne sont pas touchées.
-    </p>
+    <!-- Story 47.4 : une durée changée n'épargne aucune réponse — la note « les créneaux gardés gardent leurs
+         réponses » serait fausse. -->
+    @if (!data.durationChanged) {
+      <p class="compose-confirm__note">
+        {{ note() }}
+      </p>
+    }
   }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="cancel()">Renoncer</button>
+  <button mat-button type="button" (click)="cancel()">
+    {{ theme.tone()['common.renoncer'] }}
+  </button>
   <button
     mat-flat-button
     type="button"
-    [color]="data.mode === 'poll' && data.voterCount > 0 ? 'warn' : 'primary'"
-    [disabled]="!canConfirm()"
+    [color]="data.voterCount > 0 ? 'warn' : 'primary'"
     (click)="confirm()"
   >
-    @if (data.mode === 'new') {
-      Lancer le vote
-    } @else {
-      Enregistrer
-    }
+    {{ theme.tone()['common.enregistrer'] }}
   </button>
 </mat-dialog-actions>

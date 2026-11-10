@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plages longues — options</title>
+<style>
+/* Planche d'options (.working) — Palier 10.4, mise à jour UX après l'architecture.
+   PRD FR-18 (échéance), FR-19 (durée dans le composer), FR-20 (affichage d'une plage), FR-23 (durée à la création).
+   Thème Grimoire Émeraude. La vue Mois a trois bandes par jour (matin, après-midi, soir), Story 36.2.
+   Les spines l'emportent sur cette planche. */
+:root{
+  --bg:#09070f; --surface:#1a1428; --surface-high:#221c35; --surface-top:#2a2340;
+  --accent-1:#7ec8a4; --accent-2:#9b6dff; --text:#e8e0f0; --muted:#9b8fb0; --outline:#6e6383;
+  --todo:#f0a030; --toolbar:#150f20; --band:#241d36;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050409;color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px}
+h1{font-size:18px;margin:0 0 4px}
+h2{font-size:16px;margin:34px 0 4px;padding-top:14px;border-top:1px solid #2e2642}
+.intro{color:var(--muted);max-width:1180px;margin:0 0 18px}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.col{width:360px;max-width:100%}
+.opt{display:inline-block;font-weight:700;font-size:13px;padding:3px 10px;border-radius:999px;background:rgba(155,109,255,.2);border:1px solid rgba(155,109,255,.55);color:#c4a0ff;margin-bottom:6px}
+.cap{font-weight:600;margin:0 0 4px}
+.cap small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
+.phone{position:relative;width:360px;max-width:100%;height:640px;border-radius:30px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 0 0 1px #333}
+.tb{height:48px;background:var(--toolbar);display:flex;align-items:center;padding:0 14px;gap:10px;font-weight:600}
+.tb .back{color:var(--muted)}
+.month{padding:8px 8px 0}
+.mh{display:flex;justify-content:space-between;font-weight:600;padding:2px 2px 6px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dow div{font-size:10.5px;color:var(--muted);text-align:center}
+.wk{position:relative;margin-bottom:3px}
+.cell{height:66px;background:var(--surface);border-radius:6px;padding:2px 3px 3px;font-size:10.5px;display:flex;flex-direction:column}
+.bands{flex:1;display:flex;flex-direction:column;gap:2px;margin-top:1px}
+.b{flex:1;border-radius:2px;background:var(--band);position:relative}
+.b.v{background:rgba(240,160,48,.18);border-left:3px solid var(--todo)}
+.b.pv{background:rgba(126,200,164,.22);outline:1.5px dashed var(--accent-1);outline-offset:-1.5px}
+.b.cr::after{content:"";position:absolute;right:-5px;top:50%;margin-top:-4px;border:4px solid transparent;border-left:5px solid var(--todo);z-index:2}
+.b.cl::before{content:"";position:absolute;left:-8px;top:50%;margin-top:-4px;border:4px solid transparent;border-left:5px solid var(--todo);z-index:2}
+.b.pv.cr::after{border-left-color:var(--accent-1)}
+.b.pv.cl::before{border-left-color:var(--accent-1)}
+.lbl{position:absolute;left:3px;top:0;font-size:8.5px;line-height:1;color:#ffd08a;white-space:nowrap;z-index:3}
+.bar{position:absolute;height:15px;top:22px;border-radius:4px;background:rgba(240,160,48,.32);border-left:3px solid var(--todo);font-size:9.5px;line-height:15px;padding:0 5px;color:#ffe2b0;white-space:nowrap;overflow:hidden;z-index:3}
+.bar.pv{background:rgba(126,200,164,.28);border:1.5px dashed var(--accent-1);color:#cfeedd}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface-high);border-top:1px solid var(--outline);padding:9px 12px 12px}
+.for{font-size:12px;color:var(--muted)}
+.for b{color:var(--text)}
+.ctrl{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px;flex-wrap:wrap}
+.ctrl .k{color:var(--muted);min-width:78px}
+.step{display:inline-flex;align-items:center;border:1px solid var(--outline);border-radius:999px;overflow:hidden}
+.step span{padding:4px 10px}
+.step span.pm{color:var(--accent-1);font-weight:700}
+.step span.v{border-left:1px solid var(--outline);border-right:1px solid var(--outline);font-weight:600}
+.plain{color:var(--accent-1);font-size:12px}
+.chip{border:1px solid var(--outline);border-radius:999px;padding:4px 10px;font-size:12px;white-space:nowrap}
+.chip.on{background:rgba(155,109,255,.22);border-color:var(--accent-2)}
+.field{border:1px solid var(--outline);border-radius:8px;padding:4px 10px;font-size:12.5px}
+.field .pen{color:var(--accent-1);margin-left:6px}
+.btns{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;text-align:center;border-radius:999px;padding:9px 12px;font-weight:600;font-size:13px;border:1px solid var(--outline)}
+.btn.p{background:linear-gradient(135deg,#7ec8a4,#9b6dff);color:#0d0a14;border:none}
+.hint{font-size:11.5px;color:var(--muted);margin-top:6px}
+.toast{position:absolute;left:12px;right:12px;top:300px;background:#2f2747;border:1px solid var(--accent-1);border-radius:10px;padding:8px 10px;font-size:12px}
+.note{font-size:12px;color:var(--muted);margin-top:8px;max-width:360px}
+.pro{color:var(--accent-1)} .con{color:#ff9a8a}
+.dialog{width:360px;max-width:100%;background:var(--surface-high);border:1px solid var(--outline);border-radius:14px;padding:14px}
+.dialog h3{margin:0 0 10px;font-size:15px}
+.frow{margin:8px 0}
+.frow .k{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.input{border:1px solid var(--outline);border-radius:8px;padding:7px 10px;font-size:13px}
+</style>
+</head>
+<body>
+<h1>Plages longues : options pour le composer et l'affichage (Grimoire Émeraude)</h1>
+<p class="intro">Parcours UJ-5 : Incon propose trois week-ends pour « Week-end jeux », du vendredi soir au dimanche après-midi (6 créneaux). Dans la vue Mois, chaque jour a trois bandes, matin, après-midi et soir (Story 36.2). <b>Rien n'est décidé</b> : choisis une option par section, ou mélange-les.</p>
+
+<!-- ═══════════════ Section 1 ═══════════════ -->
+<h2>① Régler la durée et l'échéance dans le composer (FR-18, FR-19)</h2>
+<p class="intro">Les deux réglages vivent dans la barre du composer, sous « Pour : … ». L'échéance est la même dans les trois options : préremplie, avec un crayon pour la changer. Seule la façon de régler la durée diffère.</p>
+<div class="row">
+
+  <div class="col">
+    <span class="opt">1A</span>
+    <p class="cap">Compteur ± avec la plage écrite en clair<small>On ajuste créneau par créneau ; la phrase dit tout de suite ce que ça donne au départ choisi.</small></p>
+    <div class="phone">
+      <div class="tb"><span class="back">←</span> Week-end jeux</div>
+      <div class="month">
+        <div class="mh"><span>novembre 2026</span><span>‹ ›</span></div>
+        <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+        <div class="wk grid">
+          <div class="cell">2<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">3<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">4<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">5<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">6<div class="bands"><div class="b"></div><div class="b"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">7<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">8<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b"></div></div></div>
+        </div>
+      </div>
+      <div class="sheet">
+        <div class="for">Pour : <b>Week-end jeux</b> · 1 créneau proposé</div>
+        <div class="ctrl"><span class="k">Durée</span><span class="step"><span class="pm">−</span><span class="v">6 créneaux</span><span class="pm">+</span></span></div>
+        <div class="ctrl"><span class="k"></span><span class="plain">ven. soir → dim. après-midi</span></div>
+        <div class="ctrl"><span class="k">Fin du vote</span><span class="field">mar. 3 nov.<span class="pen">✎</span></span></div>
+        <div class="hint">Proposé : dans 14 jours, plus tôt que la veille du premier créneau (jeu. 5 nov.).</div>
+        <div class="btns"><span class="btn">Annuler</span><span class="btn p">Valider</span></div>
+      </div>
+    </div>
+    <p class="note"><span class="pro">+</span> simple, une seule commande, marche pour toutes les durées (1 à 45). <span class="con">−</span> pour un week-end, il faut appuyer six fois sur + (ou maintenir).</p>
+  </div>
+
+  <div class="col">
+    <span class="opt">1B</span>
+    <p class="cap">Durées types en pastilles, plus « Autre… »<small>Les cas courants en un geste : 1 créneau, 2 créneaux, une journée, deux jours.</small></p>
+    <div class="phone">
+      <div class="tb"><span class="back">←</span> Week-end jeux</div>
+      <div class="month">
+        <div class="mh"><span>novembre 2026</span><span>‹ ›</span></div>
+        <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+        <div class="wk grid">
+          <div class="cell">2<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">3<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">4<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">5<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">6<div class="bands"><div class="b"></div><div class="b"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">7<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">8<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b"></div></div></div>
+        </div>
+      </div>
+      <div class="sheet">
+        <div class="for">Pour : <b>Week-end jeux</b> · 1 créneau proposé</div>
+        <div class="ctrl"><span class="k">Durée</span></div>
+        <div class="ctrl"><span class="chip">1 créneau</span><span class="chip">2 créneaux</span><span class="chip">1 journée</span><span class="chip on">2 jours</span><span class="chip">Autre…</span></div>
+        <div class="ctrl"><span class="plain">6 créneaux · ven. soir → dim. après-midi</span></div>
+        <div class="ctrl"><span class="k">Fin du vote</span><span class="field">mar. 3 nov.<span class="pen">✎</span></span></div>
+        <div class="btns"><span class="btn">Annuler</span><span class="btn p">Valider</span></div>
+      </div>
+    </div>
+    <p class="note"><span class="pro">+</span> le week-end et la journée en un geste. <span class="con">−</span> « 1 journée » veut dire 3 créneaux depuis le départ : en partant d'un soir, c'est soir → lendemain après-midi, ce qui peut surprendre ; plus de place à l'écran.</p>
+  </div>
+
+  <div class="col">
+    <span class="opt">1C</span>
+    <p class="cap">La première plage se dessine sur la grille<small>On glisse du départ à la fin pour la première date ; cela fixe la durée, les dates suivantes se touchent d'un tap.</small></p>
+    <div class="phone">
+      <div class="tb"><span class="back">←</span> Week-end jeux</div>
+      <div class="month">
+        <div class="mh"><span>novembre 2026</span><span>‹ ›</span></div>
+        <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+        <div class="wk grid">
+          <div class="cell">2<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">3<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">4<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">5<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">6<div class="bands"><div class="b"></div><div class="b"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">7<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">8<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b"></div></div></div>
+        </div>
+      </div>
+      <div class="toast">Glisse du vendredi soir au dimanche après-midi : <b>durée fixée à 6 créneaux</b>. Touche d'autres vendredis soir pour proposer d'autres week-ends.</div>
+      <div class="sheet">
+        <div class="for">Pour : <b>Week-end jeux</b> · 1 créneau proposé</div>
+        <div class="ctrl"><span class="k">Durée</span><span class="plain">6 créneaux · ven. soir → dim. après-midi</span><span class="field">changer<span class="pen">✎</span></span></div>
+        <div class="ctrl"><span class="k">Fin du vote</span><span class="field">mar. 3 nov.<span class="pen">✎</span></span></div>
+        <div class="btns"><span class="btn">Annuler</span><span class="btn p">Valider</span></div>
+      </div>
+    </div>
+    <p class="note"><span class="pro">+</span> le plus naturel : on « montre » le week-end. <span class="con">−</span> glisser veut déjà dire « sélectionner plusieurs jours » (geste des dispos, FR-6) : deux sens pour un même geste, plus dur à apprendre et à rendre accessible au clavier.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ Section 2 ═══════════════ -->
+<h2>② Afficher une plage sur plusieurs jours (FR-20)</h2>
+<p class="intro">Trois week-ends proposés au vote (6, 13 et 20 novembre). Même rendu pour une date fixée longue, avec la couleur d'une séance au lieu de celle d'un vote. En pointillé vert : l'<b>aperçu</b> d'une plage pendant qu'on la sélectionne (FR-19).</p>
+<div class="row">
+
+  <div class="col">
+    <span class="opt">2A</span>
+    <p class="cap">Bandes reliées<small>Chaque créneau couvert prend le marquage du vote ; de petites flèches relient les bandes d'un jour à l'autre ; le nom sur la première bande.</small></p>
+    <div class="phone" style="height:470px">
+      <div class="tb"><span class="back">←</span> Week-end jeux</div>
+      <div class="month">
+        <div class="mh"><span>novembre 2026</span><span>‹ ›</span></div>
+        <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+        <div class="wk grid">
+          <div class="cell">2<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">3<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">4<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">5<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">6<div class="bands"><div class="b"></div><div class="b"></div><div class="b v cr"><span class="lbl">Week-end…</span></div></div></div>
+          <div class="cell">7<div class="bands"><div class="b v cl"></div><div class="b v"></div><div class="b v cr"></div></div></div>
+          <div class="cell">8<div class="bands"><div class="b v cl"></div><div class="b v"></div><div class="b"></div></div></div>
+        </div>
+        <div class="wk grid">
+          <div class="cell">9<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">10<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">11<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">12<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">13<div class="bands"><div class="b"></div><div class="b"></div><div class="b v cr"><span class="lbl">Week-end…</span></div></div></div>
+          <div class="cell">14<div class="bands"><div class="b v cl"></div><div class="b v"></div><div class="b v cr"></div></div></div>
+          <div class="cell">15<div class="bands"><div class="b v cl"></div><div class="b v"></div><div class="b"></div></div></div>
+        </div>
+        <div class="wk grid">
+          <div class="cell">16<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">17<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">18<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">19<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">20<div class="bands"><div class="b"></div><div class="b"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">21<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b pv cr"></div></div></div>
+          <div class="cell">22<div class="bands"><div class="b pv cl"></div><div class="b pv"></div><div class="b"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><span class="pro">+</span> garde le langage des bandes : on voit exactement quels créneaux sont pris (le dimanche soir reste libre) ; l'aperçu réutilise l'état de sélection existant. <span class="con">−</span> une plage ne se lit pas d'un seul coup d'œil comme « un » objet.</p>
+  </div>
+
+  <div class="col">
+    <span class="opt">2B</span>
+    <p class="cap">Barre continue au-dessus des cases<small>Une seule barre traverse les jours de la plage, comme un événement de plusieurs jours dans un agenda classique.</small></p>
+    <div class="phone" style="height:470px">
+      <div class="tb"><span class="back">←</span> Week-end jeux</div>
+      <div class="month">
+        <div class="mh"><span>novembre 2026</span><span>‹ ›</span></div>
+        <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+        <div class="wk grid">
+          <div class="cell">2<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">3<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">4<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">5<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">6<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">7<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">8<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="bar" style="left:65.7%;width:29.6%">Week-end jeux · ven. soir → dim. ap.-m.</div>
+        </div>
+        <div class="wk grid">
+          <div class="cell">9<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">10<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">11<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">12<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">13<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">14<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">15<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="bar" style="left:65.7%;width:29.6%">Week-end jeux · ven. soir → dim. ap.-m.</div>
+        </div>
+        <div class="wk grid">
+          <div class="cell">16<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">17<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">18<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">19<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">20<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">21<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="cell">22<div class="bands"><div class="b"></div><div class="b"></div><div class="b"></div></div></div>
+          <div class="bar pv" style="left:65.7%;width:29.6%">aperçu · ven. soir → dim. ap.-m.</div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><span class="pro">+</span> une plage se lit comme un seul objet, avec son nom en entier. <span class="con">−</span> cache les bandes qu'elle survole (dispos, autres séances dessous) ; ne dit pas à l'œil quel moment exact commence ou finit ; deux langages visuels dans la même grille.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ Section 3 ═══════════════ -->
+<h2>③ Durée à la création d'un rendez-vous (FR-23)</h2>
+<p class="intro">Même réglage que celui choisi en ①, dans la fenêtre de création d'un événement (et l'ajout d'une séance en JDR). Facultatif : laissé tel quel, c'est un créneau.</p>
+<div class="row">
+  <div class="dialog">
+    <h3>Nouvelle conjonction</h3>
+    <div class="frow"><span class="k">Nom</span><div class="input">Week-end jeux</div></div>
+    <div class="frow"><span class="k">Date</span><div class="input">À trouver par un vote</div></div>
+    <div class="frow"><span class="k">Durée (facultatif)</span><span class="step"><span class="pm">−</span><span class="v">6 créneaux</span><span class="pm">+</span></span> <span class="plain" style="margin-left:6px">soit 2 jours</span></div>
+    <div class="hint">Une soirée, une journée, un week-end… Laisse 1 créneau si ce n'est qu'une soirée.</div>
+  </div>
+  <p class="note" style="align-self:center">Ici le départ n'est pas encore connu : la phrase en clair ne peut dire que la longueur (« soit 2 jours »), pas « ven. soir → dim. après-midi ». Elle s'affichera dans le composer, quand on touchera un départ.</p>
+</div>
+</body>
+</html>

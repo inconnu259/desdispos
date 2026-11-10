@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jeux de société — écrans retenus</title>
+<style>
+/* Planche (.working) — Palier 10.5, écrans retenus le 2026-10-29 : 1B (onglet Jeux), 2B (J'apporte dans la liste,
+   sections repliables, Indisponibles en bas pour l'hôte), 3B (page Ludothèque), 4A (onglet Jeux du groupe),
+   « Qui reçoit » de 4B dans Détails, feuille de Ludothèque d'une personne (4C sans compteur).
+   ⚠️ Doublons : un jeu figure dans chaque section où il est présent, badge ×N + autres détenteurs (amende PRD FR-6).
+   « Jouables à N » : N = nombre actuel de Participants. Thème Grimoire Émeraude, mobile 360 px, libellés provisoires.
+   Les spines l'emporteront sur cette planche. */
+:root{
+  --bg:#110d1a; --surface:#1a1428; --surface-high:#221c35; --surface-top:#2a2340;
+  --accent-1:#7ec8a4; --accent-2:#9b6dff; --text:#e8e0f0; --muted:#9b8fb0; --outline:#4a405e;
+  --toolbar:#150f20; --pink:#ff7ad9; --warn:#ffb27a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050409;color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px}
+h1{font-size:18px;margin:0 0 4px}
+h2{font-size:16px;margin:36px 0 4px;padding-top:14px;border-top:1px solid #2e2642}
+.intro{color:var(--muted);max-width:1180px;margin:0 0 18px}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.col{width:360px;max-width:100%}
+.opt{display:inline-block;font-weight:700;font-size:13px;padding:3px 10px;border-radius:999px;background:rgba(126,200,164,.15);border:1px solid rgba(126,200,164,.55);color:#cfeedd;margin-bottom:6px}
+.cap{font-weight:600;margin:0 0 4px}
+.cap small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
+.note{font-size:12px;color:var(--muted);margin-top:8px;max-width:360px}
+.phone{position:relative;width:360px;max-width:100%;height:700px;border-radius:30px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 0 0 1px #333;display:flex;flex-direction:column}
+.hd{padding:10px 14px 8px;background:var(--toolbar);border-bottom:1px solid #2a2340}
+.hd b{display:block;font-size:16px}
+.hd small{color:var(--muted);font-size:11px}
+.tabs{display:flex;border-bottom:1px solid #2a2340;margin:0 10px}
+.tabs span{flex:1;text-align:center;padding:9px 0;font-size:12.5px;font-weight:600;color:var(--muted)}
+.tabs span.on{color:var(--text);border-bottom:2px solid var(--accent-1)}
+.body{flex:1;overflow:hidden;padding:10px 12px;position:relative}
+.nav{height:46px;background:var(--toolbar);border-top:1px solid #2a2340;display:flex;justify-content:space-around;align-items:center;font-size:9.5px;color:var(--muted)}
+.nav span.on{color:var(--accent-1)}
+.sec{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center}
+.sh{display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid #2e2642;padding-bottom:4px}
+.sh .c{color:var(--muted);font-weight:400}
+.sh .ch{color:var(--muted);font-size:13px}
+.game{background:var(--surface);border:1px solid #2a2340;border-radius:10px;padding:7px 9px;margin-bottom:6px}
+.game .t{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.game .n{font-weight:600;font-size:13px}
+.meta{font-size:11px;color:var(--muted);margin-top:1px}
+.own{font-size:11px;margin-top:3px;color:var(--muted)}
+.own b{color:var(--text);font-weight:600}
+.own u{color:var(--text);text-decoration:underline dotted}
+.warn{color:var(--warn)}
+.fit{font-size:10px;font-weight:700;color:#0d0a14;background:var(--accent-1);border-radius:999px;padding:1px 7px;white-space:nowrap}
+.dup{font-size:10px;font-weight:700;color:var(--warn);border:1px solid var(--warn);border-radius:999px;padding:0 6px;white-space:nowrap}
+.heart{font-size:11.5px;border:1px solid var(--outline);border-radius:999px;padding:2px 8px;white-space:nowrap;color:var(--muted)}
+.heart.on{border-color:var(--pink);color:var(--pink);background:rgba(255,122,217,.1)}
+.r{display:flex;align-items:center;gap:6px}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0 4px}
+.chip{border:1px solid var(--outline);border-radius:999px;padding:3px 9px;font-size:11.5px;white-space:nowrap}
+.chip.on{background:rgba(126,200,164,.18);border-color:var(--accent-1);color:#cfeedd}
+.btn{display:inline-block;text-align:center;border-radius:999px;padding:6px 11px;font-weight:600;font-size:12px;border:1px solid var(--outline);white-space:nowrap}
+.btn.p{background:var(--accent-1);color:#0d0a14;border:none}
+.btn.s{border-color:var(--accent-1);color:var(--accent-1)}
+.lnk{color:var(--accent-1);font-size:11.5px;font-weight:600}
+.sum{background:var(--surface-high);border:1px solid var(--outline);border-radius:12px;padding:9px 10px}
+.sum .big{font-size:14.5px;font-weight:700}
+.count{font-size:11px;color:var(--muted)}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #2e2642;font-size:13px}
+.lrow .meta{display:block}
+.fade{opacity:.45}
+.pen{color:var(--muted);font-size:13px}
+.menu{position:absolute;right:20px;background:var(--surface-top);border:1px solid var(--outline);border-radius:8px;padding:6px 10px;font-size:12px;z-index:3;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface-high);border-radius:18px 18px 0 0;padding:8px 14px 14px;box-shadow:0 -6px 24px rgba(0,0,0,.5)}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--outline);margin:0 auto 8px}
+.sheet h3{margin:0 0 2px;font-size:15px}
+.sheet .sub{font-size:11.5px;color:var(--muted);margin-bottom:6px}
+.input{border:1px solid var(--outline);border-radius:8px;padding:7px 9px;font-size:12.5px;color:var(--muted)}
+.two{display:flex;gap:6px;align-items:center}
+.two .input{flex:1}
+.kv{display:grid;grid-template-columns:118px 1fr;gap:3px 8px;font-size:12px}
+.kv span:nth-child(odd){color:var(--muted)}
+.mrow{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px}
+.mrow .grow{flex:1}
+.bar{height:6px;border-radius:3px;background:var(--accent-2);display:inline-block}
+.toast{position:absolute;left:12px;right:12px;bottom:12px;background:#2f2747;border:1px solid var(--accent-1);border-radius:10px;padding:8px 10px;font-size:12px;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<h1>Jeux de société : écrans retenus (Grimoire Émeraude, téléphone)</h1>
+<p class="intro">« Catane et galettes », samedi soir chez <b>Léa</b> (La Bande du Jeudi). <b>6 Participants</b> : Léa, Tom, Sam, Zoé, Karim, Hugo — d'où « jouables à 6 » ; le chiffre suit le nombre de Participants. Léa a 7 jeux, dont <i>Dixit</i> indisponible ce soir. Tom apporte <i>Skull</i> ; Zoé apporte <i>Codenames</i>, que Léa a aussi. Libellés provisoires (thèmes ensuite).</p>
+
+<h2>① ② La conjonction, onglet « Jeux »</h2>
+<div class="row">
+
+  <div class="col">
+    <span class="opt">Tom, invité</span>
+    <p class="cap">Trois sections repliables<small>Chez Léa · Apportés · Dans ma Ludothèque. Un jeu présent deux fois figure aux deux endroits, ×2, avec l'autre détenteur.</small></p>
+    <div class="phone">
+      <div class="hd"><b>Catane et galettes</b><small>Ralliement · La convergence des Sortilèges</small></div>
+      <div class="tabs"><span>Conjonction</span><span>Inscrits</span><span class="on">Jeux · 8</span></div>
+      <div class="body">
+        <div class="sum"><div class="big">8 jeux sur place · 5 jouables à 6</div>
+          <div class="chips"><span class="chip">Jouables à 6</span><span class="chip">Les plus envies</span></div></div>
+        <div class="sh"><span>Chez Léa <span class="c">· 6</span></span><span class="ch">▾</span></div>
+        <div class="game"><div class="t"><span class="n">Codenames</span><span class="heart">♥</span></div><div class="meta">2–8 joueurs · 15 min <span class="fit">jouable à 6</span> <span class="dup">×2</span></div><div class="own warn">aussi apporté par <u>Zoé</u></div></div>
+        <div class="game"><div class="t"><span class="n">Just One</span><span class="heart">♥ 1</span></div><div class="meta">3–7 joueurs · 20 min <span class="fit">jouable à 6</span></div></div>
+        <div class="count" style="margin:-2px 0 4px">+ 4 autres, dont Terraforming Mars</div>
+        <div class="sh"><span>Apportés <span class="c">· 2</span></span><span class="ch">▾</span></div>
+        <div class="game"><div class="t"><span class="n">Skull</span><span class="heart on">♥ 3</span></div><div class="meta">3–6 joueurs · 30 min <span class="fit">jouable à 6</span></div><div class="own">par <b>moi</b> · <span class="lnk">Ne plus l'apporter</span></div></div>
+        <div class="game"><div class="t"><span class="n">Codenames</span><span class="heart">♥</span></div><div class="meta">2–8 joueurs · 15 min <span class="dup">×2</span></div><div class="own">par <u>Zoé</u> · <span class="warn">aussi chez <u>Léa</u></span></div></div>
+        <div class="sh"><span>Dans ma Ludothèque <span class="c">· 3</span></span><span class="ch">▾</span></div>
+        <div class="lrow"><span>Terraforming Mars<span class="meta warn">⚠ déjà chez Léa</span></span><span class="btn s">J'apporte</span></div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+    <p class="note">Le ♥ (Envie) n'existe que sur les jeux sur place, pas dans « Dans ma Ludothèque ». Toucher un nom souligné (Zoé, Léa) ouvre sa Ludothèque.</p>
+  </div>
+
+  <div class="col">
+    <span class="opt">Tom, sections repliées + filtre</span>
+    <p class="cap">« Chez Léa » replié, filtre « Jouables à 6 » actif<small>Le filtre vaut pour toutes les sections. Une section repliée garde son compte filtré.</small></p>
+    <div class="phone">
+      <div class="hd"><b>Catane et galettes</b><small>Ralliement · La convergence des Sortilèges</small></div>
+      <div class="tabs"><span>Conjonction</span><span>Inscrits</span><span class="on">Jeux · 8</span></div>
+      <div class="body">
+        <div class="sum"><div class="big">8 jeux sur place · 5 jouables à 6</div>
+          <div class="chips"><span class="chip on">Jouables à 6 ✕</span><span class="chip">Les plus envies</span></div></div>
+        <div class="sh"><span>Chez Léa <span class="c">· 3 sur 6</span></span><span class="ch">▸</span></div>
+        <div class="sh"><span>Apportés <span class="c">· 2 sur 2</span></span><span class="ch">▾</span></div>
+        <div class="game"><div class="t"><span class="n">Skull</span><span class="heart on">♥ 3</span></div><div class="meta">3–6 joueurs · 30 min <span class="fit">jouable à 6</span></div><div class="own">par <b>moi</b> · <span class="lnk">Ne plus l'apporter</span></div></div>
+        <div class="game"><div class="t"><span class="n">Codenames</span><span class="heart">♥</span></div><div class="meta">2–8 joueurs · 15 min <span class="fit">jouable à 6</span> <span class="dup">×2</span></div><div class="own">par <u>Zoé</u> · <span class="warn">aussi chez <u>Léa</u></span></div></div>
+        <div class="sh"><span>Dans ma Ludothèque <span class="c">· 1 sur 3</span></span><span class="ch">▾</span></div>
+        <div class="lrow"><span>Wavelength<span class="meta">2–12 joueurs · 45 min · jouable à 6</span></span><span class="btn s">J'apporte</span></div>
+        <div class="toast"><span>Yann s'est inscrit : 7 participants.</span><span class="lnk">OK</span></div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+    <p class="note">Si un 7ᵉ s'inscrit, le libellé et le filtre deviennent « jouables à 7 » en direct. (Le bandeau n'est là que pour l'illustrer, à décider.)</p>
+  </div>
+
+  <div class="col">
+    <span class="opt">Léa, hôte</span>
+    <p class="cap">« Chez moi », ⋮ pour rendre indisponible, Indisponibles en bas<small>Pas de section « Dans ma Ludothèque » : ses jeux sont déjà là. Les autres ne voient pas la section du bas.</small></p>
+    <div class="phone">
+      <div class="hd"><b>Catane et galettes</b><small>Ralliement · La convergence des Sortilèges</small></div>
+      <div class="tabs"><span>Conjonction</span><span>Inscrits</span><span class="on">Jeux · 8</span></div>
+      <div class="body">
+        <div class="sum"><div class="big">8 jeux sur place · 5 jouables à 6</div>
+          <div class="chips"><span class="chip">Jouables à 6</span><span class="chip">Les plus envies</span></div></div>
+        <div class="sh"><span>Chez moi <span class="c">· 6</span></span><span class="ch">▾</span></div>
+        <div class="game"><div class="t"><span class="n">Codenames</span><span class="r"><span class="heart">♥</span><span class="pen">⋮</span></span></div><div class="meta">2–8 joueurs · 15 min <span class="dup">×2</span></div><div class="own warn">aussi apporté par <u>Zoé</u></div></div>
+        <div class="game" style="position:relative"><div class="t"><span class="n">Just One</span><span class="r"><span class="heart">♥ 1</span><span class="pen">⋮</span></span></div><div class="meta">3–7 joueurs · 20 min</div>
+          <div class="menu" style="top:26px">Indisponible ce soir</div></div>
+        <div class="game"><div class="t"><span class="n">Time's Up</span><span class="r"><span class="heart">♥</span><span class="pen">⋮</span></span></div><div class="meta">4–12 joueurs · 45 min</div></div>
+        <div class="count" style="margin:-2px 0 4px">+ 3 autres</div>
+        <div class="sh"><span>Apportés <span class="c">· 2</span></span><span class="ch">▾</span></div>
+        <div class="game"><div class="t"><span class="n">Skull</span><span class="heart on">♥ 3</span></div><div class="meta">3–6 joueurs · 30 min</div><div class="own">par <u>Tom</u></div></div>
+        <div class="game"><div class="t"><span class="n">Codenames</span><span class="heart">♥</span></div><div class="meta">2–8 joueurs · 15 min <span class="dup">×2</span></div><div class="own">par <u>Zoé</u> · <span class="warn">aussi chez moi</span></div></div>
+        <div class="sh fade"><span>Indisponibles ce soir <span class="c">· 1</span> — visible par toi seule</span><span class="ch">▾</span></div>
+        <div class="lrow"><span class="fade">Dixit<span class="meta">3–8 joueurs · 30 min</span></span><span class="btn s">Remettre</span></div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+    <p class="note">Léa peut aussi signaler une Envie. Remettre <i>Dixit</i> le fait revenir dans « Chez moi », pour tout le monde.</p>
+  </div>
+</div>
+
+<h2>③ La Ludothèque</h2>
+<div class="row">
+  <div class="col">
+    <span class="opt">Entrée dans « Mon grimoire »</span>
+    <p class="cap">Une ligne qui mène à la page<small>Placée avant la zone sensible.</small></p>
+    <div class="phone" style="height:360px">
+      <div class="hd"><b>Mon grimoire personnel</b></div>
+      <div class="body">
+        <div class="fade"><div class="sec" style="margin-top:2px">Ce que révèle mon calendrier</div><div style="font-size:12px">☑ Mes disponibilités · ☑ Mes séances…</div></div>
+        <div class="sec">Ma Ludothèque</div>
+        <div class="lrow"><span>Ma Ludothèque<span class="meta">5 jeux · visibles par tes groupes et tes rencontres</span></span><span class="pen">›</span></div>
+        <div class="fade"><div class="sec">Zone sensible</div><div style="font-size:12px">Effacer mon compte…</div></div>
+      </div>
+      <div class="nav"><span>Mes aventures</span><span>Personnages</span><span>Almanach</span><span class="on">Mon grimoire</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <span class="opt">Page « Ma Ludothèque »</span>
+    <p class="cap">Saisie en série en tête, liste alphabétique<small>On tape, « Ajouter », le champ se vide et garde le focus pour le jeu suivant. ✎ ouvre la même saisie pour modifier ou supprimer.</small></p>
+    <div class="phone">
+      <div class="hd"><b>← Ma Ludothèque</b><small>5 jeux · visibles par les membres de tes groupes et de tes rencontres</small></div>
+      <div class="body">
+        <div class="sum" style="padding:8px">
+          <div class="input" style="margin-bottom:6px;color:var(--text)">Wavelength</div>
+          <div class="two"><div class="input" style="color:var(--text)">2</div><span>à</span><div class="input" style="color:var(--text)">12</div><span>joueurs</span></div>
+          <div class="two" style="margin-top:6px"><div class="input" style="color:var(--text)">45</div><span>min</span><span class="btn p">Ajouter</span></div>
+          <div class="count" style="margin-top:4px">Seul le nom est obligatoire.</div>
+        </div>
+        <div class="lrow" style="margin-top:6px"><span>Azul<span class="meta">2–4 joueurs · 40 min</span></span><span class="pen">✎</span></div>
+        <div class="lrow"><span>Codenames<span class="meta">2–8 joueurs · 15 min</span></span><span class="pen">✎</span></div>
+        <div class="lrow"><span>Skull<span class="meta">3–6 joueurs · 30 min</span></span><span class="pen">✎</span></div>
+        <div class="lrow"><span>Terraforming Mars<span class="meta">1–5 joueurs · 120 min</span></span><span class="pen">✎</span></div>
+        <div class="lrow"><span>The Crew<span class="meta">2–5 joueurs · 20 min</span></span><span class="pen">✎</span></div>
+      </div>
+      <div class="nav"><span>Mes aventures</span><span>Personnages</span><span>Almanach</span><span class="on">Mon grimoire</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>④ Le groupe</h2>
+<div class="row">
+  <div class="col">
+    <span class="opt">Onglet « Jeux »</span>
+    <p class="cap">Tous les jeux des membres, une ligne par jeu<small>Ici, pas de doublon séparé : un jeu, tous ses propriétaires. Recherche + filtre « jouable à ».</small></p>
+    <div class="phone">
+      <div class="hd"><b>La Bande du Jeudi</b><small>Ralliement · La convergence des Sortilèges</small></div>
+      <div class="tabs"><span>Conjonctions</span><span class="on">Jeux</span><span>Détails</span><span>Missives</span></div>
+      <div class="body">
+        <div class="input" style="margin-bottom:6px">🔍 Chercher un jeu…</div>
+        <div class="chips"><span class="chip">Jouable à :</span><span class="chip">2</span><span class="chip">4</span><span class="chip">6</span><span class="chip">8+</span></div>
+        <div class="game"><div class="t"><span class="n">Cascadia</span></div><div class="meta">1–4 joueurs · 40 min</div><div class="own">chez <u>Karim</u></div></div>
+        <div class="game"><div class="t"><span class="n">Codenames</span></div><div class="meta">2–8 joueurs · 15 min</div><div class="own">chez <u>Léa</u>, <u>Zoé</u>, <u>Hugo</u></div></div>
+        <div class="game"><div class="t"><span class="n">Skull</span></div><div class="meta">3–6 joueurs · 30 min</div><div class="own">chez <u>Tom</u></div></div>
+        <div class="game"><div class="t"><span class="n">Time's Up</span></div><div class="meta">4–12 joueurs · 45 min</div><div class="own">chez <u>Léa</u></div></div>
+        <div class="count" style="text-align:center;margin-top:4px">62 jeux chez 9 membres</div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <span class="opt">Onglet « Détails »</span>
+    <p class="cap">Section « Qui reçoit », en barres<small>Événements passés et non annulés. Ceux qui n'ont jamais reçu, sur une ligne.</small></p>
+    <div class="phone">
+      <div class="hd"><b>La Bande du Jeudi</b><small>Ralliement · La convergence des Sortilèges</small></div>
+      <div class="tabs"><span>Conjonctions</span><span>Jeux</span><span class="on">Détails</span><span>Missives</span></div>
+      <div class="body">
+        <div class="fade" style="font-size:12px">Soirées jeux du jeudi, chez l'un ou chez l'autre.</div>
+        <div class="sh"><span>Qui reçoit</span><span class="ch">▾</span></div>
+        <div class="mrow"><span class="grow">Léa</span><span class="bar" style="width:120px"></span><span style="width:46px;text-align:right">6 fois</span></div>
+        <div class="mrow"><span class="grow">Marc</span><span class="bar" style="width:60px"></span><span style="width:46px;text-align:right">3 fois</span></div>
+        <div class="mrow"><span class="grow">Sam</span><span class="bar" style="width:20px"></span><span style="width:46px;text-align:right">1 fois</span></div>
+        <div class="mrow count"><span class="grow">Jamais : Tom, Zoé, Karim, Hugo, Yann</span></div>
+        <div class="fade"><div class="sh"><span>Réglages</span><span class="ch">▾</span></div><div class="kv"><span>Système</span><span>Ralliement</span></div></div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <span class="opt">Ludothèque d'une personne</span>
+    <p class="cap">Feuille ouverte en touchant un nom<small>Depuis un propriétaire de jeu, un inscrit, un invité, un membre dans « Missives ». Lecture seule.</small></p>
+    <div class="phone">
+      <div class="hd"><b>La Bande du Jeudi</b><small>Ralliement · La convergence des Sortilèges</small></div>
+      <div class="tabs"><span>Conjonctions</span><span class="on">Jeux</span><span>Détails</span><span>Missives</span></div>
+      <div class="body">
+        <div class="fade"><div class="game"><div class="n">Cascadia</div><div class="own">chez <u>Karim</u></div></div></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h3>Ludothèque de Karim · 7</h3>
+          <div class="sub">Pour emprunter un jeu, demande-le à Karim.</div>
+          <div class="lrow"><span>Cascadia<span class="meta">1–4 joueurs · 40 min</span></span></div>
+          <div class="lrow"><span>Dune Imperium<span class="meta">1–4 joueurs · 120 min</span></span></div>
+          <div class="lrow"><span>Wavelength<span class="meta">2–12 joueurs · 45 min</span></span></div>
+          <div class="lrow"><span>Ticket to Ride<span class="meta">2–5 joueurs · 60 min</span></span></div>
+          <div class="count" style="margin-top:4px">+ 3 autres</div>
+        </div>
+      </div>
+      <div class="nav"><span class="on">Mes aventures</span><span>Personnages</span><span>Almanach</span><span>Mon grimoire</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

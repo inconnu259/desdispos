@@ -1,6 +1,28 @@
 import type { DaySlot } from '@master-jdr/shared';
 import type { AgendaEntry } from './calendar-agenda-view/calendar-agenda-view';
 import { respondedCount, type VoteParticipation } from './poll-track.utils';
+// Story 32.3 — teintes, paliers et libellés humains vivent désormais dans `core/status`, partagés
+// avec la StatusBadge des scénarios et des séances. Réimportés ici SANS changer une virgule : la
+// vue Agenda garde le même comportement, elle n'est plus seulement propriétaire de ces règles.
+import {
+  addDaysToKey,
+  daysBetweenKeys,
+  imminenceIntensity,
+  imminenceLabel,
+  type BadgeIntensity,
+  type BadgeTone,
+} from '../../core/status/status-badge.model';
+
+// Réexports : les sites d'appel existants (et `agenda-badge.utils.spec.ts`) continuent d'importer
+// depuis ce module, sans modification.
+export {
+  addDaysToKey,
+  daysBetweenKeys,
+  imminenceIntensity,
+  imminenceLabel,
+  type BadgeIntensity,
+  type BadgeTone,
+};
 
 /**
  * Story 36.11 — le modèle de la vue Agenda refondue.
@@ -17,13 +39,6 @@ import { respondedCount, type VoteParticipation } from './poll-track.utils';
 
 /** Les trois sections du contrat, dans leur ordre d'affichage. */
 export type AgendaSectionId = 'awaiting' | 'scheduled' | 'past';
-
-/** Teintes de la palette de statut (`--jdr-status-*`, `styles.scss`). Jamais une couleur en dur. */
-export type BadgeTone = 'todo' | 'live' | 'soon' | 'done';
-
-/** L'imminence est une **intensité**, jamais un état ni une cinquième couleur : la séance garde
- *  `status-soon` et le badge se densifie. [Source: DESIGN.md §7.1] */
-export type BadgeIntensity = 'far' | 'near' | 'imminent';
 
 /** Ce que dit le badge d'une ligne. `kind` désigne une clé de ton (résolue par le composant, qui
  *  seul connaît le thème actif) ; `text` n'est renseigné que pour l'imminence, qui est un
@@ -43,71 +58,6 @@ export const SLOT_LABELS: Record<DaySlot, string> = {
   EVENING: 'Soir',
   FULL_DAY: 'Journée',
 };
-
-/** Forme adverbiale du créneau, pour les libellés humains d'imminence (« ce soir », « demain
- *  matin »). `FULL_DAY` et l'absence de créneau n'en portent aucune : « aujourd'hui » suffit. */
-const SLOT_WHEN: Record<DaySlot, { today: string; tomorrow: string } | null> = {
-  MORNING: { today: 'ce matin', tomorrow: 'demain matin' },
-  AFTERNOON: { today: 'cet après-midi', tomorrow: 'demain après-midi' },
-  EVENING: { today: 'ce soir', tomorrow: 'demain soir' },
-  FULL_DAY: null,
-};
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/** Découpe une clé `YYYY-MM-DD` en instant UTC.
- *
- * 🚨 On **n'utilise jamais `new Date(dateKey)` implicitement pour comparer des jours** : ici les
- * trois nombres sont extraits à la main et recomposés en UTC, donc l'arithmétique est exacte et
- * ne peut pas dériver d'un jour selon le fuseau. L'incohérence UTC/local du projet est une dette
- * connue (`deferred-work.md`) ; ces fonctions n'y ajoutent rien parce qu'elles ne raisonnent que
- * sur des clés, jamais sur des instants. */
-function keyToUtcMs(dateKey: string): number {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  return Date.UTC(y, m - 1, d);
-}
-
-/** Nombre de jours entiers de `fromKey` à `toKey`. Négatif si `toKey` est dans le passé. */
-export function daysBetweenKeys(fromKey: string, toKey: string): number {
-  return Math.round((keyToUtcMs(toKey) - keyToUtcMs(fromKey)) / MS_PER_DAY);
-}
-
-/** Décale une clé de N jours et rend une clé. Utilitaire de test, et de tout ce qui a besoin de
- *  raisonner en jours sans quitter le vocabulaire des clés. */
-export function addDaysToKey(dateKey: string, days: number): string {
-  return new Date(keyToUtcMs(dateKey) + days * MS_PER_DAY).toISOString().substring(0, 10);
-}
-
-/** Le palier d'imminence d'une échéance. [Source: DESIGN.md §7.1, table des trois paliers] */
-export function imminenceIntensity(dateKey: string, todayKey: string): BadgeIntensity {
-  const days = daysBetweenKeys(todayKey, dateKey);
-  if (days <= 1) return 'imminent';
-  if (days <= 7) return 'near';
-  return 'far';
-}
-
-/**
- * Le décompte affiché sur le badge d'une séance programmée.
- *
- * 🚨 **Au dernier palier le libellé est humain** — « ce soir », « demain soir » — **jamais
- * « J-1 »** [Source: EXPERIENCE.md §3]. Au-delà, un décompte : en jours jusqu'à deux semaines,
- * puis en semaines, comme la planche contractuelle (« dans 5 j », « dans 3 sem. »).
- */
-export function imminenceLabel(
-  dateKey: string,
-  slot: DaySlot | undefined,
-  todayKey: string,
-): string {
-  const days = daysBetweenKeys(todayKey, dateKey);
-  const when = slot ? SLOT_WHEN[slot] : null;
-  if (days <= 0) return when ? when.today : "aujourd'hui";
-  if (days === 1) return when ? when.tomorrow : 'demain';
-  if (days < 14) return `dans ${days} j`;
-  // Revue de code 36.11 — `Math.floor`, pas `Math.round` : avec l'arrondi, la transition « 2
-  // sem. » → « 3 sem. » avait lieu au jour 18 (17,5 arrondi au-dessus) plutôt qu'au jour 21
-  // attendu d'une granularité « semaines », survalorisant l'imminence de 3 jours.
-  return `dans ${Math.floor(days / 7)} sem.`;
-}
 
 /**
  * La section d'une entrée, ou `null` si elle n'en a aucune.
@@ -134,7 +84,8 @@ export function sectionIdFor(entry: AgendaEntry, todayKey: string): AgendaSectio
   )
     return 'awaiting';
   if (entry.type !== 'mes-seances' || !entry.date) return null;
-  if (entry.date >= todayKey) return 'scheduled';
+  // Story 47.3 : une plage n'est « passée » qu'une fois sa FIN passée — commencée, elle reste à venir.
+  if ((entry.endDate ?? entry.date) >= todayKey) return 'scheduled';
   return entry.compteRenduManquant ? 'past' : null;
 }
 

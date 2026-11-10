@@ -3,37 +3,26 @@ import {
   Controller,
   Delete,
   Get,
-  Inject,
-  Logger,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Put,
   UseGuards,
-  forwardRef,
 } from '@nestjs/common';
 import type { AuthUser } from '@master-jdr/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
-import { ScenariosService } from '../scenarios/scenarios.service';
 import { CastVoteDto } from './dto/cast-vote.dto';
 import { ChooseDateDto } from './dto/choose-date.dto';
+import { ExtendPollDto } from './dto/extend-poll.dto';
 import { PollService } from './poll.service';
 import { SetPollOptionsDto } from './dto/set-poll-options.dto';
 
 @UseGuards(AuthenticatedGuard)
 @Controller('parties/:id/poll')
 export class PollController {
-  private readonly logger = new Logger(PollController.name);
-
-  constructor(
-    private readonly poll: PollService,
-    // Story 8.8 : P2-AD-2 — PollService reste générique, c'est le contrôleur qui orchestre l'appel
-    // cross-module vers ScenariosService.recalculateNextSession() après un choix de date.
-    @Inject(forwardRef(() => ScenariosService))
-    private readonly scenarios: ScenariosService,
-  ) {}
+  constructor(private readonly poll: PollService) {}
 
   // Story 8.8 (Décision 2, revue de code) : la route générique de création de poll est retirée —
   // sans la fermeture auto de l'existant (Décision 2), un appel direct pouvait créer un nombre
@@ -70,26 +59,31 @@ export class PollController {
   }
 
   @Patch(':pollId/choose')
-  async choose(
+  choose(
     @Param('id', ParseUUIDPipe) partieId: string,
     @Param('pollId', ParseUUIDPipe) pollId: string,
     @CurrentUser() user: AuthUser,
     @Body() dto: ChooseDateDto,
   ) {
-    await this.poll.choose(partieId, pollId, user.id, dto);
-    // Story 8.8 (Décision 2) : recalcule Partie.nextSessionDate/nextSessionSlot comme la date la
-    // plus proche parmi toutes les séances actives — un choose() isolé ne peut plus poser
-    // directement sa propre date, plusieurs votes pouvant être actifs en parallèle sur la Partie.
-    // Revue de code : le choix de date est déjà committé à ce stade — un échec du recalcul (best
-    // effort) ne doit pas remonter une 500 pour une action qui a en réalité réussi.
-    try {
-      await this.scenarios.recalculateNextSession(partieId);
-    } catch (err) {
-      this.logger.error(
-        `recalculateNextSession a échoué après choose() sur poll ${pollId} (partie ${partieId})`,
-        err instanceof Error ? err.stack : err,
-      );
-    }
+    // Story 37.8 (AD-15) : le service clôt le vote, pose la date de la séance ET recalcule
+    // `Partie.nextSessionDate/Slot` dans une seule transaction (via `SeanceDatePort`) — plus
+    // d'appel best-effort vers `scenarios/` après coup.
+    return this.poll.choose(partieId, pollId, user.id, dto);
+  }
+
+  /**
+   * Story 40.7 — l'hôte d'une conjonction prolonge son vote (nouvelle échéance `YYYY-MM-DD`). Route
+   * propre au groupe de ralliement : la cellule `POLL_EXTEND` est fermée en JDR. Distincte de
+   * `:pollId/choose` (qui scelle la date) : prolonger ne ferme jamais le sondage.
+   */
+  @Patch(':pollId/extend')
+  extend(
+    @Param('id', ParseUUIDPipe) partieId: string,
+    @Param('pollId', ParseUUIDPipe) pollId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ExtendPollDto,
+  ) {
+    return this.poll.extend(partieId, pollId, user.id, dto);
   }
 
   /**

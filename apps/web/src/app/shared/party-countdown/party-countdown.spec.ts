@@ -32,8 +32,8 @@ describe('PartyCountdown — un motif par thème (Story 29.11, AC4)', () => {
     expect(fixture.nativeElement.querySelector('.countdown__press-row')).toBeNull();
   });
 
-  it('medieval-steampunk → le manomètre et la conduite', async () => {
-    const fixture = await render('medieval-steampunk', 0.5);
+  it('atelier-cuivre → le manomètre et la conduite', async () => {
+    const fixture = await render('atelier-cuivre', 0.5);
     expect(fixture.nativeElement.querySelector('.countdown__press-row')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.countdown__vine')).toBeNull();
   });
@@ -56,7 +56,7 @@ describe('PartyCountdown — la progression est une position, pas une animation 
   });
 
   it('la conduite est posée par un scaleX, jamais par une largeur (AC6)', async () => {
-    const fixture = await render('medieval-steampunk', 1);
+    const fixture = await render('atelier-cuivre', 1);
     const fill = fixture.nativeElement.querySelector('.countdown__pipe-fill') as HTMLElement;
     expect(fill.style.transform).toContain('scaleX(');
     expect(fill.style.width).toBe('');
@@ -76,13 +76,13 @@ describe('PartyCountdown — la progression est une position, pas une animation 
   });
 
   it("l'angle de l'aiguille suit la progression", async () => {
-    const early = await render('medieval-steampunk', 0);
+    const early = await render('atelier-cuivre', 0);
     const earlyAngle = (
       early.nativeElement.querySelector('.countdown__needle-pivot') as HTMLElement
     ).style.transform;
     TestBed.resetTestingModule();
 
-    const late = await render('medieval-steampunk', 1);
+    const late = await render('atelier-cuivre', 1);
     const lateAngle = (late.nativeElement.querySelector('.countdown__needle-pivot') as HTMLElement)
       .style.transform;
 
@@ -171,7 +171,7 @@ describe('PartyCountdown — décoratif (Story 29.11, AC5)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('aria-hidden, aucun texte, aucun rôle, aucun libellé', async () => {
-    for (const theme of ['grimoire-emeraude', 'foret-ancienne', 'medieval-steampunk'] as const) {
+    for (const theme of ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const) {
       const fixture = await render(theme, 0.6);
       const root = fixture.nativeElement.querySelector('.countdown');
       expect(root.getAttribute('aria-hidden')).toBe('true');
@@ -183,11 +183,11 @@ describe('PartyCountdown — décoratif (Story 29.11, AC5)', () => {
   });
 
   it('la zone rouge est signalée par une classe, au-delà du seuil seulement', async () => {
-    const calm = await render('medieval-steampunk', 0.3);
+    const calm = await render('atelier-cuivre', 0.3);
     expect(calm.nativeElement.querySelector('.countdown__gauge--red')).toBeNull();
     TestBed.resetTestingModule();
 
-    const urgent = await render('medieval-steampunk', 0.9);
+    const urgent = await render('atelier-cuivre', 0.9);
     expect(urgent.nativeElement.querySelector('.countdown__gauge--red')).not.toBeNull();
   });
 

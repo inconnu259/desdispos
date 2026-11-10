@@ -12,12 +12,12 @@
       [attr.aria-label]="theme.tone()['list_control_bar.toggle_aria']"
       (click)="expanded.set(!expanded())"
     >
-      <mat-icon aria-hidden="true">tune</mat-icon>
+      <app-icon name="filtres" />
     </button>
 
     @if (isDesktop() && searchQuery() !== null) {
       <label class="list-control-bar__search">
-        <mat-icon aria-hidden="true">search</mat-icon>
+        <app-icon name="rechercher" />
         <input
           type="text"
           [attr.aria-label]="searchLabel()"
@@ -38,14 +38,14 @@
           [attr.aria-label]="modeAriaLabel(mode)"
           (click)="viewModeChange.emit(mode)"
         >
-          <mat-icon aria-hidden="true">{{ modeIcon(mode) }}</mat-icon>
+          <app-icon [name]="modeIcon(mode)" />
         </button>
       }
     </div>
 
     @if (hasDeviatedFromDefault()) {
       <button type="button" mat-button class="list-control-bar__reset" (click)="resetRequested.emit()">
-        <mat-icon aria-hidden="true">restart_alt</mat-icon>
+        <app-icon name="reinitialiser" />
         {{ theme.tone()['list_control_bar.reset_pill_label'] }}
       </button>
     }
@@ -54,7 +54,7 @@
   <div class="list-control-bar__fields">
     @if (!isDesktop() && searchQuery() !== null) {
       <label class="list-control-bar__search list-control-bar__search--mobile">
-        <mat-icon aria-hidden="true">search</mat-icon>
+        <app-icon name="rechercher" />
         <input
           type="text"
           [attr.aria-label]="searchLabel()"

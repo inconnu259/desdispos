@@ -11,6 +11,8 @@ import type {
   PartieDto,
   PartieKind,
   ScenarioDto,
+  SeanceDto,
+  SessionPollDto,
 } from '@master-jdr/shared';
 import { ScenarioReadDialog, type ScenarioReadDialogData } from './scenario-read-dialog';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -22,6 +24,9 @@ import { AnnouncementsService } from '../../../core/announcements/announcements.
 import { UnseenAnnouncementsService } from '../../../core/announcements/unseen-announcements.service';
 import { makeAnnouncementDto } from '../../../core/announcements/announcement-dto.fixture';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const BASE: ScenarioDto = {
   id: 's1',
@@ -43,9 +48,9 @@ const PARTIE: PartieDto = {
   kind: 'CAMPAGNE_EPISODIQUE',
   gameSystemId: 'draconis',
   description: null,
-  mjId: 'mj1',
-  mjPseudo: 'mj-pseudo',
-  mjDisplayName: 'MJ Nom',
+  ownerId: 'mj1',
+  ownerPseudo: 'mj-pseudo',
+  ownerDisplayName: 'MJ Nom',
   createdAt: '',
   nextSessionDate: null,
   nextSessionSlot: null,
@@ -53,6 +58,7 @@ const PARTIE: PartieDto = {
   status: 'EN_COURS',
   isFavorite: false,
   coverImageVersion: null,
+  can: { coverUpdate: true },
 };
 
 async function createComponent(
@@ -91,7 +97,7 @@ async function createComponent(
   };
   const authSvc = { currentUser: () => ({ id: currentUserId }) };
   const pollSvc = { chooseDate: vi.fn(), closePoll: vi.fn() };
-  const router = { navigate: vi.fn() };
+  const router = { navigate: vi.fn(), navigateByUrl: vi.fn() };
   const characterSvc = {
     getNotes: vi.fn().mockResolvedValue(ownNotes),
     setJournalAutoAssociate: vi.fn(),
@@ -147,7 +153,10 @@ describe('ScenarioReadDialog', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Une enquête discrète.');
     expect(text).toContain('3 h');
-    expect(text).toContain('En cours');
+    // Story 32.3 — « Courant », plus « En cours » : ce dernier reste réservé au VOTE (« Vote en
+    // cours »), et le bouton voisin de `scenario-editor` dit déjà « Marquer comme Courant ».
+    expect(text).toContain('Courant');
+    expect(text).not.toContain('En cours');
     expect(text).not.toContain('Résumé de fin');
   });
 
@@ -165,7 +174,7 @@ describe('ScenarioReadDialog', () => {
   it('PASSE sans résumé → message neutre, pas d’incitation MJ', async () => {
     const { fixture } = await createComponent({ ...BASE, status: 'PASSE', resumeFin: null });
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Aucun résumé pour l’instant.');
+    expect(text).toContain(GRIMOIRE_TONE['scenarios.read_resume_empty']);
   });
 
   it('aucun élément interactif d’édition dans le DOM, quel que soit le statut', async () => {
@@ -198,7 +207,9 @@ describe('ScenarioReadDialog', () => {
         { ...BASE, status: 'PASSE', resumeFin: null },
         { isMj: true },
       );
-      expect(fixture.nativeElement.textContent).toContain('Rédiger le résumé de fin');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['scenarios.read_resume_write'],
+      );
     });
 
     it('MJ + PASSE avec résumé déjà rédigé → bouton « Modifier le résumé de fin » visible', async () => {
@@ -206,7 +217,9 @@ describe('ScenarioReadDialog', () => {
         { ...BASE, status: 'PASSE', resumeFin: 'Les PJ ont vaincu le dragon.' },
         { isMj: true },
       );
-      expect(fixture.nativeElement.textContent).toContain('Modifier le résumé de fin');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['scenarios.read_resume_edit'],
+      );
     });
 
     it('joueur (isMj=false) + PASSE → aucun CTA de rédaction', async () => {
@@ -245,7 +258,9 @@ describe('ScenarioReadDialog', () => {
         { ...BASE, status: 'PASSE' },
         { characters: [owner], currentUserId: 'viewer1' },
       );
-      expect(fixture.nativeElement.textContent).toContain('Association automatique');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['scenarios.read_auto_associate'],
+      );
     });
 
     it('non-participant (aucun personnage sur cette Partie) → section absente', async () => {
@@ -418,7 +433,9 @@ describe('ScenarioReadDialog', () => {
         { ...BASE, status: 'PASSE' },
         { characters: [owner], currentUserId: 'viewer1', ownNotes: notes },
       );
-      expect(fixture.nativeElement.textContent).toContain('déverrouillez-la');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['scenarios.read_note_private_hint'],
+      );
     });
 
     it('note partagée cochée → aucun indice de déverrouillage', async () => {
@@ -437,7 +454,32 @@ describe('ScenarioReadDialog', () => {
         { ...BASE, status: 'PASSE' },
         { characters: [owner], currentUserId: 'viewer1', ownNotes: notes },
       );
-      expect(fixture.nativeElement.textContent).not.toContain('déverrouillez-la');
+      expect(fixture.nativeElement.textContent).not.toContain(
+        GRIMOIRE_TONE['scenarios.read_note_private_hint'],
+      );
+    });
+
+    it('Story 51.6 : cadenas-ouvert pour une note partagée, cadenas-ferme pour une privée (deux noms différents)', async () => {
+      const owner = makeCharacterDto({ id: 'char1', userId: 'viewer1' });
+      const notes = [true, false].map((shared, i) => ({
+        id: `n${i}`,
+        characterId: 'char1',
+        text: `Note ${i}`,
+        shared,
+        scenarioId: null,
+        createdAt: '2026-07-01T00:00:00.000Z',
+      }));
+      const { fixture } = await createComponent(
+        { ...BASE, status: 'PASSE' },
+        { characters: [owner], currentUserId: 'viewer1', ownNotes: notes },
+      );
+      const toggles = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('.note-share-toggle'),
+      ) as HTMLButtonElement[];
+      const names = toggles.map((t) => t.querySelector('app-icon')?.getAttribute('data-icon'));
+      expect(names).toEqual(['cadenas-ouvert', 'cadenas-ferme']);
+      expect(toggles.every((t) => t.hasAttribute('aria-label'))).toBe(true);
+      expect(toggles[0].textContent).not.toMatch(/[🔒🔓]/u);
     });
 
     it('clic sur le cadenas → appelle toggleNoteShare et bascule shared', async () => {
@@ -470,7 +512,9 @@ describe('ScenarioReadDialog', () => {
       '%s → section participants/bouton absents',
       async (partieKind) => {
         const { fixture } = await createComponent({ ...BASE, status: 'COURANT' }, { partieKind });
-        expect(fixture.nativeElement.textContent).not.toContain('Participer à cette enquête');
+        expect(fixture.nativeElement.textContent).not.toContain(
+          GRIMOIRE_TONE['scenarios.read_participate'],
+        );
         expect(fixture.nativeElement.querySelector('.participants')).toBeNull();
       },
     );
@@ -480,7 +524,9 @@ describe('ScenarioReadDialog', () => {
         { ...BASE, status: 'COURANT', participants: [] },
         { partieKind: 'CAMPAGNE_EPISODIQUE', currentUserId: 'viewer1' },
       );
-      expect(fixture.nativeElement.textContent).toContain('Participer à cette enquête');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['scenarios.read_participate'],
+      );
     });
 
     it('clic → appelle participate, scenario() réassigné, bouton disparaît sans rechargement', async () => {
@@ -558,7 +604,7 @@ describe('ScenarioReadDialog', () => {
       );
       const button = Array.from(
         fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-      ).find((b) => b.textContent?.includes('Participer à cette enquête'))!;
+      ).find((b) => b.textContent?.includes(GRIMOIRE_TONE['scenarios.read_participate']))!;
 
       const comp = fixture.componentInstance as any;
       const clickPromise = comp.participate().catch(() => {});
@@ -639,7 +685,9 @@ describe('ScenarioReadDialog', () => {
       );
       expect(fixture.nativeElement.querySelector('app-character-summary-card')).toBeNull();
       expect(fixture.nativeElement.textContent).toContain('Viewer');
-      expect(fixture.nativeElement.textContent).toContain('pas encore de personnage');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['common.pas_encore_de_personnage'],
+      );
     });
   });
 
@@ -651,13 +699,19 @@ describe('ScenarioReadDialog', () => {
           status: 'A_VENIR',
           seances: [
             {
+              endDate: null,
+              endSlot: null,
+              durationSlots: 1,
               id: 'seance1',
               scenarioId: 's1',
+              dateValidee: null,
+              slotValidee: null,
               compteRendu: null,
               heureRdv: null,
               lieu: null,
               notePratique: null,
               createdAt: '2026-07-12T00:00:00.000Z',
+              can: { propose: false, edit: false, choose: false, extend: false },
               poll: {
                 id: 'poll1',
                 partieId: 'p1',
@@ -668,6 +722,7 @@ describe('ScenarioReadDialog', () => {
                 chosenSlot: null,
                 // Story 36.6 — effectif de la troupe (MJ + membres).
                 membersCount: 4,
+                durationSlots: 1,
                 options: [],
               },
             },
@@ -678,7 +733,7 @@ describe('ScenarioReadDialog', () => {
 
       // Description/durées masquées (anti-spoil), mais le vote reste dans le DOM.
       expect(fixture.nativeElement.textContent).not.toContain('Une enquête discrète.');
-      expect(fixture.nativeElement.querySelector('app-poll-response')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeTruthy();
     });
   });
 
@@ -941,5 +996,156 @@ describe('ScenarioReadDialog', () => {
     // ajouté par cette story — la garde `matchesPartie()` elle-même est déjà exhaustivement testée en
     // tant que fonction pure (Story 19.1, scenarios.service.spec.ts) et son câblage ici est prouvé par
     // le test positif ci-dessus.
+  });
+});
+
+// Story 53.3 (boucle 1) — le MJ ouvre ses chapitres PASSE dans ce dialogue : la ligne « Ma situation »
+// de la fiche doit y lire « Je mène », comme dans la chronologie, sans pour autant montrer les
+// contrôles MJ (`[isMj]="false"` reste passé à la liste des séances).
+describe('ScenarioReadDialog — « Ma situation » (Story 53.3)', () => {
+  const seance = (id: string): SeanceDto => ({
+    id,
+    scenarioId: 's1',
+    dateValidee: '2020-06-12T00:00:00.000Z',
+    slotValidee: null,
+    compteRendu: null,
+    heureRdv: null,
+    lieu: null,
+    notePratique: null,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    durationSlots: 1,
+    endDate: '2020-06-12T00:00:00.000Z',
+    endSlot: null,
+    can: { propose: false, edit: false, choose: false, extend: false },
+  });
+  const PASSE_AVEC_SEANCES: ScenarioDto = {
+    ...BASE,
+    status: 'PASSE',
+    seances: [seance('sa'), seance('sb')],
+  };
+
+  function pills(fixture: { nativeElement: HTMLElement }): string[] {
+    return [...fixture.nativeElement.querySelectorAll('.seance-row .situation-pill')].map((p) =>
+      (p.textContent ?? '').trim(),
+    );
+  }
+
+  it('MJ sur un chapitre PASSE → « Je mène » sur chaque séance, sans contrôle MJ', async () => {
+    const { fixture } = await createComponent(PASSE_AVEC_SEANCES, { isMj: true });
+    expect(pills(fixture)).toEqual(['Je mène', 'Je mène']);
+    // Les contrôles MJ restent cachés : le dialogue de lecture n'est pas une vue d'édition.
+    expect(fixture.nativeElement.querySelector('.seance-row__delete')).toBeNull();
+  });
+
+  it('joueur sur le même chapitre PASSE → la pastille du joueur (« J’y étais »)', async () => {
+    const { fixture } = await createComponent(PASSE_AVEC_SEANCES, { isMj: false });
+    expect(pills(fixture)).toEqual(['J’y étais', 'J’y étais']);
+  });
+});
+
+// Story 54.1 ⚠️ — les séances viennent en premier dans la fiche de lecture ; « Voter dans le calendrier »
+// ferme la fenêtre avant de naviguer ; le MJ n'y reçoit jamais d'encadré.
+describe('ScenarioReadDialog — séances en tête (Story 54.1)', () => {
+  const OPEN_POLL: SessionPollDto = {
+    id: 'poll1',
+    partieId: 'p1',
+    status: 'OPEN',
+    scenarioRef: null,
+    expiresAt: null,
+    chosenDate: null,
+    chosenSlot: null,
+    membersCount: 4,
+    durationSlots: 1,
+    options: [{ id: 'o1', date: '2099-01-01T00:00:00.000Z', slot: 'EVENING', votes: [] }],
+  };
+  const SEANCE: SeanceDto = {
+    id: 'seance1',
+    scenarioId: 's1',
+    dateValidee: null,
+    slotValidee: null,
+    compteRendu: null,
+    heureRdv: null,
+    lieu: null,
+    notePratique: null,
+    createdAt: '2026-07-12T00:00:00.000Z',
+    durationSlots: 1,
+    endDate: null,
+    endSlot: null,
+    can: { propose: false, edit: false, choose: false, extend: false },
+    poll: OPEN_POLL,
+  };
+
+  function before(a: Element | null, b: Element | null): boolean {
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+    return Boolean(a!.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }
+
+  it('chapitre courant : badge → séances → description → durées', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'COURANT', dureeSeances: 3, seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const el = fixture.nativeElement as HTMLElement;
+    const badge = el.querySelector('app-scenario-status-badge');
+    const list = el.querySelector('app-seance-list');
+    const description = el.querySelector('.description');
+    const durations = el.querySelector('.durations');
+    expect(before(badge, list)).toBe(true);
+    expect(before(list, description)).toBe(true);
+    expect(before(description, durations)).toBe(true);
+  });
+
+  it('chapitre passé : séances avant le résumé de fin', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'PASSE', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const el = fixture.nativeElement as HTMLElement;
+    expect(before(el.querySelector('app-seance-list'), el.querySelector('.resume'))).toBe(true);
+  });
+
+  it('chapitre « à venir » restreint : note, séances juste après le titre, aucune description', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'A_VENIR', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.description')).toBeNull();
+    expect(before(el.querySelector('.a-venir-note'), el.querySelector('app-seance-list'))).toBe(
+      true,
+    );
+    expect(el.querySelector('app-scenario-status-badge')).toBeNull();
+  });
+
+  it('« Voter dans le calendrier » ferme la fenêtre AVANT de naviguer vers la Destinée', async () => {
+    const { fixture, dialogRef, router } = await createComponent(
+      { ...BASE, status: 'COURANT', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE' },
+    );
+    const order: string[] = [];
+    dialogRef.close.mockImplementation(() => order.push('close'));
+    router.navigateByUrl.mockImplementation(() => {
+      order.push('navigate');
+      return Promise.resolve(true);
+    });
+    const btn = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Voter dans le calendrier',
+    );
+    expect(btn).toBeTruthy();
+    btn!.click();
+    expect(order).toEqual(['close', 'navigate']);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/parties/p1/guild-calendar?poll=poll1');
+  });
+
+  it('le MJ qui lit un chapitre n’y reçoit aucun encadré de joueur', async () => {
+    const { fixture } = await createComponent(
+      { ...BASE, status: 'COURANT', seances: [SEANCE] },
+      { partieKind: 'CAMPAGNE_LINEAIRE', isMj: true },
+    );
+    expect(fixture.nativeElement.querySelector('app-seance-situation')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.situation-pill')?.textContent?.trim()).toBe(
+      'Je mène',
+    );
   });
 });

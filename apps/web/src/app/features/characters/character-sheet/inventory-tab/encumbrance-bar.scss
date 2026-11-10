@@ -24,6 +24,11 @@
 }
 
 .encumbrance-bar__over-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  /* Pictogramme décoratif à côté du texte : 16px en ligne. */
+  --app-icon-size: 16px;
   color: var(--color-unavailable);
   font-weight: 600;
 }

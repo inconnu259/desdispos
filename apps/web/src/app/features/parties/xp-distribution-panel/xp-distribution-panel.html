@@ -18,7 +18,7 @@
     </mat-form-field>
   </div>
 
-  <p class="xp-panel__suggested">Montant suggéré : {{ suggestedAmount() }} XP</p>
+  <p class="xp-panel__suggested">{{ fillTone(theme.tone()['parties.xp_suggested'], { amount: suggestedAmount() }) }}</p>
 
   <ul class="xp-panel__rows">
     @for (pair of rowsWithCharacter(); track pair.character.id) {
@@ -29,9 +29,11 @@
             [playerName]="pair.character.ownerDisplayName"
           />
         </mat-checkbox>
-        <span class="xp-panel__current-xp">{{ pair.character.xp }} XP actuel</span>
+        <span class="xp-panel__current-xp">{{
+          fillTone(theme.tone()['parties.xp_current'], { xp: pair.character.xp })
+        }}</span>
         <mat-form-field appearance="outline" class="xp-panel__amount">
-          <mat-label>Montant</mat-label>
+          <mat-label>{{ theme.tone()['parties.xp_amount_label'] }}</mat-label>
           <input
             matInput
             type="number"

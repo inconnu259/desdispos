@@ -1,0 +1,157 @@
+/* ⚠️ Story 48.3 — `LibrarySheet` : tiroir modal du bas à toute largeur. Voile et surface sont au-dessus de la
+   `DetailSurface` (199/200) qui peut l'ouvrir. Aucun jeton neuf, aucun rouge, aucune image. */
+:host {
+  display: contents;
+}
+
+.library-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  /* `{colors.overlay}` du DESIGN, comme le voile de la `DetailSurface`. */
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.library-sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 301;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* Au-delà de 768 px le tiroir reste un tiroir : colonne centrée de 640 px au plus. */
+  max-width: 640px;
+  margin-inline: auto;
+  max-height: 80vh;
+  max-height: 80dvh;
+  padding: 0.25rem 1rem max(1rem, env(safe-area-inset-bottom));
+  border: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+  border-bottom: 0;
+  border-radius: 18px 18px 0 0;
+  background: var(--mat-sys-surface-container-high, #221c35);
+  color: var(--mat-sys-on-surface, inherit);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.5);
+  animation: librarySheetSlideUp 0.25s ease-out;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+@keyframes librarySheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-sheet {
+    animation: none;
+  }
+}
+
+/* Poignée et titre : la zone de glissement. `touch-action: none` laisse le navigateur aux événements
+   pointeur au lieu de défiler la page. Une cible d'au moins 44 px. */
+.library-sheet__head {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 44px;
+  padding: 0.5rem 0 0.25rem;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.library-sheet__grip {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  margin-bottom: 0.5rem;
+  border-radius: 2px;
+  background: var(--mat-sys-outline, #6e6383);
+}
+
+/* ⚠️ Story 48.3 — rangée titre + « Fermer » ; le bouton est une cible de 44 px, sans rouge ni jeton neuf. */
+.library-sheet__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.library-sheet__close {
+  flex: none;
+  margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--mat-sys-outline, currentColor);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mat-sys-on-surface, inherit);
+  font: inherit;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
+.library-sheet__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Le corps défile seul : la poignée reste en place au-delà de 80 vh. */
+.library-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.library-sheet__loan,
+.library-sheet__message {
+  margin: 0 0 0.75rem;
+  color: var(--mat-sys-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.library-sheet__loan {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant, inherit);
+}
+
+.library-sheet__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.library-sheet__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--mat-sys-outline-variant, rgba(255, 255, 255, 0.12));
+}
+
+.library-sheet__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.library-sheet__measures {
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant, inherit);
+}

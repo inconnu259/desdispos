@@ -7,7 +7,7 @@ jest.mock('node:fs/promises', () => ({
 jest.mock('@master-jdr/game-rules', () => ({
   mapToPdfFields: jest.fn(
     (
-      _data: unknown,
+      data: { attributes?: { AGI?: number; ESP?: number; INT?: number; VIG?: number } },
       derived: { PV: number },
       content: {
         classLabel: string;
@@ -17,6 +17,14 @@ jest.mock('@master-jdr/game-rules', () => ({
       const fields = [
         { field: 'PV max', value: String(derived.PV), kind: 'text' },
         { field: 'Classe 1', value: content.classLabel, kind: 'dropdown' },
+        // Même patron que le vrai `mapToPdfFields` (packages/game-rules/src/ryuutama/pdf-field-map.ts) :
+        // `String(undefined)` = `"undefined"` quand un seul sous-champ d'attributes est verrouillé
+        // (l'objet `attributes` reste présent) — reproduit ici pour exercer le filtrage de
+        // `RyuutamaPdfService` (ATTRIBUTE_PDF_FIELDS), pas seulement DERIVED_PDF_FIELDS.
+        { field: 'AGI', value: String(data.attributes?.AGI), kind: 'dropdown' },
+        { field: 'ESP', value: String(data.attributes?.ESP), kind: 'dropdown' },
+        { field: 'INT', value: String(data.attributes?.INT), kind: 'dropdown' },
+        { field: 'VIG', value: String(data.attributes?.VIG), kind: 'dropdown' },
       ];
       for (const label of Object.values(content.capabilityLabels?.landscape ?? {})) {
         fields.push({ field: label, value: '+2', kind: 'text' });
@@ -262,6 +270,48 @@ describe('RyuutamaPdfService', () => {
     expect(mockSetText).toHaveBeenCalledWith('16');
     expect(mockForm.getDropdown).toHaveBeenCalledWith('Classe 1');
     expect(mockSelect).toHaveBeenCalledWith('Chasseur');
+  });
+
+  it("derived absent (cadenas de visibilité Story 31.6, attributes/levelUps verrouillé) → aucun crash, champ 'PV max' non écrit", async () => {
+    // `character.derived` reste typé plein (`CharacterDto`) mais peut être ABSENT à l'exécution
+    // pour un fellow player dont le MJ a verrouillé attributes/levelUps (cf. `hiddenFields`).
+    // `mapToPdfFields` (packages/game-rules, mocké ci-dessus comme la vraie implémentation) lit
+    // `derived.PV` sans garde — sans le stub + filtrage de `RyuutamaPdfService`, ceci crasherait.
+    const character = makeCharacter({ derived: undefined as never });
+
+    const result = await service.fillCharacterPdf(character, 'editable');
+
+    expect(result).toBeInstanceOf(Buffer);
+    expect(mockForm.getTextField).not.toHaveBeenCalledWith('PV max');
+    expect(mockSetText).not.toHaveBeenCalledWith('16');
+    // Le reste de la fiche (non dérivé) continue de se remplir normalement.
+    expect(mockForm.getDropdown).toHaveBeenCalledWith('Classe 1');
+  });
+
+  it("un seul sous-champ d'attributes verrouillé (Story 31.6, revue de code) → aucun crash, dropdown AGI non écrit, ESP/INT/VIG inchangés", async () => {
+    // Reproduit exactement ce que `CharacterService.toDto()` produit pour un verrou ciblé
+    // `attributes.AGI` : `sheetData.attributes` reste un objet (les autres sous-champs présents),
+    // seule la clé `AGI` est retirée — et `derived` est retiré en entier (dépend d'`attributes`).
+    // Sans le filtrage `ATTRIBUTE_PDF_FIELDS`, `mapToPdfFields` produirait `String(undefined)` =
+    // `"undefined"` pour le dropdown AGI, une option inexistante sur le template : pdf-lib lève.
+    const character = makeCharacter({
+      derived: undefined as never,
+      sheetData: {
+        classId: 'chasseur',
+        typeId: 'attaque',
+        weaponId: 'arc-de-chasse',
+        attributes: { ESP: 6, INT: 6, VIG: 8 },
+      },
+    });
+
+    const result = await service.fillCharacterPdf(character, 'editable');
+
+    expect(result).toBeInstanceOf(Buffer);
+    expect(mockForm.getDropdown).not.toHaveBeenCalledWith('AGI');
+    expect(mockSelect).not.toHaveBeenCalledWith('undefined');
+    expect(mockForm.getDropdown).toHaveBeenCalledWith('ESP');
+    expect(mockForm.getDropdown).toHaveBeenCalledWith('INT');
+    expect(mockForm.getDropdown).toHaveBeenCalledWith('VIG');
   });
 
   it('charge le template une seule fois (cache mémoire)', async () => {

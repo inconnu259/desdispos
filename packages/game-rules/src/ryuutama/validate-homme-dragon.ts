@@ -21,6 +21,13 @@ export interface HommeDragonSheetData {
   demeure?: string;
   avatar?: string;
   mondesProteges?: string;
+  eveilPowers?: { level: number; key: string }[];
+  /** Artefact cadeau du niveau 4 (Story 33.7) — choix définitif, jamais validé ici (règle serveur). */
+  artefactCadeau?: { key: string };
+  /** Réserve de souffles (Story 33.6) : positionnelle (index = emplacement − 1), clé d'un souffle
+   * du catalogue `souffle` ou `souffleRituel`, `null`/absent = emplacement vide. Jamais validée
+   * ici : les règles de la réserve vivent dans `homme-dragon-reserve.ts`. */
+  reserve?: (string | null)[];
 }
 
 /** Entrée de catalogue `hommeDragonArtefact` dérivée du contenu seedé en base

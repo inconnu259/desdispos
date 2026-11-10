@@ -1,11 +1,13 @@
 <button type="button" class="character-summary-card" (click)="onClick()">
   <span class="character-summary-card__avatar">
+    <!-- Homme Dragon : `sheetData.avatar` est une description textuelle (cf. fiche), jamais une
+         image — pas de portrait, repli sur les initiales du nom. -->
     <app-character-avatar
       [name]="name()"
       [size]="avatarSize()"
-      [characterId]="character().id"
-      [portraitUrl]="character().portraitUrl"
-      [cropData]="$any(character().portraitCropData)"
+      [characterId]="character()?.id ?? ''"
+      [portraitUrl]="character()?.portraitUrl ?? null"
+      [cropData]="$any(character()?.portraitCropData ?? null)"
     />
     @if (hasPendingLevelUp()) {
       <!-- Retour utilisateur (Story 29.9) : bulle apposée sur le cercle, patron déjà établi par
@@ -23,15 +25,23 @@
   </span>
   <div class="character-summary-card__info">
     <span class="character-summary-card__name">
-      {{ name() }}
-      <span class="character-summary-card__level">{{ levelLabel() }}</span>
+      @if (hommeDragon()) {
+        <!-- Convention de nom unifiée (épic 28) : mode « nom de personnage » de IdentityLabel. -->
+        <app-identity-label [characterName]="name()" />
+        <app-nature-marker class="character-summary-card__nature" [compact]="density() === 'compact'" />
+      } @else {
+        {{ name() }}
+        <span class="character-summary-card__level">{{ levelLabel() }}</span>
+      }
     </span>
     @if (density() === 'compact') {
       <!-- Mode liste (DESIGN.md §4.1) : une seule sous-ligne, jamais une pile de spans qui
            écraserait le nom. Classe et Partie sont les deux repères que l'utilisateur a
            explicitement demandé de conserver en liste compacte. -->
       @if (compactSubtitle()) {
-        <span class="character-summary-card__compact-sub">{{ compactSubtitle() }}</span>
+        <span class="character-summary-card__compact-sub" [attr.title]="compactSubtitle()">{{
+          compactSubtitle()
+        }}</span>
       }
     } @else {
       @if (className()) {
@@ -41,31 +51,37 @@
         <span class="character-summary-card__type">{{ typeLabel() }}</span>
       }
       @if (partieName()) {
-        <span class="character-summary-card__partie">{{ partieName() }}</span>
+        <span class="character-summary-card__partie" [attr.title]="partieName()">{{
+          partieName()
+        }}</span>
       }
       @if (groupRoleLabel()) {
         <span class="character-summary-card__group-role">{{ groupRoleLabel() }}</span>
       }
-      @if (showOwnerInfo()) {
-        @if (character().ownerIsMj) {
-          <span class="character-summary-card__owner-badge">{{ theme.tone()['character.owner_badge_mj'] }}</span>
-        } @else {
-          <span class="character-summary-card__owner-badge">
-            <app-identity-label [playerName]="character().ownerDisplayName" />
-          </span>
+      @if (character(); as c) {
+        @if (showOwnerInfo()) {
+          @if (c.ownerIsMj) {
+            <span class="character-summary-card__owner-badge">{{ theme.tone()['character.owner_badge_mj'] }}</span>
+          } @else {
+            <span class="character-summary-card__owner-badge">
+              <app-identity-label [playerName]="c.ownerDisplayName" />
+            </span>
+          }
         }
-      }
-      @if (showMjMarker() && character().ownerIsMj) {
-        <span class="character-summary-card__mj-marker">{{ theme.tone()['character.owner_badge_mj'] }}</span>
+        @if (showMjMarker() && c.ownerIsMj) {
+          <span class="character-summary-card__mj-marker">{{ theme.tone()['character.owner_badge_mj'] }}</span>
+        }
       }
     }
   </div>
-  @if (showStats()) {
-    <div class="character-summary-card__badges">
-      <span class="stat-pill">PV {{ character().derived.PV }}</span>
-      <span class="stat-pill">PE {{ character().derived.PE }}</span>
-      <span class="stat-pill">Initiative {{ character().derived.Initiative }}</span>
-      <span class="stat-pill">Encombrement max {{ character().derived.Encombrement }}</span>
-    </div>
+  @if (showStats() && character(); as c) {
+    @if (c.derived) {
+      <div class="character-summary-card__badges">
+        <span class="stat-pill">PV {{ c.derived.PV }}</span>
+        <span class="stat-pill">PE {{ c.derived.PE }}</span>
+        <span class="stat-pill">Initiative {{ c.derived.Initiative }}</span>
+        <span class="stat-pill">Encombrement max {{ c.derived.Encombrement }}</span>
+      </div>
+    }
   }
 </button>

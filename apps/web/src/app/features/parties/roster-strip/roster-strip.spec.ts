@@ -2,9 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import type { PartieMemberDto } from '@master-jdr/shared';
 import { RosterStrip } from './roster-strip';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';
+import { fillTone } from '../../../core/theme/tone-format';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const MEMBERS: PartieMemberDto[] = [
   {
+    role: 'MEMBER',
     userId: 'mj1',
     pseudo: 'Sylas',
     displayName: 'Sylas',
@@ -12,6 +17,7 @@ const MEMBERS: PartieMemberDto[] = [
     joinedAt: '2026-01-01T00:00:00.000Z',
   },
   {
+    role: 'MEMBER',
     userId: 'u1',
     pseudo: 'Alice',
     displayName: 'Alice au pays',
@@ -32,7 +38,7 @@ describe('RosterStrip', () => {
     const fixture = TestBed.createComponent(RosterStrip);
     fixture.componentRef.setInput('members', MEMBERS);
     fixture.componentRef.setInput('characters', CHARACTERS);
-    fixture.componentRef.setInput('mjId', 'mj1');
+    fixture.componentRef.setInput('ownerId', 'mj1');
     fixture.componentRef.setInput('hasFreeSlot', hasFreeSlot);
     fixture.componentRef.setInput('classLabelFor', () => 'Ménestrel');
     fixture.componentRef.setInput('roleLabelFor', roleLabelFor);
@@ -60,7 +66,9 @@ describe('RosterStrip', () => {
   it('aria-label complet par pastille (nom + rôle/personnage)', () => {
     const fixture = setup();
     const mjItem: HTMLElement = fixture.nativeElement.querySelector('[data-user-id="mj1"]');
-    expect(mjItem.getAttribute('aria-label')).toBe('Sylas — MJ');
+    expect(mjItem.getAttribute('aria-label')).toBe(
+      fillTone(GRIMOIRE_TONE['parties.roster_aria_mj'], { name: 'Sylas' }),
+    );
     const playerItem: HTMLElement = fixture.nativeElement.querySelector('[data-user-id="u1"]');
     expect(playerItem.getAttribute('aria-label')).toBe('Alice au pays — Fenn (Ménestrel)');
   });

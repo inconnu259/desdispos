@@ -1,0 +1,38 @@
+<ng-template #content><ng-content /></ng-template>
+
+@if (!enabled()) {
+  <ng-container [ngTemplateOutlet]="content" />
+} @else if (docked()) {
+  <div class="side-dock" role="group" [attr.aria-label]="label()">
+    <button
+      #reopenButton
+      type="button"
+      class="side-dock__button"
+      aria-expanded="false"
+      [attr.aria-label]="theme.tone()['calendar.column_reopen']"
+      (click)="onToggle()"
+    >
+      <app-icon name="precedent" />
+    </button>
+    <span class="side-dock__label" aria-hidden="true">
+      @if (icon(); as iconName) {
+        <app-icon class="side-dock__icon" [name]="iconName" />
+      }
+      {{ label() }}
+    </span>
+  </div>
+} @else {
+  <div class="side-dock__bar">
+    <button
+      #dockButton
+      type="button"
+      class="side-dock__button"
+      aria-expanded="true"
+      [attr.aria-label]="theme.tone()['calendar.column_dock']"
+      (click)="onToggle()"
+    >
+      <app-icon name="suivant" />
+    </button>
+  </div>
+  <ng-container [ngTemplateOutlet]="content" />
+}

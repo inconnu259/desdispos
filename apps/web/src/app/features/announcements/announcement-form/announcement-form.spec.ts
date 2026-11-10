@@ -52,6 +52,9 @@ function makeThemeService() {
       'announcement.publish_cta': 'Publier',
       'announcement.text_placeholder': 'Écrire une annonce...',
       'announcement.published_notice': 'Annonce publiée.',
+      'common.impossible_de_charger_les_scenarios_reessayez':
+        'Impossible de charger les scénarios. Réessayez.',
+      'announcement.publish_error': 'Impossible de publier l’annonce. Réessayez.',
     }),
   };
 }

@@ -1,0 +1,273 @@
+/* ⚠️ Stories 48.1, 48.2 — page « Ma Ludothèque » : pleine largeur sous 768 px, colonne de 640 px au plus
+   au-delà. Aucun jeton neuf, aucun rouge, aucune image : les messages — et « Retirer » — restent dans la
+   couleur du texte. */
+:host {
+  display: block;
+}
+
+.board-games-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 auto;
+  padding: 0.75rem 0;
+
+  @media (min-width: 768px) {
+    max-width: 640px;
+  }
+
+  &__message {
+    margin: 0;
+    color: var(--mat-sys-on-surface);
+  }
+
+  /* Story 48.2 — « Jeu retiré · Annuler » : dans le flux, entre la saisie et la liste. Au repos, la
+     région reste dans l'arbre d'accessibilité (annonce fiable) mais sort de la mise en page. */
+  &__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    min-height: 44px;
+    padding: 0 0.25rem;
+    color: var(--mat-sys-on-surface);
+
+    &--idle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      min-height: 0;
+      padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  &__status-sep {
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  &__undo {
+    min-height: 44px;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mat-sys-primary);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 1px;
+    }
+  }
+}
+
+/* `QuickAddRow` : surface haute, filet de contour, rayon 12 px. */
+.quick-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant, #ccc);
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container-high);
+
+  &__line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem 0.75rem;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 0.8rem;
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  &__input {
+    box-sizing: border-box;
+    min-height: 44px;
+    width: 100%;
+    padding: 0 0.6rem;
+    border: 1px solid var(--mat-sys-outline, #888);
+    border-radius: 8px;
+    background: var(--mat-sys-surface);
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 1px;
+    }
+
+    &--number {
+      width: 4.5rem;
+    }
+  }
+
+  &__players {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__to {
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  &__submit {
+    min-height: 44px;
+    padding: 0 1.25rem;
+    margin-left: auto;
+    border: 0;
+    border-radius: 999px;
+    background: var(--mat-sys-primary);
+    color: var(--mat-sys-on-primary);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-on-surface);
+      outline-offset: 2px;
+    }
+  }
+
+  /* Story 48.2 — boutons de la correction en ligne : « Enregistrer », puis l'abandon et le retrait,
+     en contour (jamais de rouge). */
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+
+    .quick-add__submit {
+      margin-left: 0;
+    }
+  }
+
+  &__secondary {
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px solid var(--mat-sys-outline, #888);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &__hint,
+  &__message {
+    margin: 0;
+    font-size: 0.8rem;
+  }
+
+  &__hint {
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  &__message {
+    color: var(--mat-sys-on-surface);
+    font-weight: 500;
+  }
+}
+
+/* Liste : une ligne par jeu, 44 px au moins, aucune troncature (le nom passe à la ligne). */
+.board-games-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.4rem 0.25rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant, #ddd);
+
+    /* Story 48.2 — la ligne en correction porte la saisie entière. */
+    &--editing {
+      display: block;
+      padding: 0.4rem 0;
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  /* Crayon (<app-icon> « modifier », décoratif) : cible de 44 px. */
+  &__edit {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mat-sys-on-surface-variant, #666);
+    font: inherit;
+    --app-icon-size: 20px;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mat-sys-on-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+    }
+  }
+
+  &__name {
+    color: var(--mat-sys-on-surface);
+    overflow-wrap: anywhere;
+  }
+
+  &__measures {
+    font-size: 0.8rem;
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+}

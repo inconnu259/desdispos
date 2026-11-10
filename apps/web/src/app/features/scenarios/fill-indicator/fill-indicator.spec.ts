@@ -1,5 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { FillIndicator } from './fill-indicator';
+import { fillTone } from '../../../core/theme/tone-format';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function setup(count: number, min: number, max: number) {
   TestBed.resetTestingModule();
@@ -45,7 +49,7 @@ describe('FillIndicator', () => {
     ] as const) {
       const fixture = setup(count, min, max);
       expect(fixture.nativeElement.textContent).toContain(
-        `${count} / ${max} inscrits (min. ${min})`,
+        fillTone(GRIMOIRE_TONE['scenarios.fill_label'], { count, max, min }),
       );
     }
   });

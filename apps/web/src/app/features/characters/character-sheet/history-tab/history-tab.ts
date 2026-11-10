@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import type { CharacterSnapshotDto, GameSystemContentDto } from '@master-jdr/shared';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../../core/theme/tone-format';
 import { snapshotCapabilityChoice } from '../capability-label.util';
 
 @Component({
@@ -35,13 +36,13 @@ export class HistoryTab {
     try {
       this.snapshots.set(await this.characterSvc.getHistory(id));
     } catch {
-      this.loadError.set("L'historique n'a pas pu être chargé.");
+      this.loadError.set(this.theme.tone()['characters_sheet.history_load_error']);
     }
   }
 
   protected triggerLabel(snapshot: CharacterSnapshotDto): string {
     return snapshot.trigger === 'LEVEL_UP'
-      ? `Niveau ${snapshot.level}`
+      ? fillTone(this.theme.tone()['characters_sheet.history_level'], { level: snapshot.level })
       : this.theme.tone()['evolution.mj_edit_trace'];
   }
 

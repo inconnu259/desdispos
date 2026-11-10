@@ -54,7 +54,7 @@ export class XpHistory {
    *  se déguisait silencieusement en ligne « joueur seul » (revue de code 28.2). */
   private characterLabelFor(characterId: string): string {
     const character = this.characterById().get(characterId);
-    if (!character) return 'Personnage inconnu';
+    if (!character) return this.theme.tone()['parties.xp_history_unknown_character'];
     return characterName(character);
   }
 }

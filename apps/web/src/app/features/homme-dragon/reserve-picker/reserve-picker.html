@@ -1,0 +1,180 @@
+<app-detail-surface
+  [title]="title()"
+  [custom]="true"
+  [hasHeader]="true"
+  [hasFooter]="true"
+  [portal]="true"
+  [desktopWidth]="620"
+  [describedBy]="uid + '-count'"
+  [openToken]="1"
+  (closed)="closed.emit()"
+>
+  <div detail-header class="rp__head">
+    <h2 class="rp__title" [id]="uid + '-title'">{{ title() }}</h2>
+    <div class="rp__count" [id]="uid + '-count'">
+      <span class="rp__seg" aria-hidden="true">
+        @for (on of segments(); track $index) {
+          <i [class.rp__seg-on]="on"></i>
+        }
+      </span>
+      <strong>{{ counterText() }}</strong>
+    </div>
+  </div>
+
+  <p class="rp__rule"><strong>Règle :</strong> {{ rule() }}</p>
+
+  @for (group of groups(); track group.id) {
+    <div role="group" [attr.aria-labelledby]="uid + '-g-' + group.id">
+      <p class="rp__group" [id]="uid + '-g-' + group.id">{{ group.title }}</p>
+      @for (cat of group.categories; track cat.id) {
+        <section class="rp__cat">
+          <h3 class="rp__cat-h">
+            <button
+              type="button"
+              class="rp__cat-btn"
+              [attr.aria-expanded]="isOpen(cat)"
+              [attr.aria-controls]="uid + '-p-' + cat.id"
+              (click)="toggle(cat)"
+            >
+              <app-icon class="rp__chevron" [class.rp__chevron--closed]="!isOpen(cat)" name="deplier" />
+              @if (cat.race) {
+                <span
+                  class="rp__gem"
+                  [class]="'race-' + raceTags[cat.race].toLowerCase()"
+                  aria-hidden="true"
+                ></span>
+              }
+              <span class="rp__cat-name">{{ cat.title }}</span>
+              @if (cat.why) {
+                <span class="rp__why"><span aria-hidden="true">⊘</span> {{ cat.why }}</span>
+              } @else if (cat.info) {
+                <span class="rp__why">— {{ cat.info }}</span>
+              }
+              <span class="rp__badge">{{ cat.count }}<span class="rp__sr"> souffles</span></span>
+            </button>
+          </h3>
+          <div class="rp__panel" [id]="uid + '-p-' + cat.id" [hidden]="!isOpen(cat)">
+            @for (section of cat.sections; track section.id) {
+              @if (section.race; as sectionRace) {
+                <h4 class="rp__sub">
+                  <span
+                    class="rp__gem"
+                    [class]="'race-' + raceTags[sectionRace].toLowerCase()"
+                    aria-hidden="true"
+                  ></span>
+                  {{ raceLabels[sectionRace] }}
+                </h4>
+              }
+              <ul
+                class="rp__list"
+                role="list"
+                [attr.aria-label]="section.race ? raceLabels[section.race] : cat.title"
+              >
+                @for (r of section.rows; track r.key) {
+                  <li>
+                    <button
+                      type="button"
+                      class="rp__row"
+                      [class.rp__row--off]="!r.placement.placeable"
+                      [class.rp__row--sel]="selectedKey() === r.key"
+                      [attr.aria-pressed]="selectedKey() === r.key"
+                      [attr.aria-disabled]="r.placement.placeable ? null : 'true'"
+                      [attr.aria-labelledby]="r.labelledBy"
+                      [attr.aria-describedby]="
+                        r.placement.placeable ? uid + '-' + r.key + '-d' : null
+                      "
+                      (click)="consult(r.key)"
+                    >
+                      <span class="rp__txt">
+                        <span class="rp__l1">
+                          <span class="rp__name" [id]="uid + '-' + r.key + '-n'">{{
+                            r.label
+                          }}</span>
+                          @if (r.cost) {
+                            <span class="stat-pill" [id]="uid + '-' + r.key + '-c'">{{
+                              r.cost
+                            }}</span>
+                          }
+                          @if (r.mark) {
+                            <span class="rp__mark" [id]="uid + '-' + r.key + '-m'">{{
+                              r.mark
+                            }}</span>
+                          }
+                        </span>
+                        @if (r.placement.reason; as reason) {
+                          <span class="rp__l2 rp__reason" [id]="uid + '-' + r.key + '-w'"
+                            ><span aria-hidden="true">⊘</span> {{ reason }}</span
+                          >
+                        } @else {
+                          <span class="rp__l2" [id]="uid + '-' + r.key + '-d'">{{
+                            r.description
+                          }}</span>
+                        }
+                      </span>
+                      @if (selectedKey() === r.key) {
+                        <span class="rp__radio" aria-hidden="true"></span>
+                      }
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+
+  <div detail-footer class="rp__detail">
+    @if (selected(); as s) {
+      <div class="rp__dhead">
+        <strong>{{ s.label }}</strong>
+        @if (s.cost) {
+          <span class="stat-pill">{{ s.cost }}</span>
+        }
+        @if (s.tag; as tag) {
+          <span
+            class="rp__tag"
+            [class]="tag.race ? 'race-' + raceTags[tag.race].toLowerCase() : ''"
+          >
+            @if (tag.race) {
+              <span class="rp__gem" aria-hidden="true"></span>
+            }
+            {{ tag.text }}
+          </span>
+        }
+      </div>
+      <div class="rp__ddesc" role="group" tabindex="0" [attr.aria-label]="descriptionAria(s.label)">
+        {{ s.description || theme.tone()['common.aucune_description_disponible'] }}
+      </div>
+      @if (note(); as n) {
+        <p class="rp__note">{{ n }}</p>
+      }
+      @if (blockedReason(); as why) {
+        <p class="rp__note rp__reason" [id]="uid + '-why'">
+          <span aria-hidden="true">⊘</span> {{ why }}
+        </p>
+      }
+    } @else {
+      <p class="rp__note" [id]="uid + '-why'">
+        {{ theme.tone()['hd.picker_consult_hint'] }}
+      </p>
+    }
+    <div class="rp__actions">
+      <button type="button" class="rp__btn" (click)="closed.emit()">
+        {{ theme.tone()['common.annuler'] }}
+      </button>
+      <button
+        type="button"
+        class="rp__btn rp__btn--primary"
+        data-reserve-place
+        [attr.aria-disabled]="placeable() ? null : 'true'"
+        [attr.aria-describedby]="placeable() ? null : uid + '-why'"
+        (click)="place()"
+      >
+        {{ placeLabel() }}
+      </button>
+    </div>
+    <p class="rp__sr" role="status" aria-live="polite">{{ announcement() }}</p>
+  </div>
+</app-detail-surface>

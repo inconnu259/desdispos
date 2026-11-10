@@ -1,0 +1,38 @@
+[
+  {
+    "key": "reserve",
+    "label": "Réserve de souffles",
+    "level": 2,
+    "description": "À partir du niveau 2, l'homme-dragon dispose d'une réserve où conserver des souffles : un emplacement au départ, puis un de plus à chaque niveau gagné. Chaque souffle conservé peut être lancé une fois sans dépenser de PS ; ses effets durent en général jusqu'à la fin de la séance. La réserve est pleine au début de chaque séance : le meneur choisit les souffles qu'elle contient (communs ou propres à sa race) et leur nombre d'exemplaires, puis les annonce aux joueurs en expliquant leurs effets."
+  },
+  {
+    "key": "augmentation-du-souffle",
+    "label": "Augmentation du souffle",
+    "level": 3,
+    "description": "En racontant les aventures des voyageurs, l'homme-dragon nourrit les dragons des saisons, qui renforcent son essence en retour : souffles et pouvoirs d'éveil lui deviennent plus accessibles. Ses PS passent à 5 au niveau 3, puis à 10 au niveau 5."
+  },
+  {
+    "key": "souffles-multicolores",
+    "label": "Souffles multicolores",
+    "level": 3,
+    "description": "L'homme-dragon peut désormais choisir des souffles d'une autre race que la sienne, mais sa réserve ne peut en contenir qu'un seul."
+  },
+  {
+    "key": "artefact-cadeau",
+    "label": "Artefact cadeau",
+    "level": 4,
+    "description": "Pour le remercier de tous les récits rapportés aux dragons des saisons, les hommes-dragons des autres races lui offrent un artefact : le meneur en choisit un appartenant à une autre race et l'inscrit sur la fiche. Ce choix est définitif."
+  },
+  {
+    "key": "invitation-au-voyage",
+    "label": "Invitation au voyage",
+    "level": 4,
+    "description": "L'homme-dragon peut prendre une nouvelle forme : celle d'un voyageur. Il s'incarne soit, pour un temps, dans un nouveau venu sans mémoire, soit dans un PNJ existant, dont la personnalité fusionne alors avec la sienne. Sous cette forme, ses souvenirs se brouillent, mais il conserve ses points de souffle, ses pouvoirs d'éveil, sa personnalité et ses goûts. Le meneur lui crée une fiche de voyageur d'un niveau de moins que la moyenne du groupe, et quelqu'un d'autre prend le rôle de meneur."
+  },
+  {
+    "key": "envol-du-dragon-des-saisons",
+    "label": "Envol du dragon des saisons",
+    "level": 5,
+    "description": "Sa mission est accomplie : le dragon des saisons qu'il a nourri est prêt à quitter le nid pour un autre monde, après avoir réenchanté celui-ci et laissé un œuf pour lui succéder. L'homme-dragon devient une mère-dragon : il pourra apparaître dans un autre scénario du même meneur, y utiliser encore ses souffles et ses pouvoirs d'éveil, et accéder aux souffles rituels."
+  }
+]

@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { FieldEditPencil } from './field-edit-pencil';
+import { fillTone } from '../../../../core/theme/tone-format';
+import { TONE_MAP } from '../../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 async function createComponent(
   value: string | number = 'Lanterne',
@@ -27,7 +31,9 @@ describe('FieldEditPencil', () => {
       '.field-edit-pencil__button',
     ) as HTMLButtonElement;
     expect(pencil).not.toBeNull();
-    expect(pencil.getAttribute('aria-label')).toBe("Modifier l'objet fétiche");
+    expect(pencil.getAttribute('aria-label')).toBe(
+      fillTone(GRIMOIRE_TONE['characters_sheet.field_edit_aria'], { label: "l'objet fétiche" }),
+    );
     expect(fixture.nativeElement.querySelector('.field-edit-pencil__form')).toBeNull();
   });
 
@@ -192,5 +198,26 @@ describe('FieldEditPencil', () => {
       '.field-edit-pencil__input',
     ) as HTMLInputElement;
     expect(reopenedInput.value).toBe('Lanterne');
+  });
+
+  it('lecture : pictogramme modifier ; édition : valider puis fermer, noms des boutons inchangés', async () => {
+    const fixture = await createComponent();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const pencil = el.querySelector('.field-edit-pencil__button') as HTMLButtonElement;
+    expect(pencil.querySelector('app-icon')?.getAttribute('data-icon')).toBe('modifier');
+    expect(pencil.getAttribute('aria-label')).toBe(
+      fillTone(GRIMOIRE_TONE['characters_sheet.field_edit_aria'], { label: "l'objet fétiche" }),
+    );
+
+    pencil.click();
+    fixture.detectChanges();
+
+    const confirm = el.querySelector('.field-edit-pencil__confirm') as HTMLButtonElement;
+    const cancel = el.querySelector('.field-edit-pencil__cancel') as HTMLButtonElement;
+    expect(confirm.querySelector('app-icon')?.getAttribute('data-icon')).toBe('valider');
+    expect(cancel.querySelector('app-icon')?.getAttribute('data-icon')).toBe('fermer');
+    expect(confirm.getAttribute('aria-label')).toBe(GRIMOIRE_TONE['common.valider']);
+    expect(cancel.getAttribute('aria-label')).toBe(GRIMOIRE_TONE['common.annuler']);
   });
 });

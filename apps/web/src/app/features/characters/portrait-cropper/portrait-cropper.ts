@@ -12,6 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { RYUUTAMA_PDF_PORTRAIT_ASPECT_RATIO } from '@master-jdr/shared';
 import { CharacterService } from '../../../core/characters/character.service';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 export interface PortraitCropData {
   scale: number;
@@ -70,6 +71,7 @@ export class PortraitCropper implements OnInit, OnDestroy {
     optional: true,
   });
   private readonly characterSvc = inject(CharacterService);
+  protected readonly theme = inject(ThemeToneService);
 
   /** Affiche "Passer cette étape" (contexte assistant) plutôt que "Annuler" (contexte fiche/dialogue). */
   readonly showSkip = input(false);

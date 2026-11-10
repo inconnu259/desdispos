@@ -1,7 +1,7 @@
 import type { PartySignalCode } from '@master-jdr/shared';
 
 /**
- * Ordre de priorité des 10 signaux (AC8) — trois catégories déclarées par l'AC (« ce qui bloque
+ * Ordre de priorité des 11 signaux (AC8, dont `RESERVATION_A_CONFIRMER` depuis la Story 40.4) — trois catégories déclarées par l'AC (« ce qui bloque
  * le démarrage », « ce qui a une échéance », « ce qui est en retard »), traduites ici en un ordre
  * total explicite (décision d'implémentation, aucune AC ne fournit cette table). `PARTIE_TERMINEE`
  * est hors catégorie et toujours prioritaire — une partie terminée reste en teinte « terminé »
@@ -11,6 +11,8 @@ import type { PartySignalCode } from '@master-jdr/shared';
  */
 const PRIORITY_ORDER: readonly PartySignalCode[] = [
   'PARTIE_TERMINEE',
+  // Story 42.2 : une rencontre isolée annulée — hors catégorie, comme une terminée.
+  'PARTIE_ANNULEE',
   // Bloque le démarrage.
   'AUCUN_MEMBRE_INVITE',
   'PERSONNAGE_A_CREER',
@@ -19,6 +21,8 @@ const PRIORITY_ORDER: readonly PartySignalCode[] = [
   'AUCUNE_DATE_NI_VOTE',
   // A une échéance.
   'VOTE_EN_COURS_SANS_REPONSE',
+  // Story 40.4 : une place réservée attend une réponse — même échéance que le vote, juste après lui.
+  'RESERVATION_A_CONFIRMER',
   // En retard.
   'RAPPORT_FIN_MANQUANT',
   'COMPTE_RENDU_NON_REDIGE',
@@ -46,6 +50,7 @@ const SIGNAL_CATEGORIES: Partial<Record<PartySignalCode, SignalCategory>> = {
   AUCUN_SCENARIO_EN_COURS: 'blocking',
   AUCUNE_DATE_NI_VOTE: 'blocking',
   VOTE_EN_COURS_SANS_REPONSE: 'deadline',
+  RESERVATION_A_CONFIRMER: 'deadline',
   RAPPORT_FIN_MANQUANT: 'overdue',
   COMPTE_RENDU_NON_REDIGE: 'overdue',
   PROCHAINE_SEANCE_CONNUE: 'informative',

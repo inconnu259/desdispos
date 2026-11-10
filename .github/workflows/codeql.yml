@@ -47,6 +47,8 @@ jobs:
           # `security-and-quality` ajoute aux règles de sécurité celles de qualité/maintenabilité.
           # Passer à `security-extended` (ou `security-and-quality` seul) si le bruit gêne.
           queries: security-and-quality
+          # Chemins exclus de l'analyse (artefacts de planification) : voir le fichier lui-même.
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Analyser
         uses: github/codeql-action/analyze@42947a340483f03ba47bb1a039b2c519aab3df85 # v3 (2026-08-21)

@@ -1,73 +1,116 @@
+<!-- Story 32.4 — le CONTENU d'un nœud est écrit une seule fois et projeté dans les deux
+     orientations (horizontale ≥768px, verticale en dessous). Seul le POSITIONNEMENT diffère, et il
+     vit intégralement dans la feuille de style, chaque mode avec ses propres règles
+     (DESIGN.md §4 : implémentations distinctes, jamais une même grille réorientée). -->
+<ng-template #nodeBody let-node>
+  <!-- En-tête de nœud à HAUTEUR FIXE, indépendant de la carte : c'est la garantie structurelle
+       contre le désalignement pastille/ligne quand un titre passe sur deux lignes ou que plusieurs
+       COURANT s'empilent (bug constaté en Discovery, DESIGN.md §4). -->
+  <div class="node__head">
+    <span class="node__dot" [class]="nodeDotClass(node)" aria-hidden="true"></span>
+    <span class="node__date">{{ nodeDateLabel(node) }}</span>
+  </div>
+  <div class="node__cards">
+    @for (scenario of node.scenarios; track scenario.id) {
+      <div
+        class="card"
+        tabindex="0"
+        role="button"
+        (click)="openDetail(scenario)"
+        (keydown)="onCardKeydown($event, scenario)"
+      >
+        <span class="title">{{ scenario.title }}</span>
+        <!-- La pastille porte la teinte, le badge porte TOUJOURS le libellé : un lecteur qui ne
+             distingue pas les teintes lit exactement la même information (P-1). -->
+        <app-scenario-status-badge [status]="scenario.status" />
+        @if (scenario.seances.length > 0) {
+          <ul class="card-seances">
+            @for (seance of scenario.seances; track seance.id; let i = $index) {
+              <li class="card-seances__row">
+                <div class="card-seances__line">
+                  <span class="card-seances__label">
+                    <b>{{ seanceLabel(i) }}</b> · {{ seanceDateLabel(seance) }}
+                  </span>
+                  <app-status-badge [state]="seanceBadge(seance)" />
+                </div>
+                <!-- Story 53.3 — « Ma situation » : un appel à l'action par séance, jamais par carte
+                     de chapitre. Valeur `null` = aucune ligne (le badge d'état suffit). Le masquage
+                     des brouillons côté joueur reste celui de `buildNodes` : aucune pastille ne
+                     trahit un brouillon. -->
+                <app-situation-line [value]="seanceSituation(seance)" />
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
 @if (loadError()) {
   <p class="error">
     {{ loadError() }}
-    <button mat-button type="button" (click)="retry()">Réessayer</button>
+    <button mat-button type="button" (click)="retry()">
+      {{ theme.tone()['common.reessayer'] }}
+    </button>
   </p>
-} @else if (isDesktop()) {
-  <div class="timeline-desktop">
-    @if (fadeStart()) {
-      <div class="fade fade-start"></div>
-    }
-    <div
-      #track
-      class="track"
-      [class.dragging]="dragging()"
-      (wheel)="onWheel($event)"
-      (scroll)="onScroll()"
-      (mousedown)="onMouseDown($event)"
-    >
-      @for (node of nodes(); track node.key; let i = $index) {
-        <div class="node" tabindex="0" role="group" (focus)="onNodeFocus(i)">
-          @for (scenario of node.scenarios; track scenario.id) {
-            <div
-              class="card"
-              tabindex="0"
-              role="button"
-              (click)="openDetail(scenario)"
-              (keydown)="onCardKeydown($event, scenario)"
-            >
-              <span class="title">{{ scenario.title }}</span>
-              <app-scenario-status-badge [status]="scenario.status" />
-              @if (scenario.seances.length > 0) {
-                <ul class="card-seances">
-                  @for (seance of scenario.seances; track seance.id) {
-                    <li>{{ seanceDateLabel(seance) }}</li>
-                  }
-                </ul>
-              }
-            </div>
-          }
-        </div>
-      }
-    </div>
-    @if (fadeEnd()) {
-      <div class="fade fade-end"></div>
-    }
+} @else if (loaded()) {
+  <!-- Rien ne se rend avant que le premier chargement ait tranché : un en-tête « 0 scénario » et un
+       « Aucun scénario pour l'instant. » affichés pendant la requête affirmeraient un vide qui n'est
+       pas encore connu. -->
+  <div class="timeline-header">
+    <h3 class="timeline-header__title">{{ theme.tone()['scenarios.timeline_title'] }}</h3>
+    <!-- Compteur dérivé des nœuds RENDUS (`visibleCount`) : côté joueur il ne peut structurellement
+         pas inclure un brouillon, et l'écart avec le compteur du MJ est automatique. -->
+    <span class="timeline-header__count">{{ countLabel() }}</span>
   </div>
-} @else {
-  <ul class="timeline-mobile">
-    @for (node of nodes(); track node.key) {
-      <li class="node">
-        @for (scenario of node.scenarios; track scenario.id) {
+
+  @if (nodes().length === 0) {
+    <!-- État vide explicite : aucune ligne orpheline, aucun espace réservé qui trahirait un
+         scénario masqué. -->
+    <p class="empty">{{ theme.tone()['common.aucun_scenario_pour_l_instant'] }}</p>
+  } @else if (isDesktop()) {
+    <div class="timeline-desktop">
+      @if (fadeStart()) {
+        <div class="fade fade-start"></div>
+      }
+      <div
+        #track
+        class="track"
+        [class.dragging]="dragging()"
+        (wheel)="onWheel($event)"
+        (scroll)="onScroll()"
+        (mousedown)="onMouseDown($event)"
+      >
+        @for (node of nodes(); track node.key; let i = $index) {
           <div
-            class="card"
+            class="node"
             tabindex="0"
-            role="button"
-            (click)="openDetail(scenario)"
-            (keydown)="onCardKeydown($event, scenario)"
+            role="group"
+            [attr.aria-label]="nodeDateLabel(node)"
+            (focus)="onNodeFocus(i)"
           >
-            <span class="title">{{ scenario.title }}</span>
-            <app-scenario-status-badge [status]="scenario.status" />
-            @if (scenario.seances.length > 0) {
-              <ul class="card-seances">
-                @for (seance of scenario.seances; track seance.id) {
-                  <li>{{ seanceDateLabel(seance) }}</li>
-                }
-              </ul>
-            }
+            <ng-container
+              [ngTemplateOutlet]="nodeBody"
+              [ngTemplateOutletContext]="{ $implicit: node }"
+            />
           </div>
         }
-      </li>
-    }
-  </ul>
+      </div>
+      @if (fadeEnd()) {
+        <div class="fade fade-end"></div>
+      }
+    </div>
+  } @else {
+    <ul class="timeline-mobile">
+      @for (node of nodes(); track node.key) {
+        <li class="node" role="group" [attr.aria-label]="nodeDateLabel(node)">
+          <ng-container
+            [ngTemplateOutlet]="nodeBody"
+            [ngTemplateOutletContext]="{ $implicit: node }"
+          />
+        </li>
+      }
+    </ul>
+  }
 }

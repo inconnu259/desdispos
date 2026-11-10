@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VoteAnswer } from '@master-jdr/shared';
+import { THEMES, TONE_MAP } from '../../core/theme/tones';
 import {
   type VoteParticipation,
   answerLabel,
@@ -8,6 +9,10 @@ import {
   respondedCount,
   trackSegments,
 } from './poll-track.utils';
+
+// Thème de référence pour les cas courants ; les cas « autre thème » plus bas vérifient que la voix
+// suit bien le ton passé et non un repli codé en dur (la signature exige désormais le ton).
+const tone = TONE_MAP['grimoire-emeraude'];
 
 function vote(over: Partial<VoteParticipation> = {}): VoteParticipation {
   return {
@@ -97,7 +102,7 @@ describe('robustesse — une charge utile incomplète ne produit jamais « NaN /
   } as unknown as VoteParticipation;
 
   it('compteur : « 0 / 0 », jamais « NaN / undefined »', () => {
-    const label = counterLabel(partiel);
+    const label = counterLabel(partiel, tone);
     expect(label).not.toContain('NaN');
     expect(label).not.toContain('undefined');
     expect(label).toBe('0 / 0');
@@ -109,7 +114,7 @@ describe('robustesse — une charge utile incomplète ne produit jamais « NaN /
   });
 
   it('nom accessible : aucun NaN ni undefined annoncé', () => {
-    const label = participationAriaLabel(partiel);
+    const label = participationAriaLabel(partiel, tone);
     expect(label).not.toContain('NaN');
     expect(label).not.toContain('undefined');
   });
@@ -125,11 +130,11 @@ describe('respondedCount / counterLabel (AC4)', () => {
   });
 
   it('AC4 — le compteur se lit « 3 / 4 »', () => {
-    expect(counterLabel(vote({ yes: 2, maybe: 1, total: 4 }))).toBe('3 / 4');
+    expect(counterLabel(vote({ yes: 2, maybe: 1, total: 4 }), tone)).toBe('3 / 4');
   });
 
   it('aucun répondant → « 0 / 4 », jamais une chaîne vide', () => {
-    expect(counterLabel(vote({ total: 4 }))).toBe('0 / 4');
+    expect(counterLabel(vote({ total: 4 }), tone)).toBe('0 / 4');
   });
 });
 
@@ -141,46 +146,84 @@ describe('answerLabel — ma réponse en toutes lettres (AC5)', () => {
       ['NO', 'non'],
     ];
     for (const [answer, expected] of cases) {
-      expect(answerLabel(answer, 'compact')).toBe(expected);
+      expect(answerLabel(answer, 'compact', tone)).toBe(expected);
     }
   });
 
   it('niveau complet — la réponse est phrasée', () => {
-    expect(answerLabel('YES', 'full')).toBe('tu as dit oui');
-    expect(answerLabel('MAYBE', 'full')).toBe('tu as dit peut-être');
+    expect(answerLabel('YES', 'full', tone)).toBe('vous avez dit oui');
+    expect(answerLabel('MAYBE', 'full', tone)).toBe('vous avez dit peut-être');
   });
 
   it('aucune réponse → chaîne vide, jamais « null » affiché', () => {
-    expect(answerLabel(null, 'full')).toBe('');
-    expect(answerLabel(null, 'compact')).toBe('');
+    expect(answerLabel(null, 'full', tone)).toBe('');
+    expect(answerLabel(null, 'compact', tone)).toBe('');
   });
 });
 
 describe('participationAriaLabel — la proportion doublée par du texte (AC14)', () => {
   it('dit le nombre de répondants sur l’effectif', () => {
-    expect(participationAriaLabel(vote({ yes: 2, maybe: 1, total: 4 }))).toContain(
-      '3 réponses sur 4',
+    expect(participationAriaLabel(vote({ yes: 2, maybe: 1, total: 4 }), tone)).toContain(
+      '3 réponses inscrites sur 4',
     );
   });
 
   it('un seul répondant est annoncé au singulier', () => {
-    expect(participationAriaLabel(vote({ yes: 1, total: 4 }))).toContain('1 réponse sur 4');
+    expect(participationAriaLabel(vote({ yes: 1, total: 4 }), tone)).toContain(
+      '1 réponse inscrite sur 4',
+    );
   });
 
   it('détaille les avis donnés', () => {
-    const label = participationAriaLabel(vote({ yes: 2, maybe: 1, no: 1, total: 4 }));
+    const label = participationAriaLabel(vote({ yes: 2, maybe: 1, no: 1, total: 4 }), tone);
     expect(label).toContain('2 oui');
     expect(label).toContain('1 peut-être');
     expect(label).toContain('1 non');
   });
 
   it('n’énumère jamais un avis à zéro', () => {
-    expect(participationAriaLabel(vote({ yes: 2, total: 4 }))).not.toContain('0 non');
+    expect(participationAriaLabel(vote({ yes: 2, total: 4 }), tone)).not.toContain('0 non');
   });
 
   it('ma réponse y figure en toutes lettres quand elle existe', () => {
-    expect(participationAriaLabel(vote({ yes: 1, total: 4, myAnswer: 'YES' }))).toContain(
-      'tu as dit oui',
+    expect(participationAriaLabel(vote({ yes: 1, total: 4, myAnswer: 'YES' }), tone)).toContain(
+      'vous avez dit oui',
     );
+  });
+});
+
+// Story 35.3 — les voix divergent : chaque fonction doit lire le ton passé, jamais celui du thème de
+// référence. Un thème qui tutoie (Forêt Ancienne) et un qui vouvoie (Atelier Cuivré) doivent se lire
+// différemment à la même entrée.
+describe('voix par thème — le ton passé est celui qui parle', () => {
+  for (const theme of THEMES) {
+    const t = TONE_MAP[theme];
+
+    it(`${theme} : « ma réponse » reprend le gabarit et le mot du thème`, () => {
+      expect(answerLabel('YES', 'full', t)).toBe(
+        t['calendar.util_answer_mine'].replace('{answer}', t['calendar.util_answer_yes']),
+      );
+    });
+
+    it(`${theme} : le compteur suit le gabarit du thème`, () => {
+      expect(counterLabel(vote({ yes: 2, maybe: 1, total: 4 }), t)).toBe(
+        t['calendar.util_counter'].replace('{n}', '3').replace('{total}', '4'),
+      );
+    });
+
+    it(`${theme} : le nom accessible de la piste emploie le singulier et le pluriel du thème`, () => {
+      expect(participationAriaLabel(vote({ yes: 1, total: 4 }), t)).toContain(
+        t['calendar.util_participation_one'].replace('{n}', '1').replace('{total}', '4'),
+      );
+      expect(participationAriaLabel(vote({ yes: 2, total: 4 }), t)).toContain(
+        t['calendar.util_participation_many'].replace('{n}', '2').replace('{total}', '4'),
+      );
+    });
+  }
+
+  it('la Forêt tutoie, le Grimoire et l’Atelier vouvoient — sur la même entrée', () => {
+    expect(answerLabel('YES', 'full', TONE_MAP['foret-ancienne'])).toBe('tu as dit oui');
+    expect(answerLabel('YES', 'full', TONE_MAP['grimoire-emeraude'])).toBe('vous avez dit oui');
+    expect(answerLabel('YES', 'full', TONE_MAP['atelier-cuivre'])).toBe('vous avez répondu oui');
   });
 });

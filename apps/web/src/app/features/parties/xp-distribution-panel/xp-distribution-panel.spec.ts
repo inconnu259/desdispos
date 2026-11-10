@@ -8,6 +8,8 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../../core/theme/tones';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';
 
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
+
 function makeToneService() {
   return { tone: signal(TONE_MAP['grimoire-emeraude']) };
 }
@@ -163,6 +165,6 @@ describe('XpDistributionPanel', () => {
     await component['submit']();
 
     expect(createXpDistribution).not.toHaveBeenCalled();
-    expect(component['submitError']()).toContain('Sélectionnez au moins un personnage');
+    expect(component['submitError']()).toContain(GRIMOIRE_TONE['parties.xp_select_one_error']);
   });
 });

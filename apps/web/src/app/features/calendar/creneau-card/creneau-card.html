@@ -1,13 +1,42 @@
-<article class="creneau-card">
+<!-- Story 46.2 — le tap sur la carte sélectionne la fenêtre ; le bouton d'en-tête est le chemin clavier et lecteur
+     d'écran (`aria-pressed`). Le clic du bouton ne remonte pas, sinon la carte basculerait deux fois. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- équivalent clavier : le bouton d'en-tête -->
+<article
+  class="creneau-card"
+  [class.creneau-card--selectable]="selectable()"
+  [class.creneau-card--selected]="selected()"
+  [class.creneau-card--hidden]="hiddenWindow()"
+  (click)="toggleSelection($event)"
+>
   <header class="creneau-card__header">
-    <span class="creneau-card__date">{{ formatDate(slot().date) }}</span>
-    <span class="creneau-card__slot">{{ slotLabel(slot().slot) }}</span>
+    <ng-template #headText>
+      @if (rangeLabel(); as range) {
+        <span class="creneau-card__date creneau-card__range">{{ range }}</span>
+      } @else {
+        <span class="creneau-card__date">{{ formatDate(slot().date) }}</span>
+        <span class="creneau-card__slot">{{ slotLabel(slot().slot) }}</span>
+      }
+    </ng-template>
+    @if (selectable()) {
+      <button
+        type="button"
+        class="creneau-card__select"
+        [attr.aria-pressed]="selected()"
+        (click)="toggleSelection($event)"
+      >
+        <ng-container [ngTemplateOutlet]="headText" />
+      </button>
+    } @else {
+      <ng-container [ngTemplateOutlet]="headText" />
+    }
     @if (allAvailable()) {
-      <span class="creneau-card__tag creneau-card__tag--full">Guilde complète</span>
+      <span class="creneau-card__tag creneau-card__tag--full">{{
+        theme.tone()['calendar.card_full_guild']
+      }}</span>
     }
   </header>
 
-  <ul class="creneau-card__members" aria-label="Membres">
+  <ul class="creneau-card__members" [attr.aria-label]="theme.tone()['calendar.card_members_aria']">
     @for (member of slot().members; track member.userId) {
       <li class="creneau-card__member">
         <app-identity-label
@@ -15,18 +44,46 @@
           [pseudo]="member.pseudo"
           [ambiguous]="isAmbiguous(member.userId)"
         />
-        <span class="creneau-card__status" [attr.aria-label]="member.status">
-          {{ statusIcon(member.status) }}
+        <span class="creneau-card__status" role="img" [attr.aria-label]="member.status">
+          <app-icon [name]="statusIcon(member.status)" />
         </span>
       </li>
     }
   </ul>
 
   @if (unknownMembers().length > 0) {
-    <ul class="creneau-card__alerts" aria-label="Alertes disponibilité">
+    <ul class="creneau-card__alerts" [attr.aria-label]="theme.tone()['calendar.card_alerts_aria']">
       @for (member of unknownMembers(); track member.userId) {
         <li class="creneau-card__alert">{{ missingAlert(member.displayName) }}</li>
       }
     </ul>
+  }
+
+  @if (selectable() && selected()) {
+    <!-- Story 46.2 / 46.3 — les deux actions de la fenêtre sélectionnée, écrites, 44 px. « Ajouter au vote » envoie la
+         fenêtre au composer (46.3), « Masquer » la range dans les masquées (46.4). -->
+    <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- le clic ne fait que ne pas remonter à la carte -->
+    <div class="creneau-card__actions" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="creneau-card__action creneau-card__action--primary"
+        [attr.aria-disabled]="canAdd() ? null : 'true'"
+        (click)="onAdd()"
+      >
+        {{ theme.tone()['calendar.window_add'] }}
+      </button>
+      <button type="button" class="creneau-card__action" (click)="hideRequested.emit()">
+        {{ theme.tone()['calendar.window_hide'] }}
+      </button>
+    </div>
+  }
+
+  @if (hiddenWindow()) {
+    <!-- Story 46.4 — une fenêtre masquée : rien d'autre à faire que la rendre à la liste. -->
+    <div class="creneau-card__actions">
+      <button type="button" class="creneau-card__action" (click)="showRequested.emit()">
+        {{ theme.tone()['calendar.window_unhide'] }}
+      </button>
+    </div>
   }
 </article>

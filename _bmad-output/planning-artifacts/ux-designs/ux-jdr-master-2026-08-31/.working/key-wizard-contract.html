@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Contrat UI — Wizard de création (31.4)</title>
+<style>
+/*
+  Gouvernent cette planche : DESIGN.md §Components (ChoiceCard, DetailSurface corps structuré,
+  AttributePool, EquipmentCatalog, BudgetGauge) ; EXPERIENCE.md §Component Patterns, §State Patterns,
+  §Key Flows. Tokens : thème Grimoire Émeraude (base ux-jdr-master-20260626). Aucun token neuf.
+  Les deux autres thèmes héritent de la structure via leurs propres valeurs.
+*/
+:root{
+  --primary-bg:#0d0a14;--surface-bg:#1a1428;--surface-high:#241c38;
+  --accent-1:#7ec8a4;--accent-2:#9b6dff;--gradient-cta:linear-gradient(135deg,#7ec8a4,#9b6dff);
+  --text:#e8e8f0;--muted:#7a7a8a;--border:rgba(255,255,255,.08);--danger:#e05252;--overlay:rgba(0,0,0,.55);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#07050c;color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:32px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:20px;margin:32px 0 4px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.lead{color:var(--muted);max-width:780px}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:16px}
+.cap{font-size:12px;color:var(--muted);max-width:340px;margin:8px 0 0}
+.cap b{color:var(--accent-1)}
+.phone{width:340px;height:640px;background:var(--primary-bg);border:2px solid #2a2440;border-radius:26px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.phone.short{height:auto;min-height:420px}
+.desk{width:720px;min-height:460px;background:var(--primary-bg);border:2px solid #2a2440;border-radius:12px;overflow:hidden;position:relative;min-height:420px}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-high);font-weight:600;font-size:13px}
+.nav i{font-style:normal;color:var(--muted)}
+.prog{height:4px;background:#2a2438}.prog>div{height:100%;background:var(--gradient-cta)}
+.body{padding:14px;flex:1;overflow:hidden}
+.intro{font-style:italic;color:var(--muted);margin:0 0 12px;font-size:13px}
+h3{font-size:16px;margin:0 0 8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cc{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface-high);min-height:44px}
+.cc.sel{border-color:var(--accent-2);background:rgba(155,109,255,.16)}
+.cc b{display:block;font-weight:500}
+.cc span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.35;color:var(--muted);margin-top:2px}
+.box{background:var(--surface-bg);border-radius:10px;padding:10px 12px;margin-top:12px}
+.box ul{margin:6px 0 0;padding-left:18px}
+.trig{background:none;border:0;color:inherit;font:inherit;font-weight:600;text-decoration:underline dotted;padding:0}
+.bar{display:flex;gap:8px;padding:8px 14px;background:var(--surface-bg);border-top:1px solid var(--border)}
+.bar div{flex:1;min-height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600;border:1px solid var(--border)}
+.bar .go{background:var(--gradient-cta);color:#0d0a14;border:0}
+.veil{position:absolute;inset:0;background:var(--overlay)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface-high);border-radius:12px 12px 0 0;padding:14px;box-shadow:0 0 24px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.04)}
+.sheet.tall{top:96px}
+.sh-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sh-head b{font-size:16px}.x{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 10px}
+th{text-align:left;color:var(--muted);font-weight:500;width:34%;padding:5px 8px 5px 0;vertical-align:top}
+td{padding:5px 0}tr+tr th,tr+tr td{border-top:1px solid var(--border)}
+.disc{display:flex;align-items:center;min-height:44px;color:var(--accent-1);font-size:13px;font-weight:600}
+.prose{font-style:italic;color:var(--muted);margin:0}
+.pat .cc{text-align:center}
+.pat{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pat .cc span{-webkit-line-clamp:1}
+.banner{font-size:12px;color:var(--muted);margin:10px 0 8px}
+.attr{margin-bottom:8px}.attr small{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;border-radius:8px;border:1px solid var(--border);background:var(--surface-high);font-weight:600;margin-right:6px;position:relative}
+.chip.off{opacity:.35}.chip.on{border-color:var(--accent-2);background:rgba(155,109,255,.2)}
+.chip em{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--accent-1);color:#0d0a14;font:700 10px/18px system-ui;text-align:center;font-style:normal}
+.mode{display:flex;gap:8px;margin-bottom:10px}.mode div{flex:1;min-height:44px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.mode .on{border-color:var(--accent-2);background:rgba(155,109,255,.16)}
+.gauge{margin-bottom:10px}.gauge .t{font-weight:600;font-size:13px;display:flex;justify-content:space-between}
+.gauge .tr{height:8px;border-radius:4px;background:#2a2438;margin-top:4px;overflow:hidden}.gauge .tr>div{height:100%;width:32%;background:var(--accent-1)}
+.search{width:100%;height:44px;border-radius:4px;border:1px solid var(--border);background:var(--surface-high);color:var(--muted);padding:0 10px;display:flex;align-items:center;margin-bottom:8px;font-size:13px}
+.grp{font-size:12px;color:var(--muted);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.it{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 10px;border-radius:6px;background:var(--surface-bg);margin-bottom:4px;font-size:13px}
+.it .p{color:var(--muted);margin-left:6px}.it .a{color:var(--accent-1);font-weight:600}
+</style>
+</head>
+<body>
+<h1>Contrat UI — Wizard de création de personnage</h1>
+<p class="lead">Planche contractuelle de la story 31.4. Ce qui y est dessiné sera implémenté ; rien n'y figure pour embellir. Contenu réel (catalogue Ryuutama), thème Grimoire Émeraude, largeur téléphone 340 px puis panneau desktop. Les 9 étapes, leurs clés et le personnage produit restent strictement ceux de l'ancien parcours.</p>
+
+<h2>1. Étape « Classe » — description visible sur chaque carte</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="nav"><i>❮</i><span>Étape 1/9 · Vocation</span><i>❯</i></div><div class="prog"><div style="width:11%"></div></div>
+      <div class="body">
+        <p class="intro">[Texte d'introduction de l'étape — seedé, inchangé]</p>
+        <div class="grid">
+          <div class="cc sel"><b>Artisan</b><span>Ces spécialistes savent créer tout ce qui est joli, efficace ou simplement pratique.</span></div>
+          <div class="cc"><b>Chasseur</b><span>Les chasseurs abattent leurs proies grâce à leurs connaissances et à leur technique.</span></div>
+          <div class="cc"><b>Marchand</b><span>Ces commerçants itinérants échangent contre menue monnaie des produits d'origines diverses.</span></div>
+          <div class="cc"><b>Noble</b><span>Les nobles sont nés pour diriger les masses. Éduqués, connaissant les armes comme l'étiquette…</span></div>
+        </div>
+        <div class="box"><h3>Talents d'Artisan</h3><ul><li><button class="trig">Création</button></li><li><button class="trig">Réparation</button></li></ul></div>
+      </div>
+      <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+    </div>
+    <p class="cap"><b>ChoiceCard</b> : nom + description courte (2 lignes max, coupée par ellipse). La description complète de la classe n'est plus dupliquée sous la grille : elle vit dans la surface de détail de la classe.</p>
+  </div>
+</div>
+
+<h2>2. Surface de détail — mobile (récit replié) et desktop (récit déployé)</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="nav"><i>❮</i><span>Étape 1/9 · Vocation</span><i>❯</i></div><div class="prog"><div style="width:11%"></div></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="sh-head"><b>Création</b><div class="x">✕</div></div>
+        <table><tr><th>Attributs</th><td>VIG · AGI</td></tr><tr><th>Difficulté</th><td>Variable</td></tr><tr><th>Effet</th><td>Fabrique un objet du type choisi lors de l'obtention de ce talent</td></tr><tr><th>Conditions</th><td>Durée : encombrement de l'objet en jours. Coût : moitié de son prix.</td></tr></table>
+        <div class="disc">▸ Lire le récit</div>
+      </div>
+    </div>
+    <p class="cap"><b>Mobile, état par défaut.</b> Tableau mécanique en premier ; le récit d'ambiance est replié. Aucun défilement pour la plupart des talents.</p>
+  </div>
+  <div>
+    <div class="phone">
+      <div class="nav"><i>❮</i><span>Étape 1/9 · Vocation</span><i>❯</i></div><div class="prog"><div style="width:11%"></div></div>
+      <div class="veil"></div>
+      <div class="sheet tall">
+        <div class="sh-head"><b>Création</b><div class="x">✕</div></div>
+        <table><tr><th>Attributs</th><td>VIG · AGI</td></tr><tr><th>Difficulté</th><td>Variable</td></tr><tr><th>Effet</th><td>Fabrique un objet du type choisi lors de l'obtention de ce talent</td></tr><tr><th>Conditions</th><td>Durée : encombrement de l'objet en jours. Coût : moitié de son prix.</td></tr></table>
+        <div class="disc">▾ Masquer le récit</div>
+        <p class="prose">« Les artisans gagnent leur vie en créant des objets de tout type : beaux, pratiques, efficaces, etc. Avec assez de matériel et de temps, ils sont même capables de les fabriquer sur la route. »</p>
+      </div>
+    </div>
+    <p class="cap"><b>Mobile, récit déployé.</b> La feuille grandit vers le haut, jamais au-delà de la zone sûre ; au-delà, elle défile en interne.</p>
+  </div>
+  <div>
+    <div class="desk"><div class="veil"></div><div style="position:relative;margin:36px auto;width:560px;max-height:80%;background:var(--surface-high);border-radius:10px;padding:16px;box-shadow:0 8px 32px rgba(0,0,0,.7)">
+      <div class="sh-head"><b>Création</b><div class="x">✕</div></div>
+      <table><tr><th>Attributs</th><td>VIG · AGI</td></tr><tr><th>Difficulté</th><td>Variable</td></tr><tr><th>Effet</th><td>Fabrique un objet du type choisi lors de l'obtention de ce talent</td></tr><tr><th>Conditions</th><td>Durée : encombrement de l'objet en jours. Coût : moitié de son prix.</td></tr></table>
+      <p class="prose">« Les artisans gagnent leur vie en créant des objets de tout type : beaux, pratiques, efficaces, etc. Avec assez de matériel et de temps, ils sont même capables de les fabriquer sur la route. »</p>
+    </div></div>
+    <p class="cap"><b>Desktop (≥ 1024 px), fenêtre centrée modale.</b> Voile sur toute la page, tout est déployé, aucune divulgation : la place existe.</p>
+  </div>
+</div>
+
+<h2>3. Étape « Attributs » — une puce par valeur, avec compteur</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="nav"><i>❮</i><span>Étape 4/9 · Attributs</span><i>❯</i></div><div class="prog"><div style="width:44%"></div></div>
+      <div class="body">
+        <p class="intro">[Texte d'introduction de l'étape — seedé, inchangé]</p>
+        <div class="pat"><div class="cc"><b>Équilibré</b><span>6 · 6 · 6 · 6</span></div><div class="cc sel"><b>Polyvalent</b><span>8 · 6 · 6 · 4</span></div><div class="cc"><b>Spécialiste</b><span>8 · 8 · 4 · 4</span></div></div>
+        <p class="banner">Profil <b style="color:var(--text)">Polyvalent</b> — 2 valeurs sur 4 placées</p>
+        <div class="attr"><small>Agilité (AGI)</small><span class="chip off">8</span><span class="chip on">6</span><span class="chip">4</span></div>
+        <div class="attr"><small>Esprit (ESP)</small><span class="chip off">8</span><span class="chip">6<em>×1</em></span><span class="chip">4</span></div>
+        <div class="attr"><small>Intelligence (INT)</small><span class="chip off">8</span><span class="chip">6<em>×1</em></span><span class="chip">4</span></div>
+        <div class="attr"><small>Vigueur (VIG)</small><span class="chip on">8</span><span class="chip">6<em>×1</em></span><span class="chip">4</span></div>
+      </div>
+      <div class="bar"><div>❮ Précédent</div><div class="go" style="opacity:.4">Suivant ❯</div></div>
+    </div>
+    <p class="cap"><b>AttributePool.</b> Une seule puce par valeur distincte. Le badge « ×N » dit combien d'exemplaires restent à placer ; il n'apparaît que pour une valeur présente plusieurs fois dans le profil. Une valeur épuisée est grisée dans les autres lignes, jamais dans sa propre ligne (on peut la reprendre pour la retirer).</p>
+  </div>
+</div>
+
+<h2>4. Étape « Équipement » — regroupé, filtrable, budget lisible</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="nav"><i>❮</i><span>Étape 7/9 · Équipement</span><i>❯</i></div><div class="prog"><div style="width:78%"></div></div>
+      <div class="body">
+        <div class="mode"><div>Nécessaire pré-fait</div><div class="on">Achat libre</div></div>
+        <div class="gauge"><div class="t"><span>Budget</span><span>320 / 1000 Po</span></div><div class="tr"><div></div></div></div>
+        <div class="search">🔍&nbsp; Rechercher un objet…</div>
+        <div class="grp">Objets</div>
+        <div class="it"><span><button class="trig">Alcools</button><span class="p">10 Po</span></span><span class="a">Ajouter</span></div>
+        <div class="it"><span><button class="trig">Rations</button><span class="p">10 Po</span></span><span class="a">Ajouter</span></div>
+        <div class="grp">Contenants</div>
+        <div class="it"><span><button class="trig">Sac à dos</button><span class="p">20 Po</span></span><span class="a">Ajouter</span></div>
+        <div class="grp">Animaux</div>
+        <div class="it"><span><button class="trig">Animal de compagnie</button><span class="p">300 Po</span></span><span class="a">Ajouter</span></div>
+      </div>
+      <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+    </div>
+    <p class="cap"><b>EquipmentCatalog + BudgetGauge.</b> Sections par nature d'objet ; le nom d'un objet porteur d'un texte d'effet est un déclencheur de la surface de détail (soulignement pointillé) ; un objet sans effet reste un simple nom. La jauge passe en rouge <em>et</em> ajoute « — dépassement de N Po » au-delà de 1000. Le panier, inchangé sur le fond, garde ses lignes « Retirer ».</p>
+  </div>
+</div>
+</body>
+</html>

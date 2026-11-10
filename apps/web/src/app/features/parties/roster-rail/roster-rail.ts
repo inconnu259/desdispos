@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import type { CharacterDto, PartieMemberDto } from '@master-jdr/shared';
 import { CharacterAvatar } from '../../characters/character-avatar/character-avatar';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { buildRosterRows, type RosterRow } from '../roster-row.util';
@@ -13,7 +14,7 @@ import { buildRosterRows, type RosterRow } from '../roster-row.util';
 @Component({
   selector: 'app-roster-rail',
   standalone: true,
-  imports: [CharacterAvatar, IdentityLabel],
+  imports: [AppIcon, CharacterAvatar, IdentityLabel],
   templateUrl: './roster-rail.html',
   styleUrl: './roster-rail.scss',
 })
@@ -22,8 +23,14 @@ export class RosterRail {
 
   readonly members = input.required<PartieMemberDto[]>();
   readonly characters = input.required<CharacterDto[]>();
-  readonly mjId = input.required<string>();
+  /** Propriétaire de la partie — `null` si son compte a été supprimé (AD-5) : aucun membre
+   *  n'est alors MJ. */
+  readonly ownerId = input.required<string | null>();
   readonly currentUserId = input.required<string>();
+  /** Revue de code (bmad-review, 2026-09-21) : `canCreateCharacter()` du parent — `false` tant que
+   *  `characters()` charge encore, pas seulement quand la création est réellement impossible. Seule
+   *  source de `RosterRow.canCreate`, jamais réévaluée localement. */
+  readonly canCreateCharacter = input.required<boolean>();
   readonly hasFreeSlot = input.required<boolean>();
   readonly classLabelFor = input.required<(c: CharacterDto) => string>();
   readonly roleLabelFor = input.required<(c: CharacterDto) => string | null>();
@@ -38,9 +45,11 @@ export class RosterRail {
     buildRosterRows(
       this.members(),
       this.characters(),
-      this.mjId(),
+      this.ownerId(),
       this.classLabelFor(),
       this.roleLabelFor(),
+      this.theme.tone(),
+      this.canCreateCharacter(),
       this.currentUserId(),
     ),
   );
@@ -51,6 +60,6 @@ export class RosterRail {
 
   protected selectRow(row: RosterRow): void {
     if (row.character) this.selectCharacter.emit({ characterId: row.character.id });
-    else if (row.isSelf) this.createCharacter.emit();
+    else if (row.canCreate) this.createCharacter.emit();
   }
 }

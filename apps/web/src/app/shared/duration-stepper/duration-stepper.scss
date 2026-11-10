@@ -1,0 +1,67 @@
+.ds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.ds__label {
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Pilule à trois segments : « − », la valeur, « + ».
+.ds__pill {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ds__step {
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--mat-sys-primary);
+  font-size: 1.25rem;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+}
+
+.ds__value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6.5rem;
+  padding: 0 0.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface);
+}
+
+.ds__detail {
+  flex-basis: 100%;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.ds__hint {
+  flex-basis: 100%;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Région d'annonce : lue par les lecteurs d'écran, jamais affichée.
+.ds__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

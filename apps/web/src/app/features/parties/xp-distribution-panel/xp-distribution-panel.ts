@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import type { CharacterDto, CreateXpDistributionDto } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../core/theme/tone-format';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { characterName } from '../../../core/characters/character.util';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
@@ -57,6 +58,7 @@ interface XpRow {
 })
 export class XpDistributionPanel {
   protected readonly theme = inject(ThemeToneService);
+  protected readonly fillTone = fillTone;
   private readonly parties = inject(PartiesService);
 
   readonly partieId = input.required<string>();
@@ -191,7 +193,7 @@ export class XpDistributionPanel {
     if (this.submitting()) return;
     const included = this.rows().filter((r) => r.included);
     if (included.length === 0) {
-      this.submitError.set('Sélectionnez au moins un personnage avant de distribuer.');
+      this.submitError.set(this.theme.tone()['parties.xp_select_one_error']);
       return;
     }
 
@@ -215,7 +217,7 @@ export class XpDistributionPanel {
       });
       this.distributed.emit();
     } catch {
-      this.submitError.set('La distribution n’a pas pu être enregistrée. Réessayez.');
+      this.submitError.set(this.theme.tone()['parties.xp_distribute_error']);
     } finally {
       this.submitting.set(false);
     }

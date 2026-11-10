@@ -1,0 +1,90 @@
+<section class="ggt">
+  @if (failed()) {
+    <p class="ggt__message" role="alert">{{ theme.tone()['board_games.error_fallback'] }}</p>
+  } @else if (games() !== null) {
+    @if (isEmpty()) {
+      <p class="ggt__message">{{ theme.tone()['board_games.group_empty'] }}</p>
+    } @else {
+      <div class="ggt__tools">
+        <input
+          class="ggt__search"
+          type="search"
+          autocomplete="off"
+          [value]="query()"
+          [placeholder]="theme.tone()['board_games.group_search']"
+          [attr.aria-label]="theme.tone()['board_games.group_search']"
+          (input)="onQuery($event)"
+        />
+        <div class="ggt__chips" role="group" aria-labelledby="ggt-fit-label">
+          <span id="ggt-fit-label" class="ggt__chips-label">
+            {{ theme.tone()['board_games.group_fit_label'] }}
+          </span>
+          @for (choice of fitChoices; track choice) {
+            <button
+              type="button"
+              class="ggt__chip"
+              [class.ggt__chip--on]="fit() === choice"
+              [attr.aria-pressed]="fit() === choice"
+              [attr.aria-label]="chipAria(choice)"
+              (click)="toggleFit(choice)"
+            >
+              {{ chipLabel(choice) }}
+              @if (fit() === choice) {
+                <app-icon name="effacer" />
+              }
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (noMatch()) {
+        <p class="ggt__message">{{ theme.tone()['board_games.group_no_match'] }}</p>
+      } @else {
+        <ul class="ggt__list">
+          @for (row of rows(); track row.nameKey) {
+            <li class="ggt__row">
+              <span class="ggt__name">{{ row.name }}</span>
+              @if (row.measures) {
+                <span class="ggt__measures">{{ row.measures }}</span>
+              }
+              <span class="ggt__owners">
+                {{ theme.tone()['board_games.group_owners_prefix'] }}
+                @for (owner of row.owners; track owner.userId; let last = $last) {
+                  @if (owner.isMe) {
+                    <span class="ggt__me">{{ owner.label }}</span>
+                  } @else {
+                    <button
+                      type="button"
+                      class="ggt__owner"
+                      [attr.aria-label]="openAria(owner)"
+                      (click)="openLibrary(owner, $event)"
+                    >
+                      {{ owner.label }}
+                    </button>
+                  }
+                  @if (!last) {
+                    <span aria-hidden="true">,</span>
+                  }
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (!noMatch()) {
+        <p class="ggt__footer" aria-live="polite">{{ footer() }}</p>
+      }
+    }
+  }
+
+  @if (library(); as target) {
+    <!-- ⚠️ Story 48.3 : tiroir modal (sous <body>) ; le focus revient au nom touché. -->
+    <app-library-sheet
+      [userId]="target.userId"
+      [name]="target.name"
+      [returnFocus]="target.trigger"
+      (closed)="closeLibrary()"
+    />
+  }
+</section>

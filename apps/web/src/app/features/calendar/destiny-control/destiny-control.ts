@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, ElementRef, inject, input, output, viewChild } from '@angular/core';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 /** Un vote ouvert, tel que le contrôle a besoin de le connaître : son identité et son nom.
@@ -28,6 +29,7 @@ export interface DestinyPollRef {
 @Component({
   selector: 'app-destiny-control',
   standalone: true,
+  imports: [AppIcon],
   templateUrl: './destiny-control.html',
   styleUrl: './destiny-control.scss',
 })
@@ -38,31 +40,39 @@ export class DestinyControl {
   /** Le vote courant, ou `null` quand le mode est inactif. */
   readonly currentPollId = input<string | null>(null);
 
-  readonly toggled = output<void>();
+  /** Story 44.3 — la liste des destinées est ouverte (état porté par `CalendarView`, qui l'enveloppe). */
+  readonly listOpen = input(false);
+
+  /** ⚠️ Story 44.4 — les chevrons parcourent les CRÉNEAUX du vote actif : `slotPosition` est le rang (base 1)
+   *  du créneau courant dans l'ordre chronologique, `slotCount` le nombre de créneaux. `0` / `0` : inconnus. */
+  readonly slotPosition = input(0);
+  readonly slotCount = input(0);
+
+  /** ⚠️ Story 44.3 — la puce ne bascule plus le mode : elle DEMANDE la liste des destinées. */
+  readonly listRequested = output<void>();
   readonly prevRequested = output<void>();
   readonly nextRequested = output<void>();
 
   protected readonly theme = inject(ThemeToneService);
+
+  private readonly chip = viewChild<ElementRef<HTMLButtonElement>>('chip');
+
+  /** La puce : l'ancre du menu de la liste, et la cible du focus quand la liste se referme. */
+  readonly chipElement = computed(() => this.chip()?.nativeElement ?? null);
 
   protected readonly active = computed(
     () =>
       this.currentPollId() !== null && this.polls().some((p) => p.pollId === this.currentPollId()),
   );
 
-  /** 1-based, pour l'affichage `‹ n / N ›`. `0` quand le mode est inactif — le bloc n'est alors
-   *  pas rendu. */
-  protected readonly position = computed(() => {
-    const i = this.polls().findIndex((p) => p.pollId === this.currentPollId());
-    return i < 0 ? 0 : i + 1;
-  });
-
   protected readonly currentLabel = computed(
     () => this.polls().find((p) => p.pollId === this.currentPollId())?.label ?? '',
   );
 
-  /** AC11 — l'état du mode et le vote courant vivent dans du TEXTE et dans `aria-pressed`, jamais
-   *  dans la seule estompe de la grille : une opacité n'existe pas pour un lecteur d'écran, et
-   *  elle disparaît en contraste élevé (P-1). */
+  /** AC11 — l'état du mode et le vote courant vivent dans du TEXTE (la puce porte le nom du vote actif),
+   *  jamais dans la seule estompe de la grille : une opacité n'existe pas pour un lecteur d'écran, et
+   *  elle disparaît en contraste élevé (P-1). Depuis la story 44.3 la puce ouvre une liste : son
+   *  `aria-expanded` dit l'état de la liste, plus celui du mode. */
   protected readonly chipLabel = computed(() => {
     const name = this.theme.tone()['cta.destiny_mode'];
     return this.active() ? `${name} · ${this.currentLabel()}` : name;

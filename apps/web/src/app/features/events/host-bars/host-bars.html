@@ -1,0 +1,26 @@
+@if (failed()) {
+  <p class="hb__message" role="alert">{{ theme.tone()['board_games.error_fallback'] }}</p>
+} @else if (loaded()) {
+  <details class="hb" open>
+    <summary class="hb__summary">
+      <span class="hb__chevron" aria-hidden="true"></span>
+      <h3 class="hb__title">{{ title() }}</h3>
+    </summary>
+    @if (hosts().length > 0) {
+      <ul class="hb__list" role="list">
+        @for (row of hosts(); track row.userId) {
+          <li class="hb__row">
+            <span class="hb__name">{{ row.label }}</span>
+            <span class="hb__track" aria-hidden="true">
+              <span class="hb__bar" [style.width.%]="row.percent"></span>
+            </span>
+            <span class="hb__count">{{ countLabel(row.count) }}</span>
+          </li>
+        }
+      </ul>
+    }
+    @if (never(); as never) {
+      <p class="hb__never">{{ never }}</p>
+    }
+  </details>
+}

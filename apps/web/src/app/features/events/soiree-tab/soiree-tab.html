@@ -1,0 +1,36 @@
+<!-- Story 41.1 (⚠️ contrat UI) : la rencontre isolée n'a ni liste ni fenêtre — son événement unique est
+     le premier onglet, détail en ligne. -->
+<section class="soiree">
+  @if (loadError()) {
+    <p class="soiree__error" role="alert">
+      {{ theme.tone()['partie.ralliement_event_list_error'] }}
+    </p>
+  }
+  @if (card(); as c) {
+    <app-event-dialog
+      [inline]="true"
+      [description]="description()"
+      [frozen]="frozen()"
+      [viewerIsAdmin]="isAdmin()"
+      (saved)="onSaved($event)"
+      (refreshRequested)="refresh()"
+      (calendarRequested)="openCalendar($event)"
+      (completeRequested)="openCreate()"
+      [partieId]="partieId()"
+      [card]="c"
+      [todayKey]="todayKey"
+      [currentUserId]="currentUserId()"
+    />
+  }
+  @if (creating() && card(); as c) {
+    <!-- Story 41.2 : la fenêtre de conjonction complète l'événement déjà créé avec la soirée. -->
+    <app-event-create
+      [partieId]="partieId()"
+      [eventId]="c.id"
+      [initialTitle]="c.title"
+      [draft]="creationDraft()"
+      (created)="onCompleted($event)"
+      (closed)="closeCreate()"
+    />
+  }
+</section>

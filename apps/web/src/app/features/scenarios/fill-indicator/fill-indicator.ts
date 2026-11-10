@@ -1,4 +1,6 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../core/theme/tone-format';
 
 /**
  * Barre de remplissage pour l'inscription à capacité limitée (Story 8.3) — jamais une simple
@@ -13,9 +15,19 @@ import { Component, computed, input } from '@angular/core';
   styleUrl: './fill-indicator.scss',
 })
 export class FillIndicator {
+  protected readonly theme = inject(ThemeToneService);
+
   readonly count = input.required<number>();
   readonly min = input.required<number>();
   readonly max = input.required<number>();
+
+  protected readonly label = computed(() =>
+    fillTone(this.theme.tone()['scenarios.fill_label'], {
+      count: this.count(),
+      max: this.max(),
+      min: this.min(),
+    }),
+  );
 
   protected readonly fillClass = computed(() => {
     if (this.count() < this.min()) return 'fill-indicator__fill--under-min';

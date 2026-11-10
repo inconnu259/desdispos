@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
+import { MatTabGroup } from '@angular/material/tabs';
+import { By } from '@angular/platform-browser';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, Subject } from 'rxjs';
@@ -13,6 +15,9 @@ import { CharacterService } from '../../../core/characters/character.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const CONTENT: GameSystemContentDto = {
   class: [
@@ -116,6 +121,9 @@ async function createComponent(
     imports: [CharacterSheet],
     providers: [
       provideNoopAnimations(),
+      // Requis par RouterLink (lien « Retour à la partie ») — pas de navigation réelle testée ici,
+      // même patron que scenario-detail.spec.ts.
+      provideRouter([]),
       { provide: CharacterService, useValue: characterSvc },
       { provide: MatDialog, useValue: dialog },
       { provide: AuthService, useValue: auth },
@@ -220,6 +228,17 @@ describe('CharacterSheet', () => {
     expect(text).not.toContain('technique');
   });
 
+  it('affiche un lien « Retour à la partie » vers /parties/:partieId (spec fiches-personnages-partie-et-retour)', async () => {
+    const { fixture } = await createComponent(makeCharacterService(), 'char1', null, 'u1', 'p1');
+
+    const link: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[mat-button]');
+    expect(link).toBeTruthy();
+    expect(link!.textContent).toContain(GRIMOIRE_TONE['character.back_to_partie_cta']);
+    // RouterLink résout `href` depuis `c.partieId` — CHARACTER n'en porte pas dans sa fixture
+    // littérale, mais `makeCharacterDto()` (base de CHARACTER) le fixe à 'p1' par défaut.
+    expect(link!.getAttribute('href')).toBe('/parties/p1');
+  });
+
   it('Story 25.2 : personnage avec customWeapon (arme libre) affiche le nom libre + formules de la catégorie référencée', async () => {
     const character = makeCharacterDto({
       sheetData: {
@@ -298,8 +317,23 @@ describe('CharacterSheet', () => {
     const { fixture } = await createComponent(characterSvc);
 
     const comp = fixture.componentInstance as any;
-    expect(comp.loadError()).toBe("Vous n'avez pas accès à cette fiche.");
-    expect(fixture.nativeElement.textContent).toContain("Vous n'avez pas accès à cette fiche.");
+    expect(comp.loadError()).toBe(GRIMOIRE_TONE['characters_sheet.access_denied']);
+    expect(fixture.nativeElement.textContent).toContain(
+      GRIMOIRE_TONE['characters_sheet.access_denied'],
+    );
+  });
+
+  it('échec de chargement (403) → lien « Retour à la partie » affiché malgré tout, pas seulement dans la branche succès (spec fiches-personnages-partie-et-retour)', async () => {
+    const characterSvc = makeCharacterService({
+      get: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 403 })),
+    });
+    const { fixture } = await createComponent(characterSvc, 'char1', null, 'u1', 'p1');
+
+    const link: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[mat-button]');
+    expect(link).toBeTruthy();
+    expect(link!.textContent).toContain(GRIMOIRE_TONE['character.back_to_partie_cta']);
+    expect(link!.getAttribute('href')).toBe('/parties/p1');
+    expect(link!.querySelector('app-icon')?.getAttribute('data-icon')).toBe('retour');
   });
 
   it('erreur réseau générique → message affiché, pas de plantage', async () => {
@@ -319,8 +353,10 @@ describe('CharacterSheet', () => {
 
     expect(characterSvc.get).not.toHaveBeenCalled();
     const comp = fixture.componentInstance as any;
-    expect(comp.loadError()).toBe('Fiche introuvable.');
-    expect(fixture.nativeElement.textContent).toContain('Fiche introuvable.');
+    expect(comp.loadError()).toBe(GRIMOIRE_TONE['characters_sheet.not_found']);
+    expect(fixture.nativeElement.textContent).toContain(
+      GRIMOIRE_TONE['characters_sheet.not_found'],
+    );
   });
 
   it('échec du chargement du contenu de jeu (getGameSystemContent) → la fiche du personnage reste affichée', async () => {
@@ -776,6 +812,21 @@ describe('CharacterSheet', () => {
     );
   });
 
+  it('51.6 — le lien de retour porte le pictogramme retour et le déclencheur du menu le pictogramme menu-actions', async () => {
+    const { fixture } = await createComponent(makeCharacterService(), 'char1', null, 'u1', 'p1');
+    const el = fixture.nativeElement as HTMLElement;
+
+    const link = el.querySelector('a[mat-button]') as HTMLAnchorElement;
+    expect(link.querySelector('app-icon')?.getAttribute('data-icon')).toBe('retour');
+    // Icône à côté du texte : décorative.
+    expect(link.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+
+    const trigger = el.querySelector('.sheet__menu-trigger') as HTMLButtonElement;
+    expect(trigger.querySelector('app-icon')?.getAttribute('data-icon')).toBe('menu-actions');
+    expect(trigger.textContent?.trim()).toBe('');
+    expect(trigger.getAttribute('aria-label')).toBeTruthy();
+  });
+
   it('AC7 — le déclencheur porte un nom accessible et aria-haspopup', async () => {
     const { fixture } = await createComponent();
     const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('.sheet__menu-trigger');
@@ -923,7 +974,8 @@ describe('CharacterSheet', () => {
       const panel = fixture.nativeElement.querySelector('.detail-surface-panel');
       expect(panel).not.toBeNull();
       expect(panel.querySelector('.detail-surface-title').textContent).toContain('Légendes');
-      expect(panel.querySelector('.detail-surface-body').textContent).toContain('...');
+      // Story 31.4 — un talent s'ouvre en tableau mécanique (Effet, …) puis récit (AC9).
+      expect(panel.querySelector('.detail-surface-rows').textContent).toContain('...');
     });
 
     it('AC1 — activer un avantage ouvre la surface (champ `effect`, pas `effect.description`)', async () => {
@@ -937,7 +989,10 @@ describe('CharacterSheet', () => {
       expect(panel.querySelector('.detail-surface-body').textContent).toContain('+2');
     });
 
-    it('AC4 — activer un second élément PENDANT que la surface est ouverte remplace le contenu, sans empiler', async () => {
+    // ⚠️ Story 31.4 (AC10) : la surface est désormais modale sur desktop aussi — son voile recouvre
+    // les déclencheurs, un utilisateur ne peut plus activer un second terme sans fermer le premier.
+    // Ce test ne vérifie donc plus un geste réel mais l'invariant qui reste : jamais deux panneaux.
+    it('AC10 (31.4) — un seul terme ouvert à la fois : jamais deux panneaux empilés', async () => {
       const { fixture } = await createComponent();
 
       detailTriggerNamed(fixture, 'Légendes').click();
@@ -1141,7 +1196,10 @@ describe('CharacterSheet', () => {
     });
     const { fixture } = await createComponent(characterSvc);
 
-    const text = fixture.nativeElement.textContent;
+    // Story 31.3 — le nom de la classe secondaire est désormais porté par son propre déclencheur
+    // quand le catalogue lui donne une description ; le titre est donc lu en espaces normalisés
+    // (le navigateur les replie, `textContent` non).
+    const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
     expect(text).toContain('Classe secondaire : Marchand');
     expect(text).toContain('Négociation');
 
@@ -1154,7 +1212,7 @@ describe('CharacterSheet', () => {
     negociationBtn!.click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.detail-surface-body').textContent).toContain(
+    expect(fixture.nativeElement.querySelector('.detail-surface-rows').textContent).toContain(
       'Baisse un prix',
     );
   });
@@ -1190,7 +1248,7 @@ describe('CharacterSheet', () => {
     });
     const { fixture } = await createComponent(characterSvc);
 
-    const text = fixture.nativeElement.textContent;
+    const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
     expect(text).toContain('Type secondaire : Magie');
     expect(text).toContain('Incantation');
   });
@@ -1265,6 +1323,45 @@ describe('CharacterSheet', () => {
     const { fixture } = await createComponent(characterSvc);
 
     expect(fixture.nativeElement.textContent).toContain('XP 250');
+  });
+
+  it('derived absent (fiche d’un compagnon dont les attributs sont verrouillés, Story 31.6) : message de statistiques masquées, aucune erreur', async () => {
+    const masked = {
+      ...CHARACTER,
+      derived: undefined as never,
+      hiddenFields: ['attributes', 'derived'],
+    };
+    const characterSvc = makeCharacterService({ get: vi.fn().mockResolvedValue(masked) });
+    const { fixture } = await createComponent(characterSvc);
+
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['evolution.derived_hidden']);
+    expect(fixture.nativeElement.textContent).not.toContain('PV undefined');
+  });
+
+  it('attributes verrouillés en bloc (correctif, hiddenFields) : « Masqué par le MJ » à la place de la grille, jamais une grille vide silencieuse', async () => {
+    const masked = {
+      ...CHARACTER,
+      derived: undefined as never,
+      hiddenFields: ['attributes', 'derived'],
+    };
+    const characterSvc = makeCharacterService({ get: vi.fn().mockResolvedValue(masked) });
+    const { fixture } = await createComponent(characterSvc);
+
+    expect(fixture.nativeElement.querySelector('.sheet__attr-grid')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.sheet__masked-note')?.textContent).toContain(
+      GRIMOIRE_TONE['evolution.hidden_marker'],
+    );
+  });
+
+  it('un seul sous-champ verrouillé (attributes.AGI, correctif) : la grille reste affichée, seule la case AGI porte « Masqué par le MJ »', async () => {
+    const masked = { ...CHARACTER, hiddenFields: ['attributes.AGI'] };
+    const characterSvc = makeCharacterService({ get: vi.fn().mockResolvedValue(masked) });
+    const { fixture } = await createComponent(characterSvc);
+
+    expect(fixture.nativeElement.querySelector('.sheet__attr-grid')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('VIG');
+    expect(fixture.nativeElement.textContent).toContain('8'); // VIG toujours visible
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['evolution.hidden_marker']);
   });
 
   it('section Inventaire visible pour le propriétaire', async () => {
@@ -1982,6 +2079,24 @@ describe('CharacterSheet', () => {
 
       expect(fixture.nativeElement.textContent).toContain('patron Équilibré');
     });
+
+    it('correctif de revue : un seul sous-champ verrouillé (attributes.ESP) supprime le suffixe « patron », jamais un rapprochement erroné', async () => {
+      const character = makeCharacterDto({
+        sheetData: {
+          ...CHARACTER.sheetData,
+          attributes: { AGI: 4, ESP: 4, INT: 8, VIG: 8 },
+        },
+        hiddenFields: ['attributes.ESP'],
+      });
+      const characterSvc = makeCharacterService({
+        get: vi.fn().mockResolvedValue(character),
+        getGameSystemContent: vi.fn().mockResolvedValue(CONTENT_24_1),
+      });
+      const { fixture } = await createComponent(characterSvc);
+
+      expect(fixture.nativeElement.textContent).not.toContain('patron Spécialiste');
+      expect(fixture.nativeElement.textContent).not.toContain('patron ');
+    });
   });
 
   describe('CharacterSheet — sous-navigation locale (Story 29.5)', () => {
@@ -1990,7 +2105,12 @@ describe('CharacterSheet', () => {
       const labels = Array.from(
         fixture.nativeElement.querySelectorAll('[role="tab"] .mdc-tab__text-label'),
       ).map((el: any) => el.textContent.trim());
-      expect(labels).toEqual(['Fiche', 'Inventaire', 'Journal de notes', 'Historique']);
+      expect(labels).toEqual([
+        'Fiche',
+        GRIMOIRE_TONE['evolution.inventory_section_title'],
+        'Journal de notes',
+        'Historique',
+      ]);
     });
 
     it("fellow player (ni propriétaire, ni MJ) → 3 onglets, l'onglet Historique est absent du DOM (pas seulement vide)", async () => {
@@ -2001,7 +2121,11 @@ describe('CharacterSheet', () => {
       const labels = Array.from(
         fixture.nativeElement.querySelectorAll('[role="tab"] .mdc-tab__text-label'),
       ).map((el: any) => el.textContent.trim());
-      expect(labels).toEqual(['Fiche', 'Inventaire', 'Journal de notes']);
+      expect(labels).toEqual([
+        'Fiche',
+        GRIMOIRE_TONE['evolution.inventory_section_title'],
+        'Journal de notes',
+      ]);
       expect(fixture.nativeElement.textContent).not.toContain('Historique');
     });
 
@@ -2028,6 +2152,205 @@ describe('CharacterSheet', () => {
       const activeTab = fixture.nativeElement.querySelector('[role="tab"][aria-selected="true"]');
       expect(activeTab).not.toBeNull();
       expect(activeTab.querySelector('.mdc-tab-indicator')).not.toBeNull();
+    });
+
+    // Retouche UX de PartieDetail (2026-09-23) : même correctif dynamicHeight que partie-detail.html
+    // -- non-régression sur ce 2ᵉ (et dernier) consommateur de mat-tab-group de l'app.
+    it("mat-tab-group porte dynamicHeight -- la molette défile toute la page plutôt qu'un scroll interne à l'onglet actif", async () => {
+      const { fixture } = await createComponent();
+
+      const tabGroup = fixture.debugElement.query(By.directive(MatTabGroup))?.componentInstance as
+        MatTabGroup | undefined;
+      expect(tabGroup).toBeTruthy();
+      expect(tabGroup!.dynamicHeight).toBe(true);
+    });
+  });
+
+  // ── Story 31.3 — aide contextuelle sur les termes de règle (FR-19) ──────────────────────────
+
+  describe('aide contextuelle sur les termes de règle', () => {
+    /** Même contenu que `CONTENT`, mais les termes portent le texte explicatif du catalogue. */
+    const CONTENT_WITH_HELP: GameSystemContentDto = {
+      ...CONTENT,
+      class: [
+        {
+          key: 'menestrel',
+          data: {
+            label: 'Ménestrel',
+            description: 'Le ménestrel voyage de village en village et connaît mille histoires.',
+            talents: [{ name: 'Légendes', effect: { description: '...', conditions: '-' } }],
+          },
+        },
+      ],
+      type: [
+        {
+          key: 'technique',
+          data: {
+            label: 'Technique',
+            description: 'Le technique résout les difficultés par la précision du geste.',
+            advantages: [{ name: 'Précision', effect: '+2' }],
+          },
+        },
+      ],
+      weaponCategory: [
+        {
+          key: 'lance',
+          data: {
+            label: 'Lance',
+            description: 'Arme d’hast tenue à deux mains, allonge supérieure.',
+            touchFormula: 'VIG+AGI',
+            damageFormula: 'VIG+1',
+          },
+        },
+      ],
+    };
+
+    function withHelp() {
+      return createComponent(
+        makeCharacterService({
+          getGameSystemContent: vi.fn().mockResolvedValue(CONTENT_WITH_HELP),
+        }),
+      );
+    }
+
+    function triggerNamed(fixture: ComponentFixture<CharacterSheet>, name: string) {
+      const triggers: HTMLButtonElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('.sheet__detail-trigger'),
+      );
+      return triggers.find((b) => b.textContent?.trim() === name);
+    }
+
+    function panelText(fixture: ComponentFixture<CharacterSheet>) {
+      const panel = fixture.nativeElement.querySelector('.detail-surface-panel');
+      return {
+        title: panel?.querySelector('.detail-surface-title')?.textContent ?? '',
+        body: panel?.querySelector('.detail-surface-body')?.textContent ?? '',
+      };
+    }
+
+    it('AC1 — activer la classe ouvre sa description de catalogue dans la surface', async () => {
+      const { fixture } = await withHelp();
+      triggerNamed(fixture, 'Ménestrel')!.click();
+      fixture.detectChanges();
+
+      expect(panelText(fixture).title).toContain('Ménestrel');
+      expect(panelText(fixture).body).toContain('de village en village');
+    });
+
+    it('AC1 — activer le type/voie ouvre sa description de catalogue', async () => {
+      const { fixture } = await withHelp();
+      triggerNamed(fixture, 'Technique')!.click();
+      fixture.detectChanges();
+
+      expect(panelText(fixture).title).toContain('Technique');
+      expect(panelText(fixture).body).toContain('précision du geste');
+    });
+
+    it('AC1 — activer la catégorie d’arme ouvre sa description (absente de ResolvedWeapon)', async () => {
+      const { fixture } = await withHelp();
+      triggerNamed(fixture, 'Lance')!.click();
+      fixture.detectChanges();
+
+      expect(panelText(fixture).title).toContain('Lance');
+      expect(panelText(fixture).body).toContain('Arme d’hast');
+    });
+
+    it('[Review][Patch] le nom d’arme se rend sans espace parasite autour des parenthèses', async () => {
+      // Régression : un @if/@else scindant littéralement "(" et ")" autour du bloc de contrôle
+      // rendait " Lance ( Lance ) " au lieu de "Lance (Lance)". La parenthèse doit rester à
+      // l'intérieur de chaque branche — ce test verrouille l'absence d'espace À L'INTÉRIEUR des
+      // parenthèses (le seul qui ne se referme pas par la fusion d'espaces du navigateur).
+      const { fixture } = await withHelp();
+      const text = fixture.nativeElement.querySelector('.sheet__weapon-name')!
+        .textContent as string;
+      expect(text).not.toContain('( ');
+      expect(text).not.toContain(' )');
+      expect(text.replace(/\s+/g, ' ').trim()).toContain('Lance (Lance)');
+    });
+
+    it('AC2 — le texte vient du catalogue : sans entrée de contenu, aucun texte n’apparaît', async () => {
+      // Le service de thème du harnais ne porte AUCUN texte de règle (P8-AD-9) : si l’aide
+      // s’affichait malgré un catalogue muet, c’est qu’elle aurait été écrite en dur quelque part.
+      const { fixture } = await createComponent();
+      expect(triggerNamed(fixture, 'Ménestrel')).toBeUndefined();
+      expect(fixture.nativeElement.textContent).not.toContain('de village en village');
+    });
+
+    it('AC3 — un terme sans texte au catalogue ne rend AUCUN déclencheur', async () => {
+      const { fixture } = await createComponent();
+
+      expect(triggerNamed(fixture, 'Ménestrel')).toBeUndefined();
+      expect(triggerNamed(fixture, 'Technique')).toBeUndefined();
+      expect(triggerNamed(fixture, 'Lance')).toBeUndefined();
+      // ...et le libellé reste bien affiché, seul le geste disparaît.
+      const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+      expect(text).toContain('Vocation — Ménestrel');
+      expect(text).toContain('Voie — Technique');
+    });
+
+    it('AC3 — la spécialité (texte libre du joueur) n’est jamais un déclencheur', async () => {
+      const artisan: GameSystemContentDto = {
+        ...CONTENT_WITH_HELP,
+        class: [
+          {
+            key: 'artisan',
+            data: {
+              label: 'Artisan',
+              description: 'L’artisan façonne et répare.',
+              requiresSpecialty: true,
+              specialtyLabel: 'Type d’objet de spécialité',
+              talents: [],
+            },
+          },
+        ],
+      };
+      const character = {
+        ...CHARACTER,
+        sheetData: { ...CHARACTER.sheetData, classId: 'artisan', specialtyTypeId: 'poterie' },
+      };
+      const { fixture } = await createComponent(
+        makeCharacterService({
+          get: vi.fn().mockResolvedValue(character),
+          getGameSystemContent: vi.fn().mockResolvedValue(artisan),
+        }),
+      );
+
+      expect(fixture.nativeElement.textContent).toContain('poterie');
+      expect(triggerNamed(fixture, 'poterie')).toBeUndefined();
+    });
+
+    it('AC4 — les déclencheurs de termes sont de vrais boutons, atteignables au clavier', async () => {
+      const { fixture } = await withHelp();
+      const trigger = triggerNamed(fixture, 'Ménestrel')!;
+
+      expect(trigger.tagName).toBe('BUTTON');
+      expect(trigger.getAttribute('type')).toBe('button');
+      expect(trigger.tabIndex).not.toBe(-1);
+    });
+
+    it('AC5 — activer un second terme remplace le contenu, sans empiler de panneau', async () => {
+      const { fixture } = await withHelp();
+      triggerNamed(fixture, 'Ménestrel')!.click();
+      fixture.detectChanges();
+      triggerNamed(fixture, 'Technique')!.click();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelectorAll('.detail-surface-panel').length).toBe(1);
+      expect(panelText(fixture).title).toContain('Technique');
+    });
+
+    it('AC6 — fermer rend le focus au déclencheur du terme', async () => {
+      const { fixture } = await withHelp();
+      const trigger = triggerNamed(fixture, 'Ménestrel')!;
+      trigger.focus();
+      trigger.click();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('.detail-surface-close') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.detail-surface-panel')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
     });
   });
 });

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiroir de la Destinée — proposition mobile</title>
+<style>
+/* Proposition de travail (.working) — Palier 10.4, question 3 : plateau de la destinée en tiroir du bas sur mobile.
+   Gouverné par : PRD 10.4 FR-7 (liste des destinées), FR-8 (plateau), FR-9 (flèches), FR-11 (fixer la date).
+   Thème : Grimoire Émeraude (tokens de styles.scss). Les spines l'emportent sur cette planche. */
+:root{
+  --bg:#09070f; --surface:#1a1428; --surface-high:#221c35; --surface-top:#2a2340;
+  --accent-1:#7ec8a4; --accent-2:#9b6dff; --text:#e8e0f0; --muted:#9b8fb0; --outline:#6e6383;
+  --todo:#f0a030; --toolbar:#150f20;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050409;color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px}
+h1{font-size:18px;margin:0 0 4px}
+.intro{color:var(--muted);max-width:1180px;margin:0 0 20px}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.col{width:360px}
+.cap{font-weight:600;margin:0 0 4px}
+.cap small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
+.phone{position:relative;width:360px;height:740px;border-radius:34px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 0 0 1px #333}
+.tb{height:52px;background:var(--toolbar);display:flex;align-items:center;padding:0 14px;gap:10px;font-weight:600}
+.tb .back{color:var(--muted)}
+.controls{display:flex;gap:6px;align-items:center;padding:10px 10px 6px;flex-wrap:wrap}
+.chip{border:1px solid var(--outline);border-radius:999px;padding:5px 11px;font-size:12.5px;white-space:nowrap;color:var(--text);background:transparent}
+.chip.on{background:rgba(155,109,255,.22);border-color:var(--accent-2)}
+.chev{display:inline-flex;align-items:center;gap:2px;font-size:12.5px;color:var(--muted)}
+.chev b{color:var(--text);font-weight:600;padding:0 2px}
+.chev span{border:1px solid var(--outline);border-radius:8px;padding:2px 8px;color:var(--text)}
+.month{padding:0 10px}
+.mh{display:flex;justify-content:space-between;font-weight:600;padding:4px 2px 6px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dow div{font-size:10.5px;color:var(--muted);text-align:center}
+.cell{height:50px;background:var(--surface);border-radius:6px;padding:3px 4px;font-size:11px;position:relative;display:flex;flex-direction:column}
+.cell .n{font-size:11px}
+.cell .band{flex:1;margin-top:2px;border-radius:3px}
+.cell.dim{opacity:.28}
+.cell.vote .band.v{background:rgba(240,160,48,.16);border-left:3px solid var(--todo)}
+.cell.cur{outline:2px solid var(--accent-1);outline-offset:-2px}
+.rail{margin:8px 10px 0;background:var(--surface);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.rail b{color:var(--text)}
+/* tiroir */
+.scrim{position:absolute;inset:52px 0 0 0;background:rgba(0,0,0,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface-high);border-radius:18px 18px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.5);padding:8px 14px 14px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--outline);margin:2px auto 10px}
+.sh-title{font-weight:600;font-size:15px;margin:0}
+.sh-sub{color:var(--muted);font-size:12px;margin:2px 0 10px}
+.grp{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+.line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;background:var(--surface-top);margin-bottom:6px}
+.line .t{font-weight:500}
+.line .s{font-size:11.5px;color:var(--muted)}
+.tag{font-size:11px;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.tag.todo{background:rgba(240,160,48,.18);color:var(--todo);border:1px solid rgba(240,160,48,.5)}
+.tag.ok{background:rgba(126,200,164,.15);color:var(--accent-1);border:1px solid rgba(126,200,164,.45)}
+.tag.org{background:rgba(155,109,255,.18);color:#c4a0ff;border:1px solid rgba(155,109,255,.5)}
+.peek{display:flex;justify-content:space-between;align-items:center}
+.peek .big{font-weight:600}
+.slot{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:8px 10px;border-radius:10px;background:var(--surface-top);margin-bottom:6px}
+.slot.cur{outline:2px solid var(--accent-1)}
+.slot .d{font-weight:500}
+.slot .c{font-size:12px;color:var(--muted)}
+.bar{height:4px;border-radius:2px;background:#3a3150;grid-column:1/3;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--todo)}
+.best{font-size:10.5px;color:var(--accent-1);margin-left:6px}
+.btns{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;text-align:center;border-radius:999px;padding:10px 12px;font-weight:600;font-size:13px;border:1px solid var(--outline)}
+.btn.p{background:linear-gradient(135deg,#7ec8a4,#9b6dff);color:#0d0a14;border:none}
+.miss{font-size:12px;color:var(--muted);margin-top:8px}
+.note{font-size:12px;color:var(--muted);margin-top:8px;max-width:360px}
+</style>
+</head>
+<body>
+<h1>Plateau de la destinée en tiroir du bas — proposition mobile (Grimoire Émeraude)</h1>
+<p class="intro">Trois moments d'un même parcours : Incon, MJ, touche la puce ✦, choisit un vote, puis le parcourt et fixe la date. Le tiroir reprend le patron du panneau « Affichage » (seul tiroir du bas existant). Il a deux hauteurs : <b>replié</b>, il laisse la grille visible et résume le créneau courant ; <b>déplié</b>, il liste tous les créneaux candidats. Planche de travail : rien n'est encore décidé.</p>
+
+<div class="row">
+
+  <!-- 1. Liste des destinées -->
+  <div class="col">
+    <p class="cap">① La puce ✦ ouvre la liste des destinées<small>Tiroir haut, fond assombri. Groupée par partie, toutes les parties actives, quel que soit le mois.</small></p>
+    <div class="phone">
+      <div class="tb"><span class="back">←</span> Mon calendrier</div>
+      <div class="controls"><span class="chip">☰ Affichage</span><span class="chip on">✦ Destinée</span><span class="chip">Proposer des dates</span></div>
+      <div class="month"><div class="mh"><span>octobre 2026</span><span>‹ ›</span></div></div>
+      <div class="scrim"></div>
+      <div class="sheet" style="top:150px">
+        <div class="grab"></div>
+        <p class="sh-title">Choisir une destinée</p>
+        <p class="sh-sub">Les votes ouverts de toutes vos parties actives.</p>
+        <div class="grp">Les Voyageurs du col</div>
+        <div class="line"><div><div class="t">Chapitre 4 — Le col des brumes</div><div class="s">Échéance passée · 5 créneaux</div></div><span class="tag org">Organisateur</span></div>
+        <div class="line"><div><div class="t">Chapitre 5 — La foire aux dragons</div><div class="s">Échéance ven. 14 nov. · 7 créneaux</div></div><span class="tag org">Organisateur</span></div>
+        <div class="grp">La Bande</div>
+        <div class="line"><div><div class="t">Soirée jeux chez Léa</div><div class="s">Échéance mer. 29 oct. · 6 créneaux</div></div><span class="tag todo">À faire</span></div>
+        <div class="grp">Les Héritiers de Draconis</div>
+        <div class="line"><div><div class="t">Séance 2 — Les forges</div><div class="s">Échéance lun. 3 nov. · 4 créneaux</div></div><span class="tag ok">Répondu</span></div>
+      </div>
+    </div>
+    <p class="note">Le nom de chaque groupe de lignes est celui de la partie ou du ralliement : aucun mot générique, donc rien de JDR en mode soirée.</p>
+  </div>
+
+  <!-- 2. Destinée active, tiroir replié -->
+  <div class="col">
+    <p class="cap">② Destinée active, tiroir replié<small>La grille reste lisible. Le tiroir résume le créneau courant ; ‹ › le font avancer.</small></p>
+    <div class="phone">
+      <div class="tb"><span class="back">←</span> Les Voyageurs du col</div>
+      <div class="controls"><span class="chip">☰ Affichage</span><span class="chip on">✦ Destinée · Chapitre 4</span><span class="chev"><span>‹</span><b>2 / 5</b><span>›</span></span></div>
+      <div class="month">
+        <div class="mh"><span>octobre 2026</span><span>‹ ›</span></div>
+        <div class="dow"><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+        <div class="grid">
+          <div class="cell dim"><span class="n">13</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">14</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">15</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">16</span><div class="band"></div></div>
+          <div class="cell vote"><span class="n">17</span><div class="band v"></div></div>
+          <div class="cell vote cur"><span class="n">18</span><div class="band v"></div></div>
+          <div class="cell dim"><span class="n">19</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">20</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">21</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">22</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">23</span><div class="band"></div></div>
+          <div class="cell vote"><span class="n">24</span><div class="band v"></div></div>
+          <div class="cell vote"><span class="n">25</span><div class="band v"></div></div>
+          <div class="cell dim"><span class="n">26</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">27</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">28</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">29</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">30</span><div class="band"></div></div>
+          <div class="cell vote"><span class="n">31</span><div class="band v"></div></div>
+          <div class="cell dim"><span class="n">1</span><div class="band"></div></div>
+          <div class="cell dim"><span class="n">2</span><div class="band"></div></div>
+        </div>
+      </div>
+      <div class="rail"><b>sam. 18 oct.</b> · soir — option du conseil · 4 oui / 5</div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="peek"><div><div class="big">Chapitre 4 — Le col des brumes</div><div class="s" style="font-size:12px;color:var(--muted)">2 / 5 · sam. 18 oct. soir · 4 oui · échéance passée</div></div><span class="tag org">Organisateur</span></div>
+        <div class="btns"><span class="btn">Voir les 5 dates ⌃</span><span class="btn p">Fixer la date…</span></div>
+      </div>
+    </div>
+    <p class="note">Hauteur repliée ≈ 120 px. On le tire vers le haut (ou « Voir les 5 dates ») pour le déplier. Un votant n'a pas ce bouton : il répond sur la grille.</p>
+  </div>
+
+  <!-- 3. Tiroir déplié -->
+  <div class="col">
+    <p class="cap">③ Tiroir déplié : le plateau complet<small>Tous les créneaux candidats, comptes de oui, meilleur signalé. Toucher une date recentre la grille.</small></p>
+    <div class="phone">
+      <div class="tb"><span class="back">←</span> Les Voyageurs du col</div>
+      <div class="controls"><span class="chip">☰ Affichage</span><span class="chip on">✦ Destinée · Chapitre 4</span><span class="chev"><span>‹</span><b>2 / 5</b><span>›</span></span></div>
+      <div class="month"><div class="mh"><span>octobre 2026</span><span>‹ ›</span></div></div>
+      <div class="sheet" style="top:150px">
+        <div class="grab"></div>
+        <p class="sh-title">Chapitre 4 — Le col des brumes</p>
+        <p class="sh-sub">Échéance passée le jeu. 16 oct. · plus de vote possible · 4 réponses sur 5</p>
+        <div class="slot"><span class="d">ven. 17 oct. · soir</span><span class="c">2 oui</span><div class="bar"><i style="width:40%"></i></div></div>
+        <div class="slot cur"><span class="d">sam. 18 oct. · soir <span class="best">meilleur</span></span><span class="c">4 oui</span><div class="bar"><i style="width:80%"></i></div></div>
+        <div class="slot"><span class="d">ven. 24 oct. · soir</span><span class="c">3 oui</span><div class="bar"><i style="width:60%"></i></div></div>
+        <div class="slot"><span class="d">sam. 25 oct. · après-midi</span><span class="c">1 oui</span><div class="bar"><i style="width:20%"></i></div></div>
+        <div class="slot"><span class="d">ven. 31 oct. · soir</span><span class="c">3 oui</span><div class="bar"><i style="width:60%"></i></div></div>
+        <p class="miss">N'ont pas consulté l'oracle : Yann</p>
+        <div class="btns"><span class="btn">Modifier les dates</span><span class="btn p">Fixer la date…</span></div>
+      </div>
+    </div>
+    <p class="note">« Fixer la date… » ouvre la confirmation existante (meilleur créneau présélectionné). En mode soirée, « Prolonger le vote » s'ajoute ici.</p>
+  </div>
+
+</div>
+</body>
+</html>

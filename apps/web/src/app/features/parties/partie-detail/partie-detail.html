@@ -7,15 +7,32 @@
     <div class="detail-body">
       @if (p.status === 'TERMINEE') {
         <p class="closed-banner">
-          <mat-icon aria-hidden="true">flag</mat-icon> {{ theme.tone()['partie.status_closed_label'] }}
+          <app-icon name="etat-terminee" />
+          {{
+            theme.tone()[
+              isSoiree()
+                ? 'partie.ralliement_soiree_status_closed_label'
+                : isRalliement()
+                  ? 'partie.ralliement_status_closed_label'
+                  : 'partie.status_closed_label'
+            ]
+          }}
         </p>
       }
-      @if (isDesktop()) {
+      @if (p.status === 'ANNULEE') {
+        <!-- Story 42.2 : la soirée annulée le dit en toutes lettres, avec un pictogramme (jamais la couleur seule). -->
+        <p class="closed-banner closed-banner--cancelled" role="status">
+          <app-icon name="etat-annulee" />
+          {{ theme.tone()['partie.ralliement_soiree_status_cancelled_label'] }}
+        </p>
+      }
+      @if (isDesktop() && !isRalliement()) {
         <app-roster-rail
           [members]="members()"
           [characters]="characters()"
-          [mjId]="p.mjId"
+          [ownerId]="p.ownerId"
           [currentUserId]="auth.currentUser()?.id ?? ''"
+          [canCreateCharacter]="canCreateCharacter()"
           [hasFreeSlot]="isMj() && hasFreeSlot"
           [classLabelFor]="classLabelFor"
           [roleLabelFor]="roleLabelFor"
@@ -26,65 +43,174 @@
       }
 
     <mat-card-content>
-      <mat-tab-group [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="onTabIndexChange($event)">
-        <mat-tab label="Détails">
-            @if (p.description) {
-              <p>{{ p.description }}</p>
-            } @else {
-              <p class="muted">{{ theme.tone()['partie.no_description'] }}</p>
-            }
+      <!-- Retouche UX (2026-09-23) : dynamicHeight (API publique Angular Material, cf.
+           EXPERIENCE.md du delta) -- neutralise l'overflow interne par défaut du corps d'onglet
+           (mat-mdc-tab-body-content) pour que la molette fasse défiler toute la page, pied de
+           carte compris, plutôt qu'un scroll interne isolé à l'onglet actif. Même correctif sur
+           l'unique autre consommateur de mat-tab-group de l'app (character-sheet.html). -->
+      <mat-tab-group
+        dynamicHeight
+        [selectedIndex]="tabs().indexOf(displayedTabKey())"
+        (selectedIndexChange)="onTabIndexChange($event)"
+      >
+        <!-- Story 53.4 (⚠️ contrat UI) : une partie de JDR s'ouvre sur la suite de ses séances — Chapitres
+             (Scénario en quête unique, MJ) puis Chronologie en tête, jamais pour un ralliement. L'ordre du
+             gabarit est celui de `tabs()` ; chaque condition d'onglet passe par `hasTab()`, seule source
+             de vérité. -->
+        @if (hasTab('chapitres')) {
+          <mat-tab [label]="theme.tone()['parties.detail_tab_scenarios']">
+            <app-scenario-list [partieId]="p.id" />
+          </mat-tab>
+        }
+        @if (hasTab('scenario')) {
+          <mat-tab [label]="theme.tone()['parties.detail_tab_scenario']">
+            <app-scenario-one-shot-tab [partieId]="p.id" />
+          </mat-tab>
+        }
+        @if (hasTab('chronologie')) {
+          <mat-tab [label]="theme.tone()['parties.detail_tab_timeline']">
+            <app-scenario-timeline [partieId]="p.id" [isMj]="isMj()" [partieKind]="p.kind" [characters]="characters()" />
+          </mat-tab>
+        }
+        @if (hasTab('conjonctions')) {
+          <!-- Story 39.1 (⚠️ contrat UI) : un groupe s'ouvre sur ses conjonctions (onglet par défaut,
+               pour tout membre). Story 40.1 : l'onglet (features/events) liste les conjonctions du
+               groupe, propose « + Nouvelle conjonction » et remonte leur nombre réel. -->
+          <mat-tab [label]="theme.tone()['partie.ralliement_conjonctions_tab']">
+            <app-conjonctions-tab
+              [partieId]="p.id"
+              [isAdmin]="p.role === 'admin'"
+              (countChange)="conjonctionCount.set($event)"
+            />
+          </mat-tab>
+        }
+        @if (hasTab('jeux') && isGroup()) {
+          <!-- Story 50.1 (⚠️ contrat UI) : le 4ᵉ onglet d'un groupe s'insère après « Conjonctions » — les jeux
+               de ses membres (Reliques / Trésors / Joyaux), lecture seule, pour tout membre. Contenu chargé à
+               l'ouverture de l'onglet seulement (jusqu'à plusieurs milliers de jeux). Jamais sur une rencontre
+               isolée ni une partie de JDR. -->
+          <mat-tab [label]="theme.tone()['event_games.tab']">
+            <ng-template matTabContent>
+              <app-group-games-tab
+                [partieId]="p.id"
+                [currentUserId]="auth.currentUser()?.id ?? null"
+              />
+            </ng-template>
+          </mat-tab>
+        }
+        @if (hasTab('soiree')) {
+          <!-- Story 41.1 (⚠️ contrat UI) : une rencontre isolée n'a ni liste ni onglet « Détails » — son
+               premier onglet, au nom du thème au singulier, affiche en ligne le détail de son unique
+               événement (UX-DR10). -->
+          <mat-tab [label]="theme.tone()['partie.ralliement_soiree_tab']">
+            <!-- Story 53.6 (⚠️ contrat UI) : la bannière illustrée coiffe le premier onglet d'une soirée
+                 (elle n'a pas d'onglet « Détails »). -->
+            <app-editable-banner [partie]="p" (partieChange)="partie.set($event)" />
+            <app-soiree-tab
+              [partieId]="p.id"
+              [description]="p.description"
+              [frozen]="isSoireeFinished()"
+              [isAdmin]="p.role === 'admin'"
+            />
+          </mat-tab>
+        }
+        @if (hasTab('details')) {
+        <mat-tab [label]="theme.tone()['parties.detail_tab_details']">
+            <!-- Story 53.6 (⚠️ contrat UI) : la bannière illustrée coiffe l'onglet Détails, pour tout
+                 membre ; les puces « Changer » / « Retirer » n'y figurent que si `p.can.coverUpdate`. -->
+            <app-editable-banner [partie]="p" (partieChange)="partie.set($event)" />
 
-            <section class="scheduling-widget">
-              <h3>{{ theme.tone()['partie.scheduling_title'] }}</h3>
-              @if (nextSessionLabel()) {
-                <p class="next-session-date">{{ nextSessionLabel() }}</p>
-              } @else {
-                <p class="muted">{{ theme.tone()['partie.no_session'] }}</p>
-              }
-              @if (activePolls().length > 0) {
-                <p class="poll-status-line">{{ pollStatusLabel() }}</p>
-              }
-              @if (isMj()) {
-                <a mat-flat-button color="primary" [routerLink]="['/parties', p.id, 'calendar']">
-                  {{ theme.tone()['cta.find_date'] }}
-                </a>
-              } @else {
-                <a mat-stroked-button [routerLink]="['/parties', p.id, 'guild-calendar']">
-                  {{ activePolls().length > 0 ? theme.tone()['poll.vote_pending'] : theme.tone()['cta.guild_calendar'] }}
-                </a>
-              }
-            </section>
+            <!-- Story 32.2 : l'onglet Détails est regroupé en trois zones -- Action, Consultation,
+                 Référence, dans cet ordre -- plutôt que juxtaposé sans hiérarchie. Chaque bloc garde
+                 exactement sa condition d'affichage et son comportement interne d'avant cette story ;
+                 seuls sa position et son regroupement visuel changent. Patron de décision documentée
+                 bloc par bloc comme la Story 36.11 (calendar-agenda-view). Zone Action en tête pour
+                 rester visible sans défilement sur mobile (seuil unique du projet, 1024px, déjà
+                 utilisé par isDesktop() dans ce composant). -->
 
-            @if (!isDesktop() && !isMj()) {
-              <section class="troupe-toggle">
-                <button type="button" mat-button (click)="showTroupe.set(!showTroupe())">
-                  {{ showTroupe() ? theme.tone()['partie.hide_troupe'] : theme.tone()['partie.show_troupe'] }}
-                </button>
-                @if (showTroupe()) {
-                  <mat-list>
-                    @for (m of members(); track m.userId) {
-                      <mat-list-item>
-                        <app-identity-label
-                          [playerName]="m.displayName"
-                          [pseudo]="m.pseudo"
-                          [ambiguous]="isMemberAmbiguous(m.userId)"
-                        />
-                      </mat-list-item>
-                    }
-                  </mat-list>
+            <!-- Story 38.4 : un ralliement n'a ni séance, ni XP, ni annonce de campagne — ses zones Action
+                 et Consultation n'existent pas ; seule sa description (zone Référence) se rend. -->
+            @if (!isRalliement()) {
+            <section class="details-zone details-zone--action">
+              <h3 class="details-zone__title">{{ theme.tone()['partie.details_zone_action'] }}</h3>
+
+              <!-- Widget séance : CTA (vote/oracle des créneaux) et contexte de date (prochaine
+                   séance, statut du vote) restent un bloc unique -- scinder romprait le contexte
+                   sans bénéfice net (Design Notes de la story) -- Action. -->
+              <section class="scheduling-widget">
+                <!-- Story 32.3 — le titre porte désormais l'état de la prochaine séance. Le
+                     libellé de date et la ligne de vote ci-dessous restent inchangés : le badge
+                     les résume, il ne les remplace pas. -->
+                <div class="scheduling-widget__header">
+                  <h4>{{ theme.tone()['partie.scheduling_title'] }}</h4>
+                  <app-status-badge [state]="nextSessionBadge()" />
+                  <!-- Story 53.1 — l'appel à l'action du vote vit ici, dans la pastille « Ma
+                       situation » : le badge d'état ci-dessus est impersonnel. Jamais pour le MJ. -->
+                  @if (nextSessionSituation(); as situation) {
+                    <app-situation-pill [value]="situation" />
+                  }
+                </div>
+                @if (nextSessionLabel()) {
+                  <p class="next-session-date">{{ nextSessionLabel() }}</p>
+                } @else {
+                  <p class="muted">{{ theme.tone()['partie.no_session'] }}</p>
+                }
+                @if (activePolls().length > 0) {
+                  <p class="poll-status-line">{{ pollStatusLabel() }}</p>
+                }
+                @if (isMj()) {
+                  <a mat-flat-button color="primary" [routerLink]="['/parties', p.id, 'calendar']">
+                    {{ theme.tone()['cta.find_date'] }}
+                  </a>
+                } @else {
+                  <a
+                    mat-stroked-button
+                    [routerLink]="calendarLink().commands"
+                    [queryParams]="calendarLink().queryParams"
+                  >
+                    {{ activePolls().length > 0 ? theme.tone()['poll.vote_pending'] : theme.tone()['cta.guild_calendar'] }}
+                  </a>
                 }
               </section>
-            }
 
-            @if (notice()) {
-              <p class="notice">{{ notice() }}</p>
-            }
+              @if (isMj()) {
+                <!-- Retouche UX (2026-09-23) : les deux déclencheurs MJ (XP/annonce) partagent
+                     désormais le même patron de barre d'icônes que le pied de carte (DESIGN.md
+                     §3/§4, EXPERIENCE.md « Barre d'icônes partagée ») -- .xp-section/
+                     .announcement-section restent des conteneurs distincts (sélecteurs déjà
+                     couverts par les tests existants), seul leur bouton rejoint la barre commune ;
+                     chaque panneau garde sa propre condition d'affichage, inchangée. -->
+                <div class="icon-bar">
+                  <section class="xp-section">
+                    <button
+                      type="button"
+                      mat-stroked-button
+                      class="icon-bar__btn"
+                      (click)="showXpPanel.set(!showXpPanel())"
+                    >
+                      <app-icon name="distribuer-xp" />
+                      {{ theme.tone()['evolution.xp_distribute_cta'] }}
+                    </button>
+                  </section>
 
-            @if (isMj()) {
-              <section class="xp-section">
-                <button type="button" mat-stroked-button (click)="showXpPanel.set(!showXpPanel())">
-                  {{ theme.tone()['evolution.xp_distribute_cta'] }}
-                </button>
+                  <!-- Publication d'annonce : action MJ déclenchée depuis cet écran -- Action. Le fil
+                       de lecture des annonces publiées (campaignAnnouncements) vit en zone
+                       Consultation, avec le bandeau transitoire ci-dessous. -->
+                  <section class="announcement-section">
+                    <button
+                      type="button"
+                      mat-stroked-button
+                      class="icon-bar__btn"
+                      (click)="showAnnouncementForm.set(!showAnnouncementForm())"
+                    >
+                      <app-icon name="proclamer" />
+                      {{ theme.tone()['announcement.publish_cta'] }}
+                    </button>
+                  </section>
+                </div>
+
+                <!-- Distribution d'XP : l'historique (app-xp-history) est un journal en lecture
+                     seule, extrait vers la zone Consultation ci-dessous (Story 32.2). -->
                 @if (showXpPanel()) {
                   <app-xp-distribution-panel
                     [partieId]="p.id"
@@ -92,159 +218,260 @@
                     (distributed)="onXpDistributed()"
                   />
                 }
-                <app-xp-history [distributions]="xpDistributions()" [characters]="characters()" />
-              </section>
-            }
-
-            @if (isMj()) {
-              <section class="announcement-section">
-                <button
-                  type="button"
-                  mat-stroked-button
-                  (click)="showAnnouncementForm.set(!showAnnouncementForm())"
-                >
-                  {{ theme.tone()['announcement.publish_cta'] }}
-                </button>
                 @if (showAnnouncementForm()) {
                   <app-announcement-form [partieId]="p.id" (published)="onAnnouncementPublished()" />
                 }
-              </section>
-            }
+              }
+            </section>
 
-            @if (campaignAnnouncements().length > 0) {
-              <section class="announcements-feed">
-                @for (a of campaignAnnouncements(); track a.id) {
-                  <app-annonce-card
-                    [announcement]="a"
-                    [scopeLabel]="campaignScopeLabel()"
-                    [unseen]="unseenAnnouncementIds().has(a.id)"
-                    (opened)="markAnnouncementOpened(a.id)"
+            @if (hasConsultationContent()) {
+              <!-- Revue de code (Story 32.2) : garde nécessaire -- sans elle, un joueur sans
+                   notice() ni annonce de campagne (isMj() faux ⇒ pas d'historique d'XP non plus)
+                   verrait un titre de zone Consultation vide, sur le modèle du garde-fou déjà
+                   appliqué à la zone Référence (Ryuutama/non-Ryuutama). -->
+              <section class="details-zone details-zone--consultation">
+                <h3 class="details-zone__title">{{ theme.tone()['partie.details_zone_consultation'] }}</h3>
+
+                <!-- Bandeau d'annonce transitoire (confirmation d'action) : lecture seule, pas une
+                     action en soi -- Consultation. -->
+                @if (notice()) {
+                  <p class="notice">{{ notice() }}</p>
+                }
+
+                @if (isMj()) {
+                  <!-- Historique des distributions d'XP : journal en lecture seule -- extrait de la
+                       zone Action (Story 32.2), c'est une consultation, pas une action. Retouche UX
+                       (2026-09-23) : patron de carte à liseré (DESIGN.md §2/§4) appliqué au composant
+                       lui-même depuis ce template -- app-xp-history n'a pas sa propre carte. -->
+                  <app-xp-history
+                    class="zone-card zone-card--consultation"
+                    [distributions]="xpDistributions()"
+                    [characters]="characters()"
                   />
                 }
-              </section>
-            }
 
-            @if (p.gameSystemId === 'ryuutama') {
-              <section class="reference-sheets">
-                <h3>{{ theme.tone()['partie.reference_sheets_title'] }}</h3>
-                <div class="reference-sheets__links">
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingReferenceAsset()"
-                    (click)="downloadAsset('journal', 'reference')"
-                  >
-                    {{ theme.tone()['partie.asset_journal_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingReferenceAsset()"
-                    (click)="downloadAsset('carte', 'reference')"
-                  >
-                    {{ theme.tone()['partie.asset_carte_cta'] }}
-                  </button>
-                </div>
-                @if (referenceAssetError(); as error) {
-                  <p class="reference-sheets__error">{{ error }}</p>
+                @if (campaignAnnouncements().length > 0) {
+                  <!-- Fil d'annonces de campagne : flux en lecture seule -- Consultation. Retouche UX
+                       (2026-09-23) : chaque annonce est déjà sa propre carte (app-annonce-card) --
+                       on ajoute seulement le liseré de zone partagé, sans dupliquer son fond/bordure
+                       (cf. .zone-card--flush dans partie-detail.scss). -->
+                  <section class="announcements-feed">
+                    @for (a of campaignAnnouncements(); track a.id) {
+                      <app-annonce-card
+                        class="zone-card zone-card--consultation zone-card--flush"
+                        [announcement]="a"
+                        [scopeLabel]="campaignScopeLabel()"
+                        [unseen]="unseenAnnouncementIds().has(a.id)"
+                        (opened)="markAnnouncementOpened(a.id)"
+                      />
+                    }
+                  </section>
                 }
               </section>
             }
 
-            @if (isMj() && p.gameSystemId === 'ryuutama') {
-              <section class="prep-sheets">
-                <h3>{{ theme.tone()['partie.prep_sheets_title'] }}</h3>
-                <div class="prep-sheets__links">
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('monde', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_monde_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('monstre', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_monstre_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('ville', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_ville_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('objectif-chasse', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_objectif_chasse_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('objectif-quete', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_objectif_quete_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('objectif-voyage', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_objectif_voyage_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('oeuf-de-bataille', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_oeuf_de_bataille_cta'] }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    [disabled]="downloadingPrepAsset()"
-                    (click)="downloadAsset('structure', 'prep')"
-                  >
-                    {{ theme.tone()['partie.asset_structure_cta'] }}
-                  </button>
-                </div>
-                @if (prepAssetError(); as error) {
-                  <p class="prep-sheets__error">{{ error }}</p>
-                }
-              </section>
             }
+
+            @if (isGroup()) {
+              <!-- ⚠️ Story 50.2 : « Qui reçoit » (Compteur d'hôte), section repliable au-dessus de la description,
+                   pour tout membre d'un groupe. Jamais sur une rencontre isolée ni une partie de JDR. -->
+              <app-host-bars [partieId]="p.id" />
+            }
+
+            <section class="details-zone details-zone--reference">
+              @if (!isRalliement()) {
+                <h3 class="details-zone__title">{{ theme.tone()['partie.details_zone_reference'] }}</h3>
+              }
+
+              <!-- Description de la partie : document statique de support -- Référence. Revue de
+                   code (retouche UX 2026-09-23) : rejoint le patron de carte à liseré des deux
+                   autres zones (DESIGN.md §1, liseré neutre) -- jusqu'ici seule Référence n'avait
+                   aucune carte, la classe .zone-card--reference restait posée mais inutilisée. -->
+              <div class="zone-card zone-card--reference">
+                @if (p.description) {
+                  <p>{{ p.description }}</p>
+                } @else {
+                  <p class="muted">
+                    {{ theme.tone()[isRalliement() ? 'partie.ralliement_no_description' : 'partie.no_description'] }}
+                  </p>
+                }
+              </div>
+
+              @if (p.gameSystemId === 'ryuutama') {
+                <!-- Fiches de référence Ryuutama (journal/carte) : documents statiques de support,
+                     consultés au besoin -- Référence. Retouche UX (2026-09-23) : repliées par défaut
+                     (<details>/<summary> natifs, DESIGN.md §2/§4 -- pas de MatExpansionModule),
+                     puces icône+libellé compactes au lieu de boutons pleine largeur. -->
+                <section class="reference-sheets">
+                  <details class="download-sheet">
+                    <summary>
+                      <app-icon name="deplier" class="download-sheet__chevron" />
+                      <h4 class="download-sheet__title">{{ theme.tone()['partie.reference_sheets_title'] }}</h4>
+                    </summary>
+                    <div class="reference-sheets__links">
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingReferenceAsset()"
+                        (click)="downloadAsset('journal', 'reference')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_journal_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingReferenceAsset()"
+                        (click)="downloadAsset('carte', 'reference')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_carte_cta'] }}
+                      </button>
+                    </div>
+                    @if (referenceAssetError(); as error) {
+                      <p class="reference-sheets__error">{{ error }}</p>
+                    }
+                  </details>
+                </section>
+              }
+
+              @if (isMj() && p.gameSystemId === 'ryuutama') {
+                <!-- Fiches de préparation MJ (monde, monstres, structure...) : documents statiques
+                     de support, consultés au besoin -- Référence. Retouche UX (2026-09-23) : même
+                     patron replié par défaut + puces compactes que .reference-sheets ci-dessus. -->
+                <section class="prep-sheets">
+                  <details class="download-sheet">
+                    <summary>
+                      <app-icon name="deplier" class="download-sheet__chevron" />
+                      <h4 class="download-sheet__title">{{ theme.tone()['partie.prep_sheets_title'] }}</h4>
+                    </summary>
+                    <div class="prep-sheets__links">
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('monde', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_monde_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('monstre', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_monstre_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('ville', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_ville_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('objectif-chasse', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_objectif_chasse_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('objectif-quete', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_objectif_quete_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('objectif-voyage', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_objectif_voyage_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('oeuf-de-bataille', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_oeuf_de_bataille_cta'] }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="dl-chip"
+                        [disabled]="downloadingPrepAsset()"
+                        (click)="downloadAsset('structure', 'prep')"
+                      >
+                        <app-icon name="telecharger" />
+                        {{ theme.tone()['partie.asset_structure_cta'] }}
+                      </button>
+                    </div>
+                    @if (prepAssetError(); as error) {
+                      <p class="prep-sheets__error">{{ error }}</p>
+                    }
+                  </details>
+                </section>
+              }
+            </section>
         </mat-tab>
+        }
 
-        @if (!isMj() && !isDesktop()) {
-          <mat-tab [label]="theme.tone()['character.my_sheet_tab_label']">
-            <section class="my-sheet-tab">
-              @if (myCharacters().length === 0) {
-                <p class="muted">Aucun personnage créé sur cette partie pour l'instant.</p>
-                <a
-                  mat-flat-button
-                  color="primary"
-                  [routerLink]="['/parties', p.id, 'characters', 'new']"
-                  [queryParams]="{ gameSystemId: p.gameSystemId }"
-                >
-                  {{ theme.tone()['character.create_cta'] }}
-                </a>
+        @if (hasTab('fiches')) {
+          <mat-tab [label]="theme.tone()['character.party_sheets_tab_label']">
+            <section class="party-sheets-tab">
+              @if (!charactersLoaded()) {
+                <!-- Revue de code (bmad-review, 2026-09-21) : pendant le chargement, ni le message
+                     « aucun personnage » ni son absence de bouton ne doivent apparaître — l'un et
+                     l'autre sont indiscernables de l'état « on ne peut jamais créer ici » tant que
+                     characters()/canCreateCharacter() ne sont pas connus. -->
+                <mat-progress-spinner mode="indeterminate" diameter="32" />
               } @else {
-                @for (character of myCharacters(); track character.id) {
+                <!-- Story « Fiches » (retour utilisateur) : le message « aucun personnage » (basé
+                     sur myCharacters(), l'absence de personnage PERSONNEL) et la liste générique
+                     (basée sur charactersSelfFirst(), tous les personnages de la partie) sont deux
+                     blocs indépendants qui cohabitent -- un joueur sans personnage sur une partie
+                     où d'autres en ont voit le message/CTA ET la liste des autres en dessous. -->
+                @if (myCharacters().length === 0) {
+                  <p class="muted">{{ theme.tone()['character.no_character_yet'] }}</p>
+                  @if (canCreateCharacter()) {
+                    <a
+                      mat-flat-button
+                      color="primary"
+                      [routerLink]="['/parties', p.id, 'characters', 'new']"
+                      [queryParams]="{ gameSystemId: p.gameSystemId }"
+                    >
+                      {{ theme.tone()['character.create_cta'] }}
+                    </a>
+                  }
+                }
+                @for (character of charactersSelfFirst(); track character.id) {
                   <app-character-summary-card
                     [character]="character"
                     [className]="classLabel(character)"
+                    [showOwnerInfo]="true"
                     (selected)="openCharacterSheet(p.id, character.id)"
                   />
                 }
@@ -253,10 +480,13 @@
           </mat-tab>
         }
 
-        @if (isMj()) {
+        @if (hasTab('invitations')) {
           <mat-tab [label]="theme.tone()['partie.invitations_tab_label']">
             <section class="invite">
-              <h3>{{ theme.tone()['partie.members_title'] }}</h3>
+              <h3 class="members-title">
+                <app-icon name="membres" />
+                {{ theme.tone()['partie.members_title'] }}
+              </h3>
               @if (otherMembers().length === 0) {
                 <p class="muted">{{ theme.tone()['partie.no_members'] }}</p>
               } @else {
@@ -268,98 +498,143 @@
                       [ambiguous]="isMemberAmbiguous(m.userId)"
                     />
                     <button mat-button (click)="removeMember(m)">
-                      <mat-icon>person_remove</mat-icon> {{ theme.tone()['partie.remove_member_btn'] }}
+                      <app-icon name="retirer-membre" /> {{ theme.tone()['partie.remove_member_btn'] }}
                     </button>
                   </div>
                 }
               }
 
-              <h3>{{ theme.tone()['partie.invite_title'] }}</h3>
-              <div class="search-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>{{ theme.tone()['partie.search_label'] }}</mat-label>
-                  <input matInput [ngModel]="search()" (ngModelChange)="search.set($event)"
-                         (keyup.enter)="runSearch()" />
-                </mat-form-field>
-                <button mat-flat-button (click)="runSearch()">
-                  <mat-icon>search</mat-icon> {{ theme.tone()['partie.search_btn'] }}
-                </button>
-              </div>
-              @for (u of results(); track u.id) {
+              <ng-container [ngTemplateOutlet]="inviteTools" />
+            </section>
+          </mat-tab>
+        }
+
+        @if (hasTab('membres')) {
+          <!-- Story 38.4 : « Missives » d'un ralliement = liste des membres, lisible par l'administrateur
+               comme par un membre. Story 39.3 : l'administrateur d'un GROUPE y gagne l'invitation (pseudo,
+               e-mail, lien), « Retirer » (membre ordinaire seulement), « Nommer admin » et, sur sa propre
+               ligne, « Quitter l'office » (Story 39.4) ; un membre, comme une rencontre isolée (epic 41),
+               garde la seule liste. Chaque administrateur d'un groupe porte le badge « Admin ». Le
+               créateur figure dans members() : on n'utilise donc pas otherMembers(), qui
+               l'écarterait. Story 39.5 : « Retirer » dépend du rôle seul (canRemoveGroupMember) — le
+               créateur redevenu simple membre se retire comme les autres. -->
+          <mat-tab [label]="membersTabLabel()">
+            <section class="invite ralliement-members">
+              <h3 class="members-title">
+                <app-icon name="membres" />
+                {{ theme.tone()['partie.members_title'] }}
+              </h3>
+              @for (m of members(); track m.userId) {
                 <div class="result-row">
-                  <span>{{ u.pseudo }}</span>
-                  <button mat-button (click)="invite(u)">
-                    <mat-icon>person_add</mat-icon> {{ theme.tone()['partie.invite_btn'] }}
-                  </button>
+                  @if (m.userId === auth.currentUser()?.id) {
+                    <app-identity-label
+                      [playerName]="m.displayName"
+                      [pseudo]="m.pseudo"
+                      [ambiguous]="isMemberAmbiguous(m.userId)"
+                    />
+                  } @else {
+                    <!-- ⚠️ Story 48.3 : le nom d'un autre membre ouvre sa Ludothèque (lecture seule). La
+                         ligne propre à la personne connectée reste inerte ; les boutons de gestion
+                         ci-dessous restent des boutons à part. -->
+                    <button
+                      type="button"
+                      class="library-open"
+                      [attr.aria-label]="libraryOpenAria(m)"
+                      (click)="openLibrary(m, $event)"
+                    >
+                      <app-identity-label
+                        [playerName]="m.displayName"
+                        [pseudo]="m.pseudo"
+                        [ambiguous]="isMemberAmbiguous(m.userId)"
+                      />
+                    </button>
+                  }
+                  @if (isGroup() && m.role === 'ADMIN') {
+                    <!-- Story 39.4 : badge d'administrateur = pictogramme ET mot, jamais la couleur seule. -->
+                    <span class="admin-badge">
+                      <app-icon name="role-admin" />
+                      {{ theme.tone()['partie.ralliement_admin_badge'] }}
+                    </span>
+                  }
+                  @if (canAppointAdmin(m)) {
+                    <button mat-button (click)="appointAdmin(m)">
+                      <app-icon name="nommer-admin" />
+                      {{ theme.tone()['partie.ralliement_appoint_btn'] }}
+                    </button>
+                  }
+                  @if (canStepDown(m)) {
+                    <button mat-button (click)="stepDownFromOffice()">
+                      <app-icon name="quitter-office" />
+                      {{ theme.tone()['partie.ralliement_step_down_btn'] }}
+                    </button>
+                  }
+                  @if (canRemoveGroupMember(m)) {
+                    <button mat-button (click)="removeMember(m)">
+                      <app-icon name="retirer-membre" /> {{ theme.tone()['partie.remove_member_btn'] }}
+                    </button>
+                  }
                 </div>
               }
-
-              <div class="search-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>{{ theme.tone()['partie.invite_by_email_label'] }}</mat-label>
-                  <input matInput type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
-                         [disabled]="invitingByEmail()" (keyup.enter)="inviteByEmail()" />
-                </mat-form-field>
-                <button mat-flat-button [disabled]="invitingByEmail()" (click)="inviteByEmail()">
-                  <mat-icon>mail</mat-icon> {{ theme.tone()['partie.invite_by_email_btn'] }}
-                </button>
-              </div>
-              @if (inviteEmailError()) {
-                <p class="notice error">{{ inviteEmailError() }}</p>
+              @if (isSoiree() && canInviteMembers()) {
+                <!-- Story 41.3 : l'hôte d'une soirée invite (pseudo, e-mail, lien) sans limite ; sa liste
+                     d'invités (les membres autres que lui) est vide tant qu'il n'a eu aucune réponse. -->
+                @if (otherMembers().length === 0) {
+                  <p class="muted soiree-guests-empty">
+                    {{ theme.tone()['partie.ralliement_soiree_guests_empty'] }}
+                  </p>
+                }
               }
-
-              <h3>{{ theme.tone()['partie.links_title'] }}</h3>
-              <button mat-stroked-button (click)="createLink()">
-                <mat-icon>link</mat-icon> {{ theme.tone()['partie.generate_link'] }}
-              </button>
-              @for (l of activeLinks(); track l.id) {
-                <div class="link-row">
-                  <code>{{ joinUrl(l.token) }}</code>
-                  <span class="muted">
-                    {{ l.usesCount }}<span>{{ l.maxUses ? '/' + l.maxUses : '' }}</span> · exp.
-                    {{ l.expiresAt | date: 'short' }}
-                  </span>
-                  <button mat-icon-button (click)="copyLink(l.token)" aria-label="Copier">
-                    <mat-icon>content_copy</mat-icon>
-                  </button>
-                  <button mat-icon-button (click)="revokeLink(l)" aria-label="Révoquer">
-                    <mat-icon>link_off</mat-icon>
-                  </button>
-                </div>
+              @if (canInviteMembers()) {
+                <ng-container [ngTemplateOutlet]="inviteTools" />
+              }
+              @if (library(); as target) {
+                <!-- ⚠️ Story 48.3 : tiroir modal (sous <body>) ; le focus revient au nom touché. -->
+                <app-library-sheet
+                  [userId]="target.userId"
+                  [name]="target.name"
+                  [returnFocus]="target.trigger"
+                  (closed)="closeLibrary()"
+                />
               }
             </section>
           </mat-tab>
         }
 
-        @if (isMj() && p.gameSystemId === 'ryuutama') {
-          <mat-tab label="Homme Dragon">
-            <app-homme-dragon-sheet [partieId]="p.id" [partieName]="p.name" />
+        @if (hasTab('jeux') && isSoiree()) {
+          <!-- Story 49.1 (⚠️ contrat UI) : une rencontre isolée à venir gagne un troisième onglet, après
+               « Conjonction · Invités / Invitations » : les jeux sur place (Reliques / Trésors / Joyaux) et
+               leur compte. Lecture seule ; jamais pour une soirée terminée, close ou annulée. L'onglet lit
+               lui-même l'événement de la soirée et remonte le nombre de jeux. Tout membre ou invité de la
+               soirée y est participant. -->
+          <mat-tab [label]="soireeGamesTabLabel()">
+            <app-event-games-tab
+              [partieId]="p.id"
+              [contributor]="true"
+              [currentUserId]="auth.currentUser()?.id ?? null"
+              (countChange)="soireeGamesCount.set($event)"
+            />
           </mat-tab>
         }
 
-        @if (isMj() && p.kind === 'ONE_SHOT') {
-          <mat-tab label="Scénario">
-            <app-scenario-one-shot-tab [partieId]="p.id" />
+        @if (hasTab('homme-dragon')) {
+          <mat-tab label="Homme Dragon">
+            <!-- Story 33.8 (AD-23) : l'onglet est le panneau d'AVENTURE — le lien entre cette partie et
+                 un Homme Dragon (lien vers la fiche + « Dissocier », ou « Créer » / « Associer un
+                 existant »). La fiche vit sur /homme-dragons/:id. -->
+            <app-homme-dragon-aventure-panel [partieId]="p.id" [partieName]="p.name" />
           </mat-tab>
         }
-        @if (isMj() && p.kind !== 'ONE_SHOT') {
-          <mat-tab label="Scénarios">
-            <app-scenario-drafts [partieId]="p.id" />
-          </mat-tab>
-        }
-        @if (p.kind !== 'ONE_SHOT') {
-          <mat-tab label="Chronologie">
-            <app-scenario-timeline [partieId]="p.id" [isMj]="isMj()" [partieKind]="p.kind" [characters]="characters()" />
-          </mat-tab>
-        }
+
       </mat-tab-group>
     </mat-card-content>
     </div>
 
     @if (homonymousWith() && !homonymyDismissed()) {
       <div class="homonymy-warning" role="alert" aria-live="polite">
-        <mat-icon aria-hidden="true">info</mat-icon>
-        <span>{{ theme.tone()['identity.homonymy_warning'] }}</span>
+        <app-icon name="information" />
+        <span>{{
+          theme.tone()[isRalliement() ? 'identity.ralliement_homonymy_warning' : 'identity.homonymy_warning']
+        }}</span>
         <a routerLink="/account">{{ theme.tone()['identity.homonymy_change_cta'] }}</a>
         <button type="button" mat-button (click)="dismissHomonymyWarning()">
           {{ theme.tone()['identity.homonymy_ignore_cta'] }}
@@ -367,12 +642,12 @@
       </div>
     }
 
-    @if (!isDesktop() && isMj()) {
+    @if (!isDesktop() && !isRalliement()) {
       <app-roster-strip
         [members]="members()"
         [characters]="characters()"
-        [mjId]="p.mjId"
-        [hasFreeSlot]="hasFreeSlot"
+        [ownerId]="p.ownerId"
+        [hasFreeSlot]="isMj() && hasFreeSlot"
         [classLabelFor]="classLabelFor"
         [roleLabelFor]="roleLabelFor"
         (selectCharacter)="onSelectRosterCharacter($event)"
@@ -380,24 +655,150 @@
       />
     }
 
-    <mat-card-actions>
+    <!-- Retouche UX (2026-09-23) : même patron de barre d'icônes que les déclencheurs XP/annonce de
+         la zone Action (DESIGN.md §3/§4). Revue de code : « Supprimer » (delete_btn) devait passer
+         en color="warn" -- vérification visuelle réelle a montré que cet attribut Material n'a
+         AUCUN EFFET en theming M3 (documenté par Angular Material, « supported in M2 themes only »)
+         -- la teinte destructrice passe donc par la classe icon-bar__btn--danger, qui référence
+         --mat-sys-error directement (cf. partie-detail.scss). -->
+    @if (isRalliement() && notice()) {
+      <!-- Story 39.4 : l'avis d'un groupe (invitation envoyée, refus de « Quitter l'office » ou, Story
+           39.5, de « Quitter le groupe » lancé depuis le pied de page…) reste visible quel que soit
+           l'onglet ouvert. -->
+      <p class="notice" role="status">{{ notice() }}</p>
+    }
+
+    <mat-card-actions class="icon-bar">
       @if (isMj()) {
-        <a mat-button [routerLink]="['/parties', p.id, 'edit']">
-          <mat-icon>edit</mat-icon> {{ theme.tone()['partie.edit_btn'] }}
+        <a mat-button class="icon-bar__btn" [routerLink]="['/parties', p.id, 'edit']">
+          <app-icon name="modifier" /> {{ theme.tone()['partie.edit_btn'] }}
+        </a>
+        <a mat-button class="icon-bar__btn" [routerLink]="['/parties', p.id, 'visibility']">
+          <app-icon name="cadenas-ferme" /> {{ theme.tone()['partie.visibility_btn'] }}
         </a>
         @if (p.status !== 'TERMINEE') {
-          <button mat-button (click)="closeGame(p)">
-            <mat-icon>flag</mat-icon> {{ theme.tone()['partie.close_btn'] }}
+          <button mat-button class="icon-bar__btn" (click)="closeGame(p)">
+            <app-icon name="etat-terminee" /> {{ theme.tone()['partie.close_btn'] }}
           </button>
         } @else {
-          <button mat-button (click)="reopenGame(p)">
-            <mat-icon>replay</mat-icon> {{ theme.tone()['partie.reopen_btn'] }}
+          <button mat-button class="icon-bar__btn" (click)="reopenGame(p)">
+            <app-icon name="rouvrir" /> {{ theme.tone()['partie.reopen_btn'] }}
           </button>
         }
-        <button mat-button (click)="confirmDelete(p)">
-          <mat-icon>delete</mat-icon> {{ theme.tone()['partie.delete_btn'] }}
+        <button mat-button class="icon-bar__btn icon-bar__btn--danger" (click)="confirmDelete(p)">
+          <app-icon name="supprimer" /> {{ theme.tone()['partie.delete_btn'] }}
+        </button>
+      } @else if (isRalliement() && p.role === 'admin') {
+        <!-- Story 38.2 : l'admin d'un ralliement modifie sa partie (PARTIE_UPDATE) ; la visibilité
+             n'existe pas pour cette famille (Story 38.4 : un membre n'a aucune action). Story 39.1 :
+             l'admin d'un groupe peut aussi le clore / rouvrir et le brûler (PARTIE_CLOSE / REOPEN /
+             DELETE, admin seul côté serveur) ; la rencontre unique n'a pas ces actions avant l'epic 41. -->
+        @if (!isSoireeCancelled()) {
+          <a mat-button class="icon-bar__btn" [routerLink]="['/parties', p.id, 'edit']">
+            <app-icon name="modifier" /> {{ theme.tone()['partie.edit_btn'] }}
+          </a>
+        }
+        @if (isSoiree() && !isSoireeCancelled()) {
+          <!-- Story 41.4 : l'hôte d'une soirée la clôt ou la rouvre (terminée aussi par sa date). Pas de
+               « Brûler » : annuler une soirée est l'objet de l'epic 42. -->
+          @if (p.status !== 'TERMINEE') {
+            <button mat-button class="icon-bar__btn" (click)="closeGame(p)">
+              <app-icon name="etat-terminee" /> {{ theme.tone()['partie.close_btn'] }}
+            </button>
+          } @else {
+            <button mat-button class="icon-bar__btn" (click)="reopenGame(p)">
+              <app-icon name="rouvrir" /> {{ theme.tone()['partie.reopen_btn'] }}
+            </button>
+          }
+        }
+        @if (isGroup()) {
+          @if (p.status !== 'TERMINEE') {
+            <button mat-button class="icon-bar__btn" (click)="closeGame(p)">
+              <app-icon name="etat-terminee" /> {{ theme.tone()['partie.close_btn'] }}
+            </button>
+          } @else {
+            <button mat-button class="icon-bar__btn" (click)="reopenGame(p)">
+              <app-icon name="rouvrir" /> {{ theme.tone()['partie.reopen_btn'] }}
+            </button>
+          }
+          <button mat-button class="icon-bar__btn" (click)="stepDownFromOffice()">
+            <app-icon name="quitter-office" />
+            {{ theme.tone()['partie.ralliement_step_down_btn'] }}
+          </button>
+          <button mat-button class="icon-bar__btn icon-bar__btn--danger" (click)="confirmDelete(p)">
+            <app-icon name="supprimer" /> {{ theme.tone()['partie.delete_btn'] }}
+          </button>
+        }
+      } @else if (canLeaveGroup()) {
+        <!-- Story 39.5 : le simple membre d'un groupe peut le quitter (même place au pied de carte que
+             « Quitter l'office » pour l'administrateur). PAS de teinte destructrice : une nouvelle
+             invitation le ramène, le rouge reste réservé à l'irréversible. -->
+        <button mat-button class="icon-bar__btn" (click)="leaveGroup()">
+          <app-icon name="quitter-groupe" />
+          {{ theme.tone()['partie.ralliement_leave_btn'] }}
         </button>
       }
     </mat-card-actions>
   </mat-card>
 }
+
+<!-- Story 39.3 : outils d'invitation partagés entre « Missives » d'une quête (MJ) et « Missives » d'un
+     groupe (administrateur) — recherche par pseudo, e-mail, liens. Les libellés passent par
+     `inviteTone()` : la quête garde ses clés `partie.*`, le groupe prend ses variantes
+     `partie.ralliement_*` (aucun mot de JDR). -->
+<ng-template #inviteTools>
+  <h3>{{ inviteTone('invite_title') }}</h3>
+  <div class="search-row">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ inviteTone('search_label') }}</mat-label>
+      <input matInput [ngModel]="search()" (ngModelChange)="search.set($event)"
+             (keyup.enter)="runSearch()" />
+    </mat-form-field>
+    <button mat-flat-button (click)="runSearch()">
+      <app-icon name="rechercher" /> {{ theme.tone()['partie.search_btn'] }}
+    </button>
+  </div>
+  @for (u of results(); track u.id) {
+    <div class="result-row">
+      <span>{{ u.pseudo }}</span>
+      <button mat-button (click)="invite(u)">
+        <app-icon name="inviter" /> {{ inviteTone('invite_btn') }}
+      </button>
+    </div>
+  }
+
+  <div class="search-row">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ inviteTone('invite_by_email_label') }}</mat-label>
+      <input matInput type="email" [ngModel]="inviteEmail()" (ngModelChange)="inviteEmail.set($event)"
+             [disabled]="invitingByEmail()" (keyup.enter)="inviteByEmail()" />
+    </mat-form-field>
+    <button mat-flat-button [disabled]="invitingByEmail()" (click)="inviteByEmail()">
+      <app-icon name="email" /> {{ theme.tone()['partie.invite_by_email_btn'] }}
+    </button>
+  </div>
+  @if (inviteEmailError()) {
+    <p class="notice error">{{ inviteEmailError() }}</p>
+  }
+
+  <h3>{{ inviteTone('links_title') }}</h3>
+  <button mat-stroked-button (click)="createLink()">
+    <app-icon name="lien" /> {{ inviteTone('generate_link') }}
+  </button>
+  @for (l of activeLinks(); track l.id) {
+    <div class="link-row">
+      <code>{{ joinUrl(l.token) }}</code>
+      <span class="muted">
+        {{ l.usesCount }}<span>{{ l.maxUses ? '/' + l.maxUses : '' }}</span> ·
+        {{ theme.tone()['parties.detail_link_expires_short'] }}
+        {{ l.expiresAt | date: 'short' }}
+      </span>
+      <button mat-icon-button (click)="copyLink(l.token)" [attr.aria-label]="theme.tone()['common.copier']">
+        <app-icon name="copier" />
+      </button>
+      <button mat-icon-button (click)="revokeLink(l)" [attr.aria-label]="theme.tone()['common.revoquer']">
+        <app-icon name="lien-revoque" />
+      </button>
+    </div>
+  }
+</ng-template>

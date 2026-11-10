@@ -278,7 +278,7 @@ mot de passe** (D-2), plus un endpoint de recherche d'utilisateurs assoupli (C-1
 relie jamais les deux faits. Concrètement, il manque :
 
 - une exigence propriétaire du **retour arrière** des aménagements de dev — l'addendum les renvoie
-  au Palier 10, c'est-à-dire *après* la mise en ligne de la gestion de compte ;
+  au Palier 11, c'est-à-dire *après* la mise en ligne de la gestion de compte ;
 - toute mention de **limitation de débit** sur `POST` changement de mot de passe / e-mail, alors
   que `CLAUDE.md` cite explicitement le throttler comme acquis du palier auth ;
 - une position sur `UserSession` : **le modèle existe** (`model UserSession { userId, sid, … }`),

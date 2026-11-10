@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  Injector,
   OnInit,
   computed,
   effect,
@@ -12,29 +13,37 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
+import type { StatusBadgeState } from '../../core/status/status-derivation';
+import { StatusBadge } from '../../shared/status-badge/status-badge';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AppIcon } from '../../core/icons/app-icon';
+import type { IconName } from '../../core/icons/icon-registry.generated';
+import { roleIconName } from '../../core/icons/role-icon-name';
 import type {
   DaySlot,
   InvitationDto,
   ListViewMode,
   PartieDto,
+  PartieRole,
   PartieSort,
   PartieStatus,
   PartySignalCode,
 } from '@master-jdr/shared';
-import { PARTIE_SORTS } from '@master-jdr/shared';
+import { PARTIE_SORTS, familyOf } from '@master-jdr/shared';
 import {
   ListControlBar,
   type ListControlBarSortOption,
 } from '../../shared/list-control-bar/list-control-bar';
 import { PartyBanner } from '../../shared/party-banner/party-banner';
 import { PartyCountdown } from '../../shared/party-countdown/party-countdown';
+import { SystemBadge, systemBadgeGlyph } from '../../shared/system-badge/system-badge';
 import { countdownProgress } from '../../core/parties/party-countdown.util';
 import { MyPartiesService } from '../../core/my-parties/my-parties.service';
 import { InvitationsService } from '../../core/invitations/invitations.service';
 import { OpenPollsService } from '../../core/poll/open-polls.service';
 import { PartySignalsService } from '../../core/parties/party-signals.service';
+import { AvailabilityReminderService } from '../../core/availability/availability-reminder.service';
 import {
   dominantCategory,
   dominantSignal,
@@ -45,14 +54,17 @@ import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountService } from '../../core/account/account.service';
 import { RealtimeService, userTopic } from '../../core/realtime/realtime.service';
-import { gameSystemName, partieKindLabel } from '../../core/parties/parties.util';
+import { gameSystemName, partieKindLabelKey } from '../../core/parties/parties.util';
 import { ContextualNavService } from '../../core/navigation/contextual-nav.service';
+import { fillTone } from '../../core/theme/tone-format';
+import { firstValueFrom } from 'rxjs';
 
 /** Signaux purement informatifs (jamais une action à faire) — exclus du regroupement « ce qui
  *  t'attend » (Task 7) et de la teinte de priorité (Task 6, cf. party-signal-priority.ts). */
 const NON_ACTIONABLE_SIGNALS: readonly PartySignalCode[] = [
   'PROCHAINE_SEANCE_CONNUE',
   'PARTIE_TERMINEE',
+  'PARTIE_ANNULEE',
 ];
 
 /** Au plus 2 badges visibles, le reste résumé par un compteur (AC3). */
@@ -71,7 +83,7 @@ const SLOT_LABELS: Record<DaySlot, string> = {
 /** Teinte de carte (DESIGN.md §7.2 StateRail) — les 4 mêmes teintes que la palette de statut du
  *  thème, quel que soit le mode d'affichage. Toujours renseignée : `tiles()` calcule une valeur
  *  pour chaque partie, il n'existe pas de cas « sans teinte ». */
-export type TileTint = 'todo' | 'live' | 'soon' | 'done';
+export type TileTint = 'todo' | 'live' | 'soon' | 'done' | 'cancelled';
 
 export interface PartieTileVm {
   partie: PartieDto;
@@ -89,20 +101,25 @@ export interface PartieTileVm {
     FormsModule,
     MatCardModule,
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     NgTemplateOutlet,
     ListControlBar,
     PartyBanner,
     PartyCountdown,
+    SystemBadge,
+    StatusBadge,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
 export class Dashboard implements OnInit {
   private readonly myPartiesSvc = inject(MyPartiesService);
+  private readonly injector = inject(Injector);
   private readonly invitations = inject(InvitationsService);
   private readonly openPollsSvc = inject(OpenPollsService);
   private readonly partySignalsSvc = inject(PartySignalsService);
+  /** Story 52.5 (AD-5) : le rappel « Dispos à déclarer » — la règle est côté serveur, le tableau de bord ne fait que l'afficher. */
+  protected readonly reminder = inject(AvailabilityReminderService);
   protected readonly theme = inject(ThemeToneService);
   private readonly auth = inject(AuthService);
   private readonly account = inject(AccountService);
@@ -111,15 +128,80 @@ export class Dashboard implements OnInit {
   private readonly contextualNav = inject(ContextualNavService);
 
   protected readonly allParties = this.myPartiesSvc.allParties;
-  protected readonly hasMjParties = this.myPartiesSvc.hasMjParties;
   protected readonly received = signal<InvitationDto[]>([]);
   protected readonly openPolls = this.openPollsSvc.openPolls;
   protected readonly system = gameSystemName;
-  protected readonly kind = partieKindLabel;
+  protected readonly kind = (kind: PartieDto['kind']): string =>
+    this.theme.tone()[partieKindLabelKey(kind)] ?? kind;
+
+  /** Un ralliement n'est pas une quête de JDR : sa famille vient du registre des systèmes, jamais
+   *  d'un identifiant en dur (Story 38.5). Un système inconnu retombe sur « quête » (JDR hérité). */
+  private static isRalliement(partie: PartieDto): boolean {
+    return familyOf(partie.gameSystemId) === 'ralliement';
+  }
+
+  private static genreOf(partie: PartieDto): 'quete' | 'ralliement' {
+    return Dashboard.isRalliement(partie) ? 'ralliement' : 'quete';
+  }
+
+  /** Sous-titre de tuile (Story 38.5, UX-DR14) : la seule nature — « Chronique » pour une quête,
+   *  « La convergence des Sortilèges » pour un ralliement. Le nom du système n'y figure plus : il
+   *  est porté par la pastille `.system-chip`. */
+  protected subtitle(partie: PartieDto): string {
+    const tone = this.theme.tone();
+    if (Dashboard.isRalliement(partie)) {
+      return tone[`partie.ralliement_kind_${partie.kind}`] ?? partie.kind;
+    }
+    return this.kind(partie.kind);
+  }
+
+  /** Le badge rond du système existe-t-il pour cette partie ? (R1 Ryuutama, L1 ralliement ; rien
+   *  pour Draconis, qui garde la seule pastille texte.) */
+  protected hasSystemBadge(partie: PartieDto): boolean {
+    return systemBadgeGlyph(partie.gameSystemId) !== null;
+  }
+
+  /** Mot du rôle dans la tuile — JDR : Maître / Héros (clés thématisées, inchangées). Ralliement :
+   *  rencontre isolée → Hôte / Invité, groupe → Admin / Membre (Story 38.5). Un seul endroit
+   *  pour l'indicateur de rôle ET la sous-ligne du mode liste. */
+  protected roleLabel(partie: PartieDto): string {
+    const tone = this.theme.tone();
+    switch (partie.role) {
+      case 'mj':
+        return tone['dashboard.role_mj'];
+      case 'player':
+        return tone['dashboard.role_player'];
+      case 'admin':
+        return tone[
+          partie.kind === 'ONE_SHOT'
+            ? 'dashboard.role_ralliement_host'
+            : 'dashboard.role_ralliement_admin'
+        ];
+      case 'member':
+        return tone[
+          partie.kind === 'ONE_SHOT'
+            ? 'dashboard.role_ralliement_guest'
+            : 'dashboard.role_ralliement_member'
+        ];
+      default: {
+        const exhaustive: never = partie.role;
+        return exhaustive;
+      }
+    }
+  }
+
+  /** Icône du rôle : l'unique correspondance `roleIconName` (MJ, admin de groupe, hôte d'une
+   *  soirée isolée, joueur/membre), appelée depuis le gabarit. */
+  protected readonly roleIconName = roleIconName;
 
   /** Critères de filtre (AC2/AC5) — purement transitoires (écran), jamais mémorisés sur le compte
    *  (EXPERIENCE.md §4.2 : seul le tri par défaut vit dans les préférences). */
-  protected readonly roleFilter = signal<'all' | 'mj' | 'player'>('all');
+  protected readonly roleFilter = signal<'all' | PartieRole>('all');
+  /** Genre (Story 38.5) : quêtes de JDR ou ralliements — transitoire, comme les autres filtres. */
+  protected readonly genreFilter = signal<'all' | 'quete' | 'ralliement'>('all');
+  /** « Grouper par type » (Story 38.5) : deux sections Quêtes / Ralliements. Transitoire, décoché
+   *  par défaut, et jamais compté comme un écart au défaut. */
+  protected readonly groupByType = signal(false);
   protected readonly statusFilter = signal<'all' | PartieStatus>('all');
   /** Révélation temporaire des parties terminées (AC6, « restent accessibles à la demande ») —
    *  n'écrit jamais la préférence `hideFinishedParties`, contrairement à la case à cocher. */
@@ -151,7 +233,8 @@ export class Dashboard implements OnInit {
    *  `hideFinishedParties` se persistent immédiatement à chaque changement (patron fire-and-forget
    *  déjà établi) et ne peuvent donc jamais s'écarter d'eux-mêmes après coup (Dev Notes). */
   protected readonly hasDeviatedFromDefault = computed(
-    () => this.roleFilter() !== 'all' || this.statusFilter() !== 'all',
+    () =>
+      this.roleFilter() !== 'all' || this.genreFilter() !== 'all' || this.statusFilter() !== 'all',
   );
   /** Densité d'affichage (AC1) — une seule classe CSS pilotant toutes les grilles de la page. */
   protected readonly gridDensityClass = computed(() => `grid--${this.partiesViewMode()}`);
@@ -163,8 +246,12 @@ export class Dashboard implements OnInit {
     if (!this.hideFinishedParties() || this.showFinishedOverride() || this.statusFilter() !== 'all')
       return false;
     const role = this.roleFilter();
+    const genre = this.genreFilter();
     return this.allParties().some(
-      (p) => p.status === 'TERMINEE' && (role === 'all' || p.role === role),
+      (p) =>
+        Dashboard.isFinishedOrCancelled(p) &&
+        (role === 'all' || p.role === role) &&
+        (genre === 'all' || Dashboard.genreOf(p) === genre),
     );
   });
 
@@ -174,14 +261,16 @@ export class Dashboard implements OnInit {
    *  façon d'y accéder « à la demande », cohérente avec le bouton de révélation. */
   private readonly filteredParties = computed<PartieDto[]>(() => {
     const role = this.roleFilter();
+    const genre = this.genreFilter();
     const status = this.statusFilter();
     const query = this.searchQuery().trim().toLowerCase();
     const hideFinished =
       this.hideFinishedParties() && !this.showFinishedOverride() && status === 'all';
     return this.allParties().filter((p) => {
       if (role !== 'all' && p.role !== role) return false;
+      if (genre !== 'all' && Dashboard.genreOf(p) !== genre) return false;
       if (status !== 'all' && p.status !== status) return false;
-      if (hideFinished && p.status === 'TERMINEE') return false;
+      if (hideFinished && Dashboard.isFinishedOrCancelled(p)) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
       return true;
     });
@@ -195,7 +284,9 @@ export class Dashboard implements OnInit {
       const signals = signalsMap.get(partie.id)?.signals ?? [];
       // PARTIE_TERMINEE est exclu des badges affichés (revue utilisateur post-29.7) : redondant
       // avec .status-indicator, déjà affiché à côté du titre pour toute partie TERMINEE.
-      const displaySignals = signals.filter((s) => s !== 'PARTIE_TERMINEE');
+      const displaySignals = signals.filter(
+        (s) => s !== 'PARTIE_TERMINEE' && s !== 'PARTIE_ANNULEE',
+      );
       const sorted = sortByPriority(displaySignals);
       const visibleSignals = sorted.slice(0, MAX_VISIBLE_BADGES);
       const moreCount = Math.max(0, sorted.length - MAX_VISIBLE_BADGES);
@@ -205,15 +296,17 @@ export class Dashboard implements OnInit {
       // « en retard » partagent la teinte `soon`, distincte de `todo` réservée au blocage.
       const category = dominantCategory(displaySignals);
       const tint: TileTint =
-        partie.status === 'TERMINEE'
-          ? 'done'
-          : category === 'blocking'
-            ? 'todo'
-            : category === 'deadline' || category === 'overdue'
-              ? 'soon'
-              : partie.status === 'EN_COURS'
-                ? 'live'
-                : 'soon';
+        partie.status === 'ANNULEE'
+          ? 'cancelled'
+          : partie.status === 'TERMINEE'
+            ? 'done'
+            : category === 'blocking'
+              ? 'todo'
+              : category === 'deadline' || category === 'overdue'
+                ? 'soon'
+                : partie.status === 'EN_COURS'
+                  ? 'live'
+                  : 'soon';
       return {
         partie,
         signals,
@@ -224,6 +317,12 @@ export class Dashboard implements OnInit {
       };
     });
   });
+
+  /** Story 42.4 : « clos » au sens de la case à cocher — terminée OU annulée (statut `ANNULEE`, Story 42.2).
+   *  La préférence enregistrée (`hideFinishedParties`) garde son nom et sa valeur ; seule sa portée s'élargit. */
+  private static isFinishedOrCancelled(partie: PartieDto): boolean {
+    return partie.status === 'TERMINEE' || partie.status === 'ANNULEE';
+  }
 
   private static hasActionableSignal(signals: readonly PartySignalCode[]): boolean {
     return signals.some((s) => !NON_ACTIONABLE_SIGNALS.includes(s));
@@ -257,7 +356,10 @@ export class Dashboard implements OnInit {
    *  Notes) : tout autre critère bascule sur `flatTiles`, une liste plate unique. */
   protected readonly awaitingTiles = computed(() =>
     this.orderedTiles().filter(
-      (t) => t.partie.status !== 'TERMINEE' && Dashboard.hasActionableSignal(t.signals),
+      (t) =>
+        t.partie.status !== 'TERMINEE' &&
+        t.partie.status !== 'ANNULEE' &&
+        Dashboard.hasActionableSignal(t.signals),
     ),
   );
   protected readonly ongoingTiles = computed(() =>
@@ -271,16 +373,54 @@ export class Dashboard implements OnInit {
     ),
   );
   protected readonly finishedTiles = computed(() =>
-    this.orderedTiles().filter((t) => t.partie.status === 'TERMINEE'),
+    this.orderedTiles().filter(
+      (t) => t.partie.status === 'TERMINEE' || t.partie.status === 'ANNULEE',
+    ),
   );
   /** Liste plate (Story 29.8) utilisée à la place des 4 intertitres dès que le tri s'écarte de
    *  'urgence' — trier par nom/date/type/statut à l'intérieur de 4 groupes n'aurait pas de sens
    *  pour un utilisateur qui veut un ordre global (Dev Notes, décision documentée). */
   protected readonly flatTiles = this.orderedTiles;
 
+  /** « Grouper par type » (Story 38.5) : les tuiles déjà triées et épinglées (favoris en tête),
+   *  simplement réparties par genre — chaque section garde donc l'ordre du tri choisi, sans les
+   *  intertitres d'urgence. Une section vide n'est pas rendue (cf. le gabarit). */
+  protected readonly questTiles = computed(() =>
+    this.orderedTiles().filter((t) => Dashboard.genreOf(t.partie) === 'quete'),
+  );
+  protected readonly ralliementTiles = computed(() =>
+    this.orderedTiles().filter((t) => Dashboard.genreOf(t.partie) === 'ralliement'),
+  );
+
   /** Libellé de thème d'un code de signal — clé `partie.signal_<code>` en minuscule. */
   protected signalLabel(code: PartySignalCode): string {
     return this.theme.tone()[`partie.signal_${code.toLowerCase()}`] ?? code;
+  }
+
+  /** Système affiché sur la carte d'une invitation reçue. Pour un groupe de ralliement (Story 39.3),
+   *  le mot du thème (« Ralliement » / « Veillée » / « Rassemblement ») remplace le nom du système :
+   *  l'invité peut n'avoir jamais vu de JDR, aucun mot de la famille JDR ne doit apparaître. */
+  protected invitationSystemLabel(inv: InvitationDto): string {
+    return familyOf(inv.partie.gameSystemId) === 'ralliement'
+      ? this.theme.tone()['partie.mode_ralliement']
+      : gameSystemName(inv.partie.gameSystemId);
+  }
+
+  /** Story 41.3 : pastille « Invitation à accepter » (`todo`, écrite) d'une invitation à une rencontre
+   *  de ralliement — une quête garde sa carte telle quelle. */
+  protected pendingInvitationChip(inv: InvitationDto): StatusBadgeState | null {
+    if (familyOf(inv.partie.gameSystemId) !== 'ralliement') return null;
+    return {
+      tone: 'todo',
+      labelKey: 'status.scenario_a_venir',
+      draft: false,
+      text: this.theme.tone()['dashboard.invitation_pending_chip'],
+    };
+  }
+
+  /** Mention « invité par <pseudo> » d'une invitation reçue (gabarit lu dans le registre). */
+  protected invitedByLabel(pseudo: string): string {
+    return fillTone(this.theme.tone()['dashboard.invitation_invited_by'], { pseudo });
   }
 
   /** Gabarit « +{n} » (AC3) — même patron `.replace()` que `partie.notice_invited` ailleurs. */
@@ -302,7 +442,22 @@ export class Dashboard implements OnInit {
           timeZone: 'UTC',
         }).format(new Date(partie.nextSessionDate));
         const slot = partie.nextSessionSlot ? `, ${SLOT_LABELS[partie.nextSessionSlot]}` : '';
-        return `${date}${slot}`;
+        const start = `${date}${slot}`;
+        // Story 47.2 : une plage de plusieurs créneaux se lit « début → fin » ; un créneau seul reste inchangé.
+        const end = partie.nextSessionEndDate;
+        const sameDay = !end || end.substring(0, 10) === partie.nextSessionDate.substring(0, 10);
+        const sameSlot =
+          (partie.nextSessionEndSlot ?? partie.nextSessionSlot) === partie.nextSessionSlot;
+        if (!end || (sameDay && sameSlot)) return start;
+        const endDate = new Intl.DateTimeFormat('fr-FR', {
+          day: 'numeric',
+          month: 'long',
+          timeZone: 'UTC',
+        }).format(new Date(end));
+        const endSlot = partie.nextSessionEndSlot
+          ? `, ${SLOT_LABELS[partie.nextSessionEndSlot]}`
+          : '';
+        return `${start} → ${endDate}${endSlot}`;
       } catch {
         return this.signalLabel(code);
       }
@@ -320,8 +475,20 @@ export class Dashboard implements OnInit {
 
   /** Icône du signal non chromatique accompagnant la teinte de carte pour les tuiles sans badge
    *  visible (AC9 : jamais la couleur seule) — cf. `tintLabel()`. */
-  protected tintIcon(tint: TileTint): string {
-    return tint === 'live' ? 'play_circle' : tint === 'soon' ? 'schedule' : 'flag';
+  protected tintIcon(tint: TileTint): IconName | null {
+    switch (tint) {
+      case 'live':
+        return 'etat-en-cours';
+      case 'soon':
+        return 'etat-a-venir';
+      case 'done':
+        return 'etat-terminee';
+      case 'cancelled':
+        return 'etat-annulee';
+      case 'todo':
+        // Pas d'icône de repli : sans dessin pour ce sens, le gabarit n'affiche que le texte.
+        return null;
+    }
   }
 
   /** Libellé non chromatique doublant la teinte de carte `.tile--live`/`.tile--soon`/`.tile--closed`
@@ -330,6 +497,7 @@ export class Dashboard implements OnInit {
    *  besoin de ce fallback : elle n'existe que lorsqu'un signal actionnable est présent, donc au
    *  moins un badge est toujours visible. */
   protected tintLabel(tint: TileTint): string {
+    if (tint === 'cancelled') return this.theme.tone()['dashboard.status_cancelled_badge'];
     if (tint === 'done') return this.theme.tone()['dashboard.status_closed_badge'];
     if (tint === 'live') return this.theme.tone()['dashboard.section_ongoing'];
     return this.theme.tone()['dashboard.section_upcoming'];
@@ -381,8 +549,7 @@ export class Dashboard implements OnInit {
    *  liste, là où les modes moyen/grand s'appuient sur les badges et `.status-indicator`.
    *  Le rôle y est repris parce que `.role-indicator` n'est pas rendu dans ce gabarit. */
   protected rowSummary(t: PartieTileVm): string {
-    const tone = this.theme.tone();
-    const role = t.partie.role === 'mj' ? tone['dashboard.role_mj'] : tone['dashboard.role_player'];
+    const role = this.roleLabel(t.partie);
     const detail = t.dominant ? this.badgeLabel(t.dominant, t.partie) : this.tintLabel(t.tint);
     return `${role} · ${detail}`;
   }
@@ -434,13 +601,63 @@ export class Dashboard implements OnInit {
       this.realtime.connect(userTopic(id));
       this.destroyRef.onDestroy(() => this.realtime.disconnect(userTopic(id)));
     }
+    // Story 52.5 : le rappel est lu à l’ouverture ; il se relit ensuite sur `user:{id}` (RealtimeService).
+    void this.reminder.refresh();
     await this.loadInvitations();
+  }
+
+  // ─── Story 52.6 — faire taire le rappel « Dispos à déclarer » ────────────────────────────────────────────────
+
+  /** Un tap en cours d'écriture : le second est ignoré (le bandeau disparaît aussitôt, mais jamais deux PATCH ni deux
+   *  snackbars pour un même geste). */
+  private silencing = false;
+
+  /** « Ne plus me le rappeler » : le bandeau disparaît aussitôt (`setEnabled` est optimiste), et une fois la préférence
+   *  écrite une snackbar le confirme avec « Annuler ». Un échec rend le bandeau et le dit. `setEnabled` ne résout `false`
+   *  que pour la DERNIÈRE écriture demandée : jamais un message d'échec qui contredirait un choix plus récent. */
+  protected async silenceReminder(): Promise<void> {
+    if (this.silencing) return;
+    this.silencing = true;
+    try {
+      if (await this.reminder.setEnabled(false)) {
+        const tone = this.theme.tone();
+        await this.openSnack(
+          tone['dashboard.reminder_silenced'],
+          tone['dashboard.reminder_undo'],
+          () => void this.undoSilencedReminder(),
+        );
+      } else {
+        await this.openSnack(this.theme.tone()['dashboard.reminder_write_error']);
+      }
+    } finally {
+      this.silencing = false;
+    }
+  }
+
+  /** « Annuler » de la snackbar : la préférence redevient vraie, le bandeau revient si la règle du serveur le veut. */
+  private async undoSilencedReminder(): Promise<void> {
+    if (!(await this.reminder.setEnabled(true))) {
+      await this.openSnack(this.theme.tone()['dashboard.reminder_write_error']);
+    }
+  }
+
+  /** La snackbar se charge à la demande — comme `MatDialog` plus bas, elle ne pèse pas sur le bundle initial. La
+   *  préférence est DÉJÀ écrite quand on arrive ici : un chargement qui échoue (hors ligne) ou un écran déjà détruit ne
+   *  doit pas devenir un rejet non géré ; au pire, pas de confirmation. L'action n'écoute que tant que l'écran vit. */
+  private async openSnack(message: string, action?: string, onAction?: () => void): Promise<void> {
+    try {
+      const { MatSnackBar } = await import('@angular/material/snack-bar');
+      const ref = this.injector.get(MatSnackBar).open(message, action, { duration: 8000 });
+      if (onAction) ref.onAction().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(onAction);
+    } catch {
+      // Confirmation impossible : la préférence reste celle qui vient d'être écrite.
+    }
   }
 
   async accept(inv: InvitationDto): Promise<void> {
     await this.invitations.accept(inv.id);
     this.received.update((list) => list.filter((i) => i.id !== inv.id));
-    await this.myPartiesSvc.refreshPlayerParties();
+    await this.myPartiesSvc.refreshAll();
   }
 
   async decline(inv: InvitationDto): Promise<void> {
@@ -493,9 +710,10 @@ export class Dashboard implements OnInit {
   }
 
   /** Rétablit les filtres transitoires (Story 29.9, AC6) — seuls réglages comptés dans
-   *  `hasDeviatedFromDefault()`, jamais mémorisés côté compte. */
+   *  `hasDeviatedFromDefault()` (rôle, genre, statut), jamais mémorisés côté compte. */
   protected onResetRequested(): void {
     this.roleFilter.set('all');
+    this.genreFilter.set('all');
     this.statusFilter.set('all');
   }
 
@@ -504,12 +722,60 @@ export class Dashboard implements OnInit {
   private readonly pendingFavorites = signal<ReadonlySet<string>>(new Set());
 
   /** Vrai si un clic sur l'étoile de cette partie est déjà en cours de traitement. */
+  /** Story 42.5 : « Retirer de ma liste » n'est offert que sur une partie terminée ou annulée (le serveur
+   *  refuse sinon). Parties retirées en cours de confirmation/écriture : le bouton est désactivé. */
+  private readonly pendingHides = signal<ReadonlySet<string>>(new Set());
+
+  protected canHide(partie: PartieDto): boolean {
+    return partie.status === 'TERMINEE' || partie.status === 'ANNULEE';
+  }
+
+  protected isHidePending(partieId: string): boolean {
+    return this.pendingHides().has(partieId);
+  }
+
+  protected hideAriaLabel(partie: PartieDto): string {
+    return fillTone(this.theme.tone()['dashboard.hide_party_aria'], { name: partie.name });
+  }
+
+  /** Story 42.5 (UX-DR12 n° 4) : confirmation « Votre accord », puis retrait définitif pour soi seul ; la
+   *  liste est relue par `MyPartiesService.hide`. « Renoncer » ne change rien. */
+  protected async confirmHide(partie: PartieDto): Promise<void> {
+    if (!this.canHide(partie) || this.pendingHides().has(partie.id)) return;
+    const tone = this.theme.tone();
+    // La fenêtre de confirmation n'est chargée qu'au premier clic : l'écran d'accueil (bundle initial) ne
+    // porte ni `MatDialog` ni `ConfirmDialog` (budget du bundle initial).
+    const [{ MatDialog }, { ConfirmDialog }] = await Promise.all([
+      import('@angular/material/dialog'),
+      import('../parties/confirm-dialog/confirm-dialog'),
+    ]);
+    const ref = this.injector.get(MatDialog).open(ConfirmDialog, {
+      data: {
+        message: fillTone(tone['dashboard.hide_party_confirm'], { name: partie.name }),
+        confirmLabel: tone['dashboard.hide_party_confirm_btn'],
+      },
+    });
+    const confirmed = await firstValueFrom(ref.afterClosed());
+    if (!confirmed) return;
+    this.pendingHides.update((s) => new Set(s).add(partie.id));
+    try {
+      await this.myPartiesSvc.hide(partie.id);
+    } catch {
+      // Refus ou échec réseau : la tuile reste, rien n'a changé (le serveur est seul juge).
+    } finally {
+      this.pendingHides.update((s) => {
+        const next = new Set(s);
+        next.delete(partie.id);
+        return next;
+      });
+    }
+  }
+
   protected isFavoritePending(partieId: string): boolean {
     return this.pendingFavorites().has(partieId);
   }
 
-  /** Favori (AC1) — rechargement ciblé selon le rôle de CETTE partie, jamais les deux listes
-   *  (même patron que `accept()`/`decline()`, qui ne rechargent que ce qui a pu changer). */
+  /** Favori (AC1) — rechargement de la liste unique (Story 38.5), quel que soit le rôle. */
   protected async toggleFavorite(partie: PartieDto): Promise<void> {
     if (this.pendingFavorites().has(partie.id)) return;
     this.pendingFavorites.update((s) => new Set(s).add(partie.id));
@@ -519,8 +785,9 @@ export class Dashboard implements OnInit {
       } else {
         await this.account.addFavorite(partie.id);
       }
-      if (partie.role === 'mj') await this.myPartiesSvc.refreshMjParties();
-      else await this.myPartiesSvc.refreshPlayerParties();
+      // Une seule liste pour tous les rôles (Story 38.5) : le favori marche pour un ralliement
+      // comme pour une quête, sans brancher sur le rôle.
+      await this.myPartiesSvc.refreshAll();
     } finally {
       this.pendingFavorites.update((s) => {
         const next = new Set(s);

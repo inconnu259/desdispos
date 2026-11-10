@@ -41,12 +41,44 @@ describe('UsersService', () => {
     });
   });
 
-  describe('searchByEmailOrPseudo', () => {
-    it('cherche par email OU pseudo sans jamais sélectionner le hash, l’e-mail ni le nom affiché (AD-2)', async () => {
-      await service.searchByEmailOrPseudo('bob');
+  describe('searchByPseudo', () => {
+    it('cherche par pseudo en correspondance partielle insensible à la casse, plafonnée à 10 et triée par pseudo, sans jamais sélectionner le hash, l’e-mail ni le nom affiché (AD-2)', async () => {
+      await service.searchByPseudo('bob');
       expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { OR: [{ email: 'bob' }, { pseudo: 'bob' }] },
+        where: { pseudo: { contains: 'bob', mode: 'insensitive' } },
         select: { id: true, pseudo: true },
+        orderBy: { pseudo: 'asc' },
+        take: 10,
+      });
+    });
+
+    it("ne cherche jamais sur l'e-mail : une adresse e-mail passée en q n'est filtrée que sur pseudo (Story 32.1)", async () => {
+      await service.searchByPseudo('alice@example.com');
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { pseudo: { contains: 'alice@example.com', mode: 'insensitive' } },
+        select: { id: true, pseudo: true },
+        orderBy: { pseudo: 'asc' },
+        take: 10,
+      });
+    });
+
+    it('échappe les métacaractères LIKE (`%`, `_`, `\\`) avant `contains` — recherchés littéralement, pas comme des jokers', async () => {
+      await service.searchByPseudo('100%_off\\bob');
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { pseudo: { contains: '100\\%\\_off\\\\bob', mode: 'insensitive' } },
+        select: { id: true, pseudo: true },
+        orderBy: { pseudo: 'asc' },
+        take: 10,
+      });
+    });
+
+    it('trim `q` côté serveur avant le filtre (défense en profondeur, le client trim déjà)', async () => {
+      await service.searchByPseudo('  bob  ');
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { pseudo: { contains: 'bob', mode: 'insensitive' } },
+        select: { id: true, pseudo: true },
+        orderBy: { pseudo: 'asc' },
+        take: 10,
       });
     });
   });

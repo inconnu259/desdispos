@@ -33,17 +33,26 @@
         <button
           type="button"
           class="field-edit-pencil__button"
-          [attr.aria-label]="'Modifier ' + theme.tone()['account.email_label']"
+          [attr.aria-label]="
+            theme.tone()['common.modifier'] + ' ' + theme.tone()['account.email_label']
+          "
           (click)="startEmailEdit()"
         >
-          ✎
+          <app-icon name="modifier" />
         </button>
       </span>
     } @else {
       <form [formGroup]="emailForm" (ngSubmit)="submitEmailChange()" class="inline-edit-form">
         <mat-form-field appearance="outline">
           <mat-label>{{ theme.tone()['account.current_password_for_email_label'] }}</mat-label>
-          <input matInput type="password" formControlName="currentPassword" />
+          <input
+            matInput
+            type="password"
+            formControlName="currentPassword"
+            appPasswordReveal
+            #emailPw="appPasswordReveal"
+          />
+          <app-password-toggle matSuffix [for]="emailPw" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -55,11 +64,7 @@
           <button mat-button type="button" (click)="cancelEmailEdit()">
             {{ theme.tone()['account.cancel_btn'] }}
           </button>
-          <button
-            mat-flat-button
-            type="submit"
-            [disabled]="emailSaving() || emailForm.invalid"
-          >
+          <button mat-flat-button type="submit" [disabled]="emailSaving() || emailForm.invalid">
             {{ theme.tone()['account.email_change_save_btn'] }}
           </button>
         </div>
@@ -96,6 +101,36 @@
     </div>
   </div>
 
+  <!-- ⚠️ Story 52.6 (AD-5) — « Me rappeler de déclarer mes dispos », juste après « Ce que révèle mon calendrier » et
+       avant la ligne de la Ludothèque. Même patron que les cases de ce bloc ; cochée par défaut (c'est l'état du compte).
+       Elle ne fait taire que ce rappel : les signaux à traiter des cartes restent affichés. -->
+  <div class="readonly-field">
+    <div class="reminder-pref">
+      <mat-checkbox
+        [checked]="reminderEnabled()"
+        aria-describedby="availability-reminder-hint"
+        (change)="onReminderToggle($event.checked)"
+      >
+        {{ theme.tone()['account.availability_reminder_label'] }}
+      </mat-checkbox>
+    </div>
+    <p id="availability-reminder-hint" class="calendar-intents__why">
+      {{ theme.tone()['account.availability_reminder_hint'] }}
+    </p>
+  </div>
+
+  <!-- ⚠️ Story 48.1 (EXPERIENCE.md §2.4) — ligne vers la Ludothèque, juste après « Ce que révèle mon
+       calendrier » (ordre de la planche), donc avant la zone sensible. Le décompte n'apparaît qu'une
+       fois lu ; aucun texte n'incite à la remplir. -->
+  <a class="board-games-row" routerLink="/profile/board-games">
+    <app-icon class="board-games-row__icon" name="jeux" />
+    <span class="board-games-row__text">
+      <span class="board-games-row__title">{{ boardGamesRowTitle() }}</span>
+      <span class="board-games-row__visibility">{{ theme.tone()['board_games.visibility'] }}</span>
+    </span>
+    <app-icon class="board-games-row__chevron" name="ouvrir" />
+  </a>
+
   <div class="readonly-field">
     <span class="lbl">{{ theme.tone()['account.password_title'] }}</span>
     @if (!editingPassword()) {
@@ -108,12 +143,26 @@
       <form [formGroup]="passwordForm" (ngSubmit)="submitPassword()" class="inline-edit-form">
         <mat-form-field appearance="outline">
           <mat-label>{{ theme.tone()['account.current_password_label'] }}</mat-label>
-          <input matInput type="password" formControlName="currentPassword" />
+          <input
+            matInput
+            type="password"
+            formControlName="currentPassword"
+            appPasswordReveal
+            #currentPw="appPasswordReveal"
+          />
+          <app-password-toggle matSuffix [for]="currentPw" />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>{{ theme.tone()['account.new_password_label'] }}</mat-label>
-          <input matInput type="password" formControlName="newPassword" />
+          <input
+            matInput
+            type="password"
+            formControlName="newPassword"
+            appPasswordReveal
+            #newPw="appPasswordReveal"
+          />
+          <app-password-toggle matSuffix [for]="newPw" />
         </mat-form-field>
 
         <div class="actions">
@@ -139,8 +188,32 @@
   </div>
 
   <div class="actions actions--start logout-row">
-    <button mat-stroked-button type="button" (click)="logout()">
+    <button mat-stroked-button type="button" class="logout-btn" (click)="logout()">
+      <app-icon name="quitter" />
       {{ theme.tone()['nav.logout'] }}
     </button>
   </div>
+
+  <!-- ⚠️ Story 43.1 (UX-DR13) — zone sensible, sous « Fermer le grimoire » (la déconnexion), séparée
+       par un filet. -->
+  <section class="danger-zone" aria-labelledby="danger-zone-title">
+    <h2 id="danger-zone-title" class="lbl danger-zone__label">
+      {{ theme.tone()['account.danger_title'] }}
+    </h2>
+    <p class="danger-zone__explain">{{ theme.tone()['account.danger_explain'] }}</p>
+    <div class="actions actions--start">
+      <button
+        type="button"
+        class="danger-pill"
+        [disabled]="deleteLoading()"
+        (click)="openDeleteAccount()"
+      >
+        <app-icon name="supprimer" />
+        {{ theme.tone()['account.delete_pill'] }}
+      </button>
+    </div>
+    @if (deleteError()) {
+      <p class="error" role="alert">{{ deleteError() }}</p>
+    }
+  </section>
 </mat-card>

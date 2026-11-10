@@ -1,0 +1,43 @@
+/* Story 54.1 — encadré de situation : version compacte du panneau de la fenêtre d'événement
+   (`.ed__situation`). Bordure `--jdr-status-todo` côté joueur, `--jdr-accent-1` côté MJ, fond de la
+   couleur de la bordure à 8 % ; aucun token nouveau. */
+:host {
+  display: block;
+}
+
+.seance-situation {
+  --seance-situation-color: var(--jdr-status-todo, var(--mat-sys-primary));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--seance-situation-color);
+  background: color-mix(in srgb, var(--seance-situation-color) 8%, transparent);
+}
+
+.seance-situation--mj {
+  --seance-situation-color: var(--jdr-accent-1, var(--mat-sys-primary));
+}
+
+/* « Ma situation » occupe toute la largeur : libellé à gauche, pastille à droite. */
+app-situation-line {
+  align-self: stretch;
+}
+
+.seance-situation__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--jdr-text-primary, inherit);
+}
+
+/* Cible tactile de 44 px ; le libellé passe à la ligne plutôt que de déborder. */
+.seance-situation__action {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+  padding-block: 6px;
+}

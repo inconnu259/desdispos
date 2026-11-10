@@ -1,0 +1,17 @@
+<div class="homme-dragon-page">
+  @if (loading()) {
+    <mat-progress-spinner mode="indeterminate" diameter="32" />
+  } @else if (error()) {
+    <p class="homme-dragon-page__error" role="alert">{{ error() }}</p>
+    @if (partieId) {
+      <a class="homme-dragon-page__back" [routerLink]="['/parties', partieId]">{{ theme.tone()['common.retour_a_la_partie'] }}</a>
+    }
+  } @else if (partie(); as p) {
+    <a class="homme-dragon-page__back" [routerLink]="['/parties', p.id]">{{ theme.tone()['common.retour_a_la_partie'] }}</a>
+    <app-homme-dragon-creation-wizard
+      [partieId]="p.id"
+      [partieName]="p.name"
+      (created)="onCreated($event)"
+    />
+  }
+</div>

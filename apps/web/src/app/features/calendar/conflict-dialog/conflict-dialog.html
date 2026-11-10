@@ -2,7 +2,8 @@
 
 <mat-dialog-content>
   <p class="intent">
-    Tu déclares <b>{{ data.kindLabel }}</b> {{ data.intentLabel }}.
+    {{ theme.tone()['calendar.conflict_intent_prefix'] }} <b>{{ kindWord() }}</b>
+    {{ data.intentLabel }}.
   </p>
 
   @if (!walking()) {
@@ -15,14 +16,10 @@
       data-test="choice-overwrite"
       (click)="onChoose('overwrite')"
     >
-      <span class="choice__label">Remplacer</span>
+      <span class="choice__label">{{ theme.tone()['common.remplacer'] }}</span>
       <span class="choice__body">
-        <!-- L'adjectif QUALIFIE le sujet ici, il s'accorde donc — contrairement à « passent en
-             disponible » plus bas, où le contrat d'UI le laisse invariable. -->
-        <b
-          >{{ steps().length === 1 ? 'Le créneau devient' : 'Les ' + steps().length + ' deviennent' }}
-          {{ data.kindLabel }}{{ steps().length > 1 ? 's' : '' }}</b
-        >
+        <!-- Phrase entière tirée du registre : l'accord de l'adjectif y est écrit, pas calculé ici. -->
+        <b>{{ overwriteLead() }}</b>
         <span class="choice__detail">{{ conflictLabels().join(' · ') }}</span>
       </span>
     </button>
@@ -34,17 +31,14 @@
       data-test="choice-keep"
       (click)="onChoose('keep')"
     >
-      <span class="choice__label">Conserver</span>
+      <span class="choice__label">{{ theme.tone()['common.conserver'] }}</span>
       <span class="choice__body">
-        <b>{{ steps().length === 1 ? 'Ce créneau reste' : 'Ces ' + steps().length + ' restent' }}
-          comme {{ steps().length === 1 ? 'il est' : 'ils sont' }}</b>
+        <b>{{ keepLead() }}</b>
         <span class="choice__detail">
-          @if (data.freeCount === 1) {
-            Le 1 autre passe en {{ data.kindLabel }}
-          } @else if (data.freeCount > 1) {
-            Les {{ data.freeCount }} autres passent en {{ data.kindLabel }}
+          @if (data.freeCount >= 1) {
+            {{ freeLabel() }}
           } @else {
-            Rien d'autre n'est enregistré
+            {{ theme.tone()['calendar.conflict_free_none'] }}
           }
         </span>
       </span>
@@ -57,12 +51,10 @@
       data-test="choice-walkthrough"
       (click)="onWalkthrough()"
     >
-      <span class="choice__label">Au cas par cas</span>
+      <span class="choice__label">{{ theme.tone()['calendar.conflict_walkthrough_label'] }}</span>
       <span class="choice__body">
-        <b>On les passe en revue un par un</b>
-        <span class="choice__detail">
-          {{ steps().length }} décision{{ steps().length > 1 ? 's' : '' }} à prendre
-        </span>
+        <b>{{ theme.tone()['calendar.conflict_walkthrough_body'] }}</b>
+        <span class="choice__detail">{{ walkthroughCount() }}</span>
       </span>
     </button>
 
@@ -71,14 +63,10 @@
          dérivée d'une séance n'est jamais persistée : il n'y a structurellement rien à écraser. -->
     @if (data.seanceExceptions.length > 0) {
       <p class="exception">
-        <span class="exception__mark" aria-hidden="true">✦</span>
+        <app-icon class="exception__mark" name="destinee" />
         <span>
-          <b>{{ data.seanceExceptions.join(' · ') }}
-            {{ data.seanceExceptions.length > 1 ? 'ne sont pas dans la liste' : 'n\'est pas dans la liste' }}</b>
-          <span class="exception__detail">
-            Tu y as une séance. Aucun de ces choix n'y touche. Si elle est annulée, tu redeviens
-            {{ data.kindLabel }}.
-          </span>
+          <b>{{ data.seanceExceptions.join(' · ') }} {{ exceptionVerb() }}</b>
+          <span class="exception__detail">{{ exceptionDetail() }}</span>
         </span>
       </p>
     }
@@ -94,7 +82,7 @@
           data-test="step-overwrite"
           (click)="onStepDecision('overwrite')"
         >
-          Remplacer
+          {{ theme.tone()['common.remplacer'] }}
         </button>
         <button
           type="button"
@@ -102,7 +90,7 @@
           data-test="step-keep"
           (click)="onStepDecision('keep')"
         >
-          Conserver
+          {{ theme.tone()['common.conserver'] }}
         </button>
       </div>
     </div>
@@ -110,5 +98,7 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button type="button" mat-button data-test="cancel" (click)="onCancel()">Annuler</button>
+  <button type="button" mat-button data-test="cancel" (click)="onCancel()">
+    {{ theme.tone()['common.annuler'] }}
+  </button>
 </mat-dialog-actions>

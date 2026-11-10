@@ -1,7 +1,7 @@
 @if (currentLevel(); as level) {
   <div class="wizard">
     <h2 class="wizard__title">
-      {{ theme.tone()['evolution.levelup_wizard_title'] }} — Niveau {{ level }}
+      {{ theme.tone()['evolution.levelup_wizard_title'] }} {{ levelTitleSuffix(level) }}
     </h2>
 
     @if (totalSteps > 1) {
@@ -21,7 +21,7 @@
             <button
               mat-icon-button
               type="button"
-              aria-label="Diminuer PV"
+              [attr.aria-label]="statAria('decrease', 'PV')"
               [disabled]="pvAllocated() <= 0"
               (click)="decrementPv()"
             >
@@ -31,7 +31,7 @@
             <button
               mat-icon-button
               type="button"
-              aria-label="Augmenter PV"
+              [attr.aria-label]="statAria('increase', 'PV')"
               [disabled]="pvAllocated() + peAllocated() >= 3"
               (click)="incrementPv()"
             >
@@ -45,7 +45,7 @@
             <button
               mat-icon-button
               type="button"
-              aria-label="Diminuer PE"
+              [attr.aria-label]="statAria('decrease', 'PE')"
               [disabled]="peAllocated() <= 0"
               (click)="decrementPe()"
             >
@@ -55,7 +55,7 @@
             <button
               mat-icon-button
               type="button"
-              aria-label="Augmenter PE"
+              [attr.aria-label]="statAria('increase', 'PE')"
               [disabled]="pvAllocated() + peAllocated() >= 3"
               (click)="incrementPe()"
             >
@@ -88,7 +88,7 @@
               }
             </button>
             @if (isAttributeDisabled(attr)) {
-              <span [id]="'attr-max-' + attr" class="wizard__sr-only">Déjà au maximum (12)</span>
+              <span [id]="'attr-max-' + attr" class="wizard__sr-only">{{ theme.tone()['characters_sheet.levelup_attribute_max_sr'] }}</span>
             }
           }
         </div>
@@ -102,6 +102,7 @@
         <div class="wizard__content-choice-list">
           @for (option of contentOptionsForSpecialType(); track option.key) {
             <app-choice-card
+              align="center"
               [option]="option"
               [selected]="selectedContentKey() === option.key"
               (selectedOption)="selectContentKey($event)"
@@ -116,7 +117,7 @@
     }
 
     <div class="wizard__actions">
-      <button mat-button type="button" (click)="cancel()">Annuler</button>
+      <button mat-button type="button" (click)="cancel()">{{ theme.tone()['common.annuler'] }}</button>
       <button
         mat-flat-button
         type="button"

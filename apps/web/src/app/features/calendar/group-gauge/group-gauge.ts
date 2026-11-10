@@ -1,4 +1,5 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import {
   type GroupAvailability,
   type GroupMember,
@@ -57,6 +58,9 @@ import {
 export class GroupGauge {
   readonly group = input.required<GroupAvailability>();
 
+  /** Ton du thème actif, passé aux formateurs de libellés (`group-availability.utils`). */
+  private readonly theme = inject(ThemeToneService);
+
   /** Les membres à rendre en pastilles, ou `null` quand la surface doit rendre la jauge.
    *  **L'ordre est celui reçu du serveur, jamais retrié ici** : c'est lui qui fait que la position
    *  identifie la personne (AC4). Un tri local ferait bouger quelqu'un d'une surface à l'autre. */
@@ -78,7 +82,7 @@ export class GroupGauge {
   /** « 2 / 4 » — toujours calculé, toujours émis ; le CSS décide où il se voit. */
   protected readonly counter = computed(() => groupCounterLabel(this.group()));
 
-  protected readonly ariaLabel = computed(() => groupAriaLabel(this.group()));
+  protected readonly ariaLabel = computed(() => groupAriaLabel(this.group(), this.theme.tone()));
 
   /** La classe de statut d'une pastille. La couleur dit le statut, la POSITION dit la personne
    *  (AC4) — et le nom accessible de l'hôte dit les deux en toutes lettres (P-1). */

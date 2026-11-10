@@ -5,7 +5,7 @@
 
 /** Thèmes disponibles — liste déclarée une seule fois (AD-13), la validation API s'y réfère
  *  directement (`@IsIn(THEMES)`), jamais une seconde liste côté serveur. */
-export const THEMES = ['grimoire-emeraude', 'foret-ancienne', 'medieval-steampunk'] as const;
+export const THEMES = ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const;
 
 export type Theme = (typeof THEMES)[number];
 
@@ -49,6 +49,14 @@ export type CalendarLayerKey = (typeof CALENDAR_LAYER_KEYS)[number];
  *  (`calendarLayersSetAt === null`, AD-16) — toutes actives, y compris `disponibilite-groupe`. */
 export const DEFAULT_CALENDAR_LAYER_KEYS: CalendarLayerKey[] = [...CALENDAR_LAYER_KEYS];
 
+/** Story 52.4 (AD-5) — fenêtre du rappel « Dispos à déclarer » : aujourd'hui compris, les 28 jours à venir. */
+export const AVAILABILITY_REMINDER_DAYS = 28;
+
+/** `GET /me/availability-reminder` : faut-il rappeler de déclarer ses dispos ? (règle unique côté serveur) */
+export interface AvailabilityReminderDto {
+  show: boolean;
+}
+
 /** Utilisateur authentifié (renvoyé par /auth/login, /auth/me). Jamais le hash. */
 export interface AuthUser {
   id: string;
@@ -64,6 +72,9 @@ export interface AuthUser {
   /** Préférence « masquer les parties terminées » (FR-3, AD-1, Story 29.8) — appliquée côté front
    *  à la liste déjà chargée, jamais par un filtre serveur. */
   hideFinishedParties: boolean;
+  /** Préférence « Me rappeler de déclarer mes dispos » (FR-5, AD-5, Story 52.4) — vraie par défaut. Faire taire le
+   *  rappel ne touche pas aux signaux à traiter des cartes (`GET /me/party-signals`). */
+  availabilityReminder: boolean;
   /** Critère de tri mémorisé de la liste des parties (FR-10, AD-1, Story 29.8). */
   partiesSort: PartieSort;
   /** Mode d'affichage mémorisé de la liste des parties (FR-45, AD-1, Story 29.9). */
@@ -78,6 +89,31 @@ export interface AuthUser {
    *  enregistré. Contrairement à `theme`, aucun sentinel `null` n'est exposé au client — la
    *  distinction « jamais réglé » / « tout éteint » est résolue en interne (AD-16). */
   defaultCalendarLayers: CalendarLayerKey[];
+}
+
+/** Un groupe (ou une rencontre isolée) que l'effacement du compte supprimerait : son utilisateur en est le
+ *  SEUL administrateur (Story 43.1, AD-11). */
+export interface DeletionImpactGroupDto {
+  id: string;
+  name: string;
+  /** Adhésions du groupe, administrateur compris. */
+  memberCount: number;
+  /** Événements du groupe (les conjonctions). */
+  eventCount: number;
+}
+
+/** Une partie de JDR que l'effacement du compte supprimerait : son utilisateur en est le MJ. */
+export interface DeletionImpactJdrPartieDto {
+  id: string;
+  name: string;
+  /** Joueurs (hors MJ) qui y perdraient leurs personnages. */
+  playerCount: number;
+}
+
+/** Réponse de GET /me/deletion-impact — ce que l'effacement du compte emporterait (Story 43.1). */
+export interface AccountDeletionImpactDto {
+  groups: DeletionImpactGroupDto[];
+  jdrParties: DeletionImpactJdrPartieDto[];
 }
 
 /** Corps de la requête PATCH /me/display-name. */
@@ -95,22 +131,346 @@ export interface HealthStatus {
   timestamp: string;
 }
 
-/** Systèmes de jeu proposés (liste constante — le moteur de règles viendra au Palier 2). */
-export const GAME_SYSTEMS = [
-  { id: 'draconis', name: 'Draconis' },
-  { id: 'conte-de-minuit', name: 'Conte de Minuit' },
-  { id: 'ryuutama', name: 'Ryuutama' },
-  { id: 'esteren', name: 'Esteren' },
-] as const;
-
-export type GameSystemId = (typeof GAME_SYSTEMS)[number]['id'];
-
 /** Type d'une partie. En 1b l'UI n'expose que ONE_SHOT + CAMPAGNE_LINEAIRE (libellé « Campagne »). */
 export type PartieKind = 'ONE_SHOT' | 'CAMPAGNE_LINEAIRE' | 'CAMPAGNE_EPISODIQUE';
 
+/** Famille d'un système de jeu (Story 37.5, AD-2) : `jdr` pour les jeux de rôle, `ralliement`
+ *  pour les soirées entre amis (épic 38). Gouverne la politique de droits et les transitions
+ *  autorisées (changement de système, conversion de type). */
+export type GameSystemFamily = 'jdr' | 'ralliement';
+
+/** Capacités qu'un système peut déclarer (Story 37.5) — à terme (Story 37.7), chaque
+ *  fonctionnalité de couche 3 (JDR) sera conditionnée à l'une d'elles, plus à un identifiant de
+ *  système en dur. */
+export type GameSystemCapability =
+  | 'characters'
+  | 'scenarioLifecycle'
+  | 'xp'
+  | 'hommeDragon'
+  | 'groupRoles'
+  | 'announcements'
+  | 'linearCampaign';
+
+/** Forme d'une entrée du registre `GAME_SYSTEMS`. */
+export interface GameSystemEntry {
+  id: string;
+  name: string;
+  family: GameSystemFamily;
+  capabilities: readonly GameSystemCapability[];
+  kinds: readonly PartieKind[];
+  /** Le système peut-il être choisi à la création d'une partie (ou par un changement de
+   *  système) ? */
+  openForCreation: boolean;
+  /** Badge rond du système dans la liste des parties (Story 38.5) : `R1` (Ryuutama), `L1`
+   *  (ralliement) ; absent ou `null` = pas de badge, la seule pastille texte suffit. */
+  badge?: GameSystemBadge | null;
+}
+
+/** Glyphes de badge de système (maquettes `badge-R1-…` et `badge-L1-…`). */
+export type GameSystemBadge = 'R1' | 'L1';
+
+const JDR_KINDS = ['ONE_SHOT', 'CAMPAGNE_LINEAIRE', 'CAMPAGNE_EPISODIQUE'] as const;
+
+/** Registre UNIQUE des systèmes de jeu (Story 37.5, AD-2) : famille, capacités, types de partie
+ *  admis et ouverture à la création. Remplace l'ancien drapeau `module` (Story 29.15/29.17), qui
+ *  confondait « a des personnages jouables » et « peut être choisi à la création ». Toujours lu via
+ *  les lecteurs `familyOf()`, `hasCapability()`, `kindsOf()`, `isOpenForCreation()` ci-dessous,
+ *  jamais champ par champ. Consommé par le web (bouton de création de personnage, onglet par
+ *  défaut, tooltip du slot roster, liste proposée par `PartieForm`, libellés) et par l'API
+ *  (`PartiesService.create()`/`update()`/`convertKind()`, `CharacterService.create()`, signal
+ *  `PERSONNAGE_A_CREER` de `party-signals.service.ts`, validateurs DTO « id connu »).
+ *
+ *  `ralliement` est ouvert à la création depuis la Story 38.2 ; il n'a pas de ligne en table
+ *  `GameSystem`. Importer en VALEUR (jamais `import type`). */
+export const GAME_SYSTEMS = [
+  {
+    id: 'draconis',
+    name: 'Draconis',
+    family: 'jdr',
+    capabilities: [],
+    kinds: JDR_KINDS,
+    openForCreation: false,
+  },
+  {
+    id: 'conte-de-minuit',
+    name: 'Conte de Minuit',
+    family: 'jdr',
+    capabilities: [],
+    kinds: JDR_KINDS,
+    openForCreation: false,
+  },
+  {
+    id: 'ryuutama',
+    name: 'Ryuutama',
+    family: 'jdr',
+    capabilities: [
+      'characters',
+      'scenarioLifecycle',
+      'xp',
+      'hommeDragon',
+      'groupRoles',
+      'announcements',
+      'linearCampaign',
+    ],
+    kinds: JDR_KINDS,
+    openForCreation: true,
+    badge: 'R1',
+  },
+  {
+    id: 'esteren',
+    name: 'Esteren',
+    family: 'jdr',
+    capabilities: [],
+    kinds: JDR_KINDS,
+    openForCreation: false,
+  },
+  {
+    id: 'ralliement',
+    name: 'Ralliement',
+    family: 'ralliement',
+    capabilities: [],
+    kinds: ['ONE_SHOT', 'CAMPAGNE_EPISODIQUE'],
+    openForCreation: true,
+    badge: 'L1',
+  },
+] as const satisfies readonly GameSystemEntry[];
+
+export type GameSystemId = (typeof GAME_SYSTEMS)[number]['id'];
+
+/** Entrée du registre pour un `id`, ou `undefined` si inconnu. */
+function findGameSystem(id: string): GameSystemEntry | undefined {
+  return (GAME_SYSTEMS as readonly GameSystemEntry[]).find((g) => g.id === id);
+}
+
+/** Famille d'un système. Tolère un `id` inconnu (jamais d'exception) → `null`. */
+export function familyOf(id: string): GameSystemFamily | null {
+  return findGameSystem(id)?.family ?? null;
+}
+
+/** Le système déclare-t-il cette capacité ? `id` inconnu → `false`. */
+export function hasCapability(id: string, capability: GameSystemCapability): boolean {
+  return findGameSystem(id)?.capabilities.includes(capability) ?? false;
+}
+
+/** Types de partie admis par le système. `id` inconnu → `[]`. */
+export function kindsOf(id: string): readonly PartieKind[] {
+  return findGameSystem(id)?.kinds ?? [];
+}
+
+/** Le système peut-il être choisi à la création d'une partie ou par un changement de système ?
+ *  `id` inconnu → `false`. */
+export function isOpenForCreation(id: string): boolean {
+  return findGameSystem(id)?.openForCreation ?? false;
+}
+
+/** Glyphe de badge du système (Story 38.5), ou `null` s'il n'en a pas. `id` inconnu → `null`,
+ *  jamais d'exception. */
+export function badgeOf(id: string): GameSystemBadge | null {
+  return findGameSystem(id)?.badge ?? null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Droits sur une partie (Story 37.6, AD-6)
+//
+// Toute décision de droit sur une partie, ses événements et ses séances passe par
+// `PermissionService.assert(userId, action, cible)` côté API. Les actions forment une union
+// FERMÉE : en ajouter une oblige à compléter la table de politique de chaque famille (le
+// compilateur refuse une table incomplète).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Rôle d'un utilisateur sur une partie. Famille `jdr` : `mj` (propriétaire) ou `player`
+ *  (membre). Famille `ralliement` (Story 38.2) : `admin` ou `member`, dérivé de
+ *  `Membership.role` uniquement. Un propriétaire nul (compte supprimé, AD-5) ne donne jamais
+ *  `mj`. */
+export type PartieRole = 'mj' | 'player' | 'admin' | 'member';
+
+/** Rôle d'un membre d'une partie (colonne `Membership.role`, Story 38.2) — union FERMÉE. Le
+ *  créateur d'un ralliement est inséré `ADMIN` ; tout autre membre est `MEMBER`. */
+export type MembershipRole = 'ADMIN' | 'MEMBER';
+
+/** Action soumise à un droit sur une partie (Story 37.6) — union fermée, `SCREAMING_SNAKE`. */
+export type PermissionAction =
+  // Partie
+  | 'PARTIE_READ'
+  | 'PARTIE_UPDATE'
+  | 'PARTIE_CONVERT_KIND'
+  | 'PARTIE_CLOSE'
+  | 'PARTIE_REOPEN'
+  | 'PARTIE_DELETE'
+  | 'PARTIE_MEMBERS_READ'
+  | 'PARTIE_MEMBER_REMOVE'
+  | 'PARTIE_MEMBER_ROLE_SET'
+  // Story 39.5 : quitter soi-même une partie (groupe de ralliement seulement)
+  | 'PARTIE_LEAVE'
+  | 'PARTIE_AVAILABILITY_READ'
+  // Story 46.4 : masquer / démasquer une fenêtre de l'automate (MJ d'un JDR seul)
+  | 'SLOT_WINDOW_HIDE'
+  | 'PARTIE_VISIBILITY_LOCKS_READ'
+  | 'PARTIE_VISIBILITY_LOCKS_UPDATE'
+  | 'PARTIE_COVER_READ'
+  | 'PARTIE_COVER_UPDATE'
+  // Fiches de référence du système (Story 37.7) : lecture par tout participant / par le MJ seul
+  | 'PARTIE_REFERENCE_ASSET_READ'
+  | 'PARTIE_REFERENCE_ASSET_MJ_READ'
+  // Scénario (extension JDR de l'événement)
+  | 'SCENARIO_CREATE'
+  | 'SCENARIO_UPDATE'
+  | 'SCENARIO_STATUS_CHANGE'
+  | 'SCENARIO_READ'
+  | 'SCENARIO_DRAFTS_READ'
+  | 'SCENARIO_DOCUMENT_UPLOAD'
+  | 'SCENARIO_DOCUMENTS_READ'
+  | 'SCENARIO_PARTICIPATE'
+  // Séance
+  | 'SEANCE_ADD'
+  | 'SEANCE_DELETE'
+  | 'SEANCE_DATE_RESET'
+  | 'SEANCE_CAPACITY_SET'
+  | 'SEANCE_COMPTE_RENDU_SET'
+  | 'SEANCE_PRACTICAL_INFO_SET'
+  | 'SEANCE_POLL_CREATE'
+  | 'SEANCE_INSCRIBE'
+  | 'SEANCE_UNSUBSCRIBE'
+  // Story 40.4 : réserver une place à un membre / retirer une réservation — l'hôte seul (règle
+  // décidée dans `PermissionService`), groupe de ralliement seulement.
+  | 'SEANCE_RESERVE'
+  // Vote de date
+  | 'POLL_READ'
+  | 'POLL_VOTE'
+  | 'POLL_CHOOSE'
+  // Story 40.7 : prolonger le vote d'une conjonction — l'hôte seul (règle décidée dans `PermissionService`),
+  // groupe de ralliement seulement ; absente du JDR (son échéance par défaut reste de 14 jours).
+  | 'POLL_EXTEND'
+  | 'POLL_OPTIONS_SET'
+  | 'POLL_CLOSE'
+  // Capacités JDR (Story 37.7, couche 3) : les actions d'ÉCRITURE sont aussi conditionnées à une
+  // capacité du système de la partie par la table action → capacité de `permissions/`
+  // (`characters`, `xp`, `hommeDragon`, `groupRoles`, `announcements`).
+  // Personnage
+  | 'CHARACTER_CREATE'
+  | 'CHARACTER_LIST'
+  | 'CHARACTER_READ'
+  | 'CHARACTER_PORTRAIT_READ'
+  | 'CHARACTER_NOTES_READ'
+  | 'CHARACTER_XP_SET'
+  | 'CHARACTER_SHEET_FIELD_SET'
+  | 'CHARACTER_HISTORY_READ'
+  // Distribution d'XP
+  | 'XP_DISTRIBUTION_CREATE'
+  | 'XP_DISTRIBUTION_READ'
+  // Homme Dragon
+  | 'HOMME_DRAGON_MANAGE'
+  | 'HOMME_DRAGON_READ'
+  | 'HOMME_DRAGON_UNLINK'
+  // Rôles de groupe
+  | 'GROUP_ROLE_ASSIGN'
+  | 'GROUP_ROLE_UNASSIGN'
+  | 'GROUP_ROLE_READ'
+  // Annonces
+  | 'ANNOUNCEMENT_CREATE'
+  | 'ANNOUNCEMENT_READ'
+  | 'ANNOUNCEMENT_MARK_READ'
+  // Événements d'un groupe de ralliement (Story 40.1) : proposer une conjonction, lister celles du
+  // groupe. Couche 2, aucune capacité requise ; fermées à tous en JDR (le JDR passe par ses scénarios).
+  | 'EVENT_CREATE'
+  | 'EVENT_LIST'
+  // Story 40.2 : modifier une conjonction — son hôte seul (règle décidée dans `PermissionService`).
+  | 'EVENT_UPDATE'
+  // Story 42.1 : annuler une conjonction — son hôte OU un administrateur du groupe (règle décidée dans
+  // `PermissionService`). Fermée à tous en JDR.
+  | 'EVENT_CANCEL'
+  // Story 49.2 : apporter un de ses jeux à une soirée — tout membre d'un groupe de ralliement ; la condition
+  // « participant, autre que l'hôte » est décidée par `events/`. Fermée à tous en JDR.
+  | 'EVENT_GAME_BRING'
+  // Story 49.4 : écarter un des jeux de l'hôte pour une soirée — l'hôte de l'événement seul (règle décidée
+  // dans `PermissionService`) ; la condition « soirée ouverte, jeu à l'hôte » est décidée par `events/`.
+  // Fermée à tous en JDR.
+  | 'EVENT_GAME_EXCLUDE'
+  // Story 49.5 : signaler une Envie de jouer à un jeu — tout membre d'un groupe de ralliement ; la condition
+  // « participant de la soirée, nom de jeu sur place » est décidée par `events/`. Fermée à tous en JDR.
+  | 'EVENT_GAME_ENVY'
+  // Invitations et liens d'invitation (couche 2, aucune capacité requise)
+  | 'INVITATION_CREATE'
+  | 'INVITATION_READ'
+  | 'INVITATION_REVOKE'
+  | 'INVITE_LINK_CREATE'
+  | 'INVITE_LINK_READ'
+  | 'INVITE_LINK_REVOKE';
+
 /** Statut d'une partie — dérivé côté serveur à partir de `Partie.closedAt` et de la présence de
  *  scénarios (AD-8), jamais recalculé côté client (Story 29.6). */
-export type PartieStatus = 'A_VENIR' | 'EN_COURS' | 'TERMINEE';
+export type PartieStatus = 'A_VENIR' | 'EN_COURS' | 'TERMINEE' | 'ANNULEE';
+
+/** Avancement d'une partie, lu en lot par `events/` : aucun événement, au moins un événement qui compte,
+ *  rencontre isolée dont la plage est passée, ou annulée (Story 44.2). */
+export type PartieProgress = 'none' | 'started' | 'ended' | 'cancelled';
+
+/**
+ * LE statut d'une partie (Story 44.2, AD-15) — la seule dérivation, lue par `PartieDto` et par les sondages
+ * ouverts. Annulée l'emporte sur terminée (clôture ou date passée), distincte d'elle ; `closedAt` renseigné
+ * (ou rencontre passée) vaut terminée ; sinon un avancement démarré vaut en cours.
+ */
+export function partieStatus(closedAt: Date | string | null, progress: PartieProgress): PartieStatus {
+  if (progress === 'cancelled') return 'ANNULEE';
+  if (closedAt || progress === 'ended') return 'TERMINEE';
+  return progress === 'started' ? 'EN_COURS' : 'A_VENIR';
+}
+
+/** Une partie « active » : ni terminée, ni annulée. La seule définition (Story 44.2). */
+export function isPartieActive(status: PartieStatus): boolean {
+  return status === 'A_VENIR' || status === 'EN_COURS';
+}
+
+/**
+ * Un rendez-vous (séance) « à dater » (Story 45.1, AR3) : sans date, sans sondage (ouvert ou clos — un vote
+ * fermé sans date n'en est plus un), événement non annulé, partie active, et la personne peut proposer des
+ * dates. LA définition, lue par les trois calendriers et par `GET /me/datable-seances`.
+ * `frozen` = la partie n'est plus active ; `canOrganize` = `can.propose`.
+ */
+export function isDatableSeance(seance: {
+  hasDate: boolean;
+  hasPoll: boolean;
+  cancelled: boolean;
+  frozen: boolean;
+  canOrganize: boolean;
+}): boolean {
+  return (
+    !seance.hasDate &&
+    !seance.hasPoll &&
+    !seance.cancelled &&
+    !seance.frozen &&
+    seance.canOrganize
+  );
+}
+
+/**
+ * Un rendez-vous (séance) « composable » (Story 46.3, AR3) : celui sur lequel le composer peut s'armer — soit « à dater »
+ * (`isDatableSeance`), soit porteur d'un sondage OUVERT que la personne peut modifier (le composer part alors de ses
+ * créneaux). Ni annulé ni figé dans les deux cas. LA définition, lue par le choix du rendez-vous quand une fenêtre de
+ * l'automate est ajoutée au vote. `canPropose` = `can.propose`, `canEdit` = `can.edit`.
+ */
+export function isComposableSeance(seance: {
+  hasDate: boolean;
+  hasPoll: boolean;
+  hasOpenPoll: boolean;
+  cancelled: boolean;
+  frozen: boolean;
+  canPropose: boolean;
+  canEdit: boolean;
+}): boolean {
+  if (
+    isDatableSeance({
+      hasDate: seance.hasDate,
+      hasPoll: seance.hasPoll,
+      cancelled: seance.cancelled,
+      frozen: seance.frozen,
+      canOrganize: seance.canPropose,
+    })
+  ) {
+    return true;
+  }
+  return seance.hasOpenPoll && !seance.cancelled && !seance.frozen && seance.canEdit;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversion du type d'une partie (Story 29.14)
@@ -230,18 +590,23 @@ export interface PartieDto {
   kind: PartieKind;
   gameSystemId: string;
   description: string | null;
-  mjId: string;
+  /** Propriétaire de la partie (le MJ pour la famille `jdr`). `null` = compte propriétaire supprimé
+   *  (AD-5) — inatteignable tant qu'aucun code ne supprime de compte, mais à traiter. */
+  ownerId: string | null;
   /** Renseigné uniquement par `GET /parties/:id` (`findOneDto`) — jamais par `GET /parties`
    *  (`listForUser`, tableau de bord), qui reste volontairement hors du périmètre de l'homonymie
    *  (Story 28.3, Task 1). Toujours vérifier avant usage plutôt que supposer présent. */
-  mjPseudo?: string;
-  mjDisplayName?: string;
+  ownerPseudo?: string;
+  ownerDisplayName?: string;
   createdAt: string;
   nextSessionDate: string | null;
   nextSessionSlot: DaySlot | null;
-  /** Rôle de l'appelant sur cette partie — calculé serveur (`mjId === userId`), jamais dérivé
-   *  côté client (Story 29.1, AD-15). Toujours présent, contrairement à `mjPseudo`/`mjDisplayName`. */
-  role: 'mj' | 'player';
+  /** Story 47.2 : fin de la plage de la prochaine séance (égale au début pour un créneau) ; absente = non servie. */
+  nextSessionEndDate?: string | null;
+  nextSessionEndSlot?: DaySlot | null;
+  /** Rôle de l'appelant sur cette partie — calculé serveur (`ownerId === userId`), jamais dérivé
+   *  côté client (Story 29.1, AD-15). Toujours présent, contrairement à `ownerPseudo`/`ownerDisplayName`. */
+  role: PartieRole;
   /** Toujours présent, calculé serveur (AD-8) — jamais dérivé côté client (Story 29.6). */
   status: PartieStatus;
   /** Toujours présent, calculé serveur (Story 29.8) — jamais dérivé côté client. */
@@ -253,6 +618,16 @@ export interface PartieDto {
    *  client (l'URL se construit depuis l'`id` de la partie, même patron que
    *  `CharacterAvatar.absolutePortraitUrl`). */
   coverImageVersion: string | null;
+  /** Droits de l'appelant sur cette partie — calculés serveur (Story 53.5), jamais déduits du rôle côté
+   *  client. Toujours présent, comme `role`. */
+  can: PartieCan;
+}
+
+/** Ce que l'appelant peut faire sur une partie, décidé par le serveur (Story 53.5) — même décision que
+ *  la garde `PARTIE_COVER_UPDATE` des routes de couverture. */
+export interface PartieCan {
+  /** Peut déposer ou retirer l'image de couverture. */
+  coverUpdate: boolean;
 }
 
 /** Code de signal d'état d'une partie (FR-12, AD-3) — union fermée, jamais un booléen libre ni
@@ -267,7 +642,11 @@ export type PartySignalCode =
   | 'AUCUNE_DATE_NI_VOTE'
   | 'RAPPORT_FIN_MANQUANT'
   | 'PROCHAINE_SEANCE_CONNUE'
-  | 'PARTIE_TERMINEE';
+  | 'PARTIE_TERMINEE'
+  // Story 42.2 : la rencontre isolée (statut ANNULEE) a été annulée par son hôte — seul signal qu'elle porte.
+  | 'PARTIE_ANNULEE'
+  // Story 40.4 : une place est réservée à l'utilisateur dans une conjonction à venir d'un groupe.
+  | 'RESERVATION_A_CONFIRMER';
 
 /** Réponse de `GET /me/party-signals` — une entrée par partie de l'utilisateur, jamais une entrée
  *  absente (`signals: []` si aucun signal actif). `role`/`status` sont dupliqués depuis `PartieDto`
@@ -293,6 +672,9 @@ export interface PartieMemberDto {
   userId: string;
   pseudo: string;
   displayName: string;
+  /** Rôle d'adhésion (Story 39.4) : `ADMIN` ou `MEMBER`. Une partie de la famille `jdr` renvoie
+   *  toujours `MEMBER` — son pouvoir vient de `ownerId`, pas de ce rôle. */
+  role: MembershipRole;
   /** Renseigné uniquement lorsque le demandeur est le MJ de la partie (AD-2) — omis pour tout autre membre. */
   email?: string;
   joinedAt: string;
@@ -359,6 +741,25 @@ export interface SeanceDto {
   poll?: SessionPollDto;
   /** Inscription à capacité limitée (CAMPAGNE_EPISODIQUE uniquement, Story 8.3) — peuplé seulement si `inscriptionMax` est défini sur la Seance (AD-4 : jamais en même temps que `poll`). */
   inscription?: SeanceInscriptionDto;
+  /**
+   * Story 32.3 — date EFFECTIVE de la séance, **à la racine**, résolue côté serveur :
+   * `poll.chosenDate` quand un vote a été scellé, sinon la colonne `Seance.dateValidee`.
+   *
+   * 🚨 **Pourquoi à la racine.** `dateValidee` ne vivait que dans le bloc `inscription`, lui-même
+   * peuplé seulement si `inscriptionMax != null` : une séance datée **sans vote ni inscription**
+   * (héritage `validerDate()`, campagne linéaire) n'exposait donc AUCUNE date exploitable, et son
+   * état (« Programmée », « À débriefer », « Jouée ») n'était pas dérivable. Ajout purement
+   * additif — `inscription.dateValidee` reste servi à l'identique, aucun site d'appel n'est touché.
+   */
+  dateValidee: string | null;
+  /** Créneau de `dateValidee`. Renseigné seulement quand la date vient d'un vote scellé
+   *  (`poll.chosenSlot`) : la colonne `Seance.dateValidee` n'a pas de créneau propre — même
+   *  convention que `recalculateNextSession()`, qui pose `slot: null` dans ce cas. */
+  slotValidee: DaySlot | null;
+  /** Story 47.2 : fin de la plage de la séance, lue de `Seance.endDate/endSlot` (jamais de `poll.chosenDate`),
+   *  même forme que `dateValidee` / `slotValidee` ; `null` tant que la séance n'a pas de date. */
+  endDate: string | null;
+  endSlot: DaySlot | null;
   compteRendu: string | null;
   /** Informations pratiques (Story 36.5, D-15 amendée le 2026-08-19) — trois champs
    *  facultatifs, séparés pour qu'on puisse en lâcher un quand la place manque.
@@ -368,6 +769,11 @@ export interface SeanceDto {
   lieu: string | null;
   notePratique: string | null;
   createdAt: string;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés (1 par défaut). */
+  durationSlots: number;
+  /** Story 44.1 : droits d'organisateur de la personne qui lit, sur cette séance (aucun écran du JDR
+   *  ne les lit encore). */
+  can: OrganizerCan;
 }
 
 /** État d'inscription à capacité limitée d'une Seance (Story 8.3). */
@@ -391,6 +797,13 @@ export interface SetInfosPratiquesDto {
   heureRdv: string | null;
   lieu: string | null;
   notePratique: string | null;
+  /** Story 47.1 : nouvelle durée du rendez-vous, en créneaux (1 à 45) ; absente = inchangée. */
+  durationSlots?: number;
+}
+
+/** Payload d'ajout d'une séance (POST /scenarios/:id/seances, Story 47.1). Durée absente = 1 créneau. */
+export interface AddSeanceDto {
+  durationSlots?: number;
 }
 
 /** Payload de définition de la capacité d'une Seance (PATCH /scenarios/seances/:id/capacite). */
@@ -410,6 +823,11 @@ export interface SetResumeFinDto {
  * Seance.pollId. */
 export interface CreateSeancePollDto {
   options: { date: string; slot: DaySlot }[];
+  /** Story 45.4 — fin du vote, un jour `YYYY-MM-DD` (fin de ce jour, UTC). Absent : `defaultPollDeadline`. */
+  expiresAt?: string;
+  /** Story 47.4 : durée du rendez-vous, en créneaux (1 à 45), écrite avec le vote dans la même transaction ;
+   *  absente = inchangée. Un créneau `FULL_DAY` n'existe qu'à 1. */
+  durationSlots?: number;
 }
 
 /** Payload de création d'un scénario (POST /parties/:id/scenarios). */
@@ -438,6 +856,171 @@ export interface UpdateScenarioDto {
   dureeSeances?: number;
 }
 
+// ─── Epic 40 : conjonctions d'un groupe de ralliement ─────────────────────────
+
+/** Créneau d'une conjonction (Story 40.1) : toujours un créneau de journée précis — jamais
+ *  `FULL_DAY`, jamais vide. */
+export type EventSlot = Exclude<DaySlot, 'FULL_DAY'>;
+
+/** Statut d'une inscription (colonne `Inscription.status`, Story 40.4) — union FERMÉE. `RESERVED` :
+ *  place réservée par l'hôte, pas encore acceptée (elle compte dans la capacité et n'expire jamais) ;
+ *  `CONFIRMED` : inscription confirmée (défaut — toutes les lignes du JDR). */
+export type InscriptionStatus = 'RESERVED' | 'CONFIRMED';
+
+/** Un créneau candidat d'un sondage de dates de conjonction (Story 40.5) : un jour (`YYYY-MM-DD`) et
+ *  un créneau précis. */
+export interface EventPollOptionInput {
+  date: string;
+  slot: EventSlot;
+}
+
+/** Payload de création d'une conjonction à date fixée (POST /parties/:id/events, Story 40.1).
+ *  `date` est une clé `YYYY-MM-DD` (aujourd'hui accepté, jamais avant) ; `heureRdv` est une
+ *  ÉTIQUETTE `"HH:MM"`, jamais un instant. `capacity` : `null` (ou absent) = « Tous les membres »,
+ *  sinon N places, hôte compris (N ≥ 2, sans plafond). */
+export interface CreateEventDto {
+  title: string;
+  /** Mode « date fixée » : jour et créneau. Absents (avec `pollOptions`) en mode « sondage de dates »
+   *  (Story 40.5) — les deux modes sont exclusifs. */
+  date?: string;
+  slot?: EventSlot;
+  /** Story 40.5, mode « sondage de dates » : créneaux candidats (au moins 2, distincts, jamais
+   *  `FULL_DAY`, sans plafond métier). Exclusif avec `date`/`slot`. */
+  pollOptions?: EventPollOptionInput[];
+  /** Story 40.5 : fin du vote, clé `YYYY-MM-DD` (aujourd'hui accepté, jamais avant) ; obligatoire avec
+   *  `pollOptions`. Le vote se termine à la fin de ce jour (UTC). */
+  pollDeadline?: string;
+  lieu?: string | null;
+  heureRdv?: string | null;
+  notePratique?: string | null;
+  capacity?: number | null;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés (1 à 45). Absente = 1 à la création,
+   *  inchangée à la modification (même si celle-ci remplace les autres champs). */
+  durationSlots?: number;
+  /** Story 40.4 : membres à qui l'hôte réserve une place d'emblée (distincts, jamais l'hôte, places
+   *  limitées seulement, au plus `capacity − 1`). Ignoré par la modification. */
+  reservedUserIds?: string[];
+}
+
+/** Payload de prolongation du vote d'une conjonction (PATCH /parties/:id/poll/:pollId/extend, Story 40.7) :
+ *  `expiresAt` est la clé `YYYY-MM-DD` du NOUVEAU jour d'échéance (le vote se termine à la fin de ce jour,
+ *  UTC) ; strictement après le jour d'échéance actuel, jamais avant aujourd'hui. */
+export interface ExtendPollDto {
+  expiresAt: string;
+}
+
+/** Payload de réservation d'une place (POST /scenarios/seances/:id/reservations, Story 40.4). */
+export interface ReservePlaceDto {
+  userId: string;
+}
+
+/** Payload de modification d'une conjonction (PATCH /parties/:id/events/:eventId, Story 40.2) :
+ *  remplacement COMPLET, mêmes champs et mêmes règles que la création (l'hôte est immuable). */
+export type UpdateEventDto = CreateEventDto;
+
+/** La séance unique d'une conjonction, telle que projetée pour sa carte (Story 40.1). `date` est la
+ *  clé `YYYY-MM-DD` du début de sa plage (`null` tant qu'elle n'est pas fixée) ; `capacity` `null` =
+ *  « Tous les membres ». */
+export interface EventCardSeanceDto {
+  id: string;
+  date: string | null;
+  slot: DaySlot | null;
+  lieu: string | null;
+  heureRdv: string | null;
+  notePratique: string | null;
+  capacity: number | null;
+  /** Story 47.2 : fin de la plage (clé `YYYY-MM-DD` et créneau), `null` tant que la séance n'a pas de date. */
+  endDate: string | null;
+  endSlot: DaySlot | null;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
+  durationSlots: number;
+  /** Story 40.4 : places prises = l'hôte + TOUTES les lignes d'inscription, `RESERVED` comprises —
+   *  servi à tous pour que « Complet » et « libres » soient justes sans révéler qui tient une place
+   *  en attente. */
+  placesTaken: number;
+}
+
+/** Un participant d'une conjonction (Story 40.2) : l'hôte d'abord (`isHost`), puis les inscrits par
+ *  ordre d'inscription. `isAdmin` = `Membership.role` du groupe (jamais un droit sur l'événement).
+ *  Story 40.4 : `status` — une ligne `RESERVED` n'est servie qu'à l'hôte de la conjonction. */
+export interface EventParticipantDto {
+  userId: string;
+  displayName: string;
+  isHost: boolean;
+  isAdmin: boolean;
+  status: InscriptionStatus;
+}
+
+/** Un créneau candidat du sondage d'une conjonction, tel que servi aux membres (Story 40.5).
+ *  `availableCount` : parmi les inscrits (hôte + inscriptions confirmées), combien sont libres sur ce
+ *  créneau d'après leurs disponibilités déclarées — un nombre, jamais des noms. */
+export interface EventPollOptionDto {
+  id: string;
+  date: string;
+  slot: DaySlot;
+  availableCount: number;
+}
+
+/** La réponse d'un votant éligible à un créneau (Story 40.5). */
+export interface EventPollVoteDto {
+  optionId: string;
+  userId: string;
+  answer: VoteAnswer;
+}
+
+/** Sondage de dates d'une conjonction (Story 40.5) — projection explicite, servie aux membres du
+ *  groupe seuls. `eligibleVoterIds` : qui peut voter (tous les membres, ou l'hôte + les inscrits
+ *  confirmés si les places sont limitées) ; le résumé du vote (réponses, meilleur créneau, « n'ont pas
+ *  encore répondu ») est calculé à l'écran depuis cette liste et `votes`. `expiresAt` : fin du vote
+ *  (instant ISO, fin du jour d'échéance en UTC). */
+export interface EventPollDto {
+  id: string;
+  expiresAt: string | null;
+  status: PollStatus;
+  eligibleVoterIds: string[];
+  /** Story 47.4 : durée du rendez-vous voté, en créneaux — chaque créneau candidat est le DÉPART d'une plage
+   *  de cette durée. */
+  durationSlots: number;
+  options: EventPollOptionDto[];
+  votes: EventPollVoteDto[];
+}
+
+/**
+ * Droits d'organisateur d'un rendez-vous pour la personne qui lit (Story 44.1, AD-4) — calculés par le
+ * serveur (`PermissionService`), jamais déduits à l'écran d'un `hostId` ou d'un rôle. Ils disent le DROIT,
+ * pas l'état : un sondage clos ou une date fixée restent des conditions d'écran à part.
+ * - `propose` : proposer des dates (créer un sondage) ;
+ * - `edit` : modifier les dates d'un sondage ouvert ;
+ * - `choose` : fixer la date ;
+ * - `extend` : prolonger le vote (jamais en JDR, où l'on repousse l'échéance en modifiant le sondage).
+ */
+export interface OrganizerCan {
+  propose: boolean;
+  edit: boolean;
+  choose: boolean;
+  extend: boolean;
+}
+
+/** Carte d'une conjonction (GET /parties/:id/events/list, Story 40.1) — projection explicite :
+ *  l'hôte (immuable, `null` si son compte a disparu), la séance unique et, depuis la Story 40.2, ses
+ *  participants (hôte en premier, puis les inscrits). */
+export interface EventCardDto {
+  id: string;
+  title: string;
+  hostId: string | null;
+  hostDisplayName: string | null;
+  seance: EventCardSeanceDto | null;
+  participants: EventParticipantDto[];
+  /** Story 40.4 : la ligne d'inscription de la personne qui lit (`null` : aucune — l'hôte non plus). */
+  myInscription: InscriptionStatus | null;
+  /** Story 40.5 : le sondage de dates de la conjonction (`null` pour une conjonction à date fixée). */
+  poll: EventPollDto | null;
+  /** Story 42.1 : la conjonction est annulée (définitif) — plus aucune action, sondage clos. */
+  cancelled: boolean;
+  /** Story 44.1 : droits d'organisateur de la personne qui lit, sur cet événement. */
+  can: OrganizerCan;
+}
+
 // ─── Epic 9 : Annonces MJ ──────────────────────────────────────────────────
 
 /** Une annonce MJ à portée variable (Story 9.1) — `scenarioId: null` = portée Partie/campagne entière. */
@@ -447,7 +1030,7 @@ export interface AnnouncementDto {
   scenarioId: string | null;
   text: string;
   createdAt: string;
-  /** Identité du MJ auteur — dérivée de `Partie.mjId`, jamais stockée sur l'annonce (AD-2, Story 28.2). */
+  /** Identité du MJ auteur — dérivée de `Partie.ownerId`, jamais stockée sur l'annonce (AD-2, Story 28.2). */
   authorPseudo: string;
   authorDisplayName: string;
 }
@@ -478,6 +1061,59 @@ export interface AssignGroupRoleDto {
 /** Granularité d'un créneau de disponibilité. */
 export type DaySlot = 'MORNING' | 'AFTERNOON' | 'EVENING' | 'FULL_DAY';
 
+/** Story 47.1 (AD-10) — un créneau précis d'un jour, avec sa clé de jour `AAAA-MM-JJ` (UTC). */
+export interface DatedSlot {
+  date: string;
+  slot: DaySlot;
+}
+
+/** Les trois créneaux d'une journée, dans l'ordre où ils s'enchaînent (le soir est suivi du matin
+ *  du lendemain). */
+const SLOT_CHAIN: readonly DaySlot[] = ['MORNING', 'AFTERNOON', 'EVENING'];
+
+function addDays(dayKey: string, days: number): string {
+  const d = new Date(`${dayKey}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().substring(0, 10);
+}
+
+/**
+ * Story 47.1 (AD-10) — **la** fonction de fin d'une plage : `durationSlots` créneaux enchaînés
+ * (`MORNING → AFTERNOON → EVENING → MORNING` du lendemain) à partir du créneau de départ, départ
+ * compris. `FULL_DAY` n'existe qu'à 1 : la fin est alors le départ lui-même. Lève une `RangeError`
+ * pour une durée qui n'est pas un entier ≥ 1, ou pour `FULL_DAY` au-delà de 1 ; l'appelant la
+ * traduit en refus écrit.
+ */
+export function spanEnd(date: string, slot: DaySlot, durationSlots: number): DatedSlot {
+  if (!Number.isInteger(durationSlots) || durationSlots < 1) {
+    throw new RangeError('La durée doit être un entier d’au moins 1 créneau');
+  }
+  if (slot === 'FULL_DAY') {
+    if (durationSlots > 1) throw new RangeError('Une journée entière ne dure qu’un créneau');
+    return { date, slot };
+  }
+  const index = SLOT_CHAIN.indexOf(slot) + durationSlots - 1;
+  return {
+    date: addDays(date, Math.floor(index / SLOT_CHAIN.length)),
+    slot: SLOT_CHAIN[index % SLOT_CHAIN.length],
+  };
+}
+
+/**
+ * Story 47.1 (AD-10) — **la** fonction des créneaux couverts par une plage, du départ à la fin,
+ * un par créneau précis. `FULL_DAY` (durée 1) se déplie en les trois créneaux de son jour. Mêmes
+ * refus que `spanEnd`.
+ */
+export function spanSlots(date: string, slot: DaySlot, durationSlots: number): DatedSlot[] {
+  spanEnd(date, slot, durationSlots);
+  if (slot === 'FULL_DAY') return SLOT_CHAIN.map((s) => ({ date, slot: s }));
+  const start = SLOT_CHAIN.indexOf(slot);
+  return Array.from({ length: durationSlots }, (_, i) => ({
+    date: addDays(date, Math.floor((start + i) / SLOT_CHAIN.length)),
+    slot: SLOT_CHAIN[(start + i) % SLOT_CHAIN.length],
+  }));
+}
+
 /** Type d'une déclaration de disponibilité. */
 export type AvailKind = 'UNAVAILABLE' | 'AVAILABLE';
 
@@ -492,6 +1128,145 @@ export type PollStatus = 'OPEN' | 'CLOSED';
 
 /** Réponse à une option de vote. */
 export type VoteAnswer = 'YES' | 'NO' | 'MAYBE';
+
+/**
+ * Une personne a-t-elle répondu à un sondage ? LA règle de chaque famille (Story 44.2), partagée par le serveur
+ * (réponses, signaux de liste) et l'écran : en JDR il faut avoir voté sur CHAQUE option (un sondage sans
+ * option compte comme répondu — rien à répondre) ; pour un groupe ou une soirée, sur AU MOINS UNE.
+ */
+export function hasAnswered(
+  family: GameSystemFamily,
+  optionIds: readonly string[],
+  votedOptionIds: ReadonlySet<string> | readonly string[],
+): boolean {
+  const voted = votedOptionIds instanceof Set ? votedOptionIds : new Set(votedOptionIds);
+  return family === 'ralliement'
+    ? optionIds.some((id) => voted.has(id))
+    : optionIds.every((id) => voted.has(id));
+}
+
+/** Une option de vote telle que `bestOption` la classe : un jour, un créneau et ses réponses. */
+export interface RankableOption {
+  /** Clé `YYYY-MM-DD`. */
+  date: string;
+  slot: DaySlot;
+  yes: number;
+  maybe: number;
+}
+
+const DAY_SLOT_RANK: Record<DaySlot, number> = { MORNING: 0, AFTERNOON: 1, EVENING: 2, FULL_DAY: 3 };
+
+/** Ordre chronologique : le jour, puis le créneau de la journée. */
+function compareOptionsChronologically(a: RankableOption, b: RankableOption): number {
+  return a.date.localeCompare(b.date) || DAY_SLOT_RANK[a.slot] - DAY_SLOT_RANK[b.slot];
+}
+
+/** Les options dans l'ordre chronologique (Story 44.4) — le jour, puis le créneau de la journée. Source unique
+ *  de l'ordre du plateau de la Destinée et de ses chevrons ; ne modifie pas la liste reçue. */
+export function sortOptionsChronologically<T extends RankableOption>(options: readonly T[]): T[] {
+  return [...options].sort(compareOptionsChronologically);
+}
+
+/** Délai par défaut de la fin d'un vote, en jours (Story 45.4). */
+export const POLL_DEFAULT_DEADLINE_DAYS = 14;
+
+/** La clé de jour `YYYY-MM-DD` décalée de `days` jours (calendrier UTC, sans heure). */
+function shiftDayKey(key: string, days: number): string {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().substring(0, 10);
+}
+
+/**
+ * LA fin de vote proposée (Story 45.4, AR17) — source unique du composer ET du serveur, qui remplace le délai
+ * fixe de 14 jours : le plus TÔT de « dans 14 jours » et de « la veille du premier créneau », jamais avant
+ * aujourd'hui. Entrées et résultat sont des clés de jour `YYYY-MM-DD` ; le serveur donne au résultat la fin de
+ * ce jour. Sans créneau : dans 14 jours.
+ */
+export function defaultPollDeadline(options: readonly { date: string }[], today: string): string {
+  const inTwoWeeks = shiftDayKey(today, POLL_DEFAULT_DEADLINE_DAYS);
+  if (options.length === 0) return inTwoWeeks;
+  const first = options.map((o) => o.date.substring(0, 10)).sort()[0];
+  const eve = shiftDayKey(first, -1);
+  const earliest = eve < inTwoWeeks ? eve : inTwoWeeks;
+  return earliest < today ? today : earliest;
+}
+
+/**
+ * LE meilleur créneau d'un vote (Story 44.3), source unique de l'écran (Destinée, confirmation « Fixer la
+ * date ») : le plus de « oui », puis le plus de « peut-être », puis le plus tôt. Les options passées
+ * (`date < today`) sont exclues. `null` s'il n'en reste aucune, ou si personne n'a dit oui — il n'y a alors
+ * pas de « meilleur », et rien ne doit en porter l'étiquette.
+ */
+export function bestOption<T extends RankableOption>(
+  options: readonly T[],
+  today: string,
+): T | null {
+  const best = options
+    .filter((o) => o.date >= today)
+    .sort((a, b) => b.yes - a.yes || b.maybe - a.maybe || compareOptionsChronologically(a, b))[0];
+  return best && best.yes > 0 ? best : null;
+}
+
+/**
+ * L'option sur laquelle la Destinée s'ouvre (Story 44.3) : tant que le vote est ouvert (pas d'échéance, ou
+ * échéance aujourd'hui ou plus tard), le premier créneau À VENIR ; après sa fin, le meilleur. Sans meilleur
+ * (ou sans créneau à venir), le premier créneau à venir, à défaut le premier créneau. `null` sans option.
+ */
+export function destinyEntryOption<T extends RankableOption>(
+  poll: { expiresAt: string | null; options: readonly T[] },
+  today: string,
+): T | null {
+  const chronological = [...poll.options].sort(compareOptionsChronologically);
+  const firstUpcoming = chronological.find((o) => o.date >= today) ?? null;
+  const ended = poll.expiresAt !== null && poll.expiresAt.substring(0, 10) < today;
+  const preferred = ended ? bestOption(chronological, today) : firstUpcoming;
+  return preferred ?? firstUpcoming ?? chronological[0] ?? null;
+}
+
+/** Paramètres d'adresse reconnus par les calendriers de l'atelier (Story 44.7). */
+export interface AtelierUrlParams {
+  /** `?poll=<pollId>` : la Destinée s'ouvre sur ce vote. */
+  poll?: string;
+  /** `?pollList` : la liste ✦ des destinées s'ouvre. */
+  pollList?: boolean;
+  /** `?seanceId=<id>` : le rendez-vous visé (armement du composer, palier 10.4). */
+  seanceId?: string;
+}
+
+/**
+ * Le chemin de l'atelier d'une partie (Story 44.7, AD-5/AR18). Le JDR du MJ vit à `/parties/:id/calendar` ; le
+ * joueur de JDR, le groupe et la soirée isolée à `/parties/:id/guild-calendar` (un lien `calendar` vers un groupe
+ * serait refusé : la lecture des scénarios lui est interdite).
+ */
+export function atelierPath(target: {
+  partieId: string;
+  family: GameSystemFamily;
+  role: PartieRole;
+}): string {
+  const page = target.family === 'jdr' && target.role === 'mj' ? 'calendar' : 'guild-calendar';
+  return `/parties/${encodeURIComponent(target.partieId)}/${page}`;
+}
+
+/** La chaîne de requête (sans `?`) des paramètres donnés, dans un ordre stable ; vide si aucun. */
+export function atelierQuery(params: AtelierUrlParams = {}): string {
+  const parts: string[] = [];
+  if (params.poll) parts.push(`poll=${encodeURIComponent(params.poll)}`);
+  if (params.pollList) parts.push('pollList');
+  if (params.seanceId) parts.push(`seanceId=${encodeURIComponent(params.seanceId)}`);
+  return parts.join('&');
+}
+
+/**
+ * **Une** fonction construit l'adresse de l'atelier, pour le web et pour les gabarits d'e-mail (Story 44.7) :
+ * aucun endroit ne choisit plus lui-même la route d'une famille.
+ */
+export function atelierUrl(
+  target: { partieId: string; family: GameSystemFamily; role: PartieRole },
+  params: AtelierUrlParams = {},
+): string {
+  const query = atelierQuery(params);
+  return query ? `${atelierPath(target)}?${query}` : atelierPath(target);
+}
 
 /** Déclaration de disponibilité telle que renvoyée par l'API. */
 export interface AvailabilityDeclarationDto {
@@ -616,6 +1391,23 @@ export interface AvailableSlotDto {
   date: string;
   slot: DaySlot;
   members: SlotMemberDto[];
+  /** Story 46.4 — la durée de la fenêtre, en créneaux : 1 jusqu'à l'épic 47. Fait partie de sa clé naturelle (avec le
+   *  jour et le créneau de départ), recopiée telle quelle pour masquer ou démasquer. */
+  durationSlots: number;
+  /** Story 46.4 — la fenêtre est masquée par le MJ : servie à part, après les visibles, jamais comptée dans les 20. */
+  hidden?: boolean;
+}
+
+/** Story 46.4 — plafond d'une fenêtre ou d'un rendez-vous, en créneaux : 15 jours de 3 créneaux (AR10). Borne la durée
+ *  d'un masquage et, depuis la Story 47.1, la durée d'un rendez-vous (`Seance.durationSlots`). */
+export const MAX_SLOT_WINDOW_SLOTS = 45;
+
+/** Story 46.4 — corps de `PUT` / `DELETE /parties/:id/available-slots/hidden` : la fenêtre telle que servie. */
+export interface SlotWindowKeyDto {
+  /** `AAAA-MM-JJ`. */
+  date: string;
+  startSlot: DaySlot;
+  durationSlots: number;
 }
 
 /** Vue agrégée d'un créneau disponible pour un joueur non-MJ (sans identité des membres). */
@@ -650,6 +1442,11 @@ export interface MyCalendarSeanceEntry {
   scenarioTitle: string;
   date: string;
   slot: DaySlot;
+  /** Story 47.2 : fin de la plage de la séance (égale au début pour un créneau), lue de la `Seance`. */
+  endDate: string;
+  endSlot: DaySlot;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
+  durationSlots: number;
   /** Informations pratiques (Story 36.5). Elles doivent transiter par CE chemin aussi : sans
    *  cela le calendrier personnel ne les verrait jamais, le contexte de partie étant le seul à
    *  disposer du `SeanceDto` complet. Aucun appel supplémentaire — les scalaires de `Seance`
@@ -671,7 +1468,7 @@ export interface MyCalendarSeanceEntry {
  *  de tous les votants), cette forme est **strictement anonyme** : des compteurs, et ma seule
  *  réponse. Le calendrier personnel agrège des parties entre lesquelles rien ne doit transiter
  *  (AD-9/AD-2) — n'y ajouter jamais un `userId`, un `pseudo` ni un `displayName`. */
-export interface MyCalendarPollOption {
+export interface OpenPollOption {
   /** Story 36.6 — sans lui, ni ma réponse ni un agrégat ne sont adressables, et le sélecteur de
    *  réponse (story 36.7) ne pourrait pas voter depuis le calendrier personnel. */
   optionId: string;
@@ -685,22 +1482,50 @@ export interface MyCalendarPollOption {
   myAnswer: VoteAnswer | null;
 }
 
-/** Vote de date en cours sur une de mes parties (couche `votes-en-cours`, `GET /me/calendar`,
- *  Story 30.5). Une entrée par sondage, pas par option — le client éclate par option. Depuis la
- *  Story 36.6, porte aussi l'effectif de la troupe (`membersCount`) et, par option, les agrégats
- *  de réponses et ma réponse (`MyCalendarPollOption`) — l'appel unique existant suffit désormais
- *  à alimenter la piste de participation, sans appel réseau supplémentaire (AD-20). */
-export interface MyCalendarPollEntry {
+/** Un sondage de dates OUVERT de l'une de mes parties actives (`GET /me/open-polls`, Story 44.2), de
+ *  n'importe quelle famille (JDR, groupe, soirée isolée). Une entrée par sondage, pas par option — le
+ *  client éclate par option. Strictement anonyme : des compteurs et ma seule réponse, jamais un
+ *  `userId` de votant. `eligibleCount` = ceux qui peuvent voter (JDR : le MJ + ses membres ; groupe :
+ *  les votants éligibles de la conjonction) ; `answeredCount` = ceux d'entre eux qui ont répondu
+ *  (règle de `hasAnswered`). `me` dit si JE peux voter et si j'ai répondu. */
+export interface OpenPollEntry {
   pollId: string;
   partieId: string;
   partieName: string;
-  /** Story 36.6 — effectif de la troupe : **le MJ + ses membres** (`participantCount()`), le
-   *  dénominateur de la piste de participation. Même nombre que `SessionPollDto.membersCount`
-   *  et que `AggregatedSlotDto.total`. Agrégat anonyme : aucune identité ne s'en déduit. */
-  membersCount: number;
-  options: MyCalendarPollOption[];
-  /** Échéance du vote, `null` si non définie (votes créés avant l'introduction du champ). */
+  family: GameSystemFamily;
+  kind: PartieKind;
+  seanceId: string;
+  title: string;
+  /** Échéance du vote, `null` si non définie. Passée ou non : un sondage ouvert reste listé. */
   expiresAt: string | null;
+  /** Durée du rendez-vous en créneaux (Story 47.4 : lue de la séance ; 1 pour un sondage sans séance). */
+  durationSlots: number;
+  options: OpenPollOption[];
+  eligibleCount: number;
+  answeredCount: number;
+  me: { eligible: boolean; answered: boolean };
+  /** Droits d'organisateur de la personne qui lit sur ce rendez-vous (Story 44.1). */
+  can: OrganizerCan;
+}
+
+/** Un rendez-vous qui attend une date, proposable par la personne qui lit (`GET /me/datable-seances`,
+ *  Story 45.1). Une entrée par séance ; aucune donnée d'un autre membre. */
+export interface DatableSeanceEntry {
+  seanceId: string;
+  partieId: string;
+  partieName: string;
+  family: GameSystemFamily;
+  kind: PartieKind;
+  /** Titre du rendez-vous (celui de l'événement). */
+  title: string;
+  /** Rang de la séance dans son événement (1 = la première) et nombre de séances de l'événement : le client
+   *  écrit « Titre — Séance 2 » seulement quand il y en a plusieurs. */
+  seanceRank: number;
+  seanceCount: number;
+  /** Story 47.1 : durée du rendez-vous, en créneaux enchaînés. */
+  durationSlots: number;
+  /** Droits d'organisateur de la personne qui lit (`propose` est vrai pour toute entrée servie). */
+  can: OrganizerCan;
 }
 
 /** Séance à inscription ouverte d'une de mes parties CAMPAGNE_EPISODIQUE (couche
@@ -726,7 +1551,6 @@ export interface MeCalendarDto {
   'mes-indisponibilites': AvailabilityDeclarationDto[];
   'mes-disponibilites': AvailabilityDeclarationDto[];
   'mes-seances': MyCalendarSeanceEntry[];
-  'votes-en-cours': MyCalendarPollEntry[];
   'inscriptions-ouvertes': MyCalendarOpenInscriptionEntry[];
 }
 
@@ -750,6 +1574,9 @@ export interface SessionPollDto {
    *
    *  Requis, jamais optionnel : un effectif absent rendrait une piste au dénominateur indéfini. */
   membersCount: number;
+  /** Story 47.4 : durée du rendez-vous voté, en créneaux (1 pour un sondage sans séance) — chaque option est
+   *  le DÉPART d'une plage de cette durée. Requis, à la racine (même raison que `membersCount`). */
+  durationSlots: number;
   options: PollOptionDto[];
 }
 
@@ -776,6 +1603,8 @@ export interface PollVoteDto {
 export interface CreatePollDto {
   options: { date: string; slot: DaySlot }[];
   scenarioRef?: string | null;
+  /** Story 45.4 — fin du vote, un jour `YYYY-MM-DD`. Absent : `defaultPollDeadline`. */
+  expiresAt?: string;
 }
 
 /**
@@ -796,6 +1625,13 @@ export interface CreatePollDto {
  */
 export interface SetPollOptionsDto {
   options: { date: string; slot: DaySlot }[];
+  /** Story 45.4 — nouvelle fin du vote, un jour `YYYY-MM-DD` ; absent : la fin actuelle est gardée. Repousser la
+   *  fin d'un vote de JDR EST sa prolongation. Une date déjà passée est refusée, sauf si elle est inchangée. */
+  expiresAt?: string;
+  /** Story 47.4 : nouvelle durée du rendez-vous, en créneaux (1 à 45) ; absente = inchangée. Une durée
+   *  réellement changée recrée toutes les options : TOUTES les réponses sont effacées (avertissement préalable
+   *  côté client). Un créneau `FULL_DAY` n'existe qu'à 1. */
+  durationSlots?: number;
 }
 
 /** Payload pour voter sur une option (POST /parties/:id/poll/:pollId/vote). */
@@ -869,6 +1705,22 @@ export interface CharacterDto {
    * de niveau sans que `level` n'augmente tant que le joueur n'a pas validé le `LevelUpWizard`.
    */
   level: number;
+  /**
+   * Chemins de fiche retirés de cette réponse par le cadenas de visibilité (Story 31.6) — chemin
+   * pointé simple (`"classId"`) ou sous-champ (`"attributes.AGI"`), plus `"derived"` quand
+   * `derived` est retiré en entier (dépendance à `attributes`/`levelUps` verrouillée). Toujours
+   * renvoyé par l'API (tableau vide pour le propriétaire de la fiche et pour le MJ, qui voient
+   * toujours tout — ou quand rien n'est configuré pour la Partie). `sheetData`/`derived` restent
+   * typés pleins ci-dessus (contrat DTO existant) : une clé retirée est simplement absente à
+   * l'exécution (jamais vide ni nulle), signalée ici.
+   *
+   * Optionnel dans CE TYPE (pas côté API, qui le peuple systématiquement) : `apps/web/**` est hors
+   * périmètre de la Story 31.6 (aucune modification, cf. spec) et
+   * `apps/web/src/app/core/characters/character-dto.fixture.ts` construit un `CharacterDto`
+   * littéral sans ce champ — le marquer requis casserait sa compilation sans qu'aucune story
+   * n'ait mandat de la corriger ici.
+   */
+  hiddenFields?: string[];
 }
 
 /** Personnage enrichi du nom de sa Partie d'origine — forme de réponse propre à `GET /me/characters`
@@ -1078,10 +1930,32 @@ export interface CreateCharacterDto {
   sheetData: SheetData;
 }
 
+/** Description d'une clé de `sheetSchema` (Story 31.6/31.7) — `lockable`/`lockableFields`
+ *  déclarent ce que l'écran de configuration des cadenas (31.7) peut proposer à la coche, sans
+ *  aucune liste écrite en dur côté écran. `label`/`lockableFieldLabels` portent les libellés
+ *  affichés (mêmes textes que `creationSteps`/la fiche personnage, jamais un nouveau libellé
+ *  inventé pour cet écran). */
+export interface SheetSchemaFieldDto {
+  type: string;
+  optional?: boolean;
+  fields?: string[];
+  lockable?: boolean;
+  lockableFields?: string[];
+  label: string;
+  lockableFieldLabels?: Record<string, string>;
+}
+
 /** Réponse de GET /game-systems/:id/schema. */
 export interface GameSystemSchemaDto {
-  sheetSchema: unknown;
+  sheetSchema: Record<string, SheetSchemaFieldDto>;
   creationSteps: unknown[];
+}
+
+/** Un chemin verrouillé (Story 31.6/31.7) — miroir du retour de `setVisibilityLocks()`/
+ *  `getVisibilityLocks()` côté API, jamais réimporté depuis `apps/api`. */
+export interface VisibilityLockPathDto {
+  fieldKey: string;
+  subField: string | null;
 }
 
 /** Entrée de contenu générique d'un système de jeu (ex: une classe, un type, une arme). */
@@ -1111,8 +1985,9 @@ export interface ResetPasswordDto {
 /** Race de l'Homme Dragon (Story 10.1) — fixée à la création, détermine les artefacts proposés. */
 export type HommeDragonRace = 'DRAGON_VERT' | 'DRAGON_BLEU' | 'DRAGON_ROUGE' | 'DRAGON_NOIR';
 
-/** Fiche du personnage du MJ pour Ryuutama (Story 10.1). Forme minimale — `derived`/
- * `voyageursProteges`/`historique` seront ajoutés par les Stories 10.2/10.3, pas encore calculés. */
+/** Fiche du personnage du MJ pour Ryuutama (Story 10.1) — la part saisie et persistée (`sheetData`).
+ * Niveau, PS, aventures, historique et éveils en attente sont calculés à la lecture
+ * (`HommeDragonDto`, AD-3), jamais stockés ici. */
 export interface HommeDragonSheetData {
   race: HommeDragonRace;
   artefact: { key: string; nom?: string; inscription?: string };
@@ -1126,22 +2001,56 @@ export interface HommeDragonSheetData {
   /** Pouvoirs d'éveil choisis, un par niveau franchi (2-5) — jamais recalculé, c'est un choix
    * du MJ (Story 10.4). Absent sur les fiches créées avant cette story. */
   eveilPowers?: { level: number; key: string }[];
+  /** Artefact offert par les hommes-dragons des autres races au niveau 4 (Story 33.7) : choix
+   * unique et définitif du MJ, jamais d'artefact de la race du dragon. Le libellé se lit au
+   * catalogue `hommeDragonArtefact`. Absent tant que rien n'est choisi. */
+  artefactCadeau?: { key: string };
+  /** Réserve de souffles du dragon (Story 33.6) : une seule par Homme Dragon, positionnelle
+   * (index = numéro d'emplacement − 1), clé d'un souffle du catalogue `souffle` ou `souffleRituel`,
+   * `null`/absent = emplacement vide. Écrite uniquement par `PUT …/reserve/:slot`, jamais par le
+   * `PATCH` générique ; lue par le MJ seul (la fiche entière lui est réservée). */
+  reserve?: (string | null)[];
+}
+
+/** Référence légère à un Homme Dragon : `{ id, nom }` (AD-23). Renvoyée par
+ * `GET /parties/:id/homme-dragon` (`null` si l'aventure n'en a pas) — ni race, ni niveau, ni réserve. */
+export interface HommeDragonRefDto {
+  id: string;
+  nom: string;
+}
+
+/** Un voyageur protégé d'une aventure (AD-23) — convention joueur / personnage : `pseudo` et
+ * `displayName` permettent au front d'afficher le nom selon la convention de l'application. */
+export interface HommeDragonVoyageurDto {
+  userId: string;
+  pseudo: string;
+  displayName: string;
+}
+
+/** Une aventure d'un Homme Dragon (AD-23) : une partie dont `hommeDragonId` est son id, avec les
+ * voyageurs protégés (membres de la partie hors MJ) — calculé à la lecture, jamais stocké. */
+export interface HommeDragonAventureDto {
+  partieId: string;
+  nom: string;
+  voyageurs: HommeDragonVoyageurDto[];
 }
 
 export interface HommeDragonDto {
   id: string;
   userId: string;
-  partieId: string;
   gameSystemId: string;
   sheetData: HommeDragonSheetData;
   createdAt: string;
   updatedAt: string;
-  /** Membres actuels de la Partie (hors MJ) — calculé à la lecture, jamais stocké (AD-3, Story 10.2). */
-  voyageursProteges: { userId: string; pseudo: string }[];
-  /** Scénarios `PASSE` de la Partie — calculé à la lecture, jamais stocké (AD-3, Story 10.2). */
-  historique: { scenarioTitle: string; date: string; participants: string[] }[];
+  /** Aventures de l'Homme Dragon (0..N, triées par `Partie.createdAt` puis `id`) avec leurs
+   * voyageurs protégés — calculé à la lecture, jamais stocké (AD-3, AD-23). Remplace le
+   * `partieId` et le `voyageursProteges` plat d'avant la Story 33.8. */
+  aventures: HommeDragonAventureDto[];
+  /** Scénarios `PASSE` de TOUTES les aventures, chacun avec sa `partieId`, triés par date de
+   * clôture puis id croissants — calculé à la lecture, jamais stocké (AD-3, AD-23). */
+  historique: { scenarioTitle: string; date: string; participants: string[]; partieId: string }[];
   /** Niveau (1-5) et Points de Souffle max — calculés à la lecture depuis le nombre de scénarios
-   * `PASSE`, jamais stockés (AD-3, Story 10.3). */
+   * `PASSE` cumulés sur toutes les aventures, jamais stockés (AD-3, Story 10.3, AD-23). */
   derived: { level: number; PS: number };
   /** Miroir de `sheetData.eveilPowers`, toujours un tableau (jamais `undefined`). */
   eveilPowers: { level: number; key: string }[];
@@ -1150,13 +2059,34 @@ export interface HommeDragonDto {
   pendingEveilLevels: number[];
 }
 
-/** Payload de création (POST /parties/:id/homme-dragon) — mêmes champs que la fiche, à plat. */
+/**
+ * Un Homme Dragon vu depuis « Personnages » (Story 33.5) — lecture agrégée `GET /me/homme-dragons`,
+ * volontairement légère : pas de `derived` ni de niveau (calcul par scénarios `PASSE`, fan-out
+ * par partie). Une ligne par Homme Dragon, filtrée par propriétaire seul (AD-23) : `aventures`
+ * peut être vide (Homme Dragon sans aventure, atteignable par dissociation ou suppression de partie).
+ */
+export interface MyHommeDragonDto {
+  id: string;
+  /** Aventures de l'Homme Dragon, triées par `Partie.createdAt` puis `id` ; éventuellement vide. */
+  aventures: { partieId: string; nom: string }[];
+  gameSystemId: string;
+  nom: string;
+  race: HommeDragonRace;
+  avatar?: string;
+  createdAt: string;
+}
+
+/** Payload de création (POST /parties/:id/homme-dragon, crée ET lie à la partie) — mêmes champs que la fiche, à plat. */
 export type CreateHommeDragonDto = HommeDragonSheetData;
 
-/** Payload de mise à jour (PATCH /parties/:id/homme-dragon) — race jamais éditable après création. */
-export type UpdateHommeDragonDto = Partial<Omit<HommeDragonSheetData, 'race'>>;
+/** Payload de mise à jour (PATCH /homme-dragons/:id) — race jamais éditable après création,
+ * ni l'artefact cadeau (choix définitif via POST `artefact-cadeau`, Story 33.7), ni la réserve de
+ * souffles (route dédiée `PUT reserve/:slot`, Story 33.6). */
+export type UpdateHommeDragonDto = Partial<
+  Omit<HommeDragonSheetData, 'race' | 'artefactCadeau' | 'reserve'>
+>;
 
-/** Payload de choix d'un pouvoir d'éveil (POST /parties/:id/homme-dragon/eveil-power).
+/** Payload de choix d'un pouvoir d'éveil (POST /homme-dragons/:id/eveil-power).
  * Décision utilisateur (Story 10.4) : le catalogue `eveilPower` est un pool commun à toutes les
  * races, sans niveau de déblocage par pouvoir — `level` désigne ici le seuil de niveau franchi
  * pour lequel ce choix est fait (doit appartenir à `pendingEveilLevels`), pas un attribut du
@@ -1164,4 +2094,163 @@ export type UpdateHommeDragonDto = Partial<Omit<HommeDragonSheetData, 'race'>>;
 export interface ChooseEveilPowerDto {
   level: number;
   key: string;
+}
+
+/** Payload du choix de l'artefact cadeau (POST /homme-dragons/:id/artefact-cadeau,
+ * Story 33.7) — niveau ≥ 4, choix unique et définitif, artefact d'une autre race que le dragon. */
+export interface ChooseArtefactCadeauDto {
+  key: string;
+}
+
+/** Payload de l'écriture d'un emplacement de la réserve (PUT /homme-dragons/:id/reserve/:slot,
+ * Story 33.6) — `key: null` retire le souffle de l'emplacement. Un seul emplacement par appel ; le
+ * numéro d'emplacement (1-based) est dans l'URL. */
+export interface SetReserveSlotDto {
+  key: string | null;
+}
+
+// ─── Ludothèque (Palier 10.5, épic 48) ────────────────────────────────────────
+
+/**
+ * Clé de regroupement d'un nom de jeu (Story 48.1) — LA normalisation unique, partagée par toutes
+ * les couches. Dans cet ordre : décomposition NFD ; suppression des seuls diacritiques combinants
+ * latins (U+0300–U+036F — les marques des autres écritures, ex. le dakuten japonais, distinguent des
+ * noms et sont gardées) ; suppression des caractères de format invisibles (`\p{Cf}` : espace sans
+ * chasse, trait d'union conditionnel, BOM…) ; puis bords rognés, espaces intérieurs réduits à un
+ * seul, minuscules. Calculée par l'API à l'écriture et servie dans chaque DTO ; le front regroupe sur
+ * la clé reçue, sans la recalculer.
+ */
+export function boardGameNameKey(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{Cf}/gu, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+/** Un jeu de la Ludothèque d'une personne (Story 48.1) — projection explicite, jamais la ligne brute. */
+export interface BoardGameDto {
+  id: string;
+  name: string;
+  nameKey: string;
+  minPlayers: number | null;
+  maxPlayers: number | null;
+  durationMin: number | null;
+  createdAt: string;
+}
+
+/** Identité publique du propriétaire d'une Ludothèque lue par un tiers (Story 48.3) : pseudo et nom
+ *  affiché seulement — jamais d'e-mail. */
+export interface UserLibraryOwnerDto {
+  userId: string;
+  pseudo: string;
+  displayName: string;
+}
+
+/** Ludothèque d'une personne telle que lue par un tiers (`GET /users/:userId/board-games`, Story 48.3) :
+ *  son identité publique et ses jeux, triés comme `GET /me/board-games`. */
+export interface UserLibraryDto {
+  owner: UserLibraryOwnerDto;
+  games: BoardGameDto[];
+}
+
+/** Un jeu des membres d'un groupe (Story 50.1) : toutes les copies d'un même nom normalisé (`nameKey`, reçue,
+ *  jamais recalculée côté web pour le regroupement) en une ligne, avec leurs propriétaires — pseudo et nom
+ *  affiché seulement, jamais d'e-mail. Le nom et les mesures sont ceux de la copie du premier propriétaire
+ *  (ordre de `owners`) : ce que la ligne annonce est ce que le filtre teste. */
+export interface GroupBoardGameDto {
+  nameKey: string;
+  name: string;
+  minPlayers: number | null;
+  maxPlayers: number | null;
+  durationMin: number | null;
+  owners: UserLibraryOwnerDto[];
+}
+
+/** Les jeux des membres actuels d'un groupe (`GET /parties/:id/board-games`, Story 50.1), triés par clé
+ *  normalisée ; un groupe sans jeu renvoie `games: []`. */
+export interface GroupBoardGamesDto {
+  games: GroupBoardGameDto[];
+}
+
+/** Combien de fois un membre a reçu le groupe (Story 50.2) — pseudo et nom affiché seulement, jamais d'e-mail. */
+export interface HostCountDto {
+  userId: string;
+  pseudo: string;
+  displayName: string;
+  count: number;
+}
+
+/** Le Compteur d'hôte d'un groupe (`GET /parties/:id/host-counts`, Story 50.2) : chaque membre ACTUEL (0 compris),
+ *  du plus grand compte au plus petit, puis par nom. Comptent les conjonctions passées et non annulées du groupe
+ *  que le membre a hébergées ; rien n'est stocké. */
+export interface HostCountsDto {
+  members: HostCountDto[];
+}
+
+/** Un jeu apporté à une soirée par un participant (Story 49.2) : le jeu et qui l'apporte — pseudo et nom
+ *  affiché seulement, jamais d'e-mail. */
+export interface EventBringDto {
+  game: BoardGameDto;
+  bringer: { userId: string; pseudo: string; displayName: string };
+}
+
+/** Les Envies d'un nom de jeu sur place (Story 49.5) : qui a envie d'y jouer ce soir — pseudo et nom affiché
+ *  seulement, jamais d'e-mail. `nameKey` est la clé normalisée reçue, jamais recalculée côté web. */
+export interface EventEnvyDto {
+  nameKey: string;
+  users: { userId: string; pseudo: string; displayName: string }[];
+}
+
+/** Les jeux sur place d'une soirée à venir (`GET /events/:eventId/board-games`, Story 49.1) : les jeux de
+ *  l'hôte, triés par clé normalisée puis nom, et le nombre de participants N (hôte compris, jamais une place
+ *  seulement réservée). Story 49.2 : `brings` — les jeux apportés par les participants actuels (triés comme
+ *  `games`). Soirée passée, terminée ou annulée : `games` et `brings` vides, N tel que
+ *  calculé. Story 49.4 : `games` ne liste plus les jeux que l'hôte a écartés pour cette soirée ; ceux-ci
+ *  ne sont rendus QUE à l'hôte, dans `excludedGames` (clé absente pour tout autre lecteur, `[]` sur une soirée
+ *  fermée) — la réponse elle-même ne dit rien aux autres. Story 49.5 : `envies` — les Envies des participants
+ *  actuels sur les noms sur place (triées par clé puis pseudo), toujours présent, `[]` sur une soirée fermée.
+ *  Jamais d'e-mail. */
+export interface EventBoardGamesDto {
+  games: BoardGameDto[];
+  brings: EventBringDto[];
+  participantsCount: number;
+  envies: EventEnvyDto[];
+  excludedGames?: BoardGameDto[];
+}
+
+/** Corps de `PUT/DELETE /events/:eventId/envies` (Story 49.5) : la clé normalisée du nom de jeu. */
+export interface EventEnvyInput {
+  nameKey: string;
+}
+
+/** Combien d'apports de soirées encore ouvertes pèsent sur l'un de mes jeux (`GET
+ *  /me/board-games/:boardGameId/brought-count`, Story 49.2) — lu avant de le retirer de ma Ludothèque. */
+export interface BoardGameBroughtCountDto {
+  count: number;
+}
+
+/** Décision de droit « lire la Ludothèque d'une personne » (Story 48.3). Cible `{ userId }`, décidée
+ *  par `PermissionService.assertLibraryRead` et nulle part ailleurs. Hors de l'union fermée
+ *  `PermissionAction`, dont les tables de politique sont indexées par rôle SUR UNE PARTIE : ici la
+ *  décision porte sur deux personnes, pas sur une partie. */
+export const LIBRARY_READ = 'LIBRARY_READ';
+
+/** Corps de `POST /me/board-games` (Story 48.1) : seul le nom est obligatoire. */
+export interface CreateBoardGameInput {
+  name: string;
+  minPlayers?: number | null;
+  maxPlayers?: number | null;
+  durationMin?: number | null;
+}
+
+/** Corps de `PATCH /me/board-games/:id` (Story 48.2) : partiel — champ absent = inchangé, `null`
+ *  efface un nombre ; le nom ne peut être ni `null` ni blanc. */
+export interface UpdateBoardGameInput {
+  name?: string;
+  minPlayers?: number | null;
+  maxPlayers?: number | null;
+  durationMin?: number | null;
 }

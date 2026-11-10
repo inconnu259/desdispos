@@ -8,6 +8,27 @@
     (layerToggled)="layerToggled.emit($event)"
   />
 
+  <!-- Story 44.8 — le filtre par partie : de vraies cases à cocher (une donnée, pas un interrupteur
+       d'affichage), toutes cochées par défaut. Aucune section sans parties à choisir. -->
+  @if (parties().length > 0) {
+    <hr class="display-panel__sep" />
+    <fieldset class="display-panel__parties">
+      <legend class="display-panel__section-title">
+        {{ theme.tone()['calendar.display.section_parties'] }}
+      </legend>
+      @for (partie of parties(); track partie.id) {
+        <label class="display-panel__partie">
+          <input
+            type="checkbox"
+            [checked]="!hiddenPartieIds().has(partie.id)"
+            (change)="partieToggled.emit(partie.id)"
+          />
+          <span>{{ partie.name }}</span>
+        </label>
+      }
+    </fieldset>
+  }
+
   <hr class="display-panel__sep" />
 
   <!-- AC5 — la légende se règle ICI, et nulle part ailleurs. `aria-pressed` plutôt qu'une case à

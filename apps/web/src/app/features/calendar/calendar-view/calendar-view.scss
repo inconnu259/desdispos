@@ -69,6 +69,10 @@
    trois contrôles voisins ne peuvent pas se ressembler « presque ». Teinte neutre — le contrat le
    dessine en `mat-stroked mut`, atténué, parce qu'il n'annonce aucun état actif à lui seul. */
 .display-trigger {
+  --app-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border: 1px solid var(--mat-sys-outline, #999);
   border-radius: 999px;
   background: transparent;
@@ -167,15 +171,43 @@
 /* Story 36.10, AC1 — l'armement du mode de composition. Même forme de chip que la Destinée
    (`destiny-control.scss`) : ce sont deux entrées de mode, dans la même bande de contrôles, et
    elles ne doivent pas se ressembler « presque ». Teinte primaire pour la distinguer du vote. */
+/* Story 45.1 — « Proposer / Modifier les dates » : un `mat-stroked-button`, cible au doigt de 44 px. */
 .compose-arm {
-  border: 1px solid var(--mat-sys-primary, #666);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--mat-sys-primary, inherit);
-  padding: 0.25rem 0.75rem;
-  font-size: 0.85rem;
-  font-family: inherit;
-  cursor: pointer;
+  min-height: 44px;
+}
+
+/* Story 40.5b — calendrier d'un groupe : le panneau des votes occupe la colonne latérale du mode joueur. */
+
+.group-polls__title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.group-polls__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.group-poll {
+  padding: 8px 10px;
+  border: 1px solid var(--mat-sys-outline-variant, #ccc);
+  border-radius: 8px;
+}
+
+.group-poll__title {
+  margin: 0 0 2px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.group-poll__state {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant, #666);
 }
 
 .poll-entry {
@@ -265,6 +297,30 @@
   }
 }
 
+/* ── Story 44.4 : le plateau de la destinée, colonne de droite (≥ 768 px : il n'est rendu qu'alors) ──
+   Colonne joueur, groupe et vitrine : 340 px ; colonne MJ : 40 %. Sticky, défilement interne. */
+
+.destiny-board-col {
+  flex: 0 0 340px;
+  min-width: 260px;
+  position: sticky;
+  top: 16px;
+  align-self: flex-start;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.destiny-board-col__slots {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mat-sys-outline-variant, #ccc);
+}
+
+.destiny-board-col--partie {
+  flex: 0 0 40%;
+  min-width: 280px;
+}
+
 /* ── Mode MJ : split layout ── */
 
 .calendar-main {
@@ -298,4 +354,102 @@
     max-height: calc(100vh - 48px);
     overflow-y: auto;
   }
+}
+
+/* ── Story 46.1 : la colonne de droite rangée en dock de 44 px (≥ 768 px). L'hôte `app-side-dock` porte les classes
+   de la colonne ; rangé, il ne garde que le dock, et ces règles passent après toutes celles de la colonne. */
+.calendar-page .side-dock--docked {
+  flex: 0 0 44px !important; /* bat `flex: 0 0 40%` / `340px` des colonnes, de spécificité variable */
+  min-width: 44px;
+  max-width: 44px;
+}
+
+/* ── Story 44.5 : le tiroir de la destinée (sous 768 px) est posé en `position: fixed` par son composant. Le
+   contenu de la page garde de quoi défiler derrière lui : replié ≈ 120 px, déplié jusqu'à 70 % de l'écran. */
+@media (max-width: 767px) {
+  .calendar-page--sheet {
+    padding-bottom: calc(120px + 16px);
+  }
+
+  .calendar-page--sheet-open {
+    padding-bottom: 70vh;
+  }
+}
+
+/* ── Story 44.6 : le message de fermeture de la Destinée (une fois, fermable) ── */
+.calendar-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 12px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant, #ccc);
+  border-left: 4px solid var(--mat-sys-primary, #888);
+  border-radius: 8px;
+}
+
+.calendar-notice__close {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--mat-sys-primary, inherit);
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Story 52.2 : le mode déclaration des dispos ──
+   Couleurs par les seules variables `--jdr-*` existantes. Le contour de grille n'apparaît dans AUCUN autre état. */
+.declare-arm {
+  min-height: 36px;
+}
+
+/* Allumé : plein (fond `accent-1`, texte `on-primary`) ; le libellé passe à « Terminer ». */
+.declare-arm--on {
+  --mat-button-outlined-label-text-color: var(--jdr-bg, #0d0a14);
+  --mat-button-outlined-outline-color: var(--jdr-accent-1);
+  --mat-button-outlined-state-layer-color: var(--jdr-bg, #0d0a14);
+  background: var(--jdr-accent-1);
+  color: var(--jdr-bg, #0d0a14);
+}
+
+.declare-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--jdr-accent-1);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--jdr-accent-1) 10%, transparent);
+  color: var(--jdr-text, #e8e0f0);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.declare-banner__done {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--jdr-accent-1);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Le contour entoure la grille Mois ou Semaine (leur élément hôte, qui doit être un bloc pour porter une bordure). */
+.declare-grid {
+  display: block;
+  box-sizing: border-box;
+  border: 2px solid var(--jdr-accent-1);
+  border-radius: 12px;
 }

@@ -13,7 +13,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -25,11 +25,21 @@ import {
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import type { CharacterDto, GameSystemContentDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
-import { characterName, findContentEntry } from '../../../core/characters/character.util';
+import {
+  characterName,
+  findContentEntry,
+  isFieldHidden,
+} from '../../../core/characters/character.util';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { DetailSurface } from '../../../shared/detail-surface/detail-surface';
+import {
+  createDetailSurfaceHost,
+  detailContent,
+} from '../../../shared/detail-surface/detail-surface-host';
+import { talentDetail } from '../../../shared/detail-surface/talent-detail';
 import { CharacterAvatar } from '../character-avatar/character-avatar';
 import { PortraitPanel } from '../portrait-panel/portrait-panel';
 import {
@@ -64,6 +74,10 @@ interface ClassTalentFull {
   id?: string;
   name: string;
   effect: { description: string; conditions: string };
+  /** Données structurées du catalogue, lues pour le tableau de la surface de détail (31.4). */
+  attributes?: string[];
+  difficulty?: string;
+  description?: string;
 }
 
 export type RequiredChoiceKind =
@@ -84,6 +98,7 @@ interface RequiredChoice {
 
 interface ClassData {
   label: string;
+  description?: string;
   talents: ClassTalentFull[];
   requiredChoices?: RequiredChoice[];
 }
@@ -124,6 +139,7 @@ export interface MagicDisplay {
 
 interface TypeData {
   label: string;
+  description?: string;
   advantages: { name: string; effect: string }[];
 }
 
@@ -158,7 +174,9 @@ interface NarrativeFields {
   standalone: true,
   imports: [
     CharacterAvatar,
+    RouterLink,
     MatButtonModule,
+    AppIcon,
     MatTabsModule,
     PortraitPanel,
     LevelUpBanner,
@@ -185,7 +203,6 @@ export class CharacterSheet implements OnInit {
   private readonly realtime = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly breakpointObserver = inject(BreakpointObserver);
-  private readonly hostElement: ElementRef<HTMLElement> = inject(ElementRef);
 
   /**
    * Story 31.1 — même seuil unique du projet que `CalendarView.DESKTOP_QUERY` (36.14),
@@ -220,41 +237,24 @@ export class CharacterSheet implements OnInit {
   }
 
   /**
-   * Story 31.2 (FR-20) — surface de détail adaptative pour les talents/avantages/sorts. Un seul
-   * signal, jamais une pile : activer un nouvel élément pendant que la surface est déjà ouverte
-   * REMPLACE `selectedDetail` en place (AC4) sans démonter/remonter `DetailSurface`, qui reste
-   * monté tant que `selectedDetail()` ne repasse pas à `null`.
+   * Surface de détail des talents/avantages/sorts (FR-20) et des termes de règle (FR-19).
+   * L'état, le jeton d'ouverture et le retour du focus vivent dans `createDetailSurfaceHost()`,
+   * partagé avec l'assistant de création — un seul emplacement ouvert à la fois, jamais une pile.
    */
-  protected readonly selectedDetail = signal<{ title: string; body: string } | null>(null);
-  /** [Review][Patch] Jeton d'ouverture transmis à `DetailSurface.openToken` — incrémenté à CHAQUE
-   *  activation pour que le focus rentre bien dans le panneau même quand deux déclencheurs
-   *  distincts partagent un titre+texte identiques (title()/body() seuls ne suffiraient pas,
-   *  l'égalité de valeur des signaux empêcherait l'effet de se redéclencher). */
-  protected readonly detailOpenToken = signal(0);
-  /** Bouton à l'origine de l'ouverture — pour lui rendre le focus à la fermeture (AC6, même
-   *  logique que `closeSheetMenu()` ci-dessus, mais pas de déclencheur UNIQUE ici : une fiche
-   *  porte des dizaines de talents/avantages, chacun pouvant rouvrir la même surface). */
-  private detailTrigger: HTMLElement | null = null;
+  protected readonly detail = createDetailSurfaceHost();
 
-  protected openDetail(title: string, body: string, event: Event): void {
-    this.detailTrigger = event.currentTarget as HTMLElement;
-    this.selectedDetail.set({ title, body });
-    this.detailOpenToken.update((n) => n + 1);
-  }
+  /** Règle AC3 partagée avec l'assistant : pas de texte au catalogue ⇒ pas de déclencheur. */
+  protected readonly help = detailContent;
 
-  protected closeDetail(): void {
-    this.selectedDetail.set(null);
-    /* [Review][Patch] Le déclencheur peut avoir quitté le DOM (ex. données du personnage
-     * rafraîchies pendant que la surface est ouverte) — .focus() sur un nœud détaché est un
-     * no-op silencieux ; on retombe sur le premier onglet visible plutôt que de perdre le focus. */
-    if (this.detailTrigger?.isConnected) {
-      this.detailTrigger.focus();
-    } else {
-      const host = this.hostElement.nativeElement;
-      host.setAttribute('tabindex', '-1');
-      host.focus();
-    }
-    this.detailTrigger = null;
+  /** Tableau mécanique + récit d'un talent (31.4, DESIGN §7.2) — même fonction que l'assistant. */
+  protected talentHelp(talent: ClassTalentFull) {
+    const tone = this.theme.tone();
+    return talentDetail(talent, {
+      attributes: tone['detail.row_attributes'],
+      difficulty: tone['detail.row_difficulty'],
+      effect: tone['detail.row_effect'],
+      conditions: tone['detail.row_conditions'],
+    });
   }
 
   // Requêtes par nom de ref plutôt que refs de template croisant les blocs `@if` (les pencils
@@ -274,6 +274,14 @@ export class CharacterSheet implements OnInit {
   protected readonly homeTownPencil = viewChild<FieldEditPencil>('homeTownPencil');
   protected readonly motivationPencil = viewChild<FieldEditPencil>('motivationPencil');
   protected readonly personalityPencil = viewChild<FieldEditPencil>('personalityPencil');
+
+  /** Id de la partie lu depuis la route (une seule fois, comme `characterId` plus bas) — exposé
+   *  pour le lien « Retour à la partie », utilisé à la fois par la branche succès (`c.partieId`,
+   *  déjà en place) et par la branche d'erreur (`loadError()`), qui n'a elle aucune donnée
+   *  personnage chargée pour le déduire. Sans ça, un échec de chargement (403, erreur réseau)
+   *  laissait l'utilisateur sans moyen de revenir à sa partie autre que le bouton retour du
+   *  navigateur. */
+  protected readonly partieId = this.route.snapshot.paramMap.get('id');
 
   protected readonly character = signal<CharacterDto | null>(null);
   protected readonly content = signal<GameSystemContentDto | null>(null);
@@ -372,6 +380,17 @@ export class CharacterSheet implements OnInit {
     );
     return resolveWeapon({ weaponId, customWeapon }, { weaponItems, weaponCategories });
   });
+
+  /** Texte de règle de la catégorie d'arme — absent de `ResolvedWeapon` (qui ne porte que ce qui
+   *  sert au calcul), relu du catalogue par la clé déjà résolue. */
+  protected readonly weaponCategoryDescription = computed<string | undefined>(
+    () =>
+      findContentEntry<{ description?: string }>(
+        this.content(),
+        'weaponCategory',
+        this.weaponData()?.categoryId,
+      )?.description,
+  );
 
   /**
    * Saison d'affinité + 2 sorts rituels connus (Story 23.9) — `null` pour tout personnage dont
@@ -544,6 +563,17 @@ export class CharacterSheet implements OnInit {
       .filter((label): label is string => !!label);
   });
 
+  /** Chemins retirés par le cadenas de visibilité pour ce lecteur (Story 31.6/31.7) — vide pour le
+   *  propriétaire/MJ (jamais masqués) ou une Partie sans configuration. Sert uniquement à distinguer
+   *  « masqué par le MJ » de « non renseigné » là où une section entière disparaîtrait sinon
+   *  silencieusement (correctif de revue, session bmad-build 2026-09-22) — pas une refonte de chaque
+   *  section. Délègue à `isFieldHidden()` (`character.util.ts`), partagée avec `InventoryTab` — une
+   *  seule vérification `hiddenFields`, jamais deux implémentations indépendantes. */
+  protected isHidden(path: string): boolean {
+    const c = this.character();
+    return !!c && isFieldHidden(c, path);
+  }
+
   protected readonly attributes = computed<{
     AGI: number;
     ESP: number;
@@ -555,10 +585,22 @@ export class CharacterSheet implements OnInit {
       null,
   );
 
-  /** Nom du pattern d'attributs dont les valeurs (triées) correspondent à celles du personnage. */
+  /** Nom du pattern d'attributs dont les valeurs (triées) correspondent à celles du personnage.
+   *  Correctif de revue (session bmad-build 2026-09-22) : si un seul sous-champ est verrouillé
+   *  (ex. `attributes.AGI`), la valeur manquante ne doit jamais entrer dans la comparaison — sans
+   *  cette garde, `undefined` comparé numériquement (`NaN`) rendait la détection du patron
+   *  imprévisible au lieu de simplement l'écarter. */
   protected readonly attributePatternLabel = computed<string | null>(() => {
     const attrs = this.attributes();
-    if (!attrs) return null;
+    const c = this.character();
+    if (!attrs || !c) return null;
+    if (
+      ['attributes', 'attributes.AGI', 'attributes.ESP', 'attributes.INT', 'attributes.VIG'].some(
+        (path) => isFieldHidden(c, path),
+      )
+    ) {
+      return null;
+    }
     const sortedOwn = [attrs.AGI, attrs.ESP, attrs.INT, attrs.VIG].sort((a, b) => a - b);
     const patterns = this.content()?.['attributePattern'] ?? [];
     for (const p of patterns) {
@@ -620,7 +662,7 @@ export class CharacterSheet implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    const partieId = this.route.snapshot.paramMap.get('id');
+    const partieId = this.partieId;
     if (partieId) {
       this.realtime.connect(partieTopic(partieId));
       this.destroyRef.onDestroy(() => this.realtime.disconnect(partieTopic(partieId)));
@@ -628,16 +670,16 @@ export class CharacterSheet implements OnInit {
 
     const characterId = this.route.snapshot.paramMap.get('characterId');
     if (!characterId) {
-      this.loadError.set('Fiche introuvable.');
+      this.loadError.set(this.theme.tone()['characters_sheet.not_found']);
       return;
     }
     try {
       this.character.set(await this.characterSvc.get(characterId));
     } catch (err) {
       if (err instanceof HttpErrorResponse && err.status === 403) {
-        this.loadError.set("Vous n'avez pas accès à cette fiche.");
+        this.loadError.set(this.theme.tone()['characters_sheet.access_denied']);
       } else {
-        this.loadError.set('Impossible de charger la fiche de personnage. Réessayez.');
+        this.loadError.set(this.theme.tone()['characters_sheet.load_error']);
       }
       return;
     }
@@ -786,7 +828,7 @@ export class CharacterSheet implements OnInit {
       );
       this.character.set(updated);
     } catch {
-      this.portraitError.set("Le portrait n'a pas pu être enregistré. Réessayez.");
+      this.portraitError.set(this.theme.tone()['characters_sheet.portrait_save_error']);
     }
   }
 
@@ -825,7 +867,7 @@ export class CharacterSheet implements OnInit {
       const updated = await this.characterSvc.patchPdfPortraitCrop(characterId, result.cropData);
       this.character.set(updated);
     } catch {
-      this.portraitError.set('Le cadrage PDF n’a pas pu être enregistré. Réessayez.');
+      this.portraitError.set(this.theme.tone()['characters_sheet.pdf_crop_save_error']);
     }
   }
 

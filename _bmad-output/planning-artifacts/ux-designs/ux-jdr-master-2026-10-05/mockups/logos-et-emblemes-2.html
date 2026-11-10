@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dés Dispos — pistes de logo et lieux d'apparition (passe 2)</title>
+<style>
+/*
+  VALEURS HEXADÉCIMALES UTILISÉES
+  (jetons réels de apps/web/src/styles.scss ; aucune couleur hors thème dans les emblèmes ni les logos)
+
+  Fond neutre (section 1) : fond #16151b · surface #1f1e26 · logo (UNE couleur) #f4efe6
+
+  Grimoire Émeraude  .th-em
+    --bg #0d0a14 · --surface #1a1428 (= surface-container) · accent-1 #7ec8a4 · accent-2 #9b6dff
+    --text #e8e0f0 · --muted #9b8fb0 · on-primary #062018
+    --outline #5a5070 · --outline-variant #2a2340
+    --toolbar (mat-toolbar) #150f20 · texte de barre #e8e0f0
+    --glow #463271 · --scrim rgba(13,10,20,.6)
+
+  Forêt Ancienne  .th-fo
+    --bg #080f0a · --surface #0f1f12 · accent-1 #2ecc71 · accent-2 #f0c040
+    --text #d4f0dc · --muted #7aa885 · on-primary #062518
+    --outline #3a5040 · --outline-variant #1a2e1f
+    --toolbar #0a1a0d · texte de barre #d4f0dc
+    --glow #5c5622 · --scrim rgba(8,15,10,.6)
+
+  Atelier Cuivré (clé medieval-steampunk)  .th-at
+    --bg #1a1008 · --surface #2a1e10 · accent-1 #cd7f32 · accent-2 #4a7c59
+    --text #f0e6d0 · --muted #b39569 · on-primary #1a0800
+    --outline #7a5030 · --outline-variant #3a2810
+    --toolbar #221408 · texte de barre #f0e6d0
+    --todo #ffd21f (aiguille du manomètre, comme party-banner.scss)
+    --glow #353e29 · --scrim rgba(26,16,8,.6)
+
+  Marques de logo : monochromes, peintes en currentColor (couleur de texte du contexte).
+    Exceptions volontaires : pictogramme mobile = accent-1 du thème (comme .wordmark-compact actuel) ;
+    tuile d'icône = fond accent-1, pictogramme on-primary.
+  Masques SVG (#fff / #000) : luminance seulement, jamais peints (sceau C, coche du d20 G).
+
+  Hors produit (cadres de démonstration) :
+    téléphone #050505 / #34323a · navigateur #1c1b22 #26252d #17161c #3a3844 #4a4853 #a39ead
+    onglet sombre : barre #202124, onglet #35363a, texte #e8eaed
+    onglet clair  : barre #dee1e6, onglet #ffffff, texte #202124
+    page #0e0d12 · texte #ece6da · légende #17161d bord #2c2a35
+
+  MOUVEMENT : seulement transform et opacity ; décor aria-hidden ;
+  @media (prefers-reduced-motion: reduce) => animation: none (composition au repos complète).
+*/
+*{box-sizing:border-box}
+html{background:#0e0d12}
+body{margin:0;background:#0e0d12;color:#ece6da;font:15px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1360px;margin:0 auto;padding:28px 20px 72px}
+h1{margin:0 0 6px;font:700 28px/1.2 Georgia,"Times New Roman",serif}
+h2{margin:48px 0 6px;font:700 22px/1.25 Georgia,"Times New Roman",serif;padding-top:18px;border-top:1px solid #2c2a35}
+h3{margin:22px 0 4px;font:700 16px/1.3 system-ui,"Segoe UI",sans-serif}
+p{margin:4px 0 10px;color:#c9c3b6}
+.legend{margin:14px 0 0;padding:12px 18px 12px 34px;background:#17161d;border:1px solid #2c2a35;border-radius:10px;font-size:14px;color:#d8d2c5}
+.legend li{margin:2px 0}
+
+/* ───────────── Thèmes (rôles) ───────────── */
+.th-neutral{--bg:#16151b;--surface:#1f1e26;--text:#f4efe6}
+.th-em{--bg:#0d0a14;--surface:#1a1428;--a1:#7ec8a4;--a2:#9b6dff;--text:#e8e0f0;--muted:#9b8fb0;--on-primary:#062018;--outline:#5a5070;--outline-v:#2a2340;--tb:#150f20;--glow:#463271;--scrim:rgba(13,10,20,.6);--todo:#f0a030}
+.th-fo{--bg:#080f0a;--surface:#0f1f12;--a1:#2ecc71;--a2:#f0c040;--text:#d4f0dc;--muted:#7aa885;--on-primary:#062518;--outline:#3a5040;--outline-v:#1a2e1f;--tb:#0a1a0d;--glow:#5c5622;--scrim:rgba(8,15,10,.6);--todo:#ff8a3d}
+.th-at{--bg:#1a1008;--surface:#2a1e10;--a1:#cd7f32;--a2:#4a7c59;--text:#f0e6d0;--muted:#b39569;--on-primary:#1a0800;--outline:#7a5030;--outline-v:#3a2810;--tb:#221408;--glow:#353e29;--scrim:rgba(26,16,8,.6);--todo:#ffd21f}
+
+/* Rôles de couleur pour les SVG (aucune couleur littérale dans les dessins) */
+.f1{fill:var(--a1)} .f2{fill:var(--a2)} .ft{fill:var(--text)} .fsurf{fill:var(--surface)}
+.k1{stroke:var(--a1)} .k2{stroke:var(--a2)} .kt{stroke:var(--text)} .ks{stroke:var(--surface)} .kn{stroke:var(--todo)}
+.nf{fill:none} .rc{stroke-linecap:round;stroke-linejoin:round}
+.sa1{stop-color:var(--a1)} .sa2{stop-color:var(--a2)} .st{stop-color:var(--text)}
+
+/* ───────────── Section 1 : pistes de logo ───────────── */
+.track{margin:22px 0 8px}
+.track-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.track-head h3{margin:0}
+.track-head p{margin:0;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-top:10px}
+.tile{background:var(--bg);color:var(--text);border:1px solid #34323c;border-radius:12px;padding:14px 16px 12px;min-height:250px;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
+.cap{font:600 11px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;opacity:.6}
+.stage{display:flex;align-items:center;justify-content:center;flex:1;min-height:110px}
+.row32{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;border-top:1px dashed rgba(255,255,255,.14);padding-top:10px}
+.row32 .cap{width:100%}
+.lk{display:inline-flex;align-items:center;color:var(--text);white-space:nowrap}
+.lk .mk{display:block;flex:none;color:var(--text)}
+.wm{font:700 1em/1 Georgia,"Times New Roman",serif;letter-spacing:-.005em}
+.lk-h{gap:.3em}
+.lk-h.big{font-size:34px} .lk-h.big .mk{width:76px;height:76px}
+.lk-h.small{font-size:16px} .lk-h.small .mk{width:30px;height:30px}
+.wm-c{font:700 1em/1 Georgia,"Times New Roman",serif;letter-spacing:.02em}
+.lk-c{flex-direction:column;gap:.18em;text-align:center}
+.lk-c.big{font-size:27px} .lk-c.big .mk{width:100px;height:100px}
+.lk-c.small{font-size:10px;gap:1px} .lk-c.small .mk{width:21px;height:21px}
+.fv{display:inline-flex;flex-direction:column;align-items:center;gap:4px;color:var(--text)}
+.fv i{font:normal 600 10px/1 system-ui,sans-serif;opacity:.6}
+.fv svg{display:block;color:var(--text)}
+.m32{width:32px;height:32px} .m16{width:16px;height:16px}
+
+/* ───────────── Section 2 : mises en situation ───────────── */
+.theme-row{margin-top:26px}
+.theme-row > h3{margin:0 0 2px;font-size:18px}
+.frames{display:flex;flex-wrap:wrap;gap:30px;margin-top:12px;align-items:flex-start}
+figure.fr{margin:0}
+figure.fr figcaption{max-width:399px;margin:0 0 8px;font-size:13px;color:#cfc9bb}
+figure.fr figcaption b{color:#fff}
+figure.fr.w figcaption{max-width:880px}
+.phone{width:399px;padding:12px;border-radius:40px;background:#050505;border:2px solid #34323a;box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.phone .screen{width:375px;border-radius:28px;overflow:hidden;background:var(--bg);color:var(--text)}
+.browser{border-radius:10px;border:1px solid #3a3844;background:#1c1b22;overflow:hidden;box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.browser.wide{width:880px;max-width:100%}
+.browser .chrome{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#26252d}
+.browser .dots{display:flex;gap:6px}
+.browser .dots i{display:block;width:10px;height:10px;border-radius:50%;background:#4a4853}
+.browser .url{flex:1;background:#17161c;border-radius:12px;font:12px/1.4 ui-monospace,Consolas,monospace;color:#a39ead;padding:3px 12px}
+.browser .screen{background:var(--bg);color:var(--text)}
+
+/* Bande d'authentification */
+.band{position:relative;height:196px;overflow:hidden;background:radial-gradient(ellipse 80% 95% at 50% 30%,var(--glow),var(--bg));border-bottom:1px solid var(--outline-v)}
+.scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.band::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 58% 70% at 50% 55%,var(--scrim),transparent 80%)}
+.brand{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 22px;text-align:center}
+.emblem{width:58px;height:58px;display:block;flex:none}
+.bm{display:inline-flex;align-items:center;gap:9px;color:var(--text)}
+.bm svg{display:block;flex:none;width:30px;height:30px;color:var(--text)}
+.bm .nm{font:700 24px/1 Georgia,"Times New Roman",serif;letter-spacing:.01em;text-shadow:0 1px 10px var(--bg)}
+.brand .bm{margin-top:11px}
+.brand .tag{margin:11px 0 0;max-width:310px;font:italic 13px/1.3 Georgia,"Times New Roman",serif;color:var(--text);opacity:.93;text-shadow:0 1px 8px var(--bg)}
+/* P1bis : emblème en illustration, bloc-marque seul, aligné à gauche */
+.band.alt::after{background:radial-gradient(ellipse 62% 78% at 30% 55%,var(--scrim),transparent 82%)}
+.alt .brand{align-items:flex-start;text-align:left;padding:10px 22px}
+.alt .bm{margin-top:0;gap:11px}
+.alt .bm svg{width:46px;height:46px}
+.alt .bm .nm{font-size:32px}
+.alt .brand .tag{max-width:232px;font-size:14px;margin-top:12px}
+.bgemb{opacity:.3}
+/* cadre en tirets = emplacement du logo retenu */
+.slot{outline:1.5px dashed var(--a2,#9a9486);outline-offset:3px;border-radius:6px}
+
+.card{margin:16px;padding:20px 18px 16px;background:var(--surface);border:1px solid var(--outline-v);border-radius:14px}
+.card h4{margin:0 0 16px;font:600 20px/1.2 system-ui,"Segoe UI",sans-serif;color:var(--text)}
+.field{position:relative;display:flex;align-items:center;justify-content:space-between;height:56px;margin-bottom:16px;padding:0 6px 0 14px;border:1px solid var(--outline);border-radius:8px;color:var(--text)}
+.field .lbl{position:absolute;top:-9px;left:10px;padding:0 5px;background:var(--surface);font-size:12px;line-height:1.2;color:var(--muted)}
+.field .val{font-size:16px;letter-spacing:.12em}
+.field .eye{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:transparent;color:var(--muted);padding:0}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:48px;margin-top:4px;border:0;border-radius:24px;background:var(--a1);color:var(--on-primary);font:600 15px/1 system-ui,"Segoe UI",sans-serif;letter-spacing:.01em}
+.sec{display:flex;justify-content:center;margin-top:10px}
+.sec .lnk{padding:10px 12px;font-size:14px;color:var(--a1);text-decoration:underline;text-underline-offset:3px}
+.hint{margin:6px 0 0;padding-top:12px;border-top:1px solid var(--outline-v);text-align:center;font-size:13px;color:var(--muted)}
+
+/* P2 : barres de l'application */
+.tb{display:flex;align-items:center;height:64px;padding:0 16px;background:var(--tb);color:var(--text)}
+.tb .bm svg{width:36px;height:36px}
+.tb .bm .nm{font-size:22px;text-shadow:none}
+.tb .old{font:700 20px/1 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--text)}
+.navbar{display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--surface);border-bottom:1px solid var(--outline-v)}
+.navbar .nl{padding:9px 14px;border-radius:999px;font-weight:500;font-size:14px;color:var(--text)}
+.navbar .nl.on{color:var(--a1);font-weight:700}
+.void{height:46px}
+.strip{display:flex;align-items:center;gap:10px;margin-top:12px}
+.strip .tg{flex:none;width:96px;font:600 11px/1.2 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#a39ead}
+.strip .tb{flex:1;max-width:784px;border-radius:8px;border:1px solid var(--outline-v)}
+.mob{width:375px;border-radius:14px;overflow:hidden;background:var(--bg);color:var(--text);border:1px solid #34323c}
+.mhead{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--outline-v)}
+.mhead .pic{display:block;flex:none;width:28px;height:28px;color:var(--a1)}
+.mhead .jdr{flex:none;font:700 13.6px/1 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--a1)}
+.mhead .t1{font:700 20.8px/1.3 system-ui,"Segoe UI",Roboto,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mob .void{height:34px}
+
+/* P3 : onglet et icône */
+.tabbar{width:340px;padding:8px 8px 0;border-radius:10px 10px 0 0}
+.tabbar.dark{background:#202124}
+.tabbar.light{background:#dee1e6}
+.tab{display:flex;align-items:center;gap:8px;width:210px;height:34px;padding:0 12px;border-radius:9px 9px 0 0;font:12px/1 system-ui,"Segoe UI",sans-serif}
+.dark .tab{background:#35363a;color:#e8eaed}
+.light .tab{background:#fff;color:#202124}
+.tab svg{display:block;flex:none;width:16px;height:16px;color:currentColor}
+.tabpage{width:340px;height:30px;border-radius:0 0 10px 10px}
+.dark + .tabpage{background:#35363a}
+.light + .tabpage{background:#fff}
+.tiles64{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
+.t64{display:flex;flex-direction:column;align-items:center;gap:6px;font:600 10px/1 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#a39ead}
+.t64 b{display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:15px;background:var(--a1);color:var(--on-primary)}
+.t64 b svg{display:block;width:44px;height:44px;color:var(--on-primary)}
+.t64.neutral b{background:#16151b;color:#f4efe6}
+.t64.neutral b svg{color:#f4efe6}
+.p3row{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start;margin-top:12px}
+
+/* ───────────── Mouvement (principes des bannières, transform + opacity seulement) ───────────── */
+@keyframes dd-spin{to{transform:rotate(360deg)}}
+@keyframes dd-spin-rev{to{transform:rotate(-360deg)}}
+@keyframes dd-twinkle{0%,100%{opacity:.22}50%{opacity:.95}}
+@keyframes dd-glow{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+@keyframes dd-fly{0%{transform:translateX(-60px);opacity:0}12%{opacity:1}76%{opacity:1}100%{transform:translateX(var(--tr,260px));opacity:0}}
+@keyframes dd-drift{0%{transform:translate(0,0);opacity:0}14%{opacity:.9}82%{opacity:.45}100%{transform:translate(var(--dx,10px),-96px);opacity:0}}
+@keyframes dd-puff{0%{transform:translate(0,0) scale(.6);opacity:0}22%{opacity:1}100%{transform:translate(12px,-42px) scale(1.7);opacity:0}}
+@keyframes dd-needle{0%,100%{transform:rotate(-40deg)}44%{transform:rotate(28deg)}60%{transform:rotate(15deg)}}
+
+.star{fill:var(--text);opacity:.5;animation:dd-twinkle 3.4s ease-in-out infinite}
+.halo{opacity:.75;animation:dd-glow 6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.fly{animation:dd-fly 7s ease-in-out infinite}
+.mote{opacity:.8;animation:dd-drift 8.5s linear infinite}
+.spin{animation:dd-spin 16s linear infinite}
+.spin.rev{animation-name:dd-spin-rev}
+.spin.slow{animation-duration:24s}
+.spin.fast{animation-duration:11s}
+.puff{opacity:.9;animation:dd-puff 5s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.needle{animation:dd-needle 5.5s ease-in-out infinite}
+.gc1{color:var(--a1);opacity:.7} .gc2{color:var(--a2);opacity:.95}
+.grid-rect{opacity:.22}
+.rivet{opacity:.85}
+.dl1{animation-delay:-.3s}.dl2{animation-delay:-1.1s}.dl3{animation-delay:-2s}.dl4{animation-delay:-2.9s}
+.dl5{animation-delay:-3.7s}.dl6{animation-delay:-4.6s}.dl7{animation-delay:-5.8s}.dl8{animation-delay:-7s}
+
+@media (prefers-reduced-motion: reduce){
+  .scene *{animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<!-- Définitions partagées (SVG invisible) : marques de logo monochromes (currentColor), emblèmes E1, rouage -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Piste C (rappel, à l'identique du rendu 1) : sceau « DD », deux dés liés -->
+    <mask id="seal-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+      <rect width="100" height="100" fill="#fff"/>
+      <g transform="rotate(10 63 61)"><rect x="44" y="42" width="38" height="38" rx="9" fill="#000"/></g>
+    </mask>
+    <symbol id="mark-c" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46.5" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="1.4 3.4"/>
+      <g mask="url(#seal-cut)">
+        <g transform="rotate(-10 37 39)">
+          <rect x="21" y="23" width="32" height="32" rx="7" fill="none" stroke="currentColor" stroke-width="3.5"/>
+          <text x="37" y="48.6" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="24" fill="currentColor">D</text>
+        </g>
+      </g>
+      <g transform="rotate(10 63 61)">
+        <rect x="47" y="45" width="32" height="32" rx="7" fill="none" stroke="currentColor" stroke-width="3.5"/>
+        <text x="63" y="70.6" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="24" fill="currentColor">D</text>
+      </g>
+    </symbol>
+
+    <!-- Piste D : dé à six faces, un des six points remplacé par une coche (« dispo ») -->
+    <symbol id="mark-d" viewBox="0 0 64 64">
+      <g transform="rotate(-7 32 32)">
+        <rect x="6" y="6" width="52" height="52" rx="13" fill="none" stroke="currentColor" stroke-width="5"/>
+        <g fill="currentColor">
+          <circle cx="21" cy="19" r="4.8"/><circle cx="43" cy="19" r="4.8"/>
+          <circle cx="21" cy="32" r="4.8"/><circle cx="43" cy="32" r="4.8"/>
+          <circle cx="21" cy="45" r="4.8"/>
+        </g>
+        <path d="M36 44.5 L41 49.5 L50.5 38.5" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </symbol>
+
+    <!-- Piste E : bulle de dialogue en forme de face de dé (pastilles aux quatre coins), « ? » à la place du point central -->
+    <symbol id="mark-e" viewBox="0 0 64 64">
+      <path d="M18 4 H46 A13 13 0 0 1 59 17 V37 A13 13 0 0 1 46 50 H31 L17 61 L20 50 H18 A13 13 0 0 1 5 37 V17 A13 13 0 0 1 18 4 Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+      <g fill="currentColor">
+        <circle cx="15.5" cy="15.5" r="2.7"/><circle cx="48.5" cy="15.5" r="2.7"/>
+        <circle cx="15.5" cy="38.5" r="2.7"/><circle cx="48.5" cy="38.5" r="2.7"/>
+        <circle cx="32" cy="38.5" r="3.2"/>
+      </g>
+      <path d="M25.5 18 C25.5 11.5 38.5 11.5 38.5 18.5 C38.5 24 32 24 32 30.5" fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- Piste F : un dé tilté qui prend la neuvième case (la case vide) d'une grille de calendrier 3 x 3 -->
+    <symbol id="mark-f" viewBox="0 0 64 64">
+      <g fill="currentColor">
+        <rect x="3" y="3" width="11" height="11" rx="2.8"/><rect x="18" y="3" width="11" height="11" rx="2.8"/><rect x="33" y="3" width="11" height="11" rx="2.8"/>
+        <rect x="3" y="18" width="11" height="11" rx="2.8"/><rect x="18" y="18" width="11" height="11" rx="2.8"/><rect x="33" y="18" width="11" height="11" rx="2.8"/>
+        <rect x="3" y="33" width="11" height="11" rx="2.8"/><rect x="18" y="33" width="11" height="11" rx="2.8"/>
+      </g>
+      <g transform="translate(47 47) rotate(14)">
+        <path fill="currentColor" fill-rule="evenodd" d="M-8 -13 H8 A5 5 0 0 1 13 -8 V8 A5 5 0 0 1 8 13 H-8 A5 5 0 0 1 -13 8 V-8 A5 5 0 0 1 -8 -13 Z M-8.3 -6 a2.3 2.3 0 1 0 4.6 0 a2.3 2.3 0 1 0 -4.6 0 Z M-2.3 0 a2.3 2.3 0 1 0 4.6 0 a2.3 2.3 0 1 0 -4.6 0 Z M3.7 6 a2.3 2.3 0 1 0 4.6 0 a2.3 2.3 0 1 0 -4.6 0 Z"/>
+      </g>
+    </symbol>
+
+    <!-- Piste G : d20 vu de face (hexagone + face centrale pleine), la coche est évidée dans la face centrale -->
+    <mask id="g-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M26 34 L30.5 38.5 L38.2 29.2" fill="none" stroke="#000" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+    <symbol id="mark-g" viewBox="0 0 64 64">
+      <path d="M32 2.5 L57.55 17.25 V46.75 L32 61.5 L6.45 46.75 V17.25 Z" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linejoin="round"/>
+      <path d="M32 13 V2.5 M32 13 L57.55 17.25 M32 13 L6.45 17.25 M48.45 41.5 L57.55 17.25 M48.45 41.5 L57.55 46.75 M48.45 41.5 L32 61.5 M15.55 41.5 L32 61.5 M15.55 41.5 L6.45 46.75 M15.55 41.5 L6.45 17.25" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M32 13 L48.45 41.5 H15.55 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" mask="url(#g-cut)"/>
+    </symbol>
+
+    <!-- Rouage (technique B des bannières), 100 x 100 -->
+    <g id="gear-b">
+      <g fill="currentColor">
+        <rect x="46" y="2" width="8" height="14" rx="1.5"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(30 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(60 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(90 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(120 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(150 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(180 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(210 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(240 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(270 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(300 50 50)"/>
+        <rect x="46" y="2" width="8" height="14" rx="1.5" transform="rotate(330 50 50)"/>
+      </g>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" stroke-width="7"/>
+      <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="5"/>
+    </g>
+
+    <!-- Emblèmes E1 retenus (identiques au rendu 1), réutilisés en <use> -->
+    <symbol id="emb-em" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+      <path class="f1" d="M32 51 C26 47 16 46 9 48 L9 28 C16 26 26 27 32 32 Z"/>
+      <path class="f1" d="M32 51 C38 47 48 46 55 48 L55 28 C48 27 38 26 32 32 Z"/>
+      <path class="nf ks rc" stroke-width="1.6" d="M32 32 V51"/>
+      <path class="nf ks rc" stroke-width="1.6" d="M14 34 C18 33 23 34 27 36 M14 39.5 C18 38.5 23 39.5 27 41.5 M50 34 C46 33 41 34 37 36 M50 39.5 C46 38.5 41 39.5 37 41.5"/>
+      <path class="nf k1 rc" stroke-width="2.6" d="M7 52 C16 50 26 51 32 56 C38 51 48 50 57 52"/>
+      <path class="f2" d="M32 4 L34.8 11.2 L42 14 L34.8 16.8 L32 24 L29.2 16.8 L22 14 L29.2 11.2 Z"/>
+      <circle class="f2" cx="46" cy="9" r="1.5"/><circle class="f2" cx="18" cy="10" r="1.5"/>
+    </symbol>
+    <symbol id="emb-fo" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+      <path class="f1 k1 rc" fill-opacity=".22" stroke-width="3.2" d="M32 7 C36 7 37 12 39 13 C42 12 46 13 46 17 C46 21 44 22 43 24 C47 24 51 27 50 31 C50 35 46 36 44 37 C47 39 49 42 47 45 C45 48 40 47 38 47 C37 50 35 52 32 53 C29 52 27 50 26 47 C24 47 19 48 17 45 C15 42 17 39 20 37 C18 36 14 35 14 31 C13 27 17 24 21 24 C20 22 18 21 18 17 C18 13 22 12 25 13 C27 12 28 7 32 7 Z"/>
+      <path class="nf k1 rc" stroke-width="3.2" d="M32 53 V60"/>
+      <path class="nf k1 rc" stroke-width="2.2" d="M32 51 V34"/>
+      <circle class="nf k2" stroke-width="1.6" stroke-opacity=".55" cx="32" cy="27" r="9"/>
+      <circle class="f2" cx="32" cy="27" r="5"/>
+    </symbol>
+    <symbol id="emb-at" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="30.5" class="fsurf" fill-opacity=".72"/><circle cx="32" cy="32" r="30.5" class="nf k1" stroke-width="1.5" stroke-opacity=".55"/>
+      <g class="f1">
+        <rect x="28" y="4" width="8" height="12" rx="2"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(45 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(90 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(135 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(180 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(225 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(270 32 32)"/>
+        <rect x="28" y="4" width="8" height="12" rx="2" transform="rotate(315 32 32)"/>
+      </g>
+      <circle class="f1" cx="32" cy="32" r="23"/>
+      <rect class="f2 ks" stroke-width="2.4" x="19" y="19" width="26" height="26" rx="6"/>
+      <g class="ft"><circle cx="25.5" cy="25.5" r="2.5"/><circle cx="38.5" cy="25.5" r="2.5"/><circle cx="32" cy="32" r="2.5"/><circle cx="25.5" cy="38.5" r="2.5"/><circle cx="38.5" cy="38.5" r="2.5"/></g>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Dés Dispos — pistes de logo et lieux d'apparition</h1>
+  <ul class="legend">
+    <li><b>D</b> dé à six faces dont un point est une coche (« dispo ») · <b>E</b> bulle en forme de face de dé, « ? » au centre (« des dispos ? »).</li>
+    <li><b>F</b> dé qui se glisse dans la case vide d'une grille de calendrier (« caler ») · <b>G</b> d20 vu de face, face centrale cochée.</li>
+    <li><b>C</b> rappel du sceau « DD » du rendu 1, à l'identique. Chaque piste : une seule couleur, grande, petite, puis 32 px et 16 px (test de favicon).</li>
+    <li>Section 2 : la marque est constante (même logo dans les trois thèmes, recolorée par le thème) ; la piste C est le remplaçant provisoire.</li>
+    <li>Cadre en tirets = emplacement du logo retenu · P1 / P1bis bande d'authentification · P2 barre de l'application · P3 onglet et icône · mouvement désactivé avec « réduire les animations ».</li>
+  </ul>
+
+  <!-- ═══════════════════════ SECTION 1 ═══════════════════════ -->
+  <h2>Nouvelles pistes de logo autour du dé</h2>
+  <p>Un seul coloris par piste (la couleur de texte du fond). Chaque tuile : verrouillage grand, verrouillage petit, puis le pictogramme seul à 32 px et à 16 px.</p>
+
+  <!-- PISTE D -->
+  <div class="track">
+    <div class="track-head"><h3>Piste D — le dé « dispo »</h3><p>Un dé à six faces : cinq points, et le sixième est une coche. Le dé, c'est la partie ; la coche, « des dispos ? — oui ».</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-d"/></svg><i>16 px</i></span></div></div>
+    </div>
+  </div>
+
+  <!-- PISTE E -->
+  <div class="track">
+    <div class="track-head"><h3>Piste E — la bulle-dé « des dispos ? »</h3><p>Une bulle de dialogue dont le corps est une face de dé (pastilles aux coins) ; le point central devient « ? » : la phrase qu'on envoie pour caler une soirée.</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-e"/></svg><i>16 px</i></span></div></div>
+    </div>
+  </div>
+
+  <!-- PISTE F -->
+  <div class="track">
+    <div class="track-head"><h3>Piste F — le dé qui se glisse dans la grille</h3><p>Huit cases de calendrier prises, et un dé de travers qui occupe la neuvième, la case libre, en débordant de la grille : « on cale la partie ».</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-f"/></svg><i>16 px</i></span></div></div>
+    </div>
+  </div>
+
+  <!-- PISTE G -->
+  <div class="track">
+    <div class="track-head"><h3>Piste G — le d20 coché</h3><p>Un icosaèdre vu de face (hexagone, neuf facettes) dont la face centrale, pleine, porte une coche évidée : le dé du JDR par excellence, validé.</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-h big"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-h small"><svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><span class="wm">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 64 64" aria-hidden="true"><use href="#mark-g"/></svg><i>16 px</i></span></div></div>
+    </div>
+  </div>
+
+  <!-- PISTE C (rappel) -->
+  <div class="track">
+    <div class="track-head"><h3>Piste C — le sceau « DD » (rappel du rendu 1, à l'identique)</h3><p>Deux dés (D et D) liés dans un médaillon perlé ; nom dessous. Sert de point de comparaison.</p></div>
+    <div class="tiles">
+      <div class="tile th-neutral"><span class="cap">Fond neutre sombre</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-em"><span class="cap">Grimoire Émeraude</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-fo"><span class="cap">Forêt Ancienne</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>16 px</i></span></div></div>
+      <div class="tile th-at"><span class="cap">Atelier Cuivré</span>
+        <div class="stage"><div class="lk lk-c big"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div></div>
+        <div class="row32"><span class="cap">petit · 32 px · 16 px</span><div class="lk lk-c small"><svg class="mk" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="wm-c">Dés Dispos</span></div><span class="fv"><svg class="m32" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>32 px</i></span><span class="fv"><svg class="m16" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><i>16 px</i></span></div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ SECTION 2 ═══════════════════════ -->
+  <h2>Où verra-t-on le logo ?</h2>
+  <p>La marque est constante (le même logo dans les trois thèmes, recoloré par la couleur de texte du thème) ; l'emblème, lui, reste la scénographie du thème. Ici le logo est la piste C, remplaçant provisoire : le cadre en tirets marque l'<b>emplacement du logo retenu</b>.</p>
+
+  <!-- ═════ P1 ═════ -->
+  <h3 style="margin-top:34px;font-size:18px">P1 — la bande d'authentification : l'emblème du thème, puis le bloc-marque dessous</h3>
+  <p>Bande animée de 196 px : emblème E1 du thème (64 → 58 px), puis bloc-marque (pictogramme + nom), puis l'accroche du thème. Le nom n'est plus un simple texte : c'est le bloc-marque.</p>
+  <div class="frames">
+
+    <!-- P1 Émeraude -->
+    <figure class="fr th-em">
+      <figcaption><b>Grimoire Émeraude.</b> Pictogramme et nom en couleur de texte #e8e0f0, sous le grimoire-étoile.</figcaption>
+      <div class="phone"><div class="screen">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="pa-em-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="pa-em-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <linearGradient id="pa-em-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+              <radialGradient id="pa-em-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="345" cy="52" r="84" fill="url(#pa-em-h2)"/>
+            <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#pa-em-h1)"/>
+            <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+            <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+            <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+            <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+            <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#pa-em-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#pa-em-head)"/></g></g>
+          </svg>
+          <div class="brand">
+            <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Grimoire Émeraude : grimoire ouvert surmonté d'une étoile"><use href="#emb-em"/></svg>
+            <div class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+          </div>
+        </header>
+        <main class="card">
+          <h4>Connexion</h4>
+          <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+            <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+        </main>
+      </div></div>
+    </figure>
+
+    <!-- P1 Forêt -->
+    <figure class="fr th-fo">
+      <figcaption><b>Forêt Ancienne.</b> Le même bloc-marque, recoloré en #d4f0dc, sous la feuille et son point lumineux.</figcaption>
+      <div class="phone"><div class="screen">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="pa-fo-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="pa-fo-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <radialGradient id="pa-fo-mote"><stop offset="0" class="sa2" stop-opacity=".95"/><stop offset=".35" class="sa2" stop-opacity=".7"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="82" cy="70" r="76" fill="url(#pa-fo-h1)"/>
+            <circle class="halo dl5" cx="362" cy="124" r="74" fill="url(#pa-fo-h2)"/>
+            <circle class="halo dl2" cx="250" cy="14" r="46" fill="url(#pa-fo-h1)"/>
+            <circle class="mote dl1" cx="62" cy="150" r="5" fill="url(#pa-fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl4" cx="108" cy="168" r="4" fill="url(#pa-fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl7" cx="150" cy="140" r="5" fill="url(#pa-fo-mote)" style="--dx:14px"/>
+            <circle class="mote dl2" cx="44" cy="96" r="4" fill="url(#pa-fo-mote)" style="--dx:-8px"/>
+            <circle class="mote dl5" cx="196" cy="170" r="4" fill="url(#pa-fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl8" cx="262" cy="158" r="5" fill="url(#pa-fo-mote)" style="--dx:-14px"/>
+            <circle class="mote dl3" cx="318" cy="172" r="4" fill="url(#pa-fo-mote)" style="--dx:12px"/>
+            <circle class="mote dl6" cx="372" cy="150" r="5" fill="url(#pa-fo-mote)" style="--dx:-10px"/>
+            <circle class="mote dl1" cx="404" cy="112" r="4" fill="url(#pa-fo-mote)" style="--dx:8px"/>
+            <circle class="mote dl7" cx="346" cy="96" r="4" fill="url(#pa-fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl4" cx="128" cy="92" r="3.5" fill="url(#pa-fo-mote)" style="--dx:10px"/>
+          </svg>
+          <div class="brand">
+            <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Forêt Ancienne : feuille de chêne contenant un point lumineux"><use href="#emb-fo"/></svg>
+            <div class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Un feu de camp, des amis, et une date qui arrange tout le monde</p>
+          </div>
+        </header>
+        <main class="card">
+          <h4>Connexion</h4>
+          <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+            <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+        </main>
+      </div></div>
+    </figure>
+
+    <!-- P1 Atelier -->
+    <figure class="fr th-at">
+      <figcaption><b>Atelier Cuivré.</b> Le même bloc-marque, recoloré en #f0e6d0, sous le rouage-dé.</figcaption>
+      <div class="phone"><div class="screen">
+        <header class="band">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <pattern id="pa-at-grid" width="13" height="13" patternUnits="userSpaceOnUse"><path d="M13 0H0V13" class="nf k1" stroke-width=".5"/></pattern>
+              <radialGradient id="pa-at-steam"><stop offset="0" class="st" stop-opacity=".3"/><stop offset="1" class="st" stop-opacity="0"/></radialGradient>
+            </defs>
+            <rect class="grid-rect" x="0" y="0" width="440" height="180" fill="url(#pa-at-grid)"/>
+            <g transform="translate(-14 100) scale(.85)"><g class="spin" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <g transform="translate(352 96) scale(.8)"><g class="spin rev slow" style="transform-origin:50px 50px"><use href="#gear-b" class="gc2"/></g></g>
+            <g transform="translate(380 51) scale(.5)"><g class="spin fast" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <circle class="rivet f1" cx="44" cy="12" r="2"/><circle class="rivet f1" cx="396" cy="12" r="2"/><circle class="rivet f1" cx="44" cy="168" r="2"/><circle class="rivet f1" cx="396" cy="168" r="2"/>
+            <circle class="puff dl1" cx="306" cy="160" r="9" fill="url(#pa-at-steam)"/>
+            <circle class="puff dl4" cx="318" cy="164" r="7" fill="url(#pa-at-steam)"/>
+            <circle class="puff dl7" cx="298" cy="166" r="8" fill="url(#pa-at-steam)"/>
+            <g transform="translate(58 18)"><circle cx="20" cy="20" r="20" class="fsurf"/><circle cx="20" cy="20" r="18.5" class="nf k1" stroke-width="3"/>
+              <g transform="translate(20 20)"><g class="needle"><line x1="0" y1="0" x2="-5.9" y2="-10" class="kn rc" stroke-width="2"/></g></g><circle cx="20" cy="20" r="2.5" class="f1"/></g>
+          </svg>
+          <div class="brand">
+            <svg class="emblem" viewBox="0 0 64 64" role="img" aria-label="Emblème Atelier Cuivré : rouage dont les dents forment un dé"><use href="#emb-at"/></svg>
+            <div class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">On cale tout le monde, et on lance la machine&#160;!</p>
+          </div>
+        </header>
+        <main class="card">
+          <h4>Connexion</h4>
+          <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+            <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+        </main>
+      </div></div>
+    </figure>
+  </div>
+
+  <!-- ═════ P1bis ═════ -->
+  <h3 style="margin-top:44px;font-size:18px">P1bis — l'emblème en illustration de fond, le bloc-marque seul au premier plan</h3>
+  <p>Même bande, même scène animée : l'emblème E1 n'est plus un médaillon mais une grande illustration atténuée (30 %) qui déborde à droite ; le bloc-marque, plus grand, est le seul élément au premier plan, aligné à gauche avec l'accroche.</p>
+  <div class="frames">
+
+    <!-- P1bis Émeraude -->
+    <figure class="fr th-em">
+      <figcaption><b>Grimoire Émeraude.</b> Le grimoire-étoile devient décor ; le bloc-marque porte l'identité.</figcaption>
+      <div class="phone"><div class="screen">
+        <header class="band alt">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="pb-em-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="pb-em-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <linearGradient id="pb-em-tail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sa1" stop-opacity="0"/><stop offset=".6" class="sa1" stop-opacity=".5"/><stop offset="1" class="sa1" stop-opacity=".95"/></linearGradient>
+              <radialGradient id="pb-em-head"><stop offset="0" class="st" stop-opacity="1"/><stop offset=".45" class="sa1" stop-opacity=".9"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="345" cy="52" r="84" fill="url(#pb-em-h2)"/>
+            <circle class="halo dl4" cx="75" cy="150" r="64" fill="url(#pb-em-h1)"/>
+            <use href="#emb-em" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="star dl1" cx="40" cy="28" r="1.2"/><circle class="star dl3" cx="110" cy="18" r="1.6"/><circle class="star dl5" cx="150" cy="62" r="1"/><circle class="star dl2" cx="34" cy="100" r="1.4"/>
+            <circle class="star dl6" cx="100" cy="112" r="1"/><circle class="star dl7" cx="175" cy="26" r="1.2"/><circle class="star dl4" cx="262" cy="20" r="1.4"/><circle class="star dl1" cx="300" cy="14" r="1.1"/>
+            <circle class="star dl6" cx="395" cy="24" r="1.6"/><circle class="star dl3" cx="410" cy="90" r="1.2"/><circle class="star dl8" cx="372" cy="128" r="1"/><circle class="star dl2" cx="330" cy="160" r="1.4"/>
+            <circle class="star dl5" cx="250" cy="168" r="1"/><circle class="star dl7" cx="190" cy="160" r="1.2"/><circle class="star dl4" cx="130" cy="150" r="1.6"/><circle class="star dl8" cx="62" cy="168" r="1"/>
+            <g transform="translate(58 34) rotate(21)"><g class="fly" style="--tr:250px"><path d="M0 0 L62 -3.2 L62 3.2 Z" fill="url(#pb-em-tail)"/><circle cx="62" cy="0" r="4.2" fill="url(#pb-em-head)"/></g></g>
+          </svg>
+          <div class="brand">
+            <div class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Trouvez le soir où le grimoire s'ouvre</p>
+          </div>
+        </header>
+        <main class="card">
+          <h4>Connexion</h4>
+          <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+            <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+        </main>
+      </div></div>
+    </figure>
+
+    <!-- P1bis Forêt -->
+    <figure class="fr th-fo">
+      <figcaption><b>Forêt Ancienne.</b> La feuille-lumière devient décor, bloc-marque seul devant.</figcaption>
+      <div class="phone"><div class="screen">
+        <header class="band alt">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="pb-fo-h1"><stop offset="0" class="sa1" stop-opacity=".55"/><stop offset=".55" class="sa1" stop-opacity=".25"/><stop offset="1" class="sa1" stop-opacity="0"/></radialGradient>
+              <radialGradient id="pb-fo-h2"><stop offset="0" class="sa2" stop-opacity=".55"/><stop offset=".55" class="sa2" stop-opacity=".25"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+              <radialGradient id="pb-fo-mote"><stop offset="0" class="sa2" stop-opacity=".95"/><stop offset=".35" class="sa2" stop-opacity=".7"/><stop offset="1" class="sa2" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle class="halo" cx="82" cy="70" r="76" fill="url(#pb-fo-h1)"/>
+            <circle class="halo dl5" cx="362" cy="124" r="74" fill="url(#pb-fo-h2)"/>
+            <circle class="halo dl2" cx="250" cy="14" r="46" fill="url(#pb-fo-h1)"/>
+            <use href="#emb-fo" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="mote dl1" cx="62" cy="150" r="5" fill="url(#pb-fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl4" cx="108" cy="168" r="4" fill="url(#pb-fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl7" cx="150" cy="140" r="5" fill="url(#pb-fo-mote)" style="--dx:14px"/>
+            <circle class="mote dl2" cx="44" cy="96" r="4" fill="url(#pb-fo-mote)" style="--dx:-8px"/>
+            <circle class="mote dl5" cx="196" cy="170" r="4" fill="url(#pb-fo-mote)" style="--dx:10px"/>
+            <circle class="mote dl8" cx="262" cy="158" r="5" fill="url(#pb-fo-mote)" style="--dx:-14px"/>
+            <circle class="mote dl3" cx="318" cy="172" r="4" fill="url(#pb-fo-mote)" style="--dx:12px"/>
+            <circle class="mote dl6" cx="372" cy="150" r="5" fill="url(#pb-fo-mote)" style="--dx:-10px"/>
+            <circle class="mote dl1" cx="404" cy="112" r="4" fill="url(#pb-fo-mote)" style="--dx:8px"/>
+            <circle class="mote dl7" cx="346" cy="96" r="4" fill="url(#pb-fo-mote)" style="--dx:-12px"/>
+            <circle class="mote dl4" cx="128" cy="92" r="3.5" fill="url(#pb-fo-mote)" style="--dx:10px"/>
+          </svg>
+          <div class="brand">
+            <div class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">Un feu de camp, des amis, et une date qui arrange tout le monde</p>
+          </div>
+        </header>
+        <main class="card">
+          <h4>Connexion</h4>
+          <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+            <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+        </main>
+      </div></div>
+    </figure>
+
+    <!-- P1bis Atelier -->
+    <figure class="fr th-at">
+      <figcaption><b>Atelier Cuivré.</b> Le rouage-dé devient décor, bloc-marque seul devant.</figcaption>
+      <div class="phone"><div class="screen">
+        <header class="band alt">
+          <svg class="scene" viewBox="0 0 440 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <defs>
+              <pattern id="pb-at-grid" width="13" height="13" patternUnits="userSpaceOnUse"><path d="M13 0H0V13" class="nf k1" stroke-width=".5"/></pattern>
+              <radialGradient id="pb-at-steam"><stop offset="0" class="st" stop-opacity=".3"/><stop offset="1" class="st" stop-opacity="0"/></radialGradient>
+            </defs>
+            <rect class="grid-rect" x="0" y="0" width="440" height="180" fill="url(#pb-at-grid)"/>
+            <g transform="translate(-14 100) scale(.85)"><g class="spin" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <g transform="translate(352 96) scale(.8)"><g class="spin rev slow" style="transform-origin:50px 50px"><use href="#gear-b" class="gc2"/></g></g>
+            <g transform="translate(380 51) scale(.5)"><g class="spin fast" style="transform-origin:50px 50px"><use href="#gear-b" class="gc1"/></g></g>
+            <use href="#emb-at" class="bgemb" x="245" y="-12" width="200" height="200"/>
+            <circle class="rivet f1" cx="44" cy="12" r="2"/><circle class="rivet f1" cx="396" cy="12" r="2"/><circle class="rivet f1" cx="44" cy="168" r="2"/><circle class="rivet f1" cx="396" cy="168" r="2"/>
+            <circle class="puff dl1" cx="306" cy="160" r="9" fill="url(#pb-at-steam)"/>
+            <circle class="puff dl4" cx="318" cy="164" r="7" fill="url(#pb-at-steam)"/>
+            <circle class="puff dl7" cx="298" cy="166" r="8" fill="url(#pb-at-steam)"/>
+            <g transform="translate(58 18)"><circle cx="20" cy="20" r="20" class="fsurf"/><circle cx="20" cy="20" r="18.5" class="nf k1" stroke-width="3"/>
+              <g transform="translate(20 20)"><g class="needle"><line x1="0" y1="0" x2="-5.9" y2="-10" class="kn rc" stroke-width="2"/></g></g><circle cx="20" cy="20" r="2.5" class="f1"/></g>
+          </svg>
+          <div class="brand">
+            <div class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></div>
+            <p class="tag">On cale tout le monde, et on lance la machine&#160;!</p>
+          </div>
+        </header>
+        <main class="card">
+          <h4>Connexion</h4>
+          <div class="field"><span class="lbl">Email ou pseudo</span><span class="val"></span></div>
+          <div class="field"><span class="lbl">Mot de passe</span><span class="val">••••••••</span>
+            <button type="button" class="eye" aria-label="Afficher le mot de passe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <button type="button" class="btn">Se connecter</button>
+          <div class="sec"><span class="lnk">Mot de passe oublié&#160;?</span></div>
+          <p class="hint">L'inscription se fait sur invitation.</p>
+        </main>
+      </div></div>
+    </figure>
+  </div>
+
+  <!-- ═════ P2 ═════ -->
+  <h3 style="margin-top:44px;font-size:18px">P2 — l'application après connexion</h3>
+  <p>Barre d'outils bureau : le mot « master-jdr » devient le bloc-marque. Bandeau contextuel mobile : le mot réduit « jdr » devient le pictogramme seul. Le reste des barres (navigation, titre) ne change pas.</p>
+  <div class="frames">
+
+    <figure class="fr w th-em">
+      <figcaption><b>Bureau — barre d'outils (Grimoire Émeraude).</b> Bloc-marque de 36 px + nom à gauche de la barre, en couleur de barre #e8e0f0 sur #150f20 ; la navigation à quatre destinations reste telle quelle (libellés du thème).</figcaption>
+      <div class="browser wide">
+        <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url">…/</span></div>
+        <div class="screen">
+          <div class="tb"><span class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></span></div>
+          <nav class="navbar" aria-label="Navigation principale (maquette)"><span class="nl on">Mes aventures</span><span class="nl">Personnages</span><span class="nl">Calendrier</span><span class="nl">Mon grimoire</span></nav>
+          <div class="void"></div>
+        </div>
+      </div>
+      <div class="strip th-em"><span class="tg">Avant</span><div class="tb"><span class="old">master-jdr</span></div></div>
+      <div class="strip th-fo"><span class="tg">Forêt Ancienne</span><div class="tb"><span class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></span></div></div>
+      <div class="strip th-at"><span class="tg">Atelier Cuivré</span><div class="tb"><span class="bm slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="nm">Dés Dispos</span></span></div></div>
+    </figure>
+  </div>
+
+  <div class="frames" style="margin-top:34px">
+    <figure class="fr th-em">
+      <figcaption><b>Mobile — avant.</b> Bandeau contextuel actuel avec le mot réduit « jdr » en accent 1.</figcaption>
+      <div class="mob"><div class="mhead"><span class="jdr">jdr</span><span class="t1" role="heading" aria-level="1">Mes aventures</span></div><div class="void"></div></div>
+    </figure>
+    <figure class="fr th-em">
+      <figcaption><b>Mobile — après (Émeraude).</b> Le pictogramme seul (28 px, accent 1 #7ec8a4) remplace « jdr ».</figcaption>
+      <div class="mob"><div class="mhead"><svg class="pic slot" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="t1" role="heading" aria-level="1">Mes aventures</span></div><div class="void"></div></div>
+    </figure>
+    <figure class="fr th-fo">
+      <figcaption><b>Mobile — après (Forêt).</b> Accent 1 #2ecc71.</figcaption>
+      <div class="mob"><div class="mhead"><svg class="pic slot" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="t1" role="heading" aria-level="1">Mes pérégrinations</span></div><div class="void"></div></div>
+    </figure>
+    <figure class="fr th-at">
+      <figcaption><b>Mobile — après (Atelier).</b> Accent 1 #cd7f32.</figcaption>
+      <div class="mob"><div class="mhead"><svg class="pic slot" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span class="t1" role="heading" aria-level="1">Mes expéditions</span></div><div class="void"></div></div>
+    </figure>
+  </div>
+
+  <!-- ═════ P3 ═════ -->
+  <h3 style="margin-top:44px;font-size:18px">P3 — onglet du navigateur et icône d'application</h3>
+  <p>Hors de l'application : le favicon (16 px) à côté du titre « Dés Dispos », et la tuile d'icône (64 px). Contrairement au reste de la marque, ces deux objets sont statiques : un seul coloris à choisir, il ne suit pas le thème.</p>
+  <div class="p3row">
+    <figure class="fr">
+      <figcaption><b>Favicon 16 px + titre.</b> Pictogramme monochrome qui prend la couleur du texte de l'onglet : cadre sombre, puis cadre clair.</figcaption>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div><div class="tabbar dark"><div class="tab"><svg class="slot" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span>Dés Dispos</span></div></div><div class="tabpage"></div></div>
+        <div><div class="tabbar light"><div class="tab"><svg class="slot" viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg><span>Dés Dispos</span></div></div><div class="tabpage"></div></div>
+      </div>
+    </figure>
+    <figure class="fr">
+      <figcaption><b>Tuile d'icône 64 px.</b> Pictogramme sur une tuile arrondie : fond accent 1 du thème (pictogramme on-primary) ou fond neutre #16151b (pictogramme #f4efe6).</figcaption>
+      <div class="tiles64">
+        <div class="t64 th-em"><b class="slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></b>Émeraude</div>
+        <div class="t64 th-fo"><b class="slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></b>Forêt</div>
+        <div class="t64 th-at"><b class="slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></b>Atelier</div>
+        <div class="t64 neutral"><b class="slot"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark-c"/></svg></b>Neutre</div>
+      </div>
+    </figure>
+  </div>
+
+</div>
+</body>
+</html>

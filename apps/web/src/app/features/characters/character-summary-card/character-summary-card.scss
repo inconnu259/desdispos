@@ -41,6 +41,11 @@
     color: var(--mat-sys-on-surface-variant, #555);
   }
 
+  // Marqueur de nature de l'Homme Dragon (Story 33.5), posé après le nom.
+  &__nature {
+    margin-left: 0.4rem;
+  }
+
   &__class,
   &__type,
   &__group-role {
@@ -64,9 +69,15 @@
     font-style: italic;
   }
 
+  // Nom(s) de partie : tronqué plutôt qu'enroulé quand il est long — un Homme Dragon à plusieurs
+  // aventures joint leurs noms (« Les Vents du Nord · L'Archipel », Story 33.8) ; le texte complet
+  // reste porté par `title` et par le DOM (lecteur d'écran).
   &__partie {
     font-size: 0.75rem;
     color: var(--mat-sys-on-surface-variant, #555);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   // Sous-ligne unique du mode liste — tronquée plutôt qu'enroulée : une ligne par personnage est

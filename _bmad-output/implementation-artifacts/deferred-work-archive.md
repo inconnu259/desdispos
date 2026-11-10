@@ -1089,3 +1089,30 @@ Item déjà résolu entre-temps (retiré sans action) : le correctif `allowImpor
 ## Deferred from: code review of 36-12-lagenda-du-mj-options-depliees-et-scellement (2026-08-23)
 
 - ⛔ ACCEPTÉ (même traitement que les autres cas sans date de l'Agenda) — **`nearestDate` retombe silencieusement sur `''` si toutes les options d'un groupe de vote sont sans date** — le groupe est alors trié en fin de section comme une entrée « sans date », même traitement que les autres cas sans date de l'Agenda ; cas dégradé non testé explicitement pour un groupe de vote. [apps/web/src/app/features/calendar/agenda-badge.utils.ts:groupVoteEntries]
+
+
+## Deferred from: code review of 31-2-surface-de-detail-adaptative — résolu par la 31-3 (2026-08-29)
+
+- ✅ **RÉSOLU (2026-08-29, story 31-3-aide-contextuelle-sur-les-termes-de-jeu)** — AC6 « focus revient au déclencheur » vivait entièrement dans `CharacterSheet` (champ privé `detailTrigger`), pas dans le composant partagé `DetailSurface`, contredisant la justification d'auto-suffisance donnée par la 31.2. Extrait dans `createDetailSurfaceHost()` (`apps/web/src/app/shared/detail-surface/detail-surface-host.ts`), fonction appelée en contexte d'injection portant l'état, le jeton d'ouverture et le retour de focus (avec repli `isConnected`). `CharacterSheet` migré dessus à comportement constant (ses 110 tests préexistants passent sans modification) ; `class-step` et `type-step` (31.3) consomment directement le même mécanisme, sans réimplémentation. [apps/web/src/app/shared/detail-surface/detail-surface-host.ts]
+
+## Décision du 2026-09-25 (bmad-build 33-2)
+
+- Niveau de l'Homme Dragon calculé par scénario `PASSE` et non par séance (`docs/dragons.md` dit « séances jouées ») — **conservé tel quel** : décision utilisateur, les scénarios correspondent aux séances telles que les groupes les jouent. [packages/game-rules/src/ryuutama/homme-dragon-derived.ts]
+
+## Absorbés par le sprint change du 2026-09-29 (épic 33)
+
+Décision : repris dans des stories planifiées (`sprint-change-proposal-2026-09-26.md`) — réserve → 33.6 ; multi-aventures → 33.8 ; contenu transcrit → 33.3 et 33.7 ; coût des rituels tranché (mêmes mécanismes que les autres souffles, décision utilisateur du 2026-09-29) ; textes de création → 33.3.
+
+- [P:HAUTE] Réserve de souffles — décisions utilisateur du 2026-09-25 : **story dédiée**, la réserve se compose **sur la page de la séance** (elle est propre à une séance), avec sur la fiche une **réserve par défaut** qui pré-remplit chaque séance pour éviter de la refaire. La même story inclut l'artefact cadeau (niv. 4), l'affichage des capacités des niveaux 3 à 5 et les souffles rituels (niv. 5). Règles : dès le niveau 2, (niveau − 1) emplacements, un même souffle possible en plusieurs exemplaires ; souffles du temps (`reservable: false`) exclus ; à partir du niveau 3, au plus un souffle d'une autre race. Aucun décompte pendant la séance. [apps/web/src/app/features/homme-dragon/, apps/web/src/app/features/scenarios/, apps/api/src/homme-dragon/, packages/shared/src/index.ts]
+- [P:BASSE] Création guidée (33.3) : les textes de chaque race et leurs préférences sont désormais disponibles dans `docs/dragons.md` ; les artefacts peuvent être changés entre deux séances, jamais pendant (règle à rappeler dans l'aide d'édition). [docs/dragons.md]
+- [P:MOYENNE] Un même homme-dragon pour plusieurs groupes et plusieurs mondes (ce que supposent les règles) — décision utilisateur du 2026-09-25 : **à planifier**. Le modèle actuel en fait un par partie (unique par utilisateur, partie, système). [apps/api/prisma/schema.prisma]
+- [P:BASSE] Contenu déjà transcrit de `docs/dragons.md` le 2026-09-25, prêt à être enregistré dans `CONTENT_TYPES` par la story qui le consommera : `homme-dragon-races.json` (texte et préférences par race, 33.3), `homme-dragon-creation-intros.json` (aide par étape/champ, 33.3), `homme-dragon-level-capacities.json` (capacités des niveaux 2 à 5), `souffles-rituels.json` (6 rituels de la mère-dragon ; coût non précisé par le livre). Les seuils (1/3/7/12 séances), les PS (3/5/10) et la capacité de réserve (niveau − 1) sont des règles : elles vont dans `packages/game-rules`, pas dans un JSON. [apps/api/game-systems/ryuutama/data/]
+- [P:BASSE] Coût des souffles rituels : le livre n'en donne pas ; hypothèse retenue, à confirmer — même règle que les autres souffles (1 PS, ou gratuit depuis la réserve). [apps/api/game-systems/ryuutama/data/souffles-rituels.json]
+
+## Clos par la livraison de la 33.6 (réserve de souffles, 2026-10-03)
+
+- ✅ **RÉSOLU (2026-10-03, story 33-6-reserve-de-souffles)** — Clause d'AC de la 33.4 « la réserve par défaut est imprimée si elle existe » (puis, après le sprint change du 2026-10-02, « si une réserve existe »). La réserve unique portée par la fiche (`sheetData.reserve`) remplit désormais `souffle_1`..`souffle_4` de l'export PDF (nom du souffle de l'emplacement de même numéro, sans son coût ; cases vides si l'emplacement ou la réserve est vide, formats éditable et 2 pages), `nombre_souffles` restant `reserveCapacity(niveau)` = `max(niveau − 1, 0)` et `souffle_actuel` vide. [packages/game-rules/src/ryuutama/homme-dragon-pdf-field-map.ts, apps/api/src/homme-dragon/homme-dragon.pdf.service.ts]
+
+## Clos par la correction du 2026-10-29 (revue a posteriori du Palier 10)
+
+- ✅ **RÉSOLU (2026-10-29)** — Fuite d'e-mails : `listForPartie` renvoyait `invitee.email`, lisible par quiconque crée un groupe et y invite un compte trouvé par pseudo. L'invité est désormais servi avec `id`, `pseudo` et `displayName` (P9-AD-2) ; test unitaire qui fige l'absence de l'e-mail ; le web n'utilisait pas ce champ. [apps/api/src/invitations/invitations.service.ts]

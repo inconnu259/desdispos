@@ -32,12 +32,12 @@ import {
   type EquipmentCatalogEntry,
 } from '@master-jdr/game-rules';
 import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { GameSystemService } from '../game-systems/game-system.service';
 import { EmailService } from '../email/email.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
-import { SUPPORTED_GAME_SYSTEMS } from '../game-systems/supported-game-systems';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import type { CreateLevelUpDto } from './dto/create-level-up.dto';
 import type { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
@@ -52,15 +52,80 @@ import type { UpdateNarrativeFieldDto } from './dto/update-narrative-field.dto';
 import type { PortraitCropDataDto } from './dto/portrait-crop-data.dto';
 import {
   detectImageMime,
-  extractUploadFilename,
   mimeForExtension,
   stripImageMetadata,
   unlinkUploadFile,
   writeUploadFile,
   type DetectedImageMime,
 } from '../common/image-upload.util';
-import { UPLOADS_ROOT } from '../common/uploads-root';
+import { PORTRAITS_DIR, PORTRAITS_URL_PREFIX, extractPortraitFilename } from './portrait-paths';
+import { publicWebOrigin } from '../config/env';
 
+/** Clés qu'un joueur peut fournir à la création (cf. `RyuutamaSheetData`) — tout le reste est retiré. */
+const CREATION_SHEET_KEYS: ReadonlySet<string> = new Set([
+  'classId',
+  'specialtyTypeId',
+  'typeId',
+  'attributes',
+  'weaponId',
+  'customWeapon',
+  'fetiqueObject',
+  'equipment',
+  'narrative',
+  'classChoices',
+  'classCapabilities',
+  'magicSeason',
+  'knownRitualSpells',
+]);
+const NARRATIVE_MAX_LENGTH = 5000;
+const FETICHE_MAX_LENGTH = 500;
+const NARRATIVE_FIELDS: ReadonlySet<string> = new Set([
+  'sex',
+  'age',
+  'physicalTraits',
+  'homeTown',
+  'motivation',
+  'name',
+  'personality',
+]);
+
+/**
+ * Revue de sécurité 2026-11 : `sheetData` arrivait tel quel en base à la création. Un joueur pouvait y
+ * glisser des `levelUps` (personnage créé niveau 11, PV/PE gonflés, sans passer par la montée de niveau)
+ * ou n'importe quelle donnée. Liste blanche des clés de création (les `levelUps` n'en font pas partie :
+ * ils ne naissent que par `applyLevelUp`), textes narratifs et objet fétiche bornés. Modifie en place.
+ */
+function sanitizeCreationSheet(sheetData: RyuutamaSheetData): void {
+  const raw = sheetData as unknown as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (!CREATION_SHEET_KEYS.has(key)) delete raw[key];
+  }
+  if (sheetData.fetiqueObject !== undefined) {
+    if (
+      typeof sheetData.fetiqueObject !== 'string' ||
+      sheetData.fetiqueObject.length > FETICHE_MAX_LENGTH
+    ) {
+      throw new BadRequestException(
+        `L'objet fétiche doit être un texte de ${FETICHE_MAX_LENGTH} caractères au plus.`,
+      );
+    }
+  }
+  if (sheetData.narrative === undefined) return;
+  const narrative = sheetData.narrative as unknown;
+  if (typeof narrative !== 'object' || narrative === null || Array.isArray(narrative)) {
+    throw new BadRequestException('narrative doit être un objet.');
+  }
+  for (const [field, value] of Object.entries(narrative)) {
+    if (!NARRATIVE_FIELDS.has(field)) {
+      throw new BadRequestException(`Champ narratif inconnu : ${field}`);
+    }
+    if (value !== null && (typeof value !== 'string' || value.length > NARRATIVE_MAX_LENGTH)) {
+      throw new BadRequestException(
+        `Le champ narratif « ${field} » doit être un texte de ${NARRATIVE_MAX_LENGTH} caractères au plus.`,
+      );
+    }
+  }
+}
 /**
  * Mapping type de capacité (`CapabilityType`) → clé de contenu seedé (`GameSystemService`
  * `CONTENT_TYPES`) permettant de valider `params.key` à l'application d'une montée de niveau.
@@ -91,17 +156,12 @@ function resolveContentLabel(
 
 const INVALID_PORTRAIT_IMAGE_MESSAGE = "Le fichier fourni n'est pas une image JPEG/PNG/WEBP valide";
 
-export const PORTRAITS_DIR = join(UPLOADS_ROOT, 'portraits');
-export const PORTRAITS_URL_PREFIX = '/uploads/portraits/';
-
-/**
- * Un `portraitUrl` corrompu (édité manuellement, migration ratée) ne doit jamais atteindre
- * `unlink`/`readFile` avec un chemin non validé — défense en profondeur contre un path traversal
- * (AD-17, `extractUploadFilename` générique paramétré par le préfixe du domaine portrait).
- */
-export function extractPortraitFilename(portraitUrl: string | null): string | null {
-  return extractUploadFilename(portraitUrl, PORTRAITS_URL_PREFIX);
-}
+/** Plus grand côté d'un portrait stocké (px) : largement assez pour la fiche et son export PDF. */
+const PORTRAIT_MAX_DIMENSION = 1024;
+// Emplacement des portraits : module à part, pour que PartiesService (que ce service importe) puisse
+// effacer les portraits d'une partie supprimée sans dépendance circulaire. Ré-exportés ici pour les
+// importeurs existants.
+export { PORTRAITS_DIR, PORTRAITS_URL_PREFIX, extractPortraitFilename } from './portrait-paths';
 
 /**
  * Lit les octets d'un portrait déjà stocké, avec son mime réel (déduit de son extension — jamais
@@ -189,7 +249,11 @@ export class CharacterService {
 
   constructor(
     private readonly prisma: PrismaService,
+    // Signaux de la partie (`notifyPartieSignalsChanged`) : écriture de `parties/`,
+    // aucune décision de droit.
     private readonly parties: PartiesService,
+    // Story 37.7 (AD-6) : toute décision de droit sur une partie passe par ce service.
+    private readonly permissions: PermissionService,
     private readonly users: UsersService,
     private readonly gameSystems: GameSystemService,
     private readonly email: EmailService,
@@ -197,9 +261,16 @@ export class CharacterService {
   ) {}
 
   async create(partieId: string, userId: string, dto: CreateCharacterDto): Promise<CharacterDto> {
-    const partie = await this.parties.getViewable(partieId, userId);
+    // La capacité `characters` du système de la partie (registre `GAME_SYSTEMS`, Story 37.5) est
+    // contrôlée par `assert()` (Story 37.7) : la même source que le signal PERSONNAGE_A_CREER et le
+    // bouton de création côté web, aucune liste séparée qui pourrait diverger.
+    const { partie, role } = await this.permissions.assert(userId, 'CHARACTER_CREATE', {
+      partieId,
+    });
 
-    if (!SUPPORTED_GAME_SYSTEMS.includes(dto.gameSystemId)) {
+    // Le personnage est créé dans le système de SA partie : un `gameSystemId` différent (catalogue
+    // d'un autre système) est refusé, jamais accepté tel quel.
+    if (dto.gameSystemId !== partie.gameSystemId) {
       throw new BadRequestException(`Système de jeu non supporté : ${dto.gameSystemId}`);
     }
 
@@ -253,6 +324,7 @@ export class CharacterService {
       })),
     };
     delete sheetData.startingEquipment;
+    sanitizeCreationSheet(sheetData);
 
     const result = validate(sheetData, 'strict', catalog);
     if (!result.valid) {
@@ -276,10 +348,10 @@ export class CharacterService {
       this.realtimeEvents.emit(partieTopic(partieId));
       // PERSONNAGE_A_CREER (Story 29.7, AD-14) : en plus de partieTopic ci-dessus, jamais en
       // remplacement — atteint le canal personnel de chaque membre pour rafraîchir ses signaux.
-      await this.parties.notifyPartieSignalsChanged(partieId, partie.mjId);
+      await this.parties.notifyPartieSignalsChanged(partieId, partie.ownerId);
       const owner = await this.users.findById(userId);
       // Le créateur est toujours le propriétaire ici — ownerIsMj et viewerIsMj coïncident.
-      const isMj = partie.mjId === userId;
+      const isMj = role === 'mj';
       return toDto(character, owner?.pseudo ?? '', owner?.displayName ?? '', isMj, isMj);
     } catch (e) {
       if (hasPrismaErrorCode(e, 'P2002')) {
@@ -359,22 +431,22 @@ export class CharacterService {
     });
     if (!character) throw new NotFoundException('Personnage introuvable');
 
-    // Le MJ a déjà été résolu par getViewable() pour un viewer non-propriétaire — pas besoin
-    // de re-requêter la partie via resolveOwnerInfo() dans ce cas. getViewable (MJ OU membre,
-    // pas getOwned qui est MJ-seul) — la fiche est visible par tout participant de la Partie
-    // depuis la Story 6.5 (prérequis du Journal de notes, cf. AC4 : un fellow player doit
-    // pouvoir atteindre cette page pour y voir les entrées partagées). getHistory/
-    // getPortraitFile ont leur propre check indépendant, non affectés par ce changement.
-    let mjId: string | undefined;
+    // `CHARACTER_READ` (MJ OU membre, pas MJ seul) pour un viewer non-propriétaire de la fiche : la
+    // fiche est visible par tout participant de la Partie depuis la Story 6.5 (prérequis du Journal
+    // de notes, cf. AC4 : un fellow player doit pouvoir atteindre cette page pour y voir les
+    // entrées partagées). Le propriétaire de la fiche, lui, lit toujours la sienne — droit de
+    // fiche, pas droit de partie (son rôle ne sert qu'aux projections ci-dessous).
+    // getHistory/getPortraitFile ont leur propre check indépendant, non affectés par ce changement.
+    let viewerIsMj: boolean;
+    let ownerIsMj: boolean;
     if (character.userId !== userId) {
-      mjId = (await this.parties.getViewable(character.partieId, userId)).mjId;
+      const grant = await this.permissions.assert(userId, 'CHARACTER_READ', { characterId: id });
+      viewerIsMj = grant.role === 'mj';
+      // Projection (étiquette « l'auteur de la fiche est le MJ »), jamais une décision de droit.
+      ownerIsMj = character.userId === grant.partie.ownerId;
     } else {
-      mjId = (
-        await this.prisma.partie.findUnique({
-          where: { id: character.partieId },
-          select: { mjId: true },
-        })
-      )?.mjId;
+      viewerIsMj = (await this.permissions.roleOf(character.partieId, userId)) === 'mj';
+      ownerIsMj = viewerIsMj;
     }
     const owner = await this.users.findById(character.userId);
     // ownerIsMj : le PROPRIÉTAIRE du personnage est-il le MJ. viewerIsMj : le VIEWER (userId, le
@@ -382,23 +454,41 @@ export class CharacterService {
     // tout participant (Story 6.5) : un fellow player n'est ni l'un ni l'autre, mais l'ancienne
     // heuristique frontend ("tout non-propriétaire = MJ") le traitait à tort comme MJ (cf. revue
     // de code Story 6.5). C'est ce champ, pas une heuristique client, qui doit trancher.
+    //
+    // Story 31.6 : le cadenas de visibilité ne s'applique JAMAIS au propriétaire de la fiche ni au
+    // MJ de la partie (Intent, "Always") — le masque n'est résolu (requête dédiée) que dans le cas
+    // restant, un fellow player, seul lecteur concerné depuis la Story 6.5.
+    const isOwnerOrMj = character.userId === userId || viewerIsMj;
+    const lockedPaths = isOwnerOrMj
+      ? new Set<string>()
+      : await this.resolveLockedPaths(character.partieId);
     return toDto(
       character,
       owner?.pseudo ?? '',
       owner?.displayName ?? '',
-      mjId === character.userId,
-      mjId === userId,
+      ownerIsMj,
+      viewerIsMj,
+      lockedPaths,
     );
   }
 
+  /**
+   * Résout les chemins verrouillés (Story 31.6) d'une Partie en chemins pointés consommables par
+   * `toDto()` (`"classId"`, `"attributes.AGI"`). Aucune configuration en base ⇔ ensemble vide
+   * (Partie neuve, cf. I/O Matrix du spec 31.6). N'est appelé que pour un lecteur qui n'est ni le
+   * propriétaire ni le MJ — jamais depuis `toDto()` lui-même (qui reste pur/synchrone).
+   */
+  private async resolveLockedPaths(partieId: string): Promise<Set<string>> {
+    const locks = await this.prisma.partieVisibilityLock.findMany({ where: { partieId } });
+    return new Set(locks.map((l) => (l.subField ? `${l.fieldKey}.${l.subField}` : l.fieldKey)));
+  }
+
   async findByPartie(partieId: string, userId: string): Promise<CharacterDto[]> {
-    const partie = await this.parties.getViewable(partieId, userId);
-    const characters =
-      partie.mjId === userId
-        ? await this.prisma.character.findMany({ where: { partieId } })
-        : await this.prisma.character.findMany({
-            where: { partieId, userId },
-          });
+    const { partie, role } = await this.permissions.assert(userId, 'CHARACTER_LIST', { partieId });
+    // Story 31.5 : tout membre valide de la Partie (contrôle d'appartenance déjà effectué par
+    // `assert` ci-dessus) voit désormais tous les personnages, pas seulement le sien
+    // (Intent, "Approach") — plus de restriction `userId` dans le `where` selon le rôle.
+    const characters = await this.prisma.character.findMany({ where: { partieId } });
     if (characters.length === 0) return [];
 
     // Résolution en lot (pas de N+1) — même pattern que PartiesService.resolveParticipants.
@@ -409,25 +499,40 @@ export class CharacterService {
     });
     const ownerById = new Map(owners.map((o) => [o.id, o]));
 
-    const viewerIsMj = partie.mjId === userId;
-    return characters.map((c) =>
-      toDto(
+    const viewerIsMj = role === 'mj';
+    // Story 31.6 : le masque de visibilité s'applique à chaque personnage d'autrui pour un
+    // lecteur qui n'est ni son propriétaire ni le MJ — jamais au sien ni à ceux vus par le MJ
+    // (Intent, "Always"), même règle que `findOne` (L.392-395). Résolu au plus une fois pour toute
+    // la liste (pas de N+1) : jamais si le viewer est le MJ (toujours `isOwnerOrMj`), ni si tous
+    // les personnages retournés appartiennent déjà au viewer (personne d'autre à masquer), sinon
+    // une seule requête pour tous les personnages d'autrui.
+    const hasOtherOwnerCharacter = characters.some((c) => c.userId !== userId);
+    const lockedPaths =
+      viewerIsMj || !hasOtherOwnerCharacter
+        ? new Set<string>()
+        : await this.resolveLockedPaths(partieId);
+    return characters.map((c) => {
+      const isOwnerOrMj = c.userId === userId || viewerIsMj;
+      return toDto(
         c,
         ownerById.get(c.userId)?.pseudo ?? '',
         ownerById.get(c.userId)?.displayName ?? '',
-        c.userId === partie.mjId,
+        // Projection (étiquette « l'auteur de la fiche est le MJ »), jamais une décision de droit.
+        c.userId === partie.ownerId,
         viewerIsMj,
-      ),
-    );
+        isOwnerOrMj ? new Set<string>() : lockedPaths,
+      );
+    });
   }
 
   /**
    * Liste tous les personnages d'une Partie, sans notion de viewer (Story 8.6) — usage interne
    * cross-module uniquement (`ScenariosService.loadRetrospectiveNotes`), déjà en aval d'un
-   * `getViewable`/`getOwned` réussi sur la Partie côté appelant. Contrairement à `findByPartie`
-   * (scope au viewer : MJ voit tout, joueur seulement son propre personnage), cette méthode n'a
-   * pas de restriction — nécessaire pour agréger le journal de TOUS les participants, pas
-   * seulement celui du viewer courant (cf. `[ASSUMPTION]` Dev Notes Story 8.6, Task 6).
+   * `PermissionService.assert` réussi sur la Partie côté appelant. Contrairement à `findByPartie`
+   * (scopé au viewer : tout membre valide voit tous les personnages, avec masquage par champ
+   * selon le cadenas de visibilité — Story 31.5/31.6), cette méthode n'a ni notion de viewer ni
+   * masquage — nécessaire pour agréger le journal de TOUS les participants, pas seulement celui
+   * du viewer courant (cf. `[ASSUMPTION]` Dev Notes Story 8.6, Task 6).
    */
   async findAllByPartie(partieId: string): Promise<{ id: string; userId: string }[]> {
     return this.prisma.character.findMany({
@@ -443,6 +548,10 @@ export class CharacterService {
    * viewer) : une seule résolution `users.findById` suffit, contrairement à `findByPartie` qui
    * résout plusieurs propriétaires distincts. `ownerIsMj`/`viewerIsMj` varient en revanche par
    * Partie (l'appelant peut être MJ d'une Partie et joueur d'une autre) — jamais un calcul global.
+   *
+   * Story 31.6 : aucun masque à calculer (`toDto()` reçoit son défaut vide) — le lecteur EST
+   * toujours le propriétaire de chaque personnage retourné ici, un des deux rôles qui voient
+   * toujours la fiche entière (Intent, "Always").
    */
   async findMine(userId: string): Promise<MyCharacterDto[]> {
     const characters = await this.prisma.character.findMany({
@@ -460,11 +569,13 @@ export class CharacterService {
     const partieIds = [...new Set(characters.map((c) => c.partieId))];
     const characterIds = characters.map((c) => c.id);
     const gameSystemIds = [...new Set(characters.map((c) => c.gameSystemId))];
-    const [parties, owner, groupRoles, contentEntries] = await Promise.all([
+    const [parties, partieRoles, owner, groupRoles, contentEntries] = await Promise.all([
       this.prisma.partie.findMany({
         where: { id: { in: partieIds } },
-        select: { id: true, name: true, mjId: true },
+        select: { id: true, name: true },
       }),
+      // Rôle de l'appelant sur chacune de ses parties, en UNE requête (jamais une par partie).
+      this.permissions.rolesOf(userId, partieIds),
       this.users.findById(userId),
       this.prisma.characterGroupRole.findMany({
         where: { characterId: { in: characterIds } },
@@ -480,7 +591,7 @@ export class CharacterService {
 
     return characters.map((c) => {
       const partie = partieById.get(c.partieId);
-      const isMj = partie?.mjId === userId;
+      const isMj = partieRoles.get(c.partieId) === 'mj';
       const content = contentByGameSystemId.get(c.gameSystemId);
       const sheetData = c.sheetData as { classId?: string; typeId?: string };
       return {
@@ -517,7 +628,9 @@ export class CharacterService {
     }
     let cleanedBuffer: Buffer;
     try {
-      cleanedBuffer = await stripImageMetadata(file.buffer);
+      cleanedBuffer = await stripImageMetadata(file.buffer, {
+        maxDimension: PORTRAIT_MAX_DIMENSION,
+      });
     } catch (err) {
       this.logger.warn(
         `Échec du nettoyage EXIF (sharp) sur un portrait uploadé : ${err instanceof Error ? err.message : String(err)}`,
@@ -621,11 +734,11 @@ export class CharacterService {
   ): Promise<{ buffer: Buffer; mime: DetectedImageMime }> {
     const character = await this.prisma.character.findUnique({ where: { id } });
     if (!character) throw new NotFoundException('Personnage introuvable');
-    // getViewable (MJ ou membre), pas getOwned (MJ seul) — cohérent avec findOne depuis la
+    // MJ ou membre (`CHARACTER_PORTRAIT_READ`), pas MJ seul — cohérent avec findOne depuis la
     // Story 6.5 : un fellow player qui peut charger la fiche doit aussi pouvoir en voir le
     // portrait, sous peine d'image cassée sur une page par ailleurs accessible (revue de code).
     if (character.userId !== userId) {
-      await this.parties.getViewable(character.partieId, userId);
+      await this.permissions.assert(userId, 'CHARACTER_PORTRAIT_READ', { characterId: id });
     }
 
     const portrait = await readPortraitFile(character.portraitUrl);
@@ -680,7 +793,7 @@ export class CharacterService {
 
     const narrative = sheetData.narrative;
     const characterName = narrative?.name?.trim() || 'Personnage sans nom';
-    const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:4200'}/parties/${updated.partieId}/characters/${updated.id}`;
+    const link = `${publicWebOrigin()}/parties/${updated.partieId}/characters/${updated.id}`;
 
     // `sendMail` ne relance jamais (déjà try/catch interne, { ok: false } silencieux) — pas de
     // try/catch supplémentaire ici, un échec d'envoi ne doit jamais faire échouer l'appelant.
@@ -831,7 +944,7 @@ export class CharacterService {
       where: { id: characterId },
     });
     if (!character) throw new NotFoundException('Personnage introuvable');
-    await this.parties.getOwned(character.partieId, userId);
+    await this.permissions.assert(userId, 'CHARACTER_XP_SET', { characterId });
 
     const sheetData = character.sheetData as unknown as RyuutamaSheetData;
 
@@ -864,7 +977,7 @@ export class CharacterService {
     await this.notifyPendingLevelUp(updated);
 
     // viewerIsMj: true littéral — le viewer ICI est nécessairement le MJ (garanti par
-    // parties.getOwned ci-dessus), à ne pas confondre avec owner.isMj (le personnage édité
+    // CHARACTER_XP_SET ci-dessus), à ne pas confondre avec owner.isMj (le personnage édité
     // appartient à un JOUEUR, pas au MJ appelant).
     const owner = await this.resolveOwnerInfo(updated.userId, updated.partieId);
     return toDto(updated, owner.pseudo, owner.displayName, owner.isMj, true);
@@ -889,7 +1002,7 @@ export class CharacterService {
       where: { id: characterId },
     });
     if (!character) throw new NotFoundException('Personnage introuvable');
-    await this.parties.getOwned(character.partieId, userId);
+    await this.permissions.assert(userId, 'CHARACTER_SHEET_FIELD_SET', { characterId });
 
     if (segments[0] === 'xp' || segments[0] === 'levelUps') {
       throw new BadRequestException(
@@ -996,7 +1109,7 @@ export class CharacterService {
     });
     if (!character) throw new NotFoundException('Personnage introuvable');
     if (character.userId !== userId) {
-      await this.parties.getOwned(character.partieId, userId);
+      await this.permissions.assert(userId, 'CHARACTER_HISTORY_READ', { characterId });
     }
 
     const snapshots = await this.prisma.characterSnapshot.findMany({
@@ -1379,14 +1492,16 @@ export class CharacterService {
     }
 
     if (scenarioId !== null) {
+      // Story 37.3 : `partieId` est porté par l'événement de base du scénario.
       const scenario = await this.prisma.scenario.findUnique({
         where: { id: scenarioId },
+        select: { event: { select: { partieId: true } } },
       });
-      if (!scenario || scenario.partieId !== character.partieId) {
+      if (!scenario || scenario.event.partieId !== character.partieId) {
         throw new BadRequestException("Ce scénario n'appartient pas à la Partie de ce personnage");
       }
       const partie = await this.prisma.partie.findUnique({
-        where: { id: scenario.partieId },
+        where: { id: scenario.event.partieId },
         select: { kind: true },
       });
       if (partie?.kind === 'CAMPAGNE_EPISODIQUE') {
@@ -1412,9 +1527,9 @@ export class CharacterService {
   /**
    * Agrège les notes de journal pertinentes pour la rétrospective d'un scénario (Story 8.6, AD-11)
    * — méthode EXPORTÉE, appelée uniquement par `ScenariosService.loadRetrospectiveNotes`, déjà en
-   * aval d'un `getViewable`/`getOwned` réussi sur la Partie. Aucune vérification d'autorisation
-   * interne ici (même confiance inter-module que `PartiesService.getOwned`/`getViewable` déjà
-   * appelées ainsi depuis `ScenariosService`).
+   * aval d'un `PermissionService.assert` réussi sur la Partie. Aucune vérification d'autorisation
+   * interne ici (même confiance inter-module que les `assert` déjà faits ainsi depuis
+   * `ScenariosService`).
    * Une seule requête combine par `OR` : la branche manuelle (`scenarioId` correspond à ce
    * scénario) et la branche automatique (`shared: true` + datée dans `[windowStart, windowEnd]`),
    * incluse SEULEMENT si `journalAutoAssociate: true` ET qu'une fenêtre valide existe — sinon une
@@ -1475,8 +1590,10 @@ export class CharacterService {
 
     let sharedOnly = character.userId !== userId;
     if (sharedOnly) {
-      const partie = await this.parties.getViewable(character.partieId, userId);
-      if (partie.mjId === userId) sharedOnly = false;
+      const { role } = await this.permissions.assert(userId, 'CHARACTER_NOTES_READ', {
+        characterId,
+      });
+      if (role === 'mj') sharedOnly = false;
     }
     const notes = await this.prisma.characterNote.findMany({
       where: { characterId, ...(sharedOnly ? { shared: true } : {}) },
@@ -1490,20 +1607,23 @@ export class CharacterService {
     ownerId: string,
     partieId: string,
   ): Promise<{ pseudo: string; displayName: string; isMj: boolean }> {
-    const [owner, partie] = await Promise.all([
+    const [owner, role] = await Promise.all([
       this.users.findById(ownerId),
-      this.prisma.partie.findUnique({
-        where: { id: partieId },
-        select: { mjId: true },
-      }),
+      this.permissions.roleOf(partieId, ownerId),
     ]);
     return {
       pseudo: owner?.pseudo ?? '',
       displayName: owner?.displayName ?? '',
-      isMj: partie?.mjId === ownerId,
+      isMj: role === 'mj',
     };
   }
 
+  /**
+   * Garde de TOUTES les modifications réservées au propriétaire de la fiche (portrait, niveau, inventaire,
+   * notes…). Revue de sécurité 2026-11 : le propriétaire doit aussi être ENCORE membre de la partie — un
+   * joueur retiré gardait sinon la main sur sa fiche (et en notifiait la partie). Ses lectures (fiche,
+   * export PDF, notes) ne passent pas par ici et lui restent ouvertes : sa fiche passe en lecture seule.
+   */
   private async getOwnCharacterOrThrow(id: string, userId: string) {
     const character = await this.prisma.character.findUnique({
       where: { id },
@@ -1512,6 +1632,11 @@ export class CharacterService {
     if (character.userId !== userId) {
       throw new ForbiddenException(
         'Seul le propriétaire du personnage peut effectuer cette action',
+      );
+    }
+    if ((await this.permissions.roleOf(character.partieId, userId)) === null) {
+      throw new ForbiddenException(
+        "Vous ne faites plus partie de cette partie : votre fiche n'est plus modifiable.",
       );
     }
     return character;
@@ -1535,23 +1660,122 @@ export class CharacterService {
   }
 }
 
+/**
+ * Champs qui TRAHISSENT un champ verrouillé (revue de sécurité 2026-11) : cacher `classId` ne servait à
+ * rien si `classChoices` (propres à chaque classe), `classCapabilities` (Climatophile → météomancien) ou
+ * `specialtyTypeId` (artisan) restaient visibles ; de même `magicSeason`/`knownRitualSpells` pour le type
+ * (magie), et les `levelUps`, dont les capacités nomment des attributs, classes et types. Masqués avec
+ * leur source ; le niveau reste visible (`toDto` le lit sur la fiche non masquée).
+ */
+const REVEALING_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  classId: ['classChoices', 'classCapabilities', 'specialtyTypeId', 'levelUps'],
+  typeId: ['magicSeason', 'knownRitualSpells', 'levelUps'],
+  attributes: ['levelUps'],
+};
+
+function withRevealingFields(lockedPaths: ReadonlySet<string>): ReadonlySet<string> {
+  if (lockedPaths.size === 0) return lockedPaths;
+  const expanded = new Set(lockedPaths);
+  for (const path of lockedPaths) {
+    const root = path.split('.')[0];
+    for (const field of REVEALING_FIELDS[root] ?? []) expanded.add(field);
+  }
+  return expanded;
+}
+
+/**
+ * Un chemin verrouillé (Story 31.6) dérive-t-il `derived` ? `compute-derived.ts` ne lit QUE
+ * `attributes`/`levelUps` — verrouiller la clé entière OU un seul sous-champ de l'une des deux
+ * retire `derived` EN ENTIER, jamais une entrée isolée (cf. Design Notes du spec 31.6 : pas de
+ * carte de dépendance persistée, cette règle est dérivée de `compute-derived.ts` et doit être
+ * revue si cette fonction gagne une nouvelle dépendance). `levelUps` n'est pas verrouillable
+ * aujourd'hui (hors périmètre, cf. `GameSystemService.getSchema`) mais la règle reste générique.
+ */
+function locksDerivedDependency(lockedPaths: ReadonlySet<string>): boolean {
+  for (const path of lockedPaths) {
+    if (
+      path === 'attributes' ||
+      path.startsWith('attributes.') ||
+      path === 'levelUps' ||
+      path.startsWith('levelUps.')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Retire de `sheetData` chaque chemin verrouillé (clé simple `"classId"` ou sous-champ
+ * `"attributes.AGI"`) et renvoie la liste de ce qui a été RÉELLEMENT retiré (un chemin verrouillé
+ * mais déjà absent de la fiche n'y figure pas). Ne clone `sheetData` que si un retrait est
+ * nécessaire — jamais de mutation de l'objet reçu (celui-ci vient directement de Prisma).
+ */
+function applyVisibilityMask(
+  sheetData: SheetData,
+  lockedPaths: ReadonlySet<string>,
+): { sheetData: SheetData; removedPaths: string[] } {
+  if (lockedPaths.size === 0) return { sheetData, removedPaths: [] };
+
+  const masked = structuredClone(sheetData);
+  const removedPaths: string[] = [];
+  for (const path of lockedPaths) {
+    const dotIndex = path.indexOf('.');
+    if (dotIndex === -1) {
+      if (Object.hasOwn(masked, path)) {
+        delete masked[path];
+        removedPaths.push(path);
+      }
+      continue;
+    }
+    const key = path.slice(0, dotIndex);
+    const subField = path.slice(dotIndex + 1);
+    const parent = masked[key];
+    if (
+      parent !== null &&
+      typeof parent === 'object' &&
+      !Array.isArray(parent) &&
+      Object.hasOwn(parent, subField)
+    ) {
+      delete (parent as Record<string, unknown>)[subField];
+      removedPaths.push(path);
+    }
+  }
+  return { sheetData: masked, removedPaths };
+}
+
 function toDto(
   character: Character,
   ownerPseudo: string,
   ownerDisplayName: string,
   ownerIsMj: boolean,
   viewerIsMj: boolean,
+  // Story 31.6 : masque calculé par l'APPELANT (owner/MJ → toujours vide) — jamais résolu ici par
+  // un accès base, pour que `toDto()` reste pur/synchrone (Intent, "Always"). Défaut vide : les
+  // appelants propriétaire-seul/MJ-seul (mutations) n'ont rien à calculer.
+  lockedPaths: ReadonlySet<string> = new Set(),
 ): CharacterDto {
   // `sheetData`/`derived` sont des colonnes JSON : Prisma les rend en `JsonValue`, sans forme
   // garantie. La relecture vers les types du contrat se fait ici, au seul point de sortie.
-  const sheetData = (character.sheetData ?? {}) as SheetData;
+  const rawSheetData = (character.sheetData ?? {}) as SheetData;
+  const { sheetData, removedPaths } = applyVisibilityMask(
+    rawSheetData,
+    withRevealingFields(lockedPaths),
+  );
+  const derivedLocked = locksDerivedDependency(lockedPaths);
   return {
     id: character.id,
     userId: character.userId,
     partieId: character.partieId,
     gameSystemId: character.gameSystemId,
     sheetData,
-    derived: character.derived as unknown as DerivedStats,
+    // `derived` reste typé plein dans `CharacterDto` (contrat DTO existant) : l'absence à
+    // l'exécution quand `derivedLocked` est vraie est intentionnelle, signalée par
+    // `hiddenFields` — `JSON.stringify` omet une propriété `undefined`, exactement comme les clés
+    // retirées de `sheetData` ci-dessus (jamais vide ni nulle, cf. AC « la clé est absente »).
+    derived: derivedLocked
+      ? (undefined as unknown as DerivedStats)
+      : (character.derived as unknown as DerivedStats),
     portraitUrl: character.portraitUrl ?? null,
     portraitCropData: character.portraitCropData ?? null,
     pdfPortraitCropData: character.pdfPortraitCropData ?? null,
@@ -1565,8 +1789,10 @@ function toDto(
     // Niveau réellement appliqué (nombre de montées de niveau validées + 1), PAS le niveau
     // potentiel dérivé de l'xp (`levelForXp`) — sinon la fiche afficherait un niveau non encore
     // acquis tant que le joueur n'a pas traité son `LevelUpBanner` (cf. `pendingLevels`).
-    level: 1 + ((sheetData as { levelUps?: unknown[] }).levelUps?.length ?? 0),
+    // Lu sur la fiche NON masquée : le niveau reste visible même quand les `levelUps` sont cachés.
+    level: 1 + ((rawSheetData as { levelUps?: unknown[] }).levelUps?.length ?? 0),
     journalAutoAssociate: character.journalAutoAssociate ?? false,
+    hiddenFields: derivedLocked ? [...removedPaths, 'derived'] : removedPaths,
   };
 }
 

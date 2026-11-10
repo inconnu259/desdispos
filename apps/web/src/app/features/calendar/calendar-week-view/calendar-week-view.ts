@@ -1,6 +1,15 @@
-import { Component, computed, effect, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type {
   AvailKind,
@@ -11,7 +20,13 @@ import type {
   SlotStatus,
 } from '@master-jdr/shared';
 import { computeDisplayStatus } from '../../../core/availability/compute-display-status';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { SLOT_LABELS } from '../agenda-badge.utils';
+import { entrySpanShortLabel } from '../span-label';
+import {
+  overlapAriaLabel,
+  overlapMarkLabel,
+} from '../../../shared/duration-stepper/duration-labels';
 import type { AgendaEntry, AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import {
   buildMonthDetails,
@@ -20,20 +35,21 @@ import {
   toDateKey,
   type DayDetail,
   type DaySlotDetail,
+  type SlotPollVote,
 } from '../day-detail.utils';
 import { SlotSelectedEvent } from '../calendar-month-view/calendar-month-view';
+import type { CalendarInteraction } from '../calendar-interaction';
 import { SelectionBar } from '../selection-bar/selection-bar';
+import { composeSpanKeys } from '../compose-span.utils';
 import {
   LONG_PRESS_MS,
   MOVE_THRESHOLD_PX,
   type GesturePointerType,
   type SelectedCell,
   composeCellKey,
+  mergeCells,
   weekRangeCells,
 } from '../selection.utils';
-
-/** Story 36.10, AC16 — même mot qu'en vue Mois pour un créneau désigné. */
-const COMPOSED_ARIA = 'désigné pour le vote';
 
 /** Story 36.15 — MÊME format que `OPTION_DATE_FORMAT` de `calendar-agenda-view.ts` : le libellé
  *  du dialogue de confirmation doit se lire pareil, que le scellement parte de l'Agenda ou d'ici.
@@ -88,9 +104,15 @@ function toUTCMidnight(isoDate: string): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-function formatDeclLabel(d: AvailabilityDeclarationDto): string {
-  const kind = d.kind === 'UNAVAILABLE' ? 'Indispo' : 'Dispo';
-  const recur = d.recurKind === 'RECURRING' ? 'Récurrent' : 'Ponctuel';
+function formatDeclLabel(d: AvailabilityDeclarationDto, tone: Record<string, string>): string {
+  const kind =
+    d.kind === 'UNAVAILABLE'
+      ? tone['calendar.week_decl_unavailable']
+      : tone['calendar.week_decl_available'];
+  const recur =
+    d.recurKind === 'RECURRING'
+      ? tone['calendar.week_decl_recurring']
+      : tone['calendar.week_decl_punctual'];
   return `${kind} · ${recur}`;
 }
 
@@ -159,6 +181,9 @@ export function buildWeek(
   weekStart: Date,
   decls: AvailabilityDeclarationDto[],
   pendingDecl: AvailabilityDeclarationDto | null,
+  // Textes du thème actif, pour le libellé de déclaration (« Dispo · Récurrent »). Obligatoire : le
+  // composant passe le ton courant, aucun appelant ne retombe sur le thème de référence.
+  tone: Record<string, string>,
   details?: Map<string, DayDetail>,
   previewDetails?: Map<string, DayDetail> | null,
 ): WeekCell[] {
@@ -208,7 +233,7 @@ export function buildWeek(
       return {
         status: finalStatus,
         preview,
-        declLabel: matchingDecl ? formatDeclLabel(matchingDecl) : null,
+        declLabel: matchingDecl ? formatDeclLabel(matchingDecl, tone) : null,
         detail,
       };
     };
@@ -255,7 +280,7 @@ import {
   standalone: true,
   imports: [
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     MatProgressSpinnerModule,
     SelectionBar,
     PollTrack,
@@ -265,6 +290,8 @@ import {
   styleUrl: './calendar-week-view.scss',
 })
 export class CalendarWeekView {
+  protected readonly theme = inject(ThemeToneService);
+
   readonly declarations = input<AvailabilityDeclarationDto[]>([]);
   readonly loading = input(false);
   readonly pendingDto = input<CreateAvailabilityDto | null>(null);
@@ -275,6 +302,8 @@ export class CalendarWeekView {
   readonly entries = input<AgendaEntry[]>([]);
   /** Couches actives : gouvernent ce qui est NOMMÉ dans la cellule, jamais l'indisponibilité. */
   readonly activeLayers = input<readonly CalendarLayerKey[]>([]);
+  /** Story 44.8 — les parties masquées par le filtre du calendrier personnel (voir la vue Mois). */
+  readonly hiddenPartieIds = input<ReadonlySet<string> | null>(null);
   /**
    * Story 36.9 — les jours que le mode Destinée met en avant (clés `YYYY-MM-DD`), ou `null` hors
    * mode. **Exactement l'ensemble que reçoit la vue Mois**, dérivé une seule fois par
@@ -283,13 +312,23 @@ export class CalendarWeekView {
   readonly destinyDates = input<ReadonlySet<string> | null>(null);
 
   /**
-   * Story 36.10 — le mode de composition d'un vote (MJ). Mêmes entrées, même sémantique et même
+   * Story 52.1 (AD-7) — l'outil allumé, UN seul à la fois ; `composer` (Story 36.10, MJ) est le mode de composition d'un vote. Mêmes entrées, même sémantique et même
    * point d'étranglement qu'en vue Mois : les deux grilles doivent se comporter à l'identique,
    * sans quoi le mode changerait de sens en changeant d'onglet.
    */
-  readonly composing = input(false);
+  readonly interaction = input<CalendarInteraction>('lecture');
+
+  /** Ce qui vide la sélection : lecture et Destinée ne la touchent pas (elles n'ont pas de barre à elles), le composer
+   *  et la déclaration, si. Un computed : l'effet ne se rejoue qu'au changement de portée, pas à chaque interaction. */
+  private readonly selectionScope = computed<CalendarInteraction>(() => {
+    const current = this.interaction();
+    return current === 'destinee' ? 'lecture' : current;
+  });
+
   /** Créneaux composés, en clés `YYYY-MM-DD|SLOT` (`composeCellKey`). `null` hors mode. */
   readonly composedKeys = input<ReadonlySet<string> | null>(null);
+  /** Story 46.2 — la clé (`AAAA-MM-JJ|créneau`) de la fenêtre de l'automate sélectionnée (reçue, jamais dérivée ici). */
+  readonly windowKey = input<string | null>(null);
 
   /** Story 36.15 — même double garde que `CalendarAgendaView.canSeal` (36.12) : être MJ ET être
    *  dans le calendrier d'une partie. `CalendarView` la calcule (`isMjMode() && partieId() !==
@@ -298,10 +337,35 @@ export class CalendarWeekView {
   readonly canSeal = input(false);
 
   readonly slotSelected = output<SlotSelectedEvent>();
+  /** Story 52.3 — `Échap` en mode déclaration, sélection vide : la vue demande à `CalendarView` d'éteindre le mode. */
+  readonly declarationExitRequested = output<void>();
   /** Story 36.10, AC2 — un créneau vient d'être désigné ou retiré. */
   readonly composeToggled = output<SlotSelectedEvent>();
   /** Story 36.10, AC3 — `Échap` pendant la composition. */
   readonly composeCancelled = output<void>();
+  /** ⚠️ Story 45.3 — la sélection (appui maintenu ou glissement) rejoint la composition : « Ajouter au vote ».
+   *  La vue ne change JAMAIS les créneaux composés, elle les émet ; `CalendarView` en fait l'union. */
+  readonly composeAdded = output<SelectedCell[]>();
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  readonly composeRemoved = output<SelectedCell[]>();
+  /** Story 45.3 — la journée entière est-elle permise dans cette composition ? Faux pour une conjonction ou une
+   *  soirée : la barre ne propose alors pas « Journée ». */
+  readonly composeFullDay = input(true);
+  /** ⚠️ Story 47.4 — bloc JUMEAU de `calendar-month-view.ts` : les créneaux couverts par les plages des départs
+   *  désignés (départs exclus), reçus de `CalendarView`, et la durée composée (aperçu au survol). */
+  readonly composeCoverKeys = input<ReadonlySet<string> | null>(null);
+  readonly composeDuration = input(1);
+
+  /** Story 47.4 — la cellule survolée à la souris pendant la composition (sa plage s'allume en aperçu). */
+  private readonly hoverStart = signal<{ date: Date; slot: DaySlot } | null>(null);
+  private readonly hoverKeys = computed<ReadonlySet<string>>(() => {
+    const start = this.hoverStart();
+    if (!start || this.interaction() !== 'composer') return new Set();
+    return new Set([
+      composeCellKey(start.date, start.slot),
+      ...composeSpanKeys([start], this.composeDuration()),
+    ]);
+  });
   readonly displayDateChange = output<Date>();
   /** Story 30.3 : lot construit par un glissement (souris/tactile) ou une validation clavier —
    *  CalendarView construit les items et appelle createDeclarationBatch(), jamais cette vue. */
@@ -333,6 +397,8 @@ export class CalendarWeekView {
       this.entries(),
       this.activeLayers(),
       this.declarations(),
+      new Date(),
+      this.hiddenPartieIds(),
     ),
   );
 
@@ -348,6 +414,8 @@ export class CalendarWeekView {
       this.entries(),
       this.activeLayers(),
       [...this.declarations(), pending],
+      new Date(),
+      this.hiddenPartieIds(),
     );
   });
 
@@ -356,6 +424,7 @@ export class CalendarWeekView {
       this.displayWeekStart(),
       this.declarations(),
       this.pendingDecl(),
+      this.theme.tone(),
       this.weekDetails(),
       this.weekPreviewDetails(),
     ),
@@ -441,7 +510,9 @@ export class CalendarWeekView {
       partieId: entry.vote.partieId,
       pollId: entry.vote.pollId,
       optionId: entry.vote.optionId,
-      dateLabel: CalendarWeekView.sealDateLabel(entry.date, entry.slot),
+      // Story 47.5 — une plage se scelle écrite de son début à sa fin.
+      dateLabel:
+        entrySpanShortLabel(entry) ?? CalendarWeekView.sealDateLabel(entry.date, entry.slot),
       pollLabel: entry.label,
     };
   });
@@ -482,7 +553,13 @@ export class CalendarWeekView {
     const anchor = this.selectionAnchor();
     if (!anchor) return;
     this.selectionCurrent.set(current);
-    this.selectedCells.set(weekRangeCells(anchor, current, this.cells()));
+    const range = weekRangeCells(anchor, current, this.cells());
+    // Story 52.3 — en mode déclaration le glissement AJOUTE sa plage aux créneaux déjà retenus.
+    this.selectedCells.set(
+      this.interaction() === 'declaration' && this.dragArmed()
+        ? mergeCells(this.dragBase, range)
+        : range,
+    );
   }
 
   /** AC17/AC18 — bascule **un créneau**. Retirer le dernier **quitte le mode modification**. */
@@ -519,7 +596,7 @@ export class CalendarWeekView {
     const scope = this.scope();
     const slotLabel =
       scope === null
-        ? 'créneaux variés'
+        ? this.theme.tone()['common.creneaux_varies']
         : scope === 'FULL_DAY'
           ? 'journée'
           : (this.SLOT_ROWS.find((r) => r.slot === scope)?.label ?? '');
@@ -529,6 +606,11 @@ export class CalendarWeekView {
   });
 
   constructor() {
+    // Story 45.3 — bloc JUMEAU de la vue Mois : la sélection ne survit pas à l'entrée ni à la sortie du composer.
+    effect(() => {
+      this.selectionScope();
+      untracked(() => this.onSelectionCancelled());
+    });
     effect(() => {
       const d = this.startDate();
       untracked(() => this.displayWeekStart.set(getWeekStart(d)));
@@ -572,19 +654,32 @@ export class CalendarWeekView {
     // ⚠️ Story 36.3, AC15 — un tap court est un geste de LECTURE : il désigne le créneau, le rail
     // suit (AC2 de 36.1), et rien d'autre ne s'ouvre. La barre appartient à l'appui maintenu et
     // au glissement.
+    // ⚠️ Story 52.3 — en MODE DÉCLARATION le tap ne lit plus : il ajoute ou retire le créneau (bloc JUMEAU de la vue
+    // Mois). Le rail reste sur son jour, le sélecteur de réponse ne s'ouvre pas, le repère suit le dernier créneau.
+    if (this.interaction() === 'declaration') {
+      this.currentCell.set({ date, slot });
+      if (this.suppressNextClick) {
+        this.suppressNextClick = false;
+        return;
+      }
+      this.toggleCell(date, slot);
+      return;
+    }
     this.slotSelected.emit({ date, slot });
     this.currentCell.set({ date, slot });
     // 🚨 Story 36.10, AC2/AC12 — le mode de composition réassigne le tap, ICI, avant tout le
     // reste. Le rail a déjà suivi juste au-dessus (principe 2) ; sélection et sélecteur de
     // réponse sont neutralisés.
-    if (this.composing()) {
-      this.composeToggled.emit({ date, slot });
-      return;
-    }
     // Un geste armé se termine par un `click` spontané du navigateur : l'avaler, sinon il
     // rebasculerait la cellule qu'on vient de sélectionner (même garde qu'en vue Mois).
+    // ⚠️ Story 45.3 — avalé AVANT la composition (bloc JUMEAU de la vue Mois).
     if (this.suppressNextClick) {
       this.suppressNextClick = false;
+      return;
+    }
+    if (this.interaction() === 'composer') {
+      if (this.selectedCells().length > 0) this.toggleCell(date, slot);
+      else this.composeToggled.emit({ date, slot });
       return;
     }
     // AC17/AC18 — une fois la barre ouverte, le même clic BASCULE le créneau touché, quelle que
@@ -599,18 +694,26 @@ export class CalendarWeekView {
     // on ne pose pas une seconde table. `FULL_DAY` n'y figure pas et ne porte donc jamais de vote.
     const cell = this.cells().find((c) => c.date.getTime() === date.getTime());
     const key = this.SLOT_ROWS.find((r) => r.slot === slot)?.key;
-    const vote = cell && key ? this.eventVote(this.getSlotData(cell, key)) : null;
+    const slotData = cell && key ? this.getSlotData(cell, key) : null;
+    const vote = slotData ? this.eventVote(slotData) : null;
     if (vote && anchor) {
-      this.voteOptionActivated.emit({ vote, date, slot, anchor });
+      // Story 47.5 — toutes les plages du vote qui couvrent ce créneau : une ligne chacune dans le sélecteur.
+      this.voteOptionActivated.emit({
+        vote,
+        lines: this.eventVotes(slotData!),
+        date,
+        slot,
+        anchor,
+      });
     }
   }
 
   /** Sélection d'une seule cellule, armée au clavier (AC7, AC15). La portée part du créneau visé
    *  — la ligne de la grille Semaine EST un créneau. */
   private armSelection(date: Date, slot: DaySlot): void {
-    // 🚨 Story 36.10, AC12 — point d'étranglement unique (appui maintenu, glissement, clavier),
-    // exactement comme en vue Mois.
-    if (this.composing()) return;
+    // ⚠️ Story 45.3 — la garde de la 36.10 (AC12) tombe pour l'appui maintenu et le glissement : en composition ils
+    // sélectionnent des jours, que la barre verse au vote. Le clavier, lui, compose directement AVANT d'arriver ici
+    // (`onCellKeySelect`), et `Maj`+flèches reste inerte pendant la composition (`onShiftArrow`).
     this.selectionAnchor.set({ date, slot });
     this.selectionCurrent.set({ date, slot });
     this.selectedCells.set([{ date, slot }]);
@@ -622,7 +725,7 @@ export class CalendarWeekView {
     if (cell.isPast) return;
     this.slotSelected.emit({ date: cell.date, slot });
     // Story 36.10, AC2/AC16 — parité clavier : en composition, désigner ajoute ou retire.
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       this.composeToggled.emit({ date: cell.date, slot });
       return;
     }
@@ -649,7 +752,39 @@ export class CalendarWeekView {
   protected eventTitle(slotData: SlotData): string | null {
     const d = slotData.detail;
     if (!d) return null;
-    return d.winner === 'seance' ? d.seanceLabel : d.winner === 'vote' ? d.pollLabel : null;
+    const title = d.winner === 'seance' ? d.seanceLabel : d.winner === 'vote' ? d.pollLabel : null;
+    // Story 47.3 : une plage n'est NOMMÉE que sur sa première cellule visible de la semaine, avec « ← » quand
+    // cette cellule n'est pas son début ; les autres cellules couvertes restent marquées mais sans texte.
+    const span = d.span;
+    if (title && span) {
+      if (span.index !== this.firstSpanIndex().get(span.key)) return null;
+      return span.index > span.startIndex ? `← ${title}` : title;
+    }
+    return title;
+  }
+
+  /** Story 47.3 — pour chaque plage de la semaine affichée, le rang linéaire de sa première cellule visible
+   *  (ordre de lecture : jour après jour, matin → soir = ordre croissant des rangs). */
+  private readonly firstSpanIndex = computed<Map<string, number>>(() => {
+    const first = new Map<string, number>();
+    for (const cell of this.cells()) {
+      for (const slot of [cell.morning, cell.afternoon, cell.evening]) {
+        const span = slot.detail?.span;
+        if (!span) continue;
+        const seen = first.get(span.key);
+        if (seen === undefined || span.index < seen) first.set(span.key, span.index);
+      }
+    }
+    return first;
+  });
+
+  /** Story 47.3 — classes de connecteur d'une cellule : la plage continue après le soir / vient de la veille. */
+  protected spanNext(slotData: SlotData): boolean {
+    return slotData.detail?.span?.continuesAfter ?? false;
+  }
+
+  protected spanPrev(slotData: SlotData): boolean {
+    return slotData.detail?.span?.continuesBefore ?? false;
   }
 
   /** AC4/AC7 — les informations pratiques, composées par le POINT UNIQUE. Niveau `compact` : la
@@ -680,6 +815,22 @@ export class CalendarWeekView {
     return d.pollVote;
   }
 
+  /** Story 47.5 — toutes les options du vote qui couvrent la cellule (rang GAGNANT « vote » seulement). */
+  protected eventVotes(slotData: SlotData): SlotPollVote[] {
+    const d = slotData.detail;
+    return d && d.winner === 'vote' ? d.pollVotes : [];
+  }
+
+  /** Story 47.5 — « ×n » : combien de plages du vote recouvrent la cellule (0 hors rang « vote »). */
+  protected eventOverlap(slotData: SlotData): number {
+    const d = slotData.detail;
+    return d && d.winner === 'vote' ? d.pollCount : 0;
+  }
+
+  protected overlapMark(n: number): string {
+    return overlapMarkLabel(n);
+  }
+
   /**
    * Story 36.8 — la disponibilité du groupe, sur un **canal séparé** (FR-53).
    *
@@ -699,10 +850,11 @@ export class CalendarWeekView {
     slotName: string,
     slot?: DaySlot,
   ): string {
+    const tone = this.theme.tone();
     const labels: Record<SlotStatus, string> = {
-      AVAILABLE: 'disponible',
-      UNAVAILABLE: 'indisponible',
-      UNKNOWN: 'inconnu',
+      AVAILABLE: tone['calendar.week_status_available'],
+      UNAVAILABLE: tone['calendar.week_status_unavailable'],
+      UNKNOWN: tone['calendar.week_status_unknown'],
     };
     const status = slotData.preview ?? slotData.status;
     const fullDate = new Intl.DateTimeFormat('fr-FR', {
@@ -713,8 +865,10 @@ export class CalendarWeekView {
     // AC12 — ce que le CSS tronque visuellement n'est JAMAIS tronqué ici. Les informations
     // pratiques sont annoncées au niveau `full`, pas au niveau `compact` de la cellule : c'est le
     // défaut exact relevé en revue de code de la story 36.5 sur le rail (`openLabel()`).
-    const title = this.eventTitle(slotData);
     const d = slotData.detail;
+    // Story 47.3 : toute cellule d'une plage dit le rendez-vous ET sa plage entière, même quand son texte
+    // visible est tu (nom une fois par semaine) — le connecteur et la flèche ne se lisent pas à l'oreille.
+    const title = d?.span ? `${d.span.label}, ${d.span.range}` : this.eventTitle(slotData);
     const info = d && d.winner === 'seance' ? composeSeanceInfo(d, 'full') : '';
     const parts = [`${slotName}, ${fullDate} : ${labels[status]}`];
     if (title) parts.push(title);
@@ -722,23 +876,57 @@ export class CalendarWeekView {
     // Story 36.6, AC14 — la piste code par la PROPORTION : elle n'existe pour un lecteur d'écran
     // que si le nom accessible la dit. Même garde `winner` que `eventInfo()`.
     const participation = this.eventVote(slotData);
-    if (participation) parts.push(participationAriaLabel(participation));
+    if (participation) parts.push(participationAriaLabel(participation, tone));
+    // Story 47.5 — plusieurs plages du vote sur ce créneau : « ×n » se dit aussi (la marque est visuelle).
+    const overlap = this.eventOverlap(slotData);
+    if (overlap >= 2) parts.push(overlapAriaLabel(overlap));
     // Story 36.8, AC15 — 🚨 `.slot-cell` porte son propre `aria-label`, qui ÉCRASE le nom
     // accessible de `<app-group-gauge>` qu'elle contient désormais. Sans ce repli, le canal
     // serait purement visuel en vue Semaine — même régression que celle corrigée en revue de la
     // 36.7 pour la piste dans le rail.
     const groupe = this.eventGroup(slotData);
-    if (groupe) parts.push(groupAriaLabel(groupe));
+    if (groupe) parts.push(groupAriaLabel(groupe, tone));
     // Story 36.10, AC16 — l'état composé est annoncé, comme en vue Mois. Le créneau TYPÉ est
     // passé par le gabarit (`row.slot`) plutôt que redéduit du libellé : `slotName` est du texte
     // d'affichage, s'en servir de clé le rendrait intraduisible.
-    if (slot && this.isCellComposed(cell, slot)) parts.push(COMPOSED_ARIA);
+    if (slot && this.isCellComposed(cell, slot)) parts.push(tone['common.designe_pour_le_vote']);
+    if (slot && this.isCellWindow(cell, slot)) parts.push(tone['calendar.window_selected_aria']);
     return parts.join(' — ');
+  }
+
+  /** Story 46.2 — cette cellule est-elle la fenêtre de l'automate sélectionnée ? */
+  protected isCellWindow(cell: WeekCell, slot: DaySlot): boolean {
+    return this.windowKey() === composeCellKey(cell.date, slot);
   }
 
   /** Story 36.10, AC13 — ce créneau fait-il partie de la composition en cours ? */
   protected isCellComposed(cell: WeekCell, slot: DaySlot): boolean {
     return this.composedKeys()?.has(composeCellKey(cell.date, slot)) ?? false;
+  }
+
+  /** ⚠️ Story 47.4 — bloc JUMEAU de `CalendarMonthView.isBandSpanPreview` : la cellule est couverte par la plage d'un
+   *  départ désigné, ou par celle qu'ouvrirait la cellule survolée. Rien à 1 créneau. */
+  protected isCellSpanPreview(cell: WeekCell, slot: DaySlot): boolean {
+    if (this.composeDuration() <= 1 || this.isCellComposed(cell, slot)) return false;
+    const key = composeCellKey(cell.date, slot);
+    return (this.composeCoverKeys()?.has(key) ?? false) || this.hoverKeys().has(key);
+  }
+
+  /** Story 47.4 — survol d'une cellule pendant la composition (`null` : la souris la quitte). Souris seulement : au
+   *  doigt, l'entrée émulée après un tap n'a pas de sortie et laisserait une plage allumée. */
+  protected onCellHover(event: PointerEvent, cell: WeekCell | null, slot?: DaySlot): void {
+    if (event.pointerType !== 'mouse') return;
+    if (
+      !cell ||
+      !slot ||
+      cell.isPast ||
+      this.interaction() !== 'composer' ||
+      this.composeDuration() <= 1
+    ) {
+      if (this.hoverStart() !== null) this.hoverStart.set(null);
+      return;
+    }
+    this.hoverStart.set({ date: cell.date, slot });
   }
 
   /** AC2/AC3 — le marquage suit la **portée** : passer la portée à « journée » doit allumer les
@@ -814,7 +1002,11 @@ export class CalendarWeekView {
       startY: event.clientY,
       // ⚠️ Story 36.3, AC15 — l'appui maintenu arme la barre **pour tous les pointeurs**, souris
       // comprise : c'est lui qui sépare lire (tap court) de déclarer (appui long).
-      longPressTimer: setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
+      // Story 52.3 — en mode déclaration il n'y a plus d'appui long : un tap lent bascule le créneau comme un tap vif.
+      longPressTimer:
+        this.interaction() === 'declaration'
+          ? null
+          : setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
     };
   }
 
@@ -826,7 +1018,10 @@ export class CalendarWeekView {
     const moved = Math.hypot(dx, dy) > MOVE_THRESHOLD_PX;
 
     if (!this.dragArmed()) {
-      if (down.pointerType === 'touch') {
+      // ⚠️ Story 52.3 — en mode déclaration le doigt n'a plus besoin de l'appui maintenu : horizontal = sélection
+      // immédiate, vertical = défilement de la page (règle d'axe de la vue Mois, ici aussi pour la souris).
+      const declaring = this.interaction() === 'declaration';
+      if (down.pointerType === 'touch' && !declaring) {
         // Appui maintenu requis (AC4) : un déplacement avant l'expiration du délai laisse le
         // défilement natif se produire, on n'appelle pas preventDefault().
         if (moved) {
@@ -836,6 +1031,12 @@ export class CalendarWeekView {
         return;
       }
       if (!moved) return;
+      if (declaring && Math.abs(dx) <= Math.abs(dy)) {
+        // Un départ vertical est un défilement : le relâchement qui suit ne doit pas compter comme un tap.
+        this.cancelLongPressTimer();
+        this.pointerDown = null;
+        return;
+      }
       this.armDrag(down.cell, down.slot);
     }
 
@@ -860,6 +1061,8 @@ export class CalendarWeekView {
     this.pointerDown = null;
     if (!wasArmed) {
       // Relâché sans déplacement ni appui maintenu écoulé → tap normal (AC3, AC9).
+      // Story 52.3 — un `pointercancel` (le navigateur prend la main pour défiler) n'est pas un tap.
+      if (event.type === 'pointercancel' && this.interaction() === 'declaration') return;
       if (down) this.onCellClick(down.cell.date, down.slot, down.element);
       return;
     }
@@ -875,7 +1078,22 @@ export class CalendarWeekView {
     // annulation, le minuteur rejouerait armDrag() et ramènerait l'ancre à la cellule de départ.
     this.cancelLongPressTimer();
     this.dragArmed.set(true);
+    // Story 52.3 — en mode déclaration, les créneaux déjà retenus survivent au geste : il y AJOUTE sa plage.
+    this.dragBase = this.interaction() === 'declaration' ? this.selectedCells() : [];
     this.armSelection(cell.date, slot);
+    if (this.dragBase.length > 0)
+      this.selectedCells.set(mergeCells(this.dragBase, this.selectedCells()));
+  }
+
+  /** Story 52.3 — les créneaux retenus avant le glissement en cours (mode déclaration), auxquels sa plage s'ajoute. */
+  private dragBase: SelectedCell[] = [];
+
+  /** Story 52.3 — en mode déclaration, le tap sur l'en-tête de colonne ajoute ou retire la journée entière (un seul
+   *  créneau `FULL_DAY`). Hors mode, l'en-tête ne répond pas. */
+  protected onHeaderClick(cell: WeekCell): void {
+    if (this.interaction() !== 'declaration' || cell.isPast) return;
+    this.currentCell.set({ date: cell.date, slot: 'FULL_DAY' });
+    this.toggleCell(cell.date, 'FULL_DAY');
   }
 
   private cancelLongPressTimer(): void {
@@ -899,7 +1117,7 @@ export class CalendarWeekView {
 
   protected onShiftArrow(cell: WeekCell, slot: DaySlot, direction: -1 | 1): void {
     // AC12 — ce chemin pose l'ancre lui-même, il lui faut donc sa propre garde.
-    if (cell.isPast || this.composing()) return;
+    if (cell.isPast || this.interaction() === 'composer') return;
     const anchor = this.selectionAnchor() ?? { date: cell.date, slot };
     if (!this.selectionAnchor()) this.selectionAnchor.set(anchor);
     const cellsArr = this.cells();
@@ -912,8 +1130,19 @@ export class CalendarWeekView {
   }
 
   /** Story 36.10, AC3 — `Échap` : une seule signification à un instant donné. */
-  protected onEscape(): void {
-    if (this.composing()) {
+  onEscape(): void {
+    // Story 52.3 — en mode déclaration, `Échap` vide d'abord la sélection ; vide, il éteint le mode (comme « Terminer »).
+    if (this.interaction() === 'declaration' && this.selectedCells().length === 0) {
+      this.declarationExitRequested.emit();
+      return;
+    }
+    if (this.interaction() === 'composer') {
+      // Story 45.3 — une barre de sélection ouverte se ferme d'abord : `Échap` n'a qu'UN sens à la fois, celui de la
+      // couche la plus proche. Sans barre, il quitte le composer.
+      if (this.selectedCells().length > 0) {
+        this.onSelectionCancelled();
+        return;
+      }
       this.composeCancelled.emit();
       return;
     }
@@ -940,6 +1169,23 @@ export class CalendarWeekView {
     const target = this.selectedCells()[0] ?? this.selectionAnchor();
     if (!target) return;
     this.declarationPanelRequested.emit({ date: target.date, slot: target.slot });
+    this.onSelectionCancelled();
+  }
+
+  /** ⚠️ Story 45.3 — « Ajouter au vote » : la sélection rejoint les créneaux composés (cumul, sans touche de
+   *  modification), puis la barre se ferme. Rien n'est écrit : seul « Valider » écrit. */
+  protected onComposeAdd(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeAdded.emit(cells);
+    this.onSelectionCancelled();
+  }
+
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  protected onComposeRemove(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeRemoved.emit(cells);
     this.onSelectionCancelled();
   }
 

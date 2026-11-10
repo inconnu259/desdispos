@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { AuthUser } from '@master-jdr/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -16,6 +17,9 @@ export class InvitationsController {
     return this.invitations.invite(id, user.id, dto.inviteeUserId);
   }
 
+  // Chaque appel envoie un e-mail depuis le domaine du site vers une adresse libre : plafond propre (20 par
+  // heure et par visiteur) pour qu'il ne serve pas de relais de spam, en plus du plafond global.
+  @Throttle({ default: { ttl: 60 * 60 * 1000, limit: 20 } })
   @Post('parties/:id/invitations/by-email')
   inviteByEmail(
     @CurrentUser() user: AuthUser,

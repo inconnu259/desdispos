@@ -15,7 +15,7 @@ jest.mock('@master-jdr/game-rules', () => ({
 }));
 
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
-import { ScenariosController } from './scenarios.controller';
+import { ScenariosController, documentContentDisposition } from './scenarios.controller';
 import { ScenariosService } from './scenarios.service';
 
 function makeScenariosService() {
@@ -35,6 +35,9 @@ function makeScenariosService() {
     setSeanceCapacity: jest.fn(),
     inscrire: jest.fn(),
     desinscrire: jest.fn(),
+    accepterReservation: jest.fn(),
+    reserver: jest.fn(),
+    retirerReservation: jest.fn(),
     setCompteRendu: jest.fn(),
     setInfosPratiques: jest.fn(),
     setResumeFin: jest.fn(),
@@ -121,7 +124,7 @@ describe('ScenariosController', () => {
 
   it('addSeance() route scenarioId/user vers ScenariosService.addSeance', async () => {
     await controller.addSeance('s1', user);
-    expect(scenarios.addSeance).toHaveBeenCalledWith('s1', 'mj1');
+    expect(scenarios.addSeance).toHaveBeenCalledWith('s1', 'mj1', undefined);
   });
 
   it('deleteSeance() route seanceId/user vers ScenariosService.deleteSeance', async () => {
@@ -135,7 +138,43 @@ describe('ScenariosController', () => {
       { date: '2026-08-02T00:00:00.000Z', slot: 'AFTERNOON' as const },
     ];
     await controller.createSeancePoll('seance1', user, { options });
-    expect(scenarios.createSeancePoll).toHaveBeenCalledWith('seance1', 'mj1', options);
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith(
+      'seance1',
+      'mj1',
+      options,
+      undefined,
+      undefined,
+    );
+  });
+
+  it('Story 45.4 — createSeancePoll() transmet la fin du vote choisie', async () => {
+    const options = [
+      { date: '2026-08-01T00:00:00.000Z', slot: 'AFTERNOON' as const },
+      { date: '2026-08-02T00:00:00.000Z', slot: 'AFTERNOON' as const },
+    ];
+    await controller.createSeancePoll('seance1', user, { options, expiresAt: '2026-07-30' });
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith(
+      'seance1',
+      'mj1',
+      options,
+      '2026-07-30',
+      undefined,
+    );
+  });
+
+  it('Story 47.4 — createSeancePoll() transmet la durée du rendez-vous', async () => {
+    const options = [
+      { date: '2026-08-01T00:00:00.000Z', slot: 'EVENING' as const },
+      { date: '2026-08-08T00:00:00.000Z', slot: 'EVENING' as const },
+    ];
+    await controller.createSeancePoll('seance1', user, { options, durationSlots: 6 });
+    expect(scenarios.createSeancePoll).toHaveBeenCalledWith(
+      'seance1',
+      'mj1',
+      options,
+      undefined,
+      6,
+    );
   });
 
   it('resetSeanceDate() route seanceId/user vers ScenariosService.resetSeanceDate', async () => {
@@ -154,6 +193,21 @@ describe('ScenariosController', () => {
   it('inscrire() route seanceId/user vers ScenariosService.inscrire', async () => {
     await controller.inscrire('seance1', user);
     expect(scenarios.inscrire).toHaveBeenCalledWith('seance1', 'mj1');
+  });
+
+  it('accepterReservation() route seanceId/user vers ScenariosService.accepterReservation (Story 40.4)', async () => {
+    await controller.accepterReservation('seance1', user);
+    expect(scenarios.accepterReservation).toHaveBeenCalledWith('seance1', 'mj1');
+  });
+
+  it('reserver() route seanceId/user et l’identifiant du membre vers ScenariosService.reserver (Story 40.4)', async () => {
+    await controller.reserver('seance1', user, { userId: 'membre1' });
+    expect(scenarios.reserver).toHaveBeenCalledWith('seance1', 'mj1', 'membre1');
+  });
+
+  it('retirerReservation() route seanceId, utilisateur et membre vers ScenariosService.retirerReservation (Story 40.4)', async () => {
+    await controller.retirerReservation('seance1', 'membre1', user);
+    expect(scenarios.retirerReservation).toHaveBeenCalledWith('seance1', 'mj1', 'membre1');
   });
 
   it('desinscrire() route seanceId/user vers ScenariosService.desinscrire', async () => {
@@ -213,7 +267,27 @@ describe('ScenariosController', () => {
     const result = await controller.downloadDocument('d1', user);
     const { disposition } = result.getHeaders();
     expect(disposition).not.toMatch(/[\r\n]/);
-    expect(disposition).toBe('attachment; filename="x.pdfX-Injected: evil"');
+    expect(disposition).toBe(`attachment; filename="x.pdf"; filename*=UTF-8''x.pdf`);
+  });
+
+  it.each([
+    [
+      'extension dangereuse remplacée par le type réel',
+      'regles.hta',
+      'application/pdf',
+      'regles.pdf',
+    ],
+    ['nom sans extension', 'notes', 'text/plain', 'notes.txt'],
+    ['séparateurs de chemin retirés', '..\\..\\x/y.pdf', 'application/pdf', '....xy.pdf'],
+    ['nom vide', '"', 'text/plain', 'document.txt'],
+  ])('documentContentDisposition : %s', (_label, name, mime, expected) => {
+    expect(documentContentDisposition(name, mime)).toContain(`filename="${expected}"`);
+  });
+
+  it('documentContentDisposition : nom accentué → repli ASCII + filename* UTF-8', () => {
+    expect(documentContentDisposition('Scénario é.pdf', 'application/pdf')).toBe(
+      `attachment; filename="Sc_nario _.pdf"; filename*=UTF-8''${encodeURIComponent('Scénario é.pdf')}`,
+    );
   });
 
   describe('upload de document — pipeline HTTP réel (multer + ParseFilePipe)', () => {

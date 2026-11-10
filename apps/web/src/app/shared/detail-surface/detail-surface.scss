@@ -6,23 +6,20 @@
 // z-index 199/200 : même paire déjà utilisée par .constraint-backdrop/app-constraint-panel
 // (calendrier) et .sheet-menu-backdrop/.sheet-menu-surface (fiche, story 31.1) — TROISIÈME
 // consommateur du même motif en dur, jamais centralisé en jeton nommé (dette déjà consignée,
-// hors périmètre de cette story).
-// 🚨 Trouvé à la vérification visuelle (Task 4) : un voile plein écran BLOQUE LES CLICS sur les
-// autres déclencheurs de la fiche pendant que le panneau est ouvert — le premier clic sur un
-// second talent le referme au lieu de le remplacer (AC4 cassé, un panneau latéral desktop ne doit
-// PAS désactiver le reste de la fiche, qui doit rester « entièrement visible » ET interactive,
-// AC2). Masqué à partir du seuil desktop : la fermeture au clic extérieur (et l'assombrissement)
-// ne concernent que la feuille mobile (AC3), où le contenu recouvert n'est de toute façon pas
-// interagissable pendant que la feuille est ouverte.
+// hors périmètre).
+//
+// ⚠️ Story 31.4 (DESIGN §7.2, contrat UI ux-jdr-master-2026-08-31) : à ≥ 1024px la surface n'est
+// plus un panneau latéral sans voile mais une FENÊTRE CENTRÉE MODALE — le voile est affiché sur
+// toute la page. Décision de l'utilisateur (2026-09-20), qui inverse celle de la revue de la 31.2
+// (voile masqué pour laisser la fiche interactive). Un voile plein écran recouvre désormais les
+// déclencheurs : plus de « remplacement en place », on ferme puis on active le suivant.
 .detail-surface-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.32);
+  // 🚨 Trouvé à l'écran (31.4, Task 9) : à .32 le voile ne se distinguait pas d'une page déjà
+  // sombre — aligné sur `{colors.overlay}` (.55) du DESIGN.
+  background: rgba(0, 0, 0, 0.55);
   z-index: 199;
-
-  @media (min-width: 1024px) {
-    display: none;
-  }
 }
 
 .detail-surface-panel {
@@ -31,24 +28,144 @@
   left: 0;
   right: 0;
   z-index: 200;
-  background: var(--mat-sys-surface);
+  // Trouvé à l'écran (31.4) : la largeur mesurée était 610px (560 + padding) — `border-box` pour tenir
+  // les 560px du contrat.
+  box-sizing: border-box;
+  // 🚨 Trouvé à l'écran (31.4, Task 9) : sur `surface` la fenêtre se confondait avec la page sombre
+  // derrière elle — fond `surface-container-high` (planche : `surface-high`) + filet.
+  background: var(--mat-sys-surface-container-high, var(--mat-sys-surface));
+  border: 1px solid var(--mat-sys-outline-variant);
   color: var(--mat-sys-on-surface);
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
-  padding: 20px 16px 24px;
+  // Zone sûre (encoche / barre d'accueil) : le bas de la feuille ne passe jamais dessous.
+  padding: 20px 16px max(24px, env(safe-area-inset-bottom));
   max-height: 85vh;
+  max-height: 85dvh;
   overflow-y: auto;
   animation: detailSurfaceSlideUp 0.25s ease-out;
 
   @media (min-width: 1024px) {
-    top: 64px;
-    bottom: 0;
-    left: auto;
-    right: 0;
-    width: 320px;
-    border-radius: 0;
-    max-height: none;
-    animation: detailSurfaceSlideIn 0.25s ease-out;
+    // `translate`/`scale` (propriétés individuelles) plutôt que `transform` : l'animation ne
+    // doit pas écraser le centrage.
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    translate: -50% -50%;
+    // `--detail-surface-width` : largeur par usage (fenêtre de choix de la réserve : 620px).
+    width: min(var(--detail-surface-width, 560px), calc(100vw - 32px));
+    max-height: 80vh;
+    max-height: 80dvh;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+    padding: 24px;
+    animation: detailSurfaceFadeIn 0.2s ease-out;
+  }
+}
+
+// Story 33.6 — en-tête et/ou pied personnalisés : le panneau devient une colonne, l'en-tête et le
+// pied sont épinglés et seul le corps défile. Hauteur fixe (et non `max-height`) pour que la
+// liste garde de la place même avec peu de contenu.
+.detail-surface-panel--split {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  height: 90vh;
+  height: 90dvh;
+
+  @media (min-width: 1024px) {
+    padding: 0;
+    height: 80vh;
+    height: 80dvh;
+    max-height: 720px;
+  }
+
+  .detail-surface-content {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+}
+
+// Hors mode « split » le conteneur du corps est transparent : rendu identique à avant.
+.detail-surface-content {
+  display: contents;
+}
+
+.detail-surface-header {
+  flex: 0 0 auto;
+  // Réserve la place du bouton de fermeture (44px, posé en absolu dans le coin).
+  padding: 10px 52px 10px 16px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.detail-surface-footer {
+  flex: 0 0 auto;
+  // `max-height` propre : sur un très petit écran, le pied défile au lieu d'avaler la liste.
+  max-height: 45%;
+  overflow-y: auto;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding: 12px 16px max(20px, env(safe-area-inset-bottom));
+
+  @media (max-height: 420px) {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+// Très petit écran en hauteur (320 × 256 : 400 % de zoom, téléphone en paysage) : en-tête et pied
+// COMPACTS pour laisser une liste défilante visible entre eux.
+@media (max-height: 420px) {
+  .detail-surface-panel--split {
+    height: 96vh;
+    height: 96dvh;
+
+    .detail-surface-content {
+      padding: 6px 12px;
+    }
+  }
+
+  .detail-surface-header {
+    padding: 4px 48px 4px 12px;
+  }
+
+  .detail-surface-footer {
+    padding: 6px 12px max(6px, env(safe-area-inset-bottom));
+  }
+}
+
+// ⚠️ Story 40.1 — variante LARGE (fenêtre d'une conjonction, contrat UX : EventDialog), activée
+// par `wide` uniquement : les autres surfaces gardent leurs dimensions. Desktop : `min(900px, 96vw)`,
+// au plus 94vh, défilement interne (le corps défile entre en-tête et pied en mode « split »).
+// Mobile : plein écran. Double classe : prime sur `--split` et sur sa variante très basse.
+.detail-surface-panel.detail-surface-panel--wide {
+  inset: 0;
+  width: auto;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  border-width: 0;
+
+  @media (min-width: 1024px) {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: min(900px, 96vw);
+    height: auto;
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: 16px;
+    border-width: 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-surface-panel {
+    animation: none;
   }
 }
 
@@ -61,22 +178,32 @@
   }
 }
 
-@keyframes detailSurfaceSlideIn {
+@keyframes detailSurfaceFadeIn {
   from {
-    transform: translateX(100%);
+    opacity: 0;
+    scale: 0.97;
   }
   to {
-    transform: translateX(0);
+    opacity: 1;
+    scale: 1;
   }
 }
 
 .detail-surface-close {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  // Cible tactile de 44px (Story 33.6), pour toutes les surfaces.
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
-  font-size: 1.1rem;
+  // Pictogramme <app-icon> « fermer » : bouton nommé (aria-label), icône décorative de 20 px.
+  --app-icon-size: 20px;
   line-height: 1;
   cursor: pointer;
   color: var(--mat-sys-on-surface);
@@ -84,7 +211,7 @@
 }
 
 .detail-surface-title {
-  margin: 0 32px 12px 0;
+  margin: 0 44px 12px 0;
   font-size: 1rem;
   font-weight: 600;
 }
@@ -93,4 +220,76 @@
   margin: 0;
   white-space: pre-line;
   line-height: 1.5;
+}
+
+// Tableau mécanique (DESIGN §7.2) : deux colonnes libellé / valeur, filets entre les lignes.
+.detail-surface-rows {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+
+  th,
+  td {
+    padding: 6px 0;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    width: 34%;
+    padding-right: 8px;
+    font-weight: 500;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  tr + tr th,
+  tr + tr td {
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+// Récit d'ambiance : après le tableau, en italique atténué.
+.detail-surface-narrative {
+  margin: 0;
+  font-style: italic;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Divulgation du récit (mobile uniquement — le gabarit ne la rend pas à ≥ 1024px). Cible ≥ 44px.
+.detail-surface-disclosure {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--mat-sys-primary);
+  cursor: pointer;
+  text-align: left;
+  gap: 0.35rem;
+  // Pictogramme <app-icon> « déplier » : décoratif, avant le texte.
+  --app-icon-size: 16px;
+}
+
+// « déplier » pointe vers le bas (ouvert) ; replié, il est tourné de −90° (vers la droite).
+.detail-surface-disclosure__icon {
+  transition: rotate 0.15s ease;
+}
+
+.detail-surface-disclosure__icon--closed {
+  rotate: -90deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-surface-disclosure__icon {
+    transition: none;
+  }
 }

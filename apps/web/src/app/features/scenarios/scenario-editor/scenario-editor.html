@@ -7,7 +7,7 @@
       @if (!isReadOnly()) {
         <app-field-edit-pencil
           #titlePencil
-          label="le titre"
+          [label]="theme.tone()['scenarios.editor_pencil_title']"
           [value]="s.title"
           (confirm)="onFieldConfirm('title', $event)"
         />
@@ -20,16 +20,18 @@
           [disabled]="markCourantPending()"
           (click)="markCourant()"
         >
-          Marquer comme Courant
+          {{ theme.tone()['scenarios.editor_mark_courant'] }}
         </button>
       }
       @if (s.status === 'COURANT') {
         <button mat-button type="button" [disabled]="closePending()" (click)="close()">
-          Clôturer le scénario
+          {{ theme.tone()['scenarios.editor_close'] }}
         </button>
       }
+      <!-- Story 47.1 : la durée de la séance à ajouter (1 créneau par défaut). -->
+      <app-duration-stepper [(value)]="newSeanceDuration" />
       <button mat-button type="button" [disabled]="addSeancePending()" (click)="addSeance()">
-        Ajouter une séance
+        {{ theme.tone()['scenarios.editor_add_seance'] }}
       </button>
     </header>
 
@@ -47,10 +49,10 @@
 
     @if (s.status === 'PASSE') {
       <section class="resume-fin">
-        <h2>Résumé de fin</h2>
+        <h2>{{ theme.tone()['common.resume_de_fin'] }}</h2>
         @if (!s.resumeFin) {
           <p class="hint">
-            Aucun résumé pour l’instant — rédigez-le pour clore la rétrospective.
+            {{ theme.tone()['scenarios.editor_resume_empty_hint'] }}
           </p>
         }
         <textarea
@@ -63,7 +65,7 @@
           [disabled]="resumeFinPending()"
           (click)="submitResumeFin()"
         >
-          Enregistrer le résumé de fin
+          {{ theme.tone()['scenarios.editor_save_resume'] }}
         </button>
         @if (resumeFinError()) {
           <p class="error">{{ resumeFinError() }}</p>
@@ -77,12 +79,13 @@
       [isMj]="true"
       [isEpisodique]="isEpisodique()"
       [members]="members()"
+      [membersLoaded]="membersLoaded()"
       (seanceLinked)="onSeanceLinked($event)"
     />
 
     @if (isEpisodique()) {
       <section class="participants">
-        <h2>Participants</h2>
+        <h2>{{ theme.tone()['common.participants'] }}</h2>
         @if (participantsLoadError()) {
           <p class="error">{{ participantsLoadError() }}</p>
         }
@@ -100,13 +103,13 @@
                   [pseudo]="p.pseudo"
                   [ambiguous]="isParticipantAmbiguous(p.userId)"
                 />
-                <span class="hint">(pas encore de personnage)</span>
+                <span class="hint">{{ theme.tone()['common.pas_encore_de_personnage'] }}</span>
               </li>
             }
           </ul>
         }
         @if (participantCharacters().length === 0 && participantsWithoutCharacter().length === 0) {
-          <p>Aucun participant pour l’instant.</p>
+          <p>{{ theme.tone()['scenarios.editor_no_participants'] }}</p>
         }
       </section>
     }
@@ -123,7 +126,7 @@
           [disabled]="fieldPending('description')"
           (click)="submitDescription()"
         >
-          Enregistrer
+          {{ theme.tone()['common.enregistrer'] }}
         </button>
       } @else {
         <p>{{ s.description }}</p>
@@ -139,14 +142,14 @@
       @if (!isReadOnly()) {
         <app-field-edit-pencil
           #dureeHeuresPencil
-          label="la durée en heures"
+          [label]="theme.tone()['scenarios.editor_pencil_duree_heures']"
           type="number"
           [value]="s.dureeHeures ?? ''"
           (confirm)="onFieldConfirm('dureeHeures', $event)"
         />
         <app-field-edit-pencil
           #dureeSeancesPencil
-          label="la durée en séances"
+          [label]="theme.tone()['scenarios.editor_pencil_duree_seances']"
           type="number"
           [value]="s.dureeSeances ?? ''"
           (confirm)="onFieldConfirm('dureeSeances', $event)"
@@ -163,7 +166,7 @@
         <p class="error">{{ documentsError() }}</p>
       }
 
-      <h2>Documents du scénario</h2>
+      <h2>{{ theme.tone()['scenarios.editor_documents_title'] }}</h2>
       <ul>
         @for (doc of ownDocuments(); track doc.id) {
           <li
@@ -175,7 +178,7 @@
             (keydown.enter)="downloadDocument(doc)"
             (keydown.space)="$event.preventDefault(); downloadDocument(doc)"
           >
-            <mat-icon>description</mat-icon>
+            <app-icon name="document" />
             {{ doc.originalName }} ({{ doc.sizeBytes }} o)
           </li>
         }
@@ -189,7 +192,7 @@
         />
       }
 
-      <h2>Bibliothèque de campagne</h2>
+      <h2>{{ theme.tone()['scenarios.editor_library_title'] }}</h2>
       <ul>
         @for (doc of libraryDocuments(); track doc.id) {
           <li
@@ -201,8 +204,9 @@
             (keydown.enter)="downloadDocument(doc)"
             (keydown.space)="$event.preventDefault(); downloadDocument(doc)"
           >
-            <mat-icon>description</mat-icon>
-            {{ doc.originalName }} ({{ doc.sizeBytes }} o) — bibliothèque campagne
+            <app-icon name="document" />
+            {{ doc.originalName }} ({{ doc.sizeBytes }} o)
+            {{ theme.tone()['scenarios.editor_library_doc_suffix'] }}
           </li>
         }
       </ul>
@@ -223,7 +227,7 @@
 
     @if (scenarioAnnouncements().length > 0) {
       <section class="scenario-announcements">
-        <h2>Annonces</h2>
+        <h2>{{ theme.tone()['common.annonces'] }}</h2>
         @for (a of scenarioAnnouncements(); track a.id) {
           <app-annonce-card
             [announcement]="a"

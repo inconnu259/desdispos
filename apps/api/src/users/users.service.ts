@@ -34,14 +34,22 @@ export class UsersService {
   }
 
   /**
-   * Recherche par **email OU pseudo** en correspondance **exacte** (spec §4).
+   * Recherche par **pseudo uniquement**, en correspondance **partielle et insensible à la
+   * casse** (Story 32.1 — l'e-mail n'est plus un critère de recherche, seule l'invitation par
+   * e-mail exact, `inviteByEmail()`, reste un chemin séparé). Plafonnée à 10 résultats, triés par
+   * pseudo pour un top 10 déterministe. `q` est trim (défense en profondeur, le client trim déjà)
+   * et ses métacaractères LIKE (`\`, `%`, `_`) sont échappés avant `contains` — sinon ils
+   * changeraient la sémantique de la recherche pour un utilisateur qui les tape littéralement.
    * Ne renvoie que l'identifiant public (id, pseudo) — ni le hash, ni l'e-mail, ni le nom
    * affiché (AD-2, seule exception à « pseudo et displayName toujours les deux »).
    */
-  searchByEmailOrPseudo(q: string) {
+  searchByPseudo(q: string) {
+    const escaped = q.trim().replace(/[\\%_]/g, (c) => `\\${c}`);
     return this.prisma.user.findMany({
-      where: { OR: [{ email: q }, { pseudo: q }] },
+      where: { pseudo: { contains: escaped, mode: 'insensitive' } },
       select: { id: true, pseudo: true },
+      orderBy: { pseudo: 'asc' },
+      take: 10,
     });
   }
 

@@ -27,6 +27,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const STYLESHEETS = [
   resolve(HERE, './party-banner.scss'),
   resolve(HERE, '../party-countdown/party-countdown.scss'),
+  // Bande de marque des écrans d'authentification (Story 34.4, matrice « Mouvement »).
+  resolve(HERE, '../../features/auth/auth-band/auth-band.scss'),
 ];
 
 /** Seules propriétés animables. Tout le reste force le navigateur à repeindre la page. */
@@ -111,5 +113,26 @@ describe('Garde AC6 — aucune animation hors transform/opacity (Story 29.11)', 
     );
     expect(rejected).toContain('width');
     expect(rejected).toContain('left');
+  });
+});
+
+describe('Bande d’authentification — repos et réduction des animations (Story 34.4)', () => {
+  const source = readFileSync(
+    resolve(HERE, '../../features/auth/auth-band/auth-band.scss'),
+    'utf8',
+  ).replace(/\s+/g, ' ');
+
+  it('la comète n’existe qu’en mouvement : .fly est à opacity 0 de base', () => {
+    expect(source).toMatch(/\.fly \{ opacity: 0; \}/);
+  });
+
+  it('prefers-reduced-motion coupe tout le décor d’office (animation: none)', () => {
+    expect(source).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{ \.scene \* \{ animation: none !important; \} \}/,
+    );
+  });
+
+  it('la pause fige sur place (animation-play-state: paused), sans retour au repos', () => {
+    expect(source).toMatch(/\.is-paused \.scene \* \{ animation-play-state: paused !important; \}/);
   });
 });

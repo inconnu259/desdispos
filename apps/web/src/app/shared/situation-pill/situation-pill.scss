@@ -1,0 +1,64 @@
+/* Story 53.1 — la pastille « Ma situation ». Même gabarit que `.status-badge` (padding 1px 8px,
+   rayon 6px, 12px) mais en graisse 600. Aucun token nouveau : uniquement des `--jdr-*` existants.
+   Le libellé est toujours présent, la teinte et la forme du contour le doublent (jamais la
+   couleur seule). */
+.situation-pill {
+  display: inline-block;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 1px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+/* Je mène : contour et texte accent-1, fond transparent. */
+.situation-pill--je_mene {
+  color: var(--jdr-accent-1, #7ec8a4);
+  border-color: var(--jdr-accent-1, #7ec8a4);
+  background: transparent;
+}
+
+/* Vote à faire et Place réservée : l'appel à l'action — fond status-todo à 16 % + contour plein
+   (Story 53.2 : le contour passe de 45 % à la couleur pleine, comme l'ancienne chip des cartes). */
+.situation-pill--vote_a_faire,
+.situation-pill--place_reservee {
+  color: var(--jdr-status-todo, #f0a030);
+  border-color: var(--jdr-status-todo, #f0a030);
+  background: color-mix(in srgb, var(--jdr-status-todo, #f0a030) 16%, transparent);
+}
+
+/* J'ai voté : contour et texte status-live, sans fond (c'est fait, plus rien d'urgent). */
+.situation-pill--j_ai_vote {
+  color: var(--jdr-status-live, #3fd4ff);
+  border-color: var(--jdr-status-live, #3fd4ff);
+  background: transparent;
+}
+
+/* Je participe : status-live, fond à 12 % + contour. */
+.situation-pill--je_participe {
+  color: var(--jdr-status-live, #3fd4ff);
+  border-color: var(--jdr-status-live, #3fd4ff);
+  background: color-mix(in srgb, var(--jdr-status-live, #3fd4ff) 12%, transparent);
+}
+
+/* Pas inscrit·e : contour POINTILLÉ text-muted, texte à plein contraste — la forme du contour
+   (pointillé) distingue, sans que le texte ne s'affadisse. */
+.situation-pill--pas_inscrit {
+  color: var(--jdr-text, #e8e0f0);
+  border-color: var(--jdr-text-muted, #9b8fb0);
+  border-style: dotted;
+  background: transparent;
+}
+
+/* J'y étais : status-done à 12 % de fond, texte ATTÉNUÉ (`text-muted`, jamais `status-done` en
+   texte — même famille que le fond, illisible), comme `.status-badge--done`. */
+.situation-pill--j_y_etais {
+  color: var(--jdr-text-muted, #9b8fb0);
+  border-color: var(--jdr-status-done, #5a5a6a);
+  background: color-mix(in srgb, var(--jdr-status-done, #5a5a6a) 12%, transparent);
+}
+
+/* Aucune animation ni transition : rien à couper sous `prefers-reduced-motion: reduce`. */

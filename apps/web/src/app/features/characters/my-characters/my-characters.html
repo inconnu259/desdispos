@@ -1,3 +1,5 @@
+<app-character-creation-entries [entries]="creationEntries()" />
+
 <app-list-control-bar
   [viewMode]="charactersViewMode()"
   [sortOptions]="sortOptionsForBar()"
@@ -10,8 +12,12 @@
   (searchQueryChange)="query.set($event)"
 />
 
+@if (hommesDragonsError()) {
+  <p class="notice" role="status">{{ theme.tone()['characters_list.homme_dragons_load_error'] }}</p>
+}
+
 @if (all().length === 0) {
-  <p class="empty">{{ theme.tone()['my_characters.empty'] }}</p>
+  <p class="empty">{{ theme.tone()[emptyMessageKey()] }}</p>
 } @else if (filtered().length === 0) {
   <p class="empty">{{ theme.tone()['my_characters.no_match'] }}</p>
 } @else {
@@ -19,18 +25,32 @@
        Encombrement) — c'est ce qui le distingue réellement du mode moyen, qu'aucune spec ne
        différenciait (EXPERIENCE.md:107 impose seulement de transposer la grammaire des parties). -->
   <div class="list" [class]="gridDensityClass()">
-    @for (c of filtered(); track c.id) {
-      <app-character-summary-card
-        [character]="c"
-        [partieName]="c.partieName"
-        [density]="charactersViewMode()"
-        [className]="c.classLabel ?? ''"
-        [typeLabel]="c.typeLabel"
-        [groupRoleLabel]="c.groupRoleLabel"
-        [showMjMarker]="true"
-        [showStats]="charactersViewMode() === 'large'"
-        (selected)="open(c)"
-      />
+    @for (item of filtered(); track item.kind + ':' + item.id) {
+      @if (item.kind === 'character') {
+        <app-character-summary-card
+          [character]="item.character"
+          [partieName]="item.character.partieName"
+          [density]="charactersViewMode()"
+          [className]="item.character.classLabel ?? ''"
+          [typeLabel]="item.character.typeLabel"
+          [groupRoleLabel]="item.character.groupRoleLabel"
+          [showMjMarker]="true"
+          [showStats]="charactersViewMode() === 'large'"
+          (selected)="open(item)"
+        />
+      } @else {
+        <!-- Homme Dragon (Story 33.5) : même carte et même grille, `NatureMarker` en plus ; la race
+             tient lieu de classe. Ni niveau ni statistiques. Une seule carte par Homme Dragon,
+             avec les noms de toutes ses aventures (ou « Sans aventure », Story 33.8). -->
+        <app-character-summary-card
+          [hommeDragon]="item.hommeDragon"
+          [partieName]="aventuresLabel(item.hommeDragon.aventures)"
+          [density]="charactersViewMode()"
+          [className]="raceLabels[item.hommeDragon.race] ?? ''"
+          [showStats]="false"
+          (selected)="open(item)"
+        />
+      }
     }
   </div>
 }

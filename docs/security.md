@@ -21,27 +21,32 @@ isolation des données par utilisateur/partie (un joueur ne voit que ses persos)
 ## Checklist par couche
 
 ### Authentification (dès le palier auth)
-- [ ] Mots de passe hachés avec **argon2** (ou bcrypt) — jamais en clair.
-- [ ] **Rate-limiting** sur `/login` (`@nestjs/throttler`) + verrouillage après N échecs.
-- [ ] Cookies de session **HttpOnly + Secure + SameSite=Lax/Strict** (préférable à un token en localStorage).
+- [x] Mots de passe hachés avec **argon2** (ou bcrypt) — jamais en clair.
+- [x] **Rate-limiting** sur `/login` (`@nestjs/throttler`, 5/min par visiteur — IP réelle via
+      `TRUST_PROXY` + `CF-Connecting-IP`). Pas de verrouillage de compte (il offrirait un déni de service ciblé).
+- [x] Cookies de session **HttpOnly + Secure + SameSite=Lax** ; contrôle d'Origin sur les requêtes qui
+      modifient (CSRF, login CSRF) ; durée de vie absolue de 30 jours.
 - [ ] Politique de mot de passe minimale ; (option) vérification d'e-mail.
-- [ ] Secrets de signature (JWT/session) **longs, aléatoires, hors du code**.
+- [x] Secrets de signature (JWT/session) **longs, aléatoires, hors du code** — démarrage refusé en prod
+      sinon (`apps/api/src/config/env.ts`).
 
 ### API (NestJS)
-- [ ] **Helmet** (en-têtes de sécurité) activé.
-- [ ] **CORS** verrouillé sur l'origine du front uniquement.
-- [ ] **Validation** stricte des entrées (`class-validator` + `whitelist: true`, `forbidNonWhitelisted`).
-- [ ] Requêtes via **Prisma** (paramétrées → pas d'injection SQL).
-- [ ] **Autorisation** vérifiée à chaque accès (le MJ d'une partie ≠ un autre MJ ; un joueur ≠ ses voisins).
+- [x] **Helmet** (en-têtes de sécurité) activé.
+- [x] **CORS** verrouillé sur l'origine du front uniquement (en prod : une seule origine, nginx relaie `/api`).
+- [x] **Validation** stricte des entrées (`class-validator` + `whitelist: true`, `forbidNonWhitelisted`),
+      bornes sur tous les champs libres (`@MaxJsonSize`).
+- [x] Requêtes via **Prisma** (paramétrées → pas d'injection SQL).
+- [x] **Autorisation** vérifiée à chaque accès (`PermissionService.assert`), y compris à chaque battement
+      des flux temps réel.
 - [ ] Pas de **stack trace** ni détail interne renvoyé en prod.
 
 ### Front (Angular)
-- [ ] S'appuyer sur l'**échappement automatique** d'Angular ; **jamais** `bypassSecurityTrust*` sans raison.
-- [ ] **CSP** en place ; aucun secret côté front.
+- [x] S'appuyer sur l'**échappement automatique** d'Angular ; **jamais** `bypassSecurityTrust*` sans raison.
+- [x] **CSP** en place (nginx, `docker/nginx-security-headers.conf`) ; aucun secret côté front.
 
 ### Secrets & config
-- [ ] `.env` **dans `.gitignore`**, `.env.example` committé (sans valeurs).
-- [ ] **Validation des variables d'env** au démarrage (échec rapide si manquant).
+- [x] `.env` **dans `.gitignore`**, `.env.prod.example` committé (sans valeurs).
+- [x] **Validation des variables d'env** au démarrage (échec rapide si manquant ou valeur de dev).
 
 ### Dépendances
 - [x] **`pnpm audit`** automatisé — `.github/workflows/audit.yml` : hebdomadaire, plus à chaque PR
@@ -92,11 +97,11 @@ n'utilise rien (l'adaptateur en service est `HandlebarsAdapter`). Passer à `nod
 supprimerait la racine de la majorité de ces chaînes. Chantier à chiffrer, non planifié.
 
 ### Conteneurs (Docker)
-- [ ] Image **slim**, exécution en **utilisateur non-root**.
-- [ ] **Aucun secret** dans l'image ; `.dockerignore` complet.
+- [x] Image **slim**, exécution en **utilisateur non-root** (`docker/prod.*.Dockerfile`).
+- [x] **Aucun secret** dans l'image ; `.dockerignore` complet.
 - [ ] **Trivy** : scan CVE des images (en CI).
 
-### Infra (Raspberry Pi)
+### Infra (Raspberry Pi) — procédure : `docs/deploiement.md`
 - [ ] **Cloudflare Tunnel** → **aucun port entrant ouvert**, IP perso masquée, TLS + WAF/DDoS.
 - [ ] OS + Docker **à jour** ; sauvegardes de la base ; (option) fail2ban.
 

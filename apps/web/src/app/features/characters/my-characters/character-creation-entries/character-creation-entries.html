@@ -1,0 +1,39 @@
+@if (entries().length > 0) {
+  <section class="character-creation-entries">
+    <h2 class="character-creation-entries__title">{{ theme.tone()['my_characters.create_title'] }}</h2>
+    <div class="character-creation-entries__grid">
+      @for (entry of visibleEntries(); track trackKey(entry)) {
+        <a
+          class="character-creation-entries__row"
+          [class.character-creation-entries__row--dragon]="entry.kind === 'hommeDragon'"
+          [routerLink]="entryLink(entry)"
+          [queryParams]="entry.kind === 'hommeDragon' ? null : { gameSystemId: entry.gameSystemId }"
+        >
+          <span class="character-creation-entries__badge" aria-hidden="true">+</span>
+          <span class="character-creation-entries__text">
+            <span class="character-creation-entries__label">{{ entryLabel(entry) }}</span>
+            @if (entry.kind === 'hommeDragon') {
+              <!-- Le libellé porte déjà la nature pour les lecteurs d'écran : marqueur décoratif ici. -->
+              <span class="character-creation-entries__nature" aria-hidden="true">
+                <app-nature-marker />
+              </span>
+            }
+          </span>
+          <span class="character-creation-entries__chevron" aria-hidden="true">
+            <app-icon name="ouvrir" />
+          </span>
+        </a>
+      }
+    </div>
+    @if (entries().length > 3) {
+      <button
+        type="button"
+        class="character-creation-entries__toggle"
+        [attr.aria-expanded]="expanded()"
+        (click)="toggle()"
+      >
+        {{ expanded() ? theme.tone()['my_characters.create_less'] : moreLabel() }}
+      </button>
+    }
+  </section>
+}

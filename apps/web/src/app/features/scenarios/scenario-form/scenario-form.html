@@ -1,23 +1,23 @@
 <mat-card class="form-card">
-  <mat-card-title>Nouveau scénario</mat-card-title>
+  <mat-card-title>{{ theme.tone()['scenarios.form_title'] }}</mat-card-title>
   <form [formGroup]="form" (ngSubmit)="submit()">
     <mat-form-field appearance="outline">
-      <mat-label>Titre</mat-label>
+      <mat-label>{{ theme.tone()['common.titre'] }}</mat-label>
       <input matInput formControlName="title" />
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>Description (optionnel)</mat-label>
+      <mat-label>{{ theme.tone()['scenarios.form_description_label'] }}</mat-label>
       <textarea matInput formControlName="description" rows="3"></textarea>
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>Durée en heures (optionnel)</mat-label>
+      <mat-label>{{ theme.tone()['scenarios.form_duree_heures_label'] }}</mat-label>
       <input matInput type="number" formControlName="dureeHeures" />
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>Durée en séances (optionnel)</mat-label>
+      <mat-label>{{ theme.tone()['scenarios.form_duree_seances_label'] }}</mat-label>
       <input matInput type="number" formControlName="dureeSeances" />
     </mat-form-field>
 
@@ -25,8 +25,12 @@
       <p class="error">{{ error() }}</p>
     }
     <div class="actions">
-      <button mat-button type="button" (click)="cancel()">Annuler</button>
-      <button mat-flat-button type="submit" [disabled]="saving() || form.invalid">Créer</button>
+      <button mat-button type="button" (click)="cancel()">
+        {{ theme.tone()['common.annuler'] }}
+      </button>
+      <button mat-flat-button type="submit" [disabled]="saving() || form.invalid">
+        {{ theme.tone()['common.creer'] }}
+      </button>
     </div>
   </form>
 </mat-card>

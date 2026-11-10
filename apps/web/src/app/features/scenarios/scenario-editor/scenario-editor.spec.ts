@@ -21,6 +21,9 @@ import { UnseenAnnouncementsService } from '../../../core/announcements/unseen-a
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { makeAnnouncementDto } from '../../../core/announcements/announcement-dto.fixture';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const SCENARIO: ScenarioDto = {
   id: 's1',
@@ -60,9 +63,9 @@ const PARTIE: PartieDto = {
   kind: 'CAMPAGNE_EPISODIQUE',
   gameSystemId: 'draconis',
   description: null,
-  mjId: 'mj1',
-  mjPseudo: 'mj-pseudo',
-  mjDisplayName: 'MJ Nom',
+  ownerId: 'mj1',
+  ownerPseudo: 'mj-pseudo',
+  ownerDisplayName: 'MJ Nom',
   createdAt: '',
   nextSessionDate: null,
   nextSessionSlot: null,
@@ -70,6 +73,7 @@ const PARTIE: PartieDto = {
   status: 'EN_COURS',
   isFavorite: false,
   coverImageVersion: null,
+  can: { coverUpdate: true },
 };
 
 async function createComponent(
@@ -81,6 +85,7 @@ async function createComponent(
   unseenAnnouncementIds: string[] = [],
   markAnnouncementRead: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue(undefined),
   announcementIdQueryParam: string | null = null,
+  members: unknown[] | Error = [],
 ) {
   const scenariosSvc = {
     listAll: vi.fn().mockResolvedValue([scenario]),
@@ -97,7 +102,11 @@ async function createComponent(
   };
   const characterSvc = { listByPartie: vi.fn().mockResolvedValue(characters) };
   const partiesSvc = {
-    members: vi.fn().mockResolvedValue([]),
+    members: vi
+      .fn()
+      .mockImplementation(() =>
+        members instanceof Error ? Promise.reject(members) : Promise.resolve(members),
+      ),
     get: vi.fn().mockResolvedValue(partie),
   };
   const pollSvc = { chooseDate: vi.fn(), closePoll: vi.fn() };
@@ -355,7 +364,7 @@ describe('ScenarioEditor', () => {
     );
     const button = Array.from(
       fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).find((b) => b.textContent?.includes('Enregistrer'))!;
+    ).find((b) => b.textContent?.trim() === GRIMOIRE_TONE['common.enregistrer'])!;
 
     const clickPromise = (fixture.componentInstance as any).submitDescription();
     fixture.detectChanges();
@@ -453,6 +462,18 @@ describe('ScenarioEditor', () => {
     expect(comp.downloadError()).toBeNull();
   });
 
+  it('chaque ligne de document porte le pictogramme document, décoratif', async () => {
+    const { fixture } = await createComponent();
+    const rows = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.document-row'),
+    ) as HTMLElement[];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.querySelector('app-icon')?.getAttribute('data-icon')).toBe('document');
+      expect(row.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
   it('document-row : classe "disabled" pendant le téléchargement (Story 13.1, AC1)', async () => {
     const { fixture, scenariosSvc } = await createComponent();
     let resolveCall: (v: unknown) => void;
@@ -480,7 +501,9 @@ describe('ScenarioEditor', () => {
         const { fixture } = await createComponent({ ...SCENARIO, status });
         expect(
           Array.from(fixture.nativeElement.querySelectorAll('button')).some((b) =>
-            (b as HTMLElement).textContent?.includes('Marquer comme Courant'),
+            (b as HTMLElement).textContent?.includes(
+              GRIMOIRE_TONE['scenarios.editor_mark_courant'],
+            ),
           ),
         ).toBe(false);
       },
@@ -490,7 +513,7 @@ describe('ScenarioEditor', () => {
       const { fixture } = await createComponent({ ...SCENARIO, status: 'A_VENIR' });
       expect(
         Array.from(fixture.nativeElement.querySelectorAll('button')).some((b) =>
-          (b as HTMLElement).textContent?.includes('Marquer comme Courant'),
+          (b as HTMLElement).textContent?.includes(GRIMOIRE_TONE['scenarios.editor_mark_courant']),
         ),
       ).toBe(true);
     });
@@ -547,7 +570,7 @@ describe('ScenarioEditor', () => {
       );
       const button = Array.from(
         fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-      ).find((b) => b.textContent?.includes('Marquer comme Courant'))!;
+      ).find((b) => b.textContent?.includes(GRIMOIRE_TONE['scenarios.editor_mark_courant']))!;
 
       const comp = fixture.componentInstance as any;
       const clickPromise = comp.markCourant();
@@ -586,7 +609,7 @@ describe('ScenarioEditor', () => {
         const { fixture } = await createComponent({ ...SCENARIO, status });
         expect(
           Array.from(fixture.nativeElement.querySelectorAll('button')).some((b) =>
-            (b as HTMLElement).textContent?.includes('Clôturer le scénario'),
+            (b as HTMLElement).textContent?.includes(GRIMOIRE_TONE['scenarios.editor_close']),
           ),
         ).toBe(false);
       },
@@ -596,7 +619,7 @@ describe('ScenarioEditor', () => {
       const { fixture } = await createComponent({ ...SCENARIO, status: 'COURANT' });
       expect(
         Array.from(fixture.nativeElement.querySelectorAll('button')).some((b) =>
-          (b as HTMLElement).textContent?.includes('Clôturer le scénario'),
+          (b as HTMLElement).textContent?.includes(GRIMOIRE_TONE['scenarios.editor_close']),
         ),
       ).toBe(true);
     });
@@ -658,7 +681,7 @@ describe('ScenarioEditor', () => {
       );
       const button = Array.from(
         fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-      ).find((b) => b.textContent?.includes('Clôturer le scénario'))!;
+      ).find((b) => b.textContent?.includes(GRIMOIRE_TONE['scenarios.editor_close']))!;
 
       const comp = fixture.componentInstance as any;
       const clickPromise = comp.close();
@@ -693,7 +716,7 @@ describe('ScenarioEditor', () => {
   describe('Section participants (vue MJ, non-régression 8.1)', () => {
     it('scénario ONE_SHOT/CAMPAGNE_LINEAIRE (participants undefined) → section absente', async () => {
       const { fixture } = await createComponent({ ...SCENARIO, status: 'COURANT' });
-      expect(fixture.nativeElement.textContent).not.toContain('Participants');
+      expect(fixture.nativeElement.textContent).not.toContain(GRIMOIRE_TONE['common.participants']);
     });
 
     it('CAMPAGNE_EPISODIQUE avec participants → CharacterSummaryCard affichée pour chacun', async () => {
@@ -706,7 +729,7 @@ describe('ScenarioEditor', () => {
         },
         [alice],
       );
-      expect(fixture.nativeElement.textContent).toContain('Participants');
+      expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['common.participants']);
       expect(fixture.nativeElement.querySelectorAll('app-character-summary-card')).toHaveLength(1);
     });
 
@@ -716,7 +739,9 @@ describe('ScenarioEditor', () => {
         status: 'COURANT',
         participants: [],
       });
-      expect(fixture.nativeElement.textContent).toContain('Aucun participant pour l’instant.');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['scenarios.editor_no_participants'],
+      );
       expect(fixture.nativeElement.querySelectorAll('app-character-summary-card')).toHaveLength(0);
     });
 
@@ -776,10 +801,10 @@ describe('ScenarioEditor', () => {
 
       const comp = fixture.componentInstance as any;
       expect(comp.participantsLoadError()).toBe(
-        'Impossible de charger les participants. Réessayez.',
+        GRIMOIRE_TONE['scenarios.editor_participants_load_error'],
       );
       expect(fixture.nativeElement.textContent).toContain(
-        'Impossible de charger les participants. Réessayez.',
+        GRIMOIRE_TONE['scenarios.editor_participants_load_error'],
       );
     });
 
@@ -794,7 +819,9 @@ describe('ScenarioEditor', () => {
       );
       expect(fixture.nativeElement.querySelectorAll('app-character-summary-card')).toHaveLength(0);
       expect(fixture.nativeElement.textContent).toContain('Bob');
-      expect(fixture.nativeElement.textContent).toContain('pas encore de personnage');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['common.pas_encore_de_personnage'],
+      );
     });
 
     it('AC3 : deux participants sans personnage partageant le même displayName → pseudo affiché en complément', async () => {
@@ -859,8 +886,20 @@ describe('ScenarioEditor', () => {
 
       await comp.addSeance();
 
-      expect(scenariosSvc.addSeance).toHaveBeenCalledWith('s1');
+      expect(scenariosSvc.addSeance).toHaveBeenCalledWith('s1', 1);
       expect(comp.scenario().seances).toHaveLength(1);
+    });
+
+    it('Story 47.1 : la durée choisie part avec l’ajout, puis le compteur revient à 1 créneau', async () => {
+      const { fixture, scenariosSvc } = await createComponent();
+      const comp = fixture.componentInstance as any;
+      scenariosSvc.addSeance.mockResolvedValue({ ...SCENARIO, seances: [] });
+      comp.newSeanceDuration.set(6);
+
+      await comp.addSeance();
+
+      expect(scenariosSvc.addSeance).toHaveBeenCalledWith('s1', 6);
+      expect(comp.newSeanceDuration()).toBe(1);
     });
 
     it('échec → addSeanceError affiche le message serveur', async () => {
@@ -904,7 +943,7 @@ describe('ScenarioEditor', () => {
       );
       const button = Array.from(
         fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-      ).find((b) => b.textContent?.includes('Ajouter une séance'))!;
+      ).find((b) => b.textContent?.includes(GRIMOIRE_TONE['scenarios.editor_add_seance']))!;
 
       const clickPromise = (fixture.componentInstance as any).addSeance();
       fixture.detectChanges();
@@ -973,7 +1012,9 @@ describe('ScenarioEditor', () => {
         status: 'PASSE',
         resumeFin: null,
       });
-      expect(fixture.nativeElement.textContent).toContain('Aucun résumé pour l’instant');
+      expect(fixture.nativeElement.textContent).toContain(
+        GRIMOIRE_TONE['scenarios.editor_resume_empty_hint'].split(' —')[0],
+      );
     });
 
     it('statut PASSE avec résumé déjà rédigé → valeur pré-remplie dans le textarea', async () => {
@@ -1059,7 +1100,7 @@ describe('ScenarioEditor', () => {
       );
       const button = Array.from(
         fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-      ).find((b) => b.textContent?.includes('Enregistrer le résumé de fin'))!;
+      ).find((b) => b.textContent?.includes(GRIMOIRE_TONE['scenarios.editor_save_resume']))!;
 
       const clickPromise = (fixture.componentInstance as any).submitResumeFin();
       fixture.detectChanges();
@@ -1429,5 +1470,87 @@ describe('ScenarioEditor', () => {
 
       expect(comp.resumeFinDraft()).toBe('Résumé rédigé ailleurs');
     });
+  });
+});
+
+// Story 54.3 (revue) — le branchement éditeur → fiche : la liste des membres nomme les absents du résumé.
+describe('ScenarioEditor — résumé du vote du MJ (Story 54.3)', () => {
+  const POLL_OPEN = {
+    id: 'poll1',
+    partieId: 'p1',
+    status: 'OPEN' as const,
+    scenarioRef: null,
+    expiresAt: null,
+    chosenDate: null,
+    chosenSlot: null,
+    membersCount: 3,
+    durationSlots: 1,
+    options: [
+      {
+        id: 'o1',
+        date: '2099-01-01T00:00:00.000Z',
+        slot: 'EVENING' as const,
+        votes: [{ userId: 'lou', pseudo: 'lou', displayName: 'Lou', answer: 'YES' as const }],
+      },
+    ],
+  };
+  const WITH_VOTE = {
+    ...SCENARIO,
+    seances: [
+      {
+        id: 'seance1',
+        scenarioId: 's1',
+        dateValidee: null,
+        slotValidee: null,
+        endDate: null,
+        endSlot: null,
+        durationSlots: 1,
+        compteRendu: null,
+        heureRdv: null,
+        lieu: null,
+        notePratique: null,
+        createdAt: '2026-07-13T00:00:00.000Z',
+        can: { propose: false, edit: false, choose: true, extend: false },
+        poll: POLL_OPEN,
+      },
+    ],
+  } as unknown as ScenarioDto;
+  const lines = (root: HTMLElement) =>
+    Array.from(root.querySelectorAll('.seance-poll-summary__line')).map((l) =>
+      (l.textContent ?? '').trim(),
+    );
+
+  it('membres chargés : les absents sont nommés dans le résumé de la fiche', async () => {
+    const members = [
+      { userId: 'lou', pseudo: 'lou', displayName: 'Lou', role: 'MEMBER', joinedAt: '' },
+      { userId: 'sam', pseudo: 'sam', displayName: 'Sam', role: 'MEMBER', joinedAt: '' },
+    ];
+    const { fixture } = await createComponent(
+      WITH_VOTE,
+      [],
+      [],
+      null,
+      PARTIE,
+      [],
+      vi.fn().mockResolvedValue(undefined),
+      null,
+      members,
+    );
+    expect(lines(fixture.nativeElement)).toContain('N’ont pas encore répondu : Sam');
+  });
+
+  it('chargement des membres en échec : le résumé retombe sur le nombre d’absents', async () => {
+    const { fixture } = await createComponent(
+      WITH_VOTE,
+      [],
+      [],
+      null,
+      PARTIE,
+      [],
+      vi.fn().mockResolvedValue(undefined),
+      null,
+      new Error('boom'),
+    );
+    expect(lines(fixture.nativeElement)).toContain('2 personnes n’ont pas encore répondu');
   });
 });

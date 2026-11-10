@@ -1,0 +1,31 @@
+<article
+  class="event-card"
+  [class.event-card--past]="past()"
+  [class.event-card--imminent]="imminent()"
+  [class.event-card--cancelled]="cancelled()"
+>
+  <!-- Bouton natif (nom accessible = titre) étiré sur toute la carte par son ::after : Entrée à
+       l'appui, Espace au relâchement, et le reste de la carte (date, badge, pastille) reste lu. -->
+  <h4 class="event-card__title">
+    <button
+      type="button"
+      class="event-card__open"
+      [attr.data-event-id]="card().id"
+      (click)="activate($event)"
+    >
+      {{ card().title }}
+    </button>
+  </h4>
+  <app-status-badge class="event-card__badge" [state]="badge()" />
+  <p class="event-card__date">{{ dateLabel() }}</p>
+  <p class="event-card__line event-card__host">{{ hostLabel() }}</p>
+  @if (card().seance?.lieu; as lieu) {
+    <p class="event-card__line event-card__place">{{ lieu }}</p>
+  }
+  @if (!cancelled()) {
+    <p class="event-card__line event-card__situation">
+      <span class="event-card__situation-label">{{ theme.tone()['situation.ma_situation'] }}</span>
+      <app-situation-pill [value]="situation()" />
+    </p>
+  }
+</article>

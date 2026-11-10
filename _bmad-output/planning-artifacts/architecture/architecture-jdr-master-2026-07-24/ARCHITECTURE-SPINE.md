@@ -4,7 +4,7 @@ type: architecture-spine
 purpose: build-substrate
 altitude: feature
 paradigm: 'NestJS Modular + Angular Signals (brownfield)'
-scope: 'Contenu Ryuutama enrichi (descriptions à tous les niveaux, classes complètes, occupations/actions, talents structurés), 3 profils d'\''attributs, refonte du choix d'\''arme (arme précise → catégorie, création libre), achat d'\''équipement de départ (budget 1000 Po), catalogue de sorts, rôles de groupe assignés par le MJ avec badge sur l'\''avatar. Hors scope : mécanique de lancement de sort, refonte UI multi-listes d'\''équipement (Palier 9), homebrew MJ/joueur (Palier 14), migration des personnages existants (reset du seed uniquement).'
+scope: 'Contenu Ryuutama enrichi (descriptions à tous les niveaux, classes complètes, occupations/actions, talents structurés), 3 profils d'\''attributs, refonte du choix d'\''arme (arme précise → catégorie, création libre), achat d'\''équipement de départ (budget 1000 Po), catalogue de sorts, rôles de groupe assignés par le MJ avec badge sur l'\''avatar. Hors scope : mécanique de lancement de sort, refonte UI multi-listes d'\''équipement (Palier 9), homebrew MJ/joueur (Palier 15), migration des personnages existants (reset du seed uniquement).'
 status: final
 created: '2026-07-24'
 updated: '2026-07-24'
@@ -63,7 +63,7 @@ companions: []
 ### AD-3 — Arme personnalisée : inline dans `sheetData`, jamais un `ContentEntry` partagé
 
 - **Binds:** FR-9
-- **Prevents:** l'utilisation prématurée de `ContentEntry.scope` `MJ`/`PARTIE` (déjà défini dans le schéma Prisma mais volontairement inexploité jusqu'au Palier 14, homebrew) pour un besoin qui est en réalité strictement local à un seul personnage, jamais partagé ni interrogé entre personnages
+- **Prevents:** l'utilisation prématurée de `ContentEntry.scope` `MJ`/`PARTIE` (déjà défini dans le schéma Prisma mais volontairement inexploité jusqu'au Palier 15, homebrew) pour un besoin qui est en réalité strictement local à un seul personnage, jamais partagé ni interrogé entre personnages
 - **Rule:** Une arme créée librement est stockée `{ customWeapon: { name: string, categoryId: string } }` dans `RyuutamaSheetData`, sibling de `weaponId` — **exactement un des deux est renseigné, jamais les deux, jamais aucun** (`validate()` l'impose). `categoryId` référence directement une `weaponCategory` existante (hérite ses formules). Aucun `ContentEntry` créé côté serveur — cohérent avec P6-AD-1 (donnée spécifique à un personnage, jamais interrogée cross-personnage).
 
 ### AD-4 — Budget d'équipement de départ : prix de catalogue numérique, distinct du prix affiché en texte libre
@@ -99,8 +99,8 @@ companions: []
 ### AD-9 — Texte explicatif par étape de l'assistant : seedé par système de jeu, jamais codé en dur ni dans `tones.ts`
 
 - **Binds:** FR-3
-- **`[REVISED]` 2026-07-26, pendant la Story 23.3** — version originale (« codé en dur, jamais seedé ») invalidée par l'implémentation : le texte réel du *Guide du Voyageur* (7 des 8 étapes, transcrit de `docs/assistant.md`) est un paragraphe long et spécifique à Ryuutama, pas une courte copy d'interface. Une première implémentation l'a codé en dur dans `apps/web/src/app/core/theme/tones.ts` (le registre de flaveur *système-agnostique* de l'app) — retour utilisateur en revue de code : ce fichier doit rester neutre vis-à-vis du système de jeu (l'app prévoit plusieurs systèmes/wizards, Palier 11/12), et du contenu Ryuutama-spécifique n'y a pas sa place, même si ce n'est « qu'un texte ».
-- **Prevents:** un texte de règles spécifique à un système de jeu codé en dur dans un fichier frontend censé rester générique tous-systèmes (`tones.ts`) — casserait dès le premier système supplémentaire (Palier 11/12, Conte de Minuit/Draconis) ; une double source de vérité si un futur système redéfinit ce même texte différemment.
+- **`[REVISED]` 2026-07-26, pendant la Story 23.3** — version originale (« codé en dur, jamais seedé ») invalidée par l'implémentation : le texte réel du *Guide du Voyageur* (7 des 8 étapes, transcrit de `docs/assistant.md`) est un paragraphe long et spécifique à Ryuutama, pas une courte copy d'interface. Une première implémentation l'a codé en dur dans `apps/web/src/app/core/theme/tones.ts` (le registre de flaveur *système-agnostique* de l'app) — retour utilisateur en revue de code : ce fichier doit rester neutre vis-à-vis du système de jeu (l'app prévoit plusieurs systèmes/wizards, Palier 12/13), et du contenu Ryuutama-spécifique n'y a pas sa place, même si ce n'est « qu'un texte ».
+- **Prevents:** un texte de règles spécifique à un système de jeu codé en dur dans un fichier frontend censé rester générique tous-systèmes (`tones.ts`) — casserait dès le premier système supplémentaire (Palier 12/13, Conte de Minuit/Draconis) ; une double source de vérité si un futur système redéfinit ce même texte différemment.
 - **Rule:** `[ADOPTED]` Le texte d'introduction par étape suit le mécanisme `ContentType`/`ContentEntry` déjà établi (AD-1, P5-AD-4) — nouveau `ContentType` `wizardStepIntro` (`wizard-step-intros.json`, une entrée par étape hors `portrait`, `{ key, label, text }`), lu par `CharacterWizard` via `content()?.['wizardStepIntro']` exactement comme `classes`/`types`/etc. **Exception : l'étape Portrait** n'a aucun texte dans le livre (fonctionnalité propre à cette app, pas au système de jeu) — elle reste seule à vivre dans `tones.ts` (`character.step_portrait_intro`, déclinée par thème), puisqu'elle sera identique pour tous les futurs systèmes de jeu.
 
 ### AD-10 — Talent enrichi : forme exacte, `attributes`/`difficulty` restent frères de `effect`
@@ -236,8 +236,8 @@ apps/api/src/game-systems/game-system.service.ts
 | --- | --- |
 | Politique complète de réassignation d'un rôle déjà attribué (le MJ peut-il transférer en une seule action, ou doit-il toujours retirer puis réassigner ?) | Open Question 4 du PRD — non tranché. AD-6 fixe un plancher minimal (échec explicite, jamais d'éviction silencieuse) pour que l'architecture reste cohérente en attendant cette décision produit, laissée à la story `CharacterRolesService` |
 | Mécanique d'apprentissage/lancement de sort | Open Question 2 du PRD — catalogue seul ce palier (AD-1), mécanique hors scope |
-| Registre de plugin générique par système de jeu (`getSchema()` toujours codé en dur, AD-9) | Déjà différé au palier Conte de Minuit/Draconis (Palier 11/12) — ce palier suit le pattern déjà établi, ne construit pas de registre par anticipation |
-| Exploitation de `ContentEntry.scope` `MJ`/`PARTIE` pour du contenu homebrew partagé | Palier 14 dédié — l'arme personnalisée (AD-3) reste volontairement inline/non partagée pour ne pas anticiper cette architecture |
+| Registre de plugin générique par système de jeu (`getSchema()` toujours codé en dur, AD-9) | Déjà différé au palier Conte de Minuit/Draconis (Palier 12/13) — ce palier suit le pattern déjà établi, ne construit pas de registre par anticipation |
+| Exploitation de `ContentEntry.scope` `MJ`/`PARTIE` pour du contenu homebrew partagé | Palier 15 dédié — l'arme personnalisée (AD-3) reste volontairement inline/non partagée pour ne pas anticiper cette architecture |
 | UI multi-listes d'objets/règles d'équipement (plusieurs catalogues saisis, un seul câblé) | Palier 9 (refonte UI) — hors scope de cette spine, cf. PRD §5 |
 | Refonte visuelle générale de l'assistant de création / `ScenarioTimeline` | Palier 9 (refonte UI) — non-goal explicite du PRD (§5), aucune AD de cette spine n'y touche |
 | Environnement/déploiement | Aucun changement pour ce palier (pas de nouveau service externe, pas de nouvelle variable d'environnement) — reste porté par le Palier 7 |

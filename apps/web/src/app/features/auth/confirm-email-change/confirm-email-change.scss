@@ -1,13 +1,1 @@
-.auth-page {
-  display: flex;
-  justify-content: center;
-  padding: 4rem 1rem;
-}
-.auth-card {
-  width: 100%;
-  max-width: 24rem;
-}
-.error {
-  color: var(--mat-sys-error, #b00020);
-  margin: 0 0 0.5rem;
-}
+@use '../auth-card';

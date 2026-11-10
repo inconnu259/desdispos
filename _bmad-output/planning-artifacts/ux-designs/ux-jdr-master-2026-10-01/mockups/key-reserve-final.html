@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réserve de souffles — planches finales</title>
+<style>
+/*
+  Planche de référence de la passe UX 33.6 — illustre les sections Component Patterns / State Patterns de EXPERIENCE.md et Components de DESIGN.md ; les spines gagnent en cas de conflit
+
+  Design FINAL de la réserve de souffles de l'Homme Dragon : Variante B uniquement (un emplacement = une ligne,
+  une fenêtre de choix). Tokens, gemme/étiquettes de race, stat-pill, lignes d'emplacement et fenêtre de choix
+  repris de key-reserve-variantes.html (thème grimoire-emeraude). Aucun nouveau token de thème : --outline et --error sont des alias de tokens existants (--mat-sys-outline, --mat-sys-error), valeurs indicatives (voir DESIGN.md §2, Alias).
+  Données réelles : apps/api/game-systems/ryuutama/data/souffles.json et souffles-rituels.json.
+  Règles : cible tactile >= 44px, jamais la couleur seule (teinte de race toujours doublée d'un texte,
+  raison écrite sur toute ligne grisée, chevron + texte sur chaque catégorie), seuil desktop 1024px.
+  Aucun JS, aucun réseau, états statiques : le repli est montré par aria-expanded + chevron + attribut hidden.
+*/
+:root{
+  color-scheme:dark;
+  --bg:#0d0a14; --surface:#1a1428; --surface-high:#221c35;
+  --accent-1:#7ec8a4; --accent-2:#9b6dff; --accent-2-rgb:155,109,255;
+  --text:#e8e0f0; --text-muted:#9b8fb0; --border-subtle:rgba(255,255,255,.08);
+  --gradient-cta:linear-gradient(135deg,#7ec8a4,#9b6dff);
+  --error:#cf6679; /* indicatif : token reel = --mat-sys-error (valeur par theme) */
+  --outline:#7a6f94; /* alias de --mat-sys-outline ; >= 3:1 mesure ici (grimoire), A MESURER dans foret-ancienne et atelier-cuivre */
+  --text-sm:.75rem; --text-base:.875rem; --text-lg:1rem; --text-xl:1.25rem; --text-2xl:1.625rem;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:12px; --sp-base:16px; --sp-lg:24px; --sp-xl:32px;
+  --r-card:10px; --r-badge:6px; --r-button:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#050308;color:var(--text);
+  font:var(--text-base)/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:var(--sp-xl) var(--sp-base)}
+.page{max-width:1380px;margin:0 auto}
+h1{font-size:var(--text-2xl);margin:0 0 4px;font-weight:700}
+p.lead{color:var(--text-muted);max-width:940px;margin:0 0 var(--sp-base)}
+.legend{font-size:var(--text-sm);color:var(--text-muted);margin:0 0 var(--sp-lg);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.muted{color:var(--text-muted);font-size:var(--text-sm)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button:focus-visible{outline:2px solid var(--accent-1);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ---- plates ---- */
+.plate{margin:0 0 var(--sp-xl)}
+.plate>h2{font-size:var(--text-xl);margin:0 0 4px;font-weight:700;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pn{font-size:0.75rem;font-weight:700;letter-spacing:.06em;color:var(--accent-2);border:1px solid var(--accent-2);border-radius:var(--r-badge);padding:2px 8px}
+.plate>p.lead{margin-bottom:var(--sp-md)}
+.cap{font-size:0.75rem;font-weight:700;color:var(--accent-1);margin:0 0 var(--sp-sm);letter-spacing:.01em}
+.nb{margin:var(--sp-sm) 0 0;font-size:var(--text-sm);color:var(--text-muted);max-width:640px}
+.nb b{color:var(--text)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-lg) var(--sp-xl);align-items:start}
+.pair>*{min-width:0}
+.stack{display:flex;flex-direction:column;gap:var(--sp-lg)}
+.scrollx{overflow-x:auto}
+@media (max-width:1023px){.pair{grid-template-columns:1fr}}
+
+/* ---- gem / tags / pills ---- */
+.gem{width:30px;height:30px;border-radius:50%;flex:0 0 auto;position:relative;display:inline-block;
+  background:
+    radial-gradient(circle at 32% 28%, var(--hl,rgba(255,255,255,.85)) 0%, transparent 40%),
+    conic-gradient(from 200deg, var(--g1,#3d6289), var(--g2,#9cc3e8), var(--g1,#3d6289));
+  box-shadow:0 0 0 1px rgba(255,255,255,.16), 0 0 10px -2px var(--glow-strong, transparent)}
+.gem.sm{width:14px;height:14px;box-shadow:0 0 0 1px rgba(255,255,255,.16)}
+.vert{--h:#5fa578; --g1:#3f7d54; --g2:#8fd6ab; --glow:rgba(126,200,164,.20); --glow-strong:rgba(126,200,164,.55)}
+.bleu{--h:#6a93c2; --g1:#3d6289; --g2:#9cc3e8; --glow:rgba(122,169,216,.20); --glow-strong:rgba(122,169,216,.55)}
+.rouge{--h:#c06552; --g1:#7d3226; --g2:#e08a6f; --glow:rgba(224,120,90,.22); --glow-strong:rgba(224,120,90,.55)}
+.noir{--h:#524d5e; --g1:#0c0b10; --g2:#4a4656; --hl:rgba(255,255,255,.55); --glow:rgba(255,255,255,.10); --glow-strong:rgba(255,255,255,.30)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+  padding:2px 7px;border-radius:var(--r-badge);border:1px solid var(--h);color:var(--text);white-space:nowrap}
+.tag.common{--h:var(--text-muted)}
+.stat-pill{display:inline-flex;align-items:center;font-size:0.75rem;font-weight:500;padding:3px 9px;border-radius:var(--r-badge);
+  border:1px solid rgba(126,200,164,.3);background:rgba(126,200,164,.1);color:var(--accent-1);white-space:nowrap}
+
+/* ---- buttons ---- */
+.btn{min-height:44px;min-width:44px;padding:0 16px;border-radius:var(--r-button);border:1px solid var(--outline);
+  background:transparent;color:var(--text);font-weight:600;font-size:0.8125rem;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.primary{background:var(--gradient-cta);color:#0d0a14;border:0}
+.btn.wide{width:100%}
+.btn[aria-disabled="true"]{cursor:not-allowed}
+.btn.primary[aria-disabled="true"]{background:transparent;color:var(--text-muted);border:1px solid var(--outline)}
+.btn.x{padding:0;flex:0 0 auto}
+
+/* ---- fiche frame ---- */
+.fiche{background:#020103;border:1px solid #241a30;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.7)}
+.fiche.desk{width:1100px;max-width:none}
+.fiche-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface-high);font-size:0.8125rem}
+.fiche-bar .gem{width:22px;height:22px;--g1:#7d3226;--g2:#e08a6f}
+.fiche-body{background:var(--bg);padding:var(--sp-base);display:flex;flex-direction:column;gap:var(--sp-md)}
+.fiche-cols{background:var(--bg);padding:var(--sp-base);display:grid;grid-template-columns:1.7fr 1fr;gap:var(--sp-base);align-items:start}
+.col{display:flex;flex-direction:column;gap:var(--sp-md);min-width:0}
+.stub{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-card);padding:10px 14px;display:flex;flex-direction:column;gap:2px;font-size:0.8125rem}
+.stub.tall{height:90px}
+.stub.sm{padding:8px 14px}
+
+/* ---- reserve section ---- */
+.reserve{container-type:inline-size;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-card);padding:var(--sp-base);display:flex;flex-direction:column;gap:var(--sp-md)}
+.rh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rh h3{margin:0;font-size:var(--text-lg);font-weight:700}
+.lvl{font-size:var(--text-sm);color:var(--text-muted)}
+.rule{margin:0;font-size:var(--text-sm);color:var(--text-muted)}
+.rule b,.mrule b{color:var(--text)}
+.counter{display:flex;align-items:center;gap:10px;font-size:0.8125rem}
+.counter b{white-space:nowrap}
+.seg{display:inline-flex;gap:4px}
+.seg i{width:28px;height:8px;border-radius:4px;background:#2a2438;display:block}
+.seg i.on{background:var(--gradient-cta)}
+.hint{font-size:var(--text-sm);color:var(--text-muted);margin:0}
+.info{margin:0;display:flex;gap:10px;align-items:center;min-height:44px;padding:8px 12px;border:1px solid var(--border-subtle);border-radius:var(--r-card);background:var(--surface-high);font-size:var(--text-base)}
+.info .ic{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:1px solid var(--accent-1);color:var(--accent-1);display:inline-flex;align-items:center;justify-content:center;font-size:0.8125rem;font-weight:700}
+.err{margin:0;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(207,102,121,.6);border-radius:var(--r-card);background:rgba(207,102,121,.08);font-size:var(--text-base)}
+.err .ic{flex:0 0 auto;color:var(--error);font-weight:700}
+.undo{margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 6px 6px 12px;border:1px solid var(--outline);border-radius:var(--r-card);background:var(--surface-high);font-size:var(--text-base)}
+.undo .ic{flex:0 0 auto;color:var(--accent-1);font-weight:700}
+.undo span:nth-child(2){flex:1 1 160px}
+
+.slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-sm)}
+.slot{display:flex;align-items:center;gap:var(--sp-md);min-height:64px;padding:8px 12px;background:var(--surface-high);border:1px solid var(--border-subtle);border-radius:var(--r-card)}
+.slot.empty{background:transparent;border:1px dashed var(--outline)}
+.no{width:32px;height:32px;border-radius:50%;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;border:1px solid var(--outline);color:var(--text)}
+.sbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.sname{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sacts{display:flex;gap:var(--sp-sm);flex:0 0 auto}
+.btn.pick{flex:1;justify-content:flex-start;color:var(--text)}
+/* section etroite : la ligne d'emplacement bascule sur deux lignes sous ~480px de largeur de SECTION (container query) */
+@container (max-width:480px){
+  .slot{flex-wrap:wrap}
+  .sbody{flex:1 1 200px}
+  .sacts{flex:1 1 100%}
+  .sacts .btn{flex:1}
+  .slot.empty .muted{display:none}
+}
+.m .reserve{padding:var(--sp-md)}
+
+/* ---- modal / sheet ---- */
+.scrim{background:rgba(2,1,3,.78);padding:var(--sp-lg) var(--sp-base);border-radius:12px;border:1px solid #241a30}
+.modal{background:var(--surface);border:1px solid var(--border-subtle);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.7);overflow:hidden;max-width:620px;margin:0 auto}
+.mh{flex-wrap:wrap;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;background:var(--surface-high)}
+.mt{flex:1 1 150px;min-width:0}
+.mt h2{white-space:normal;margin:0;font-size:var(--text-lg);font-weight:700}
+.mcount{display:flex;align-items:center;gap:8px;font-size:.8125rem}
+.mcount b{white-space:nowrap}
+.sub-t{font-size:var(--text-sm);color:var(--text-muted)}
+.mrule{margin:0;padding:8px 16px;font-size:var(--text-sm);color:var(--text-muted);border-bottom:1px solid var(--border-subtle)}
+.mbody{padding:var(--sp-md) 16px var(--sp-base)}
+.mf{padding:12px 16px;border-top:1px solid var(--border-subtle);background:var(--surface-high)}
+.sub{margin:8px 0 4px;font-size:0.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+.count{font-size:0.75rem;font-weight:600;color:var(--text-muted);border:1px solid var(--border-subtle);border-radius:999px;padding:0 7px;letter-spacing:0}
+.mlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+
+/* categories repliables (design FINAL) */
+.cats{display:flex;flex-direction:column;gap:2px}
+.cap-grp{margin:6px 0 0;font-size:0.75rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted)}
+.cat-h{margin:0}
+.cat-btn{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;padding:0 4px;background:transparent;border:0;border-bottom:1px solid var(--border-subtle);color:var(--text);font-family:inherit;font-size:var(--text-base);font-weight:700;text-align:left}
+.cv{flex:0 0 auto;width:16px;color:var(--text-muted);font-weight:400}
+.cat-why{font-weight:500;font-size:0.8125rem;color:var(--text-muted)}
+.cat-btn .count{margin-left:auto;flex:0 0 auto}
+.cat-btn[aria-expanded="false"] .cat-name{color:var(--text-muted)}
+.cat-panel{padding:8px 0 6px}
+.cat-panel[hidden]{display:none}
+
+/* souffle rows */
+.srow{display:flex;align-items:center;gap:var(--sp-md);min-height:56px;padding:8px 12px;background:var(--surface-high);border:1px solid var(--border-subtle);border-radius:var(--r-card)}
+button.srow{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+button.srow[aria-disabled="true"]{cursor:not-allowed}
+/* ligne consultee (aria-pressed=true) : contour 2px + pastille pleine + fond ; jamais l'accent seul */
+.srow.sel{border-color:var(--text);background:rgba(var(--accent-2-rgb),.16);box-shadow:inset 0 0 0 1px var(--text)}
+.stxt{flex:1;min-width:0}
+.stxt{display:block}
+.l1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nm{font-weight:600;font-size:var(--text-base)}
+.l2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:var(--text-sm);color:var(--text-muted);overflow:hidden;margin-top:2px}
+.l2.reason{display:block;overflow:visible}
+.reason{color:var(--text);font-size:var(--text-sm)}
+.inres{font-size:0.75rem;color:var(--accent-1);border:1px solid rgba(126,200,164,.3);border-radius:var(--r-badge);padding:1px 6px}
+.srow.off{background:transparent}
+.srow.off .nm{opacity:.6} /* nom seul ; la pastille de cout n'est jamais attenuee */
+.srow .radio{position:relative;width:16px;height:16px;border-radius:50%;border:2px solid var(--accent-2);flex:0 0 auto}
+.srow .radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--accent-2)}
+
+/* detail zone */
+.detail{border-top:1px solid var(--border-subtle);background:var(--surface-high);padding:14px 16px}
+.d-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.d-head b{font-size:var(--text-lg)}
+.d-desc{margin:8px 0 6px;font-size:0.8125rem}
+.detail .note{margin:0 0 10px;color:var(--text-muted);font-size:var(--text-sm)}
+.d-actions{display:flex;gap:var(--sp-sm);justify-content:flex-end;flex-wrap:wrap}
+.d-actions .primary{flex:1 1 220px}
+
+/* ---- mobile ---- */
+.phones{display:flex;gap:var(--sp-xl);flex-wrap:wrap;align-items:flex-start}
+.phonewrap{margin:0}
+.phone{position:relative;width:375px;height:812px;border-radius:36px;border:6px solid #241a30;background:var(--bg);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.7)}
+.ph-status{display:flex;justify-content:space-between;padding:10px 24px 4px;font-size:0.75rem;color:var(--text-muted)}
+.ph-bg{display:flex;flex-direction:column;gap:10px}
+.ph-bg .stub,.ph-bg .reserve{margin:0 12px}
+.ph-scrim{position:absolute;inset:0;background:rgba(2,1,3,.72)}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:90%;max-height:90dvh;background:var(--surface);border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -8px 32px rgba(0,0,0,.6)}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--text-muted);margin:8px auto 4px;flex:0 0 auto}
+.sheet .mh,.sheet .mrule,.sheet .detail{flex:0 0 auto}
+.sheet .mbody{flex:1 1 auto;overflow-y:auto;min-height:0;padding:var(--sp-xs) 12px var(--sp-md)}
+.sheet .detail{padding:12px 16px max(20px, env(safe-area-inset-bottom))}
+.sheet .d-actions{flex-wrap:nowrap}
+.sheet .d-actions .primary{flex:1 1 auto}
+.sheet .srow{gap:8px;padding:8px}
+
+/* annotations */
+.steps{margin:0;padding-left:20px;font-size:var(--text-base);display:flex;flex-direction:column;gap:6px}
+.card{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-card);padding:var(--sp-base)}
+.card h3{margin:0 0 8px;font-size:var(--text-lg)}
+.elide{margin:0;font-size:var(--text-sm);color:var(--text-muted);font-style:italic}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Réserve de souffles de l'Homme Dragon — design final (Variante B)</h1>
+<p class="lead">
+  Un emplacement = une ligne ; une fenêtre de choix (modale centrée à partir de 1024px, feuille basse en dessous) propose les souffles
+  par catégories repliables. Enregistrement automatique à chaque geste, pas de bouton « Enregistrer », pas de « Vider la réserve » :
+  on retire un souffle à la fois via « Retirer ». Scénario : <b>Dragon Rouge, niveau 4 → 3 emplacements</b> (1 Courage, 2 Chance, 3 vide).
+</p>
+<div class="legend">
+  <span class="stat-pill">1 PS</span> coût en points de souffle ·
+  <span class="tag common">Commun · Destin</span> / <span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span> familles et races (toujours en texte) ·
+  <span class="reason"><span aria-hidden="true">⊘</span> raison écrite</span> sur toute ligne grisée ·
+  <span class="reason"><span aria-hidden="true">▾</span> catégorie dépliée</span> /
+  <span class="reason"><span aria-hidden="true">▸</span> catégorie repliée</span> (la raison du repli est écrite dans l'en-tête, avec le même vocabulaire que sur les lignes) · lignes de souffle = <code>&lt;button aria-pressed&gt;</code> natifs, tabulables, Entrée/Espace = consulter
+</div>
+
+<!-- ============================ P1 ============================ -->
+<section class="plate" id="p1" aria-labelledby="p1-t">
+<h2 id="p1-t"><span class="pn">P1</span> Fiche desktop (~1100px) — Dragon Rouge, niveau 4</h2>
+<p class="lead">Colonne gauche : la section « Réserve de souffles » est placée juste avant la carte « Souffles ». Les autres cartes sont des repères (stubs).</p>
+<div class="scrollx">
+<div class="fiche desk">
+  <div class="fiche-bar"><span class="gem"></span><b>Fiche · Homme Dragon</b><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span><span class="muted">Niveau 4</span></div>
+  <div class="fiche-cols">
+    <div class="col">
+      <div class="stub sm"><b>Artefact</b></div>
+      <div class="stub sm"><b>Présentation</b></div>
+      <div class="stub sm"><b>Capacités</b></div>
+      <div class="stub sm"><b>Cadeau à choisir</b></div>
+      <div class="stub sm"><b>Éveil</b></div>
+
+      <section class="reserve" aria-labelledby="p1-rt">
+        <header class="rh"><h3 id="p1-rt">Réserve de souffles</h3><span class="lvl">Niveau 4 · 3 emplacements</span></header>
+          <p class="hint"><span aria-hidden="true">✓</span> Enregistrée automatiquement, utilisée pour l'export PDF.</p>
+          <p class="sr" role="status" aria-live="polite" id="p1-live"></p>
+        <p class="rule"><b>Règle :</b> un seul souffle d'une autre race au plus. Un même souffle peut occuper plusieurs emplacements.</p>
+        <ol class="slots" role="list" aria-busy="false">
+          <li class="slot" aria-labelledby="s1-no s1-nm"><span class="no" id="s1-no"><span class="sr">Emplacement </span>1</span><div class="sbody"><div class="sname"><b id="s1-nm">Courage</b><span class="stat-pill">1 PS</span></div><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span></div><div class="sacts"><button type="button" class="btn" aria-label="Changer le souffle de l'emplacement 1 : Courage">Changer</button><button type="button" class="btn" aria-label="Retirer Courage de l'emplacement 1">Retirer</button></div></li>
+          <li class="slot" aria-labelledby="s2-no s2-nm"><span class="no" id="s2-no"><span class="sr">Emplacement </span>2</span><div class="sbody"><div class="sname"><b id="s2-nm">Chance</b><span class="stat-pill">1 PS</span></div><span class="tag common">Commun · Destin</span></div><div class="sacts"><button type="button" class="btn" aria-label="Changer le souffle de l'emplacement 2 : Chance">Changer</button><button type="button" class="btn" aria-label="Retirer Chance de l'emplacement 2">Retirer</button></div></li>
+          <li class="slot empty" aria-labelledby="s3-no s3-nm"><span class="no" id="s3-no"><span class="sr">Emplacement </span>3</span><button type="button" class="btn pick" aria-label="Choisir un souffle pour l'emplacement 3">Choisir un souffle</button><span class="muted" id="s3-nm">Emplacement libre</span></li>
+        </ol>
+      </section>
+
+      <div class="stub"><b>Souffles</b><span class="muted">Communs par famille, Dragon Rouge, autres races (catalogue de lecture)</span></div>
+      <div class="stub"><b>Souffles rituels</b><span class="muted">Catalogue de consultation, dès le niveau 5</span></div>
+    </div>
+    <div class="col">
+      <div class="stub tall"><b>Stats dérivées</b></div>
+      <div class="stub tall"><b>Voyageurs</b></div>
+      <div class="stub tall"><b>Historique</b></div>
+    </div>
+  </div>
+</div>
+</div>
+<p class="nb"><b>Pas de bouton principal ni d'état « enregistré / non enregistré » :</b> chaque geste (choisir, changer, retirer) écrit aussitôt ; la mention sous le titre de la section le rappelle (visible seulement quand la réserve est réellement enregistrée).</p>
+</section>
+
+<!-- ============================ P2 ============================ -->
+<section class="plate" id="p2" aria-labelledby="p2-t">
+<h2 id="p2-t"><span class="pn">P2</span> Niveaux 1 et 2 — la réserve s'ouvre au niveau 2</h2>
+<p class="lead">Colonne gauche seule, mêmes composants. Niveau 1 : une ligne d'info, aucun composeur. Niveau 2 : un seul emplacement, vide.</p>
+<div class="pair">
+  <div>
+    <div class="cap">P2a · Niveau 1</div>
+    <div class="fiche">
+      <div class="fiche-bar"><span class="gem"></span><b>Fiche · Homme Dragon</b><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span><span class="muted">Niveau 1</span></div>
+      <div class="fiche-body">
+        <div class="stub sm"><b>Éveil</b></div>
+        <section class="reserve" aria-labelledby="p2a-rt">
+          <header class="rh"><h3 id="p2a-rt">Réserve de souffles</h3><span class="lvl">Niveau 1</span></header>
+          <p class="info"><span class="ic" aria-hidden="true">i</span><span>La réserve de souffles s'ouvre au niveau 2.</span></p>
+        </section>
+        <div class="stub"><b>Souffles</b><span class="muted">Communs par famille, Dragon Rouge, autres races (catalogue de lecture)</span></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">P2b · Niveau 2 — 1 emplacement, vide</div>
+    <div class="fiche">
+      <div class="fiche-bar"><span class="gem"></span><b>Fiche · Homme Dragon</b><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span><span class="muted">Niveau 2</span></div>
+      <div class="fiche-body">
+        <div class="stub sm"><b>Éveil</b></div>
+        <section class="reserve" aria-labelledby="p2b-rt">
+          <header class="rh"><h3 id="p2b-rt">Réserve de souffles</h3><span class="lvl">Niveau 2 · 1 emplacement</span></header>
+          <p class="hint"><span aria-hidden="true">✓</span> Enregistrée automatiquement, utilisée pour l'export PDF.</p>
+          <p class="sr" role="status" aria-live="polite" id="p2b-live"></p>
+          <p class="rule"><b>Règle :</b> les souffles d'une autre race s'ouvrent au niveau 3. Un même souffle peut occuper plusieurs emplacements.</p>
+          <ol class="slots" role="list" aria-busy="false">
+            <li class="slot empty" aria-labelledby="s4-no s4-nm"><span class="no" id="s4-no"><span class="sr">Emplacement </span>1</span><button type="button" class="btn pick" aria-label="Choisir un souffle pour l'emplacement 1">Choisir un souffle</button><span class="muted" id="s4-nm">Emplacement libre</span></li>
+          </ol>
+        </section>
+        <div class="stub"><b>Souffles</b><span class="muted">Communs par famille, Dragon Rouge, autres races (catalogue de lecture)</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============================ P3 / P4 ============================ -->
+<section class="plate" id="p3" aria-labelledby="p3-t">
+<h2 id="p3-t"><span class="pn">P3</span><span class="pn">P4</span> Fenêtre de choix — emplacement 3, niveau 4</h2>
+<p class="lead">
+  Chaque catégorie est un en-tête repliable (chevron ▸/▾, <code>aria-expanded</code>, nombre de souffles). Par défaut toutes dépliées,
+  <b>sauf</b> celles où rien n'est choisissable : repliées, avec la raison écrite dans l'en-tête. Les listes défilent dans la vraie fenêtre ; ici elles sont déroulées en entier.
+</p>
+<div class="pair">
+
+<!-- ---------------- P3 ---------------- -->
+<div>
+<div class="cap">P3 · Cas courant — Chance sélectionnée (déjà en emplacement 2)</div>
+<div class="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="p3-title" aria-describedby="p3-count">
+  <header class="mh"><div class="mt"><h2 id="p3-title">Choisir un souffle pour l'emplacement 3</h2></div><div class="mcount" id="p3-count"><span class="seg" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i></span><b>2 / 3 emplacements</b></div><button type="button" class="btn x" aria-label="Fermer la fenêtre">✕</button></header>
+  <p class="mrule"><b>Règle :</b> un seul souffle d'une autre race au plus.</p>
+  <div class="mbody"><div class="cats">
+
+<div role="group" aria-labelledby="grp1">
+<p class="cap-grp" id="grp1">Souffles communs</p>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p3-destin"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">Destin</span><span class="count">2<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p3-destin"><ul class="mlist" role="list" aria-label="Destin">
+        <li><button type="button" class="srow sel" aria-pressed="true" aria-labelledby="r1-n r1-c r1-m" aria-describedby="r1-d"><span class="stxt"><span class="l1"><span class="nm" id="r1-n">Chance</span><span class="stat-pill" id="r1-c">1 PS</span><span class="inres" id="r1-m">Déjà dans l'emplacement 2</span></span><span class="l2" id="r1-d">Le test devient automatiquement une réussite critique (valeur maximale).</span></span><span class="radio" aria-hidden="true"></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r2-n r2-c" aria-describedby="r2-d"><span class="stxt"><span class="l1"><span class="nm" id="r2-n">Malchance</span><span class="stat-pill" id="r2-c">1 PS</span></span><span class="l2" id="r2-d">Le test donne automatiquement un double 1.</span></span></button></li>
+      </ul></div>
+    </section>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p3-pnj"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">PNJ</span><span class="count">5<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p3-pnj"><ul class="mlist" role="list" aria-label="PNJ">
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r3-n r3-c" aria-describedby="r3-d"><span class="stxt"><span class="l1"><span class="nm" id="r3-n">Ennemi juré</span><span class="stat-pill" id="r3-c">1 PS</span></span><span class="l2" id="r3-d">Le monstre gagne (niveau × 3) PV supplémentaires et ne peut plus subir aucun état ; un état dont il souffrait déjà disparaît aussitôt.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r4-n r4-c" aria-describedby="r4-d"><span class="stxt"><span class="l1"><span class="nm" id="r4-n">Nuée grouillante</span><span class="stat-pill" id="r4-c">1 PS</span></span><span class="l2" id="r4-d">Plusieurs créatures identiques ne forment plus qu'un seul monstre. Par tranche de 3 monstres supplémentaires, la nuée obtient une attaque de plus et +1 au toucher et aux dégâts ; sa dépouille peut aussi être plus importante.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r5-n r5-c" aria-describedby="r5-d"><span class="stxt"><span class="l1"><span class="nm" id="r5-n">Guet-apens</span><span class="stat-pill" id="r5-c">1 PS</span></span><span class="l2" id="r5-d">Au premier tour du combat, toutes les attaques des PNJ touchent automatiquement.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r6-n r6-c" aria-describedby="r6-d"><span class="stxt"><span class="l1"><span class="nm" id="r6-n">Retrouvailles</span><span class="stat-pill" id="r6-c">1 PS</span></span><span class="l2" id="r6-d">Un PNJ que l'on croyait mort est en réalité vivant.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r7-n r7-c" aria-describedby="r7-d"><span class="stxt"><span class="l1"><span class="nm" id="r7-n">Fuite</span><span class="stat-pill" id="r7-c">1 PS</span></span><span class="l2" id="r7-d">Un PNJ parvient à s'échapper, sans condition ni test, y compris face aux personnages.</span></span></button></li>
+      </ul></div>
+    </section>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="false" aria-controls="p3-temps"><span class="cv" aria-hidden="true">▸</span><span class="cat-name">Souffles du temps</span><span class="cat-why"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span><span class="count">2<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p3-temps" hidden><ul class="mlist" role="list" aria-label="Souffles du temps">
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r8-n r8-c r8-w"><span class="stxt"><span class="l1"><span class="nm" id="r8-n">Passé</span><span class="stat-pill" id="r8-c">2 PS</span></span><span class="l2 reason" id="r8-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r9-n r9-c r9-w"><span class="stxt"><span class="l1"><span class="nm" id="r9-n">Futur</span><span class="stat-pill" id="r9-c">2 PS</span></span><span class="l2 reason" id="r9-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span></button></li>
+      </ul></div>
+    </section>
+
+</div>
+<div role="group" aria-labelledby="grp2">
+<p class="cap-grp" id="grp2">Votre race</p>
+    <section class="cat rouge">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p3-rouge"><span class="cv" aria-hidden="true">▾</span><span class="gem sm"></span><span class="cat-name">Souffles du Dragon Rouge</span><span class="count">3<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p3-rouge"><ul class="mlist" role="list" aria-label="Souffles du Dragon Rouge">
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r10-n r10-c" aria-describedby="r10-d"><span class="stxt"><span class="l1"><span class="nm" id="r10-n">Défi</span><span class="stat-pill" id="r10-c">1 PS</span></span><span class="l2" id="r10-d">Tous les personnages qui ont un rival voient leur VIG augmenter d'un cran.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r11-n r11-c r11-m" aria-describedby="r11-d"><span class="stxt"><span class="l1"><span class="nm" id="r11-n">Courage</span><span class="stat-pill" id="r11-c">1 PS</span><span class="inres" id="r11-m">Déjà dans l'emplacement 1</span></span><span class="l2" id="r11-d">Une fois par séance, un voyageur qui vient de recevoir une blessure mortelle revient aussitôt à la vie, et tout le groupe récupère l'intégralité de ses points de vie.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r12-n r12-c" aria-describedby="r12-d"><span class="stxt"><span class="l1"><span class="nm" id="r12-n">Renaissance</span><span class="stat-pill" id="r12-c">1 PS</span></span><span class="l2" id="r12-d">Une fois par séance et par voyageur, un personnage dont les PV redeviennent positifs après être passés en négatif augmente d'un cran l'attribut de son choix.</span></span></button></li>
+      </ul></div>
+    </section>
+
+</div>
+<div role="group" aria-labelledby="grp3">
+<p class="cap-grp" id="grp3">Autres races et rituels</p>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p3-autres"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">Autres races</span><span class="cat-why">— 0 / 1 souffle autorisé</span><span class="count">9<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p3-autres">
+        <h4 class="sub vert"><span class="gem sm"></span>Dragon Vert</h4>
+        <ul class="mlist" role="list" aria-label="Dragon Vert">
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r13-n r13-c" aria-describedby="r13-d"><span class="stxt"><span class="l1"><span class="nm" id="r13-n">Nostalgie</span><span class="stat-pill" id="r13-c">1 PS</span></span><span class="l2" id="r13-d">Jusqu'à deux voyageurs qui ont clairement exprimé le mal de leur pays natal sont guéris de tout état psychologique.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r14-n r14-c" aria-describedby="r14-d"><span class="stxt"><span class="l1"><span class="nm" id="r14-n">Route</span><span class="stat-pill" id="r14-c">1 PS</span></span><span class="l2" id="r14-d">Un ou deux voyageurs qui ont clairement affirmé vouloir atteindre leur destination ignorent, le temps d'un test, tous les modificateurs liés au climat.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r15-n r15-c" aria-describedby="r15-d"><span class="stxt"><span class="l1"><span class="nm" id="r15-n">Voyage</span><span class="stat-pill" id="r15-c">1 PS</span></span><span class="l2" id="r15-d">En fin de séance, jusqu'à deux voyageurs dont les joueurs tiennent un journal de bord reçoivent une prime de 300 pièces d'or (Po) × leur niveau.</span></span></button></li>
+        </ul>
+        <h4 class="sub bleu"><span class="gem sm"></span>Dragon Bleu</h4>
+        <ul class="mlist" role="list" aria-label="Dragon Bleu">
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r16-n r16-c" aria-describedby="r16-d"><span class="stxt"><span class="l1"><span class="nm" id="r16-n">Amour</span><span class="stat-pill" id="r16-c">1 PS</span></span><span class="l2" id="r16-d">Un ou deux voyageurs amoureux gagnent 1 point de protection.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r17-n r17-c" aria-describedby="r17-d"><span class="stxt"><span class="l1"><span class="nm" id="r17-n">Bonté</span><span class="stat-pill" id="r17-c">1 PS</span></span><span class="l2" id="r17-d">L'Esprit d'un ou deux personnages qui aident quelqu'un sans rien attendre en retour augmente d'un cran.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r18-n r18-c" aria-describedby="r18-d"><span class="stxt"><span class="l1"><span class="nm" id="r18-n">Émotion</span><span class="stat-pill" id="r18-c">1 PS</span></span><span class="l2" id="r18-d">Le meneur reçoit cinq jetons à offrir aux joueurs dont l'interprétation l'a ému ; ces jetons s'utilisent comme des points de maladresse.</span></span></button></li>
+        </ul>
+        <h4 class="sub noir"><span class="gem sm"></span>Dragon Noir</h4>
+        <ul class="mlist" role="list" aria-label="Dragon Noir">
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r19-n r19-c" aria-describedby="r19-d"><span class="stxt"><span class="l1"><span class="nm" id="r19-n">Massacre</span><span class="stat-pill" id="r19-c">1 PS</span></span><span class="l2" id="r19-d">Les personnages qui tuent un animal de plus d'un mètre gagnent 2 PE.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r20-n r20-c" aria-describedby="r20-d"><span class="stxt"><span class="l1"><span class="nm" id="r20-n">Obéissance</span><span class="stat-pill" id="r20-c">1 PS</span></span><span class="l2" id="r20-d">Un ou deux personnages qui contribuent pleinement au bon déroulement de l'histoire obtiennent +1 à leur test de condition.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r21-n r21-c" aria-describedby="r21-d"><span class="stxt"><span class="l1"><span class="nm" id="r21-n">Vengeance</span><span class="stat-pill" id="r21-c">1 PS</span></span><span class="l2" id="r21-d">Un ou deux voyageurs animés d'une haine profonde et qui cherchent à accomplir leur vengeance obtiennent +1 au toucher.</span></span></button></li>
+        </ul>
+      </div>
+    </section>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="false" aria-controls="p3-rituels"><span class="cv" aria-hidden="true">▸</span><span class="cat-name">Rituels</span><span class="cat-why"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span><span class="count">6<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p3-rituels" hidden><ul class="mlist" role="list" aria-label="Rituels">
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r22-n r22-c r22-w"><span class="stxt"><span class="l1"><span class="nm" id="r22-n">Rituel du sommeil</span><span class="stat-pill" id="r22-c">1 PS</span></span><span class="l2 reason" id="r22-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r23-n r23-c r23-w"><span class="stxt"><span class="l1"><span class="nm" id="r23-n">Rituel du tabou</span><span class="stat-pill" id="r23-c">1 PS</span></span><span class="l2 reason" id="r23-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r24-n r24-c r24-w"><span class="stxt"><span class="l1"><span class="nm" id="r24-n">Rituel de l'esprit des mots</span><span class="stat-pill" id="r24-c">1 PS</span></span><span class="l2 reason" id="r24-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r25-n r25-c r25-w"><span class="stxt"><span class="l1"><span class="nm" id="r25-n">Rituel de la guigne</span><span class="stat-pill" id="r25-c">1 PS</span></span><span class="l2 reason" id="r25-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r26-n r26-c r26-w"><span class="stxt"><span class="l1"><span class="nm" id="r26-n">Rituel de l'improvisation</span><span class="stat-pill" id="r26-c">1 PS</span></span><span class="l2 reason" id="r26-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r27-n r27-c r27-w"><span class="stxt"><span class="l1"><span class="nm" id="r27-n">Fête des poings</span><span class="stat-pill" id="r27-c">1 PS</span></span><span class="l2 reason" id="r27-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+      </ul></div>
+    </section>
+
+</div>
+  </div></div>
+  <div class="detail"><div class="d-head"><b>Chance</b><span class="stat-pill">1 PS</span><span class="tag common">Commun · Destin</span></div><p class="d-desc">Le test devient automatiquement une réussite critique (valeur maximale).</p><p class="note">Déjà dans l'emplacement 2 : un même souffle peut occuper plusieurs emplacements.</p><div class="d-actions"><button type="button" class="btn">Annuler</button><button type="button" class="btn primary">Mettre dans l'emplacement 3</button></div></div>
+</div></div>
+<p class="nb"><b>Lecture :</b> « Souffles du temps » et « Rituels » sont repliés d'office (rien n'y est choisissable au niveau 4) ; leur raison est lisible sans les ouvrir. « Autres races » est choisissable (0 / 1) donc dépliée.</p>
+</div>
+
+<!-- ---------------- P4 ---------------- -->
+<div class="stack">
+<div>
+<div class="cap">P4 · Quota d'autre race atteint — Voyage (Dragon Vert) en emplacement 2, Courage en emplacement 1, Défi sélectionné</div>
+<div class="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="p4-title" aria-describedby="p4-count">
+  <header class="mh"><div class="mt"><h2 id="p4-title">Choisir un souffle pour l'emplacement 3</h2></div><div class="mcount" id="p4-count"><span class="seg" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i></span><b>2 / 3 emplacements</b></div><button type="button" class="btn x" aria-label="Fermer la fenêtre">✕</button></header>
+  <p class="mrule"><b>Règle :</b> un seul souffle d'une autre race au plus — Voyage (Dragon Vert) l'occupe déjà.</p>
+  <div class="mbody"><div class="cats">
+
+<div role="group" aria-labelledby="grp4">
+<p class="cap-grp" id="grp4">Souffles communs</p>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p4-destin"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">Destin</span><span class="count">2<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4-destin"><ul class="mlist" role="list" aria-label="Destin">
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r28-n r28-c" aria-describedby="r28-d"><span class="stxt"><span class="l1"><span class="nm" id="r28-n">Chance</span><span class="stat-pill" id="r28-c">1 PS</span></span><span class="l2" id="r28-d">Le test devient automatiquement une réussite critique (valeur maximale).</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r29-n r29-c" aria-describedby="r29-d"><span class="stxt"><span class="l1"><span class="nm" id="r29-n">Malchance</span><span class="stat-pill" id="r29-c">1 PS</span></span><span class="l2" id="r29-d">Le test donne automatiquement un double 1.</span></span></button></li>
+      </ul></div>
+    </section>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p4-pnj"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">PNJ</span><span class="count">5<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4-pnj"><ul class="mlist" role="list" aria-label="PNJ">
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r30-n r30-c" aria-describedby="r30-d"><span class="stxt"><span class="l1"><span class="nm" id="r30-n">Ennemi juré</span><span class="stat-pill" id="r30-c">1 PS</span></span><span class="l2" id="r30-d">Le monstre gagne (niveau × 3) PV supplémentaires et ne peut plus subir aucun état ; un état dont il souffrait déjà disparaît aussitôt.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r31-n r31-c" aria-describedby="r31-d"><span class="stxt"><span class="l1"><span class="nm" id="r31-n">Nuée grouillante</span><span class="stat-pill" id="r31-c">1 PS</span></span><span class="l2" id="r31-d">Plusieurs créatures identiques ne forment plus qu'un seul monstre. Par tranche de 3 monstres supplémentaires, la nuée obtient une attaque de plus et +1 au toucher et aux dégâts ; sa dépouille peut aussi être plus importante.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r32-n r32-c" aria-describedby="r32-d"><span class="stxt"><span class="l1"><span class="nm" id="r32-n">Guet-apens</span><span class="stat-pill" id="r32-c">1 PS</span></span><span class="l2" id="r32-d">Au premier tour du combat, toutes les attaques des PNJ touchent automatiquement.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r33-n r33-c" aria-describedby="r33-d"><span class="stxt"><span class="l1"><span class="nm" id="r33-n">Retrouvailles</span><span class="stat-pill" id="r33-c">1 PS</span></span><span class="l2" id="r33-d">Un PNJ que l'on croyait mort est en réalité vivant.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r34-n r34-c" aria-describedby="r34-d"><span class="stxt"><span class="l1"><span class="nm" id="r34-n">Fuite</span><span class="stat-pill" id="r34-c">1 PS</span></span><span class="l2" id="r34-d">Un PNJ parvient à s'échapper, sans condition ni test, y compris face aux personnages.</span></span></button></li>
+      </ul></div>
+    </section>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="false" aria-controls="p4-temps"><span class="cv" aria-hidden="true">▸</span><span class="cat-name">Souffles du temps</span><span class="cat-why"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span><span class="count">2<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4-temps" hidden><ul class="mlist" role="list" aria-label="Souffles du temps">
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r35-n r35-c r35-w"><span class="stxt"><span class="l1"><span class="nm" id="r35-n">Passé</span><span class="stat-pill" id="r35-c">2 PS</span></span><span class="l2 reason" id="r35-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r36-n r36-c r36-w"><span class="stxt"><span class="l1"><span class="nm" id="r36-n">Futur</span><span class="stat-pill" id="r36-c">2 PS</span></span><span class="l2 reason" id="r36-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span></button></li>
+      </ul></div>
+    </section>
+
+</div>
+<div role="group" aria-labelledby="grp5">
+<p class="cap-grp" id="grp5">Votre race</p>
+    <section class="cat rouge">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p4-rouge"><span class="cv" aria-hidden="true">▾</span><span class="gem sm"></span><span class="cat-name">Souffles du Dragon Rouge</span><span class="count">3<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4-rouge"><ul class="mlist" role="list" aria-label="Souffles du Dragon Rouge">
+        <li><button type="button" class="srow sel" aria-pressed="true" aria-labelledby="r37-n r37-c" aria-describedby="r37-d"><span class="stxt"><span class="l1"><span class="nm" id="r37-n">Défi</span><span class="stat-pill" id="r37-c">1 PS</span></span><span class="l2" id="r37-d">Tous les personnages qui ont un rival voient leur VIG augmenter d'un cran.</span></span><span class="radio" aria-hidden="true"></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r38-n r38-c r38-m" aria-describedby="r38-d"><span class="stxt"><span class="l1"><span class="nm" id="r38-n">Courage</span><span class="stat-pill" id="r38-c">1 PS</span><span class="inres" id="r38-m">Déjà dans l'emplacement 1</span></span><span class="l2" id="r38-d">Une fois par séance, un voyageur qui vient de recevoir une blessure mortelle revient aussitôt à la vie, et tout le groupe récupère l'intégralité de ses points de vie.</span></span></button></li>
+        <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r39-n r39-c" aria-describedby="r39-d"><span class="stxt"><span class="l1"><span class="nm" id="r39-n">Renaissance</span><span class="stat-pill" id="r39-c">1 PS</span></span><span class="l2" id="r39-d">Une fois par séance et par voyageur, un personnage dont les PV redeviennent positifs après être passés en négatif augmente d'un cran l'attribut de son choix.</span></span></button></li>
+      </ul></div>
+    </section>
+
+</div>
+<div role="group" aria-labelledby="grp6">
+<p class="cap-grp" id="grp6">Autres races et rituels</p>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="false" aria-controls="p4-autres"><span class="cv" aria-hidden="true">▸</span><span class="cat-name">Autres races</span><span class="cat-why"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span><span class="count">9<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4-autres" hidden>
+        <h4 class="sub vert"><span class="gem sm"></span>Dragon Vert</h4>
+        <ul class="mlist" role="list" aria-label="Dragon Vert">
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r40-n r40-c r40-w"><span class="stxt"><span class="l1"><span class="nm" id="r40-n">Nostalgie</span><span class="stat-pill" id="r40-c">1 PS</span></span><span class="l2 reason" id="r40-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r41-n r41-c r41-w"><span class="stxt"><span class="l1"><span class="nm" id="r41-n">Route</span><span class="stat-pill" id="r41-c">1 PS</span></span><span class="l2 reason" id="r41-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r42-n r42-c r42-w"><span class="stxt"><span class="l1"><span class="nm" id="r42-n">Voyage</span><span class="stat-pill" id="r42-c">1 PS</span></span><span class="l2 reason" id="r42-w"><span aria-hidden="true">⊘</span> Déjà dans l'emplacement 2</span></span></button></li>
+        </ul>
+        <h4 class="sub bleu"><span class="gem sm"></span>Dragon Bleu</h4>
+        <ul class="mlist" role="list" aria-label="Dragon Bleu">
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r43-n r43-c r43-w"><span class="stxt"><span class="l1"><span class="nm" id="r43-n">Amour</span><span class="stat-pill" id="r43-c">1 PS</span></span><span class="l2 reason" id="r43-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r44-n r44-c r44-w"><span class="stxt"><span class="l1"><span class="nm" id="r44-n">Bonté</span><span class="stat-pill" id="r44-c">1 PS</span></span><span class="l2 reason" id="r44-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r45-n r45-c r45-w"><span class="stxt"><span class="l1"><span class="nm" id="r45-n">Émotion</span><span class="stat-pill" id="r45-c">1 PS</span></span><span class="l2 reason" id="r45-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+        </ul>
+        <h4 class="sub noir"><span class="gem sm"></span>Dragon Noir</h4>
+        <ul class="mlist" role="list" aria-label="Dragon Noir">
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r46-n r46-c r46-w"><span class="stxt"><span class="l1"><span class="nm" id="r46-n">Massacre</span><span class="stat-pill" id="r46-c">1 PS</span></span><span class="l2 reason" id="r46-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r47-n r47-c r47-w"><span class="stxt"><span class="l1"><span class="nm" id="r47-n">Obéissance</span><span class="stat-pill" id="r47-c">1 PS</span></span><span class="l2 reason" id="r47-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r48-n r48-c r48-w"><span class="stxt"><span class="l1"><span class="nm" id="r48-n">Vengeance</span><span class="stat-pill" id="r48-c">1 PS</span></span><span class="l2 reason" id="r48-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+        </ul>
+      </div>
+    </section>
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="false" aria-controls="p4-rituels"><span class="cv" aria-hidden="true">▸</span><span class="cat-name">Rituels</span><span class="cat-why"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span><span class="count">6<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4-rituels" hidden><ul class="mlist" role="list" aria-label="Rituels">
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r49-n r49-c r49-w"><span class="stxt"><span class="l1"><span class="nm" id="r49-n">Rituel du sommeil</span><span class="stat-pill" id="r49-c">1 PS</span></span><span class="l2 reason" id="r49-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r50-n r50-c r50-w"><span class="stxt"><span class="l1"><span class="nm" id="r50-n">Rituel du tabou</span><span class="stat-pill" id="r50-c">1 PS</span></span><span class="l2 reason" id="r50-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r51-n r51-c r51-w"><span class="stxt"><span class="l1"><span class="nm" id="r51-n">Rituel de l'esprit des mots</span><span class="stat-pill" id="r51-c">1 PS</span></span><span class="l2 reason" id="r51-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r52-n r52-c r52-w"><span class="stxt"><span class="l1"><span class="nm" id="r52-n">Rituel de la guigne</span><span class="stat-pill" id="r52-c">1 PS</span></span><span class="l2 reason" id="r52-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r53-n r53-c r53-w"><span class="stxt"><span class="l1"><span class="nm" id="r53-n">Rituel de l'improvisation</span><span class="stat-pill" id="r53-c">1 PS</span></span><span class="l2 reason" id="r53-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r54-n r54-c r54-w"><span class="stxt"><span class="l1"><span class="nm" id="r54-n">Fête des poings</span><span class="stat-pill" id="r54-c">1 PS</span></span><span class="l2 reason" id="r54-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+      </ul></div>
+    </section>
+
+</div>
+  </div></div>
+  <div class="detail"><div class="d-head"><b>Défi</b><span class="stat-pill">1 PS</span><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span></div><p class="d-desc">Tous les personnages qui ont un rival voient leur VIG augmenter d'un cran.</p><div class="d-actions"><button type="button" class="btn">Annuler</button><button type="button" class="btn primary">Mettre dans l'emplacement 3</button></div></div>
+</div></div>
+<p class="nb"><b>Choix de présentation :</b> la règle « replié par défaut si rien n'est choisissable » s'applique strictement. Voyage (déjà en emplacement 2) est lui aussi grisé, donc plus rien n'est choisissable dans « Autres races » : la catégorie est <b>repliée</b>, avec « quota atteint » écrit dans l'en-tête. Une fenêtre plus courte, et la raison reste lisible sans déplier.</p>
+</div>
+
+<!-- ---------------- P4 bis ---------------- -->
+<div>
+<div class="cap">P4 bis · Même catégorie « Autres races », dépliée à la main (extrait)</div>
+<div class="scrim"><div class="modal">
+  <div class="mbody"><div class="cats">
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p4b-autres"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">Autres races</span><span class="cat-why"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span><span class="count">9<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4b-autres">
+        <h4 class="sub vert"><span class="gem sm"></span>Dragon Vert</h4>
+        <ul class="mlist" role="list" aria-label="Dragon Vert">
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r55-n r55-c r55-w"><span class="stxt"><span class="l1"><span class="nm" id="r55-n">Nostalgie</span><span class="stat-pill" id="r55-c">1 PS</span></span><span class="l2 reason" id="r55-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r56-n r56-c r56-w"><span class="stxt"><span class="l1"><span class="nm" id="r56-n">Route</span><span class="stat-pill" id="r56-c">1 PS</span></span><span class="l2 reason" id="r56-w"><span aria-hidden="true">⊘</span> Un seul souffle d'une autre race</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r57-n r57-c r57-w"><span class="stxt"><span class="l1"><span class="nm" id="r57-n">Voyage</span><span class="stat-pill" id="r57-c">1 PS</span></span><span class="l2 reason" id="r57-w"><span aria-hidden="true">⊘</span> Déjà dans l'emplacement 2</span></span></button></li>
+        </ul>
+        <p class="elide">Dragon Bleu (3) et Dragon Noir (3) : mêmes lignes, même raison « Un seul souffle d'une autre race ».</p>
+      </div>
+    </section>
+  </div></div>
+</div></div>
+</div>
+
+<!-- ---------------- P4 ter ---------------- -->
+<div>
+<div class="cap">P4 ter · Ligne grisée consultée — Passé (extrait)</div>
+<div class="scrim"><div class="modal">
+  <div class="mbody"><div class="cats">
+    <section class="cat">
+      <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p4t-temps"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">Souffles du temps</span><span class="cat-why"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span><span class="count">2<span class="sr"> souffles</span></span></button></h3>
+      <div class="cat-panel" id="p4t-temps"><ul class="mlist" role="list" aria-label="Souffles du temps">
+        <li><button type="button" class="srow off sel" aria-pressed="true" aria-disabled="true" aria-labelledby="t1-n t1-c t1-w"><span class="stxt"><span class="l1"><span class="nm" id="t1-n">Passé</span><span class="stat-pill" id="t1-c">2 PS</span></span><span class="l2 reason" id="t1-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span><span class="radio" aria-hidden="true"></span></button></li>
+        <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="t2-n t2-c t2-w"><span class="stxt"><span class="l1"><span class="nm" id="t2-n">Futur</span><span class="stat-pill" id="t2-c">2 PS</span></span><span class="l2 reason" id="t2-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span></button></li>
+      </ul></div>
+    </section>
+  </div></div>
+  <div class="detail"><div class="d-head"><b>Passé</b><span class="stat-pill">2 PS</span><span class="tag common">Commun · Temps</span></div><p class="d-desc">Fait remonter le temps. Par exemple, si un combat tourne à l'hécatombe à cause de jets de dés malheureux, l'affrontement reprend depuis son début.</p><p class="note reason" id="p4t-why"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</p><div class="d-actions"><button type="button" class="btn">Annuler</button><button type="button" class="btn primary" aria-disabled="true" aria-describedby="p4t-why">Mettre dans l'emplacement 3</button></div></div>
+</div></div>
+<p class="nb"><b>Une ligne grisée se consulte, elle ne se place pas :</b> elle reste focalisable, son détail (description) s'affiche, et « Mettre dans l'emplacement N » reste visible mais <code>aria-disabled="true"</code>, sa raison liée par <code>aria-describedby</code>.</p>
+</div>
+</div>
+
+</div>
+</section>
+
+<!-- ============================ P5 ============================ -->
+<section class="plate" id="p5" aria-labelledby="p5-t">
+<h2 id="p5-t"><span class="pn">P5</span> Erreur d'enregistrement</h2>
+<p class="lead">Le geste « Mettre dans l'emplacement 3 » (Chance) n'a pas pu être enregistré : la ligne revient à son état précédent (vide), la fenêtre est déjà fermée, un message s'affiche sous les emplacements.</p>
+<div class="pair">
+  <div>
+    <div class="cap">P5 · Section sur la fiche après l'échec</div>
+    <div class="fiche">
+      <div class="fiche-bar"><span class="gem"></span><b>Fiche · Homme Dragon</b><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span><span class="muted">Niveau 4</span></div>
+      <div class="fiche-body">
+        <section class="reserve" aria-labelledby="p5-rt">
+          <header class="rh"><h3 id="p5-rt">Réserve de souffles</h3><span class="lvl">Niveau 4 · 3 emplacements</span></header>
+          <p class="sr" role="status" aria-live="polite" id="p5-live"></p>
+          <p class="rule"><b>Règle :</b> un seul souffle d'une autre race au plus. Un même souffle peut occuper plusieurs emplacements.</p>
+          <ol class="slots" role="list" aria-busy="false">
+            <li class="slot" aria-labelledby="s5-no s5-nm"><span class="no" id="s5-no"><span class="sr">Emplacement </span>1</span><div class="sbody"><div class="sname"><b id="s5-nm">Courage</b><span class="stat-pill">1 PS</span></div><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span></div><div class="sacts"><button type="button" class="btn" aria-label="Changer le souffle de l'emplacement 1 : Courage">Changer</button><button type="button" class="btn" aria-label="Retirer Courage de l'emplacement 1">Retirer</button></div></li>
+            <li class="slot" aria-labelledby="s6-no s6-nm"><span class="no" id="s6-no"><span class="sr">Emplacement </span>2</span><div class="sbody"><div class="sname"><b id="s6-nm">Chance</b><span class="stat-pill">1 PS</span></div><span class="tag common">Commun · Destin</span></div><div class="sacts"><button type="button" class="btn" aria-label="Changer le souffle de l'emplacement 2 : Chance">Changer</button><button type="button" class="btn" aria-label="Retirer Chance de l'emplacement 2">Retirer</button></div></li>
+            <li class="slot empty" aria-labelledby="s7-no s7-nm"><span class="no" id="s7-no"><span class="sr">Emplacement </span>3</span><button type="button" class="btn pick" aria-label="Choisir un souffle pour l'emplacement 3">Choisir un souffle</button><span class="muted" id="s7-nm">Emplacement libre</span></li>
+          </ol>
+          <p class="err" role="alert"><span class="ic" aria-hidden="true">⚠</span><span>Impossible d'enregistrer la réserve. Réessayez.</span></p>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Comportement</h3>
+    <ol class="steps">
+      <li>Le MJ valide « Mettre dans l'emplacement 3 » ; la fenêtre se ferme.</li>
+      <li>L'écriture échoue : l'emplacement 3 redevient « Choisir un souffle » ; la mention « Enregistrée automatiquement » disparaît tant que l'erreur est affichée.</li>
+      <li>Le message apparaît sous les emplacements, annoncé aux lecteurs d'écran (<code>role="alert"</code>, nœud recréé à chaque échec pour qu'une erreur répétée soit ré-annoncée) ; il s'efface au prochain geste réussi.</li>
+      <li>Un seul enregistrement en vol : pendant l'attente, les boutons d'emplacement sont <code>aria-disabled</code>, la liste <code>aria-busy="true"</code> et la zone <code>role="status"</code> annonce « Enregistrement… » puis « Réserve enregistrée ».</li>
+      <li>Pas de bouton « Réessayer » : le bouton de l'emplacement fait office de nouvel essai. Focus : voir EXPERIENCE.md §6 (cible par geste, après rendu).</li>
+    </ol>
+    <p class="nb">Le message est doublé d'une icône ⚠ et d'un texte : l'alerte ne repose jamais sur la couleur seule. Même traitement pour un échec sur « Changer » ou « Retirer » (la ligne retrouve son contenu d'avant).</p>
+  </div>
+</div>
+</section>
+
+<!-- ============================ P5 bis ============================ -->
+<section class="plate" id="p5b" aria-labelledby="p5b-t">
+<h2 id="p5b-t"><span class="pn">P5 bis</span> Après « Retirer » — annulation temporaire</h2>
+<p class="lead">Le MJ vient de retirer Chance de l'emplacement 2 : pas de confirmation, mais un message avec « Annuler » reste affiché quelques secondes (6 s, valeur d'exemple). Le focus est déjà sur « Choisir un souffle » de l'emplacement 2.</p>
+<div class="pair">
+  <div>
+    <div class="cap">P5 bis · Section sur la fiche, juste après le retrait</div>
+    <div class="fiche">
+      <div class="fiche-bar"><span class="gem"></span><b>Fiche · Homme Dragon</b><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span><span class="muted">Niveau 4</span></div>
+      <div class="fiche-body">
+        <section class="reserve" aria-labelledby="p5b-rt">
+          <header class="rh"><h3 id="p5b-rt">Réserve de souffles</h3><span class="lvl">Niveau 4 · 3 emplacements</span></header>
+          <p class="hint"><span aria-hidden="true">✓</span> Enregistrée automatiquement, utilisée pour l'export PDF.</p>
+          <p class="sr" role="status" aria-live="polite" id="p5b-live">Chance retiré de l'emplacement 2. Annuler disponible pendant quelques secondes.</p>
+          <p class="rule"><b>Règle :</b> un seul souffle d'une autre race au plus. Un même souffle peut occuper plusieurs emplacements.</p>
+          <ol class="slots" role="list" aria-busy="false">
+            <li class="slot" aria-labelledby="u1-no u1-nm"><span class="no" id="u1-no"><span class="sr">Emplacement </span>1</span><div class="sbody"><div class="sname"><b id="u1-nm">Courage</b><span class="stat-pill">1 PS</span></div><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span></div><div class="sacts"><button type="button" class="btn" aria-label="Changer le souffle de l'emplacement 1 : Courage">Changer</button><button type="button" class="btn" aria-label="Retirer Courage de l'emplacement 1">Retirer</button></div></li>
+            <li class="slot empty" aria-labelledby="u2-no u2-nm"><span class="no" id="u2-no"><span class="sr">Emplacement </span>2</span><button type="button" class="btn pick" aria-label="Choisir un souffle pour l'emplacement 2">Choisir un souffle</button><span class="muted" id="u2-nm">Emplacement libre</span></li>
+            <li class="slot empty" aria-labelledby="u3-no u3-nm"><span class="no" id="u3-no"><span class="sr">Emplacement </span>3</span><button type="button" class="btn pick" aria-label="Choisir un souffle pour l'emplacement 3">Choisir un souffle</button><span class="muted" id="u3-nm">Emplacement libre</span></li>
+          </ol>
+          <div class="undo"><span class="ic" aria-hidden="true">↶</span><span>Chance retiré de l'emplacement 2.</span><button type="button" class="btn">Annuler</button></div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Comportement</h3>
+    <ol class="steps">
+      <li>« Retirer » vide l'emplacement aussitôt, sans dialogue ; le focus va sur « Choisir un souffle » du même emplacement.</li>
+      <li>Un seul enregistrement en vol : « Annuler » est <code>aria-disabled</code> tant que l'écriture du retrait n'est pas terminée ; le délai de 6 s démarre ensuite. Si l'écriture échoue, l'emplacement revient et le message d'erreur (P5) remplace l'annulation.</li>
+      <li>Annoncé par la zone <code>role="status"</code> ; « Annuler » est un bouton de 44 px, focalisable, qui ne prend pas le focus de force.</li>
+      <li>« Annuler » remet Chance dans le <b>même</b> emplacement (focus sur « Changer »). Si l'emplacement est entre-temps occupé, ou si un nouveau retrait a lieu, l'annulation disparaît ou est remplacée.</li>
+    </ol>
+    <p class="nb">Le délai est suspendu tant que le focus ou le survol est sur le message. Information portée par le texte et le bouton, jamais par la couleur seule.</p>
+  </div>
+</div>
+</section>
+
+<!-- ============================ P6 ============================ -->
+<section class="plate" id="p6" aria-labelledby="p6-t">
+<h2 id="p6-t"><span class="pn">P6</span> Mobile (375px) — section sur la fiche + feuille basse de choix</h2>
+<p class="lead">Sous ~480px de largeur de section (container query, pas un seuil d'écran), chaque emplacement passe sur deux lignes (contenu, puis « Changer » / « Retirer » à pleine largeur, cibles de 44px). La feuille basse garde ses catégories repliables ; la zone de liste défile, le détail et « Mettre dans l'emplacement 3 » restent épinglés en bas, à portée du pouce.</p>
+<div class="phones">
+
+<figure class="phonewrap"><figcaption class="cap">P6a · Section sur la fiche (niveau 4)</figcaption>
+<div class="phone m">
+  <div class="ph-status"><span>9:41</span><span>● ● ●</span></div>
+  <div class="ph-bg">
+    <div class="fiche-bar"><span class="gem"></span><b>Fiche · Homme Dragon</b><span class="tag rouge"><span class="gem sm"></span>Rouge</span></div>
+    <div class="stub sm"><b>Éveil</b></div>
+    <section class="reserve" aria-labelledby="p6-rt">
+      <header class="rh"><h3 id="p6-rt">Réserve de souffles</h3><span class="lvl">Niveau 4 · 3 emplacements</span></header>
+          <p class="hint"><span aria-hidden="true">✓</span> Enregistrée automatiquement, utilisée pour l'export PDF.</p>
+          <p class="sr" role="status" aria-live="polite" id="p6-live"></p>
+      <p class="rule"><b>Règle :</b> un seul souffle d'une autre race au plus. Un même souffle peut occuper plusieurs emplacements.</p>
+      <ol class="slots" role="list" aria-busy="false">
+        <li class="slot" aria-labelledby="s8-no s8-nm"><span class="no" id="s8-no"><span class="sr">Emplacement </span>1</span><div class="sbody"><div class="sname"><b id="s8-nm">Courage</b><span class="stat-pill">1 PS</span></div><span class="tag rouge"><span class="gem sm"></span>Dragon Rouge</span></div><div class="sacts"><button type="button" class="btn" aria-label="Changer le souffle de l'emplacement 1 : Courage">Changer</button><button type="button" class="btn" aria-label="Retirer Courage de l'emplacement 1">Retirer</button></div></li>
+        <li class="slot" aria-labelledby="s9-no s9-nm"><span class="no" id="s9-no"><span class="sr">Emplacement </span>2</span><div class="sbody"><div class="sname"><b id="s9-nm">Chance</b><span class="stat-pill">1 PS</span></div><span class="tag common">Commun · Destin</span></div><div class="sacts"><button type="button" class="btn" aria-label="Changer le souffle de l'emplacement 2 : Chance">Changer</button><button type="button" class="btn" aria-label="Retirer Chance de l'emplacement 2">Retirer</button></div></li>
+        <li class="slot empty" aria-labelledby="s10-no s10-nm"><span class="no" id="s10-no"><span class="sr">Emplacement </span>3</span><button type="button" class="btn pick" aria-label="Choisir un souffle pour l'emplacement 3">Choisir un souffle</button><span class="muted" id="s10-nm">Emplacement libre</span></li>
+      </ol>
+    </section>
+    <div class="stub"><b>Souffles</b><span class="muted">Catalogue de lecture</span></div>
+  </div>
+</div></figure>
+
+<figure class="phonewrap"><figcaption class="cap">P6b · Feuille de choix, emplacement 3 (haut de liste montré)</figcaption>
+<div class="phone">
+  <div class="ph-status"><span>9:41</span><span>● ● ●</span></div>
+  <div class="ph-bg"><div class="fiche-bar"><span class="gem"></span><b>Fiche · Homme Dragon</b></div><div class="stub"><b>Réserve de souffles</b></div><div class="stub tall"></div></div>
+  <div class="ph-scrim"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="p6-title" aria-describedby="p6-count">
+    <div class="grab" aria-hidden="true"></div>
+    <header class="mh"><div class="mt"><h2 id="p6-title">Choisir un souffle pour l'emplacement 3</h2></div><div class="mcount" id="p6-count"><span class="seg" aria-hidden="true"><i class="on"></i><i class="on"></i><i class=""></i></span><b>2 / 3 emplacements</b></div><button type="button" class="btn x" aria-label="Fermer la feuille">✕</button></header>
+    <p class="mrule"><b>Règle :</b> un seul souffle d'une autre race au plus.</p>
+    <div class="mbody"><div class="cats">
+
+<div role="group" aria-labelledby="grp7">
+<p class="cap-grp" id="grp7">Souffles communs</p>
+      <section class="cat">
+        <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p6-destin"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">Destin</span><span class="count">2<span class="sr"> souffles</span></span></button></h3>
+        <div class="cat-panel" id="p6-destin"><ul class="mlist" role="list" aria-label="Destin">
+          <li><button type="button" class="srow sel" aria-pressed="true" aria-labelledby="r58-n r58-c r58-m" aria-describedby="r58-d"><span class="stxt"><span class="l1"><span class="nm" id="r58-n">Chance</span><span class="stat-pill" id="r58-c">1 PS</span><span class="inres" id="r58-m">Déjà dans l'emplacement 2</span></span><span class="l2" id="r58-d">Le test devient automatiquement une réussite critique (valeur maximale).</span></span><span class="radio" aria-hidden="true"></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r59-n r59-c" aria-describedby="r59-d"><span class="stxt"><span class="l1"><span class="nm" id="r59-n">Malchance</span><span class="stat-pill" id="r59-c">1 PS</span></span><span class="l2" id="r59-d">Le test donne automatiquement un double 1.</span></span></button></li>
+        </ul></div>
+      </section>
+      <section class="cat">
+        <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p6-pnj"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">PNJ</span><span class="count">5<span class="sr"> souffles</span></span></button></h3>
+        <div class="cat-panel" id="p6-pnj"><ul class="mlist" role="list" aria-label="PNJ">
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r60-n r60-c" aria-describedby="r60-d"><span class="stxt"><span class="l1"><span class="nm" id="r60-n">Ennemi juré</span><span class="stat-pill" id="r60-c">1 PS</span></span><span class="l2" id="r60-d">Le monstre gagne (niveau × 3) PV supplémentaires et ne peut plus subir aucun état ; un état dont il souffrait déjà disparaît aussitôt.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r61-n r61-c" aria-describedby="r61-d"><span class="stxt"><span class="l1"><span class="nm" id="r61-n">Nuée grouillante</span><span class="stat-pill" id="r61-c">1 PS</span></span><span class="l2" id="r61-d">Plusieurs créatures identiques ne forment plus qu'un seul monstre. Par tranche de 3 monstres supplémentaires, la nuée obtient une attaque de plus et +1 au toucher et aux dégâts ; sa dépouille peut aussi être plus importante.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r62-n r62-c" aria-describedby="r62-d"><span class="stxt"><span class="l1"><span class="nm" id="r62-n">Guet-apens</span><span class="stat-pill" id="r62-c">1 PS</span></span><span class="l2" id="r62-d">Au premier tour du combat, toutes les attaques des PNJ touchent automatiquement.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r63-n r63-c" aria-describedby="r63-d"><span class="stxt"><span class="l1"><span class="nm" id="r63-n">Retrouvailles</span><span class="stat-pill" id="r63-c">1 PS</span></span><span class="l2" id="r63-d">Un PNJ que l'on croyait mort est en réalité vivant.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r64-n r64-c" aria-describedby="r64-d"><span class="stxt"><span class="l1"><span class="nm" id="r64-n">Fuite</span><span class="stat-pill" id="r64-c">1 PS</span></span><span class="l2" id="r64-d">Un PNJ parvient à s'échapper, sans condition ni test, y compris face aux personnages.</span></span></button></li>
+        </ul></div>
+      </section>
+      <section class="cat">
+        <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="false" aria-controls="p6-temps"><span class="cv" aria-hidden="true">▸</span><span class="cat-name">Souffles du temps</span><span class="cat-why"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span><span class="count">2<span class="sr"> souffles</span></span></button></h3>
+        <div class="cat-panel" id="p6-temps" hidden><ul class="mlist" role="list" aria-label="Souffles du temps">
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r65-n r65-c r65-w"><span class="stxt"><span class="l1"><span class="nm" id="r65-n">Passé</span><span class="stat-pill" id="r65-c">2 PS</span></span><span class="l2 reason" id="r65-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r66-n r66-c r66-w"><span class="stxt"><span class="l1"><span class="nm" id="r66-n">Futur</span><span class="stat-pill" id="r66-c">2 PS</span></span><span class="l2 reason" id="r66-w"><span aria-hidden="true">⊘</span> Non réservable : souffle du temps</span></span></button></li>
+        </ul></div>
+      </section>
+
+</div>
+<div role="group" aria-labelledby="grp8">
+<p class="cap-grp" id="grp8">Votre race</p>
+      <section class="cat rouge">
+        <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p6-rouge"><span class="cv" aria-hidden="true">▾</span><span class="gem sm"></span><span class="cat-name">Souffles du Dragon Rouge</span><span class="count">3<span class="sr"> souffles</span></span></button></h3>
+        <div class="cat-panel" id="p6-rouge"><ul class="mlist" role="list" aria-label="Souffles du Dragon Rouge">
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r67-n r67-c" aria-describedby="r67-d"><span class="stxt"><span class="l1"><span class="nm" id="r67-n">Défi</span><span class="stat-pill" id="r67-c">1 PS</span></span><span class="l2" id="r67-d">Tous les personnages qui ont un rival voient leur VIG augmenter d'un cran.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r68-n r68-c r68-m" aria-describedby="r68-d"><span class="stxt"><span class="l1"><span class="nm" id="r68-n">Courage</span><span class="stat-pill" id="r68-c">1 PS</span><span class="inres" id="r68-m">Déjà dans l'emplacement 1</span></span><span class="l2" id="r68-d">Une fois par séance, un voyageur qui vient de recevoir une blessure mortelle revient aussitôt à la vie, et tout le groupe récupère l'intégralité de ses points de vie.</span></span></button></li>
+          <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r69-n r69-c" aria-describedby="r69-d"><span class="stxt"><span class="l1"><span class="nm" id="r69-n">Renaissance</span><span class="stat-pill" id="r69-c">1 PS</span></span><span class="l2" id="r69-d">Une fois par séance et par voyageur, un personnage dont les PV redeviennent positifs après être passés en négatif augmente d'un cran l'attribut de son choix.</span></span></button></li>
+        </ul></div>
+      </section>
+
+</div>
+<div role="group" aria-labelledby="grp9">
+<p class="cap-grp" id="grp9">Autres races et rituels</p>
+      <section class="cat">
+        <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="true" aria-controls="p6-autres"><span class="cv" aria-hidden="true">▾</span><span class="cat-name">Autres races</span><span class="cat-why">— 0 / 1 souffle autorisé</span><span class="count">9<span class="sr"> souffles</span></span></button></h3>
+        <div class="cat-panel" id="p6-autres">
+          <h4 class="sub vert"><span class="gem sm"></span>Dragon Vert</h4>
+          <ul class="mlist" role="list" aria-label="Dragon Vert">
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r70-n r70-c" aria-describedby="r70-d"><span class="stxt"><span class="l1"><span class="nm" id="r70-n">Nostalgie</span><span class="stat-pill" id="r70-c">1 PS</span></span><span class="l2" id="r70-d">Jusqu'à deux voyageurs qui ont clairement exprimé le mal de leur pays natal sont guéris de tout état psychologique.</span></span></button></li>
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r71-n r71-c" aria-describedby="r71-d"><span class="stxt"><span class="l1"><span class="nm" id="r71-n">Route</span><span class="stat-pill" id="r71-c">1 PS</span></span><span class="l2" id="r71-d">Un ou deux voyageurs qui ont clairement affirmé vouloir atteindre leur destination ignorent, le temps d'un test, tous les modificateurs liés au climat.</span></span></button></li>
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r72-n r72-c" aria-describedby="r72-d"><span class="stxt"><span class="l1"><span class="nm" id="r72-n">Voyage</span><span class="stat-pill" id="r72-c">1 PS</span></span><span class="l2" id="r72-d">En fin de séance, jusqu'à deux voyageurs dont les joueurs tiennent un journal de bord reçoivent une prime de 300 pièces d'or (Po) × leur niveau.</span></span></button></li>
+          </ul>
+          <h4 class="sub bleu"><span class="gem sm"></span>Dragon Bleu</h4>
+          <ul class="mlist" role="list" aria-label="Dragon Bleu">
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r73-n r73-c" aria-describedby="r73-d"><span class="stxt"><span class="l1"><span class="nm" id="r73-n">Amour</span><span class="stat-pill" id="r73-c">1 PS</span></span><span class="l2" id="r73-d">Un ou deux voyageurs amoureux gagnent 1 point de protection.</span></span></button></li>
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r74-n r74-c" aria-describedby="r74-d"><span class="stxt"><span class="l1"><span class="nm" id="r74-n">Bonté</span><span class="stat-pill" id="r74-c">1 PS</span></span><span class="l2" id="r74-d">L'Esprit d'un ou deux personnages qui aident quelqu'un sans rien attendre en retour augmente d'un cran.</span></span></button></li>
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r75-n r75-c" aria-describedby="r75-d"><span class="stxt"><span class="l1"><span class="nm" id="r75-n">Émotion</span><span class="stat-pill" id="r75-c">1 PS</span></span><span class="l2" id="r75-d">Le meneur reçoit cinq jetons à offrir aux joueurs dont l'interprétation l'a ému ; ces jetons s'utilisent comme des points de maladresse.</span></span></button></li>
+          </ul>
+          <h4 class="sub noir"><span class="gem sm"></span>Dragon Noir</h4>
+          <ul class="mlist" role="list" aria-label="Dragon Noir">
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r76-n r76-c" aria-describedby="r76-d"><span class="stxt"><span class="l1"><span class="nm" id="r76-n">Massacre</span><span class="stat-pill" id="r76-c">1 PS</span></span><span class="l2" id="r76-d">Les personnages qui tuent un animal de plus d'un mètre gagnent 2 PE.</span></span></button></li>
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r77-n r77-c" aria-describedby="r77-d"><span class="stxt"><span class="l1"><span class="nm" id="r77-n">Obéissance</span><span class="stat-pill" id="r77-c">1 PS</span></span><span class="l2" id="r77-d">Un ou deux personnages qui contribuent pleinement au bon déroulement de l'histoire obtiennent +1 à leur test de condition.</span></span></button></li>
+            <li><button type="button" class="srow" aria-pressed="false" aria-labelledby="r78-n r78-c" aria-describedby="r78-d"><span class="stxt"><span class="l1"><span class="nm" id="r78-n">Vengeance</span><span class="stat-pill" id="r78-c">1 PS</span></span><span class="l2" id="r78-d">Un ou deux voyageurs animés d'une haine profonde et qui cherchent à accomplir leur vengeance obtiennent +1 au toucher.</span></span></button></li>
+          </ul>
+        </div>
+      </section>
+      <section class="cat">
+        <h3 class="cat-h"><button type="button" class="cat-btn" aria-expanded="false" aria-controls="p6-rituels"><span class="cv" aria-hidden="true">▸</span><span class="cat-name">Rituels</span><span class="cat-why"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span><span class="count">6<span class="sr"> souffles</span></span></button></h3>
+        <div class="cat-panel" id="p6-rituels" hidden><ul class="mlist" role="list" aria-label="Rituels">
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r79-n r79-c r79-w"><span class="stxt"><span class="l1"><span class="nm" id="r79-n">Rituel du sommeil</span><span class="stat-pill" id="r79-c">1 PS</span></span><span class="l2 reason" id="r79-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r80-n r80-c r80-w"><span class="stxt"><span class="l1"><span class="nm" id="r80-n">Rituel du tabou</span><span class="stat-pill" id="r80-c">1 PS</span></span><span class="l2 reason" id="r80-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r81-n r81-c r81-w"><span class="stxt"><span class="l1"><span class="nm" id="r81-n">Rituel de l'esprit des mots</span><span class="stat-pill" id="r81-c">1 PS</span></span><span class="l2 reason" id="r81-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r82-n r82-c r82-w"><span class="stxt"><span class="l1"><span class="nm" id="r82-n">Rituel de la guigne</span><span class="stat-pill" id="r82-c">1 PS</span></span><span class="l2 reason" id="r82-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r83-n r83-c r83-w"><span class="stxt"><span class="l1"><span class="nm" id="r83-n">Rituel de l'improvisation</span><span class="stat-pill" id="r83-c">1 PS</span></span><span class="l2 reason" id="r83-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+          <li><button type="button" class="srow off" aria-pressed="false" aria-disabled="true" aria-labelledby="r84-n r84-c r84-w"><span class="stxt"><span class="l1"><span class="nm" id="r84-n">Fête des poings</span><span class="stat-pill" id="r84-c">1 PS</span></span><span class="l2 reason" id="r84-w"><span aria-hidden="true">⊘</span> Admis dès le niveau 5</span></span></button></li>
+        </ul></div>
+      </section>
+
+</div>
+    </div></div>
+    <div class="detail"><div class="d-head"><b>Chance</b><span class="stat-pill">1 PS</span><span class="tag common">Commun · Destin</span></div><p class="d-desc">Le test devient automatiquement une réussite critique (valeur maximale).</p><p class="note">Déjà dans l'emplacement 2 : un même souffle peut occuper plusieurs emplacements.</p><div class="d-actions"><button type="button" class="btn">Annuler</button><button type="button" class="btn primary">Mettre dans l'emplacement 3</button></div></div>
+  </div>
+</div></figure>
+
+</div>
+</section>
+
+</div>
+</body>
+</html>

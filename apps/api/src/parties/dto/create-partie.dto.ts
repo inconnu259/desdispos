@@ -11,6 +11,11 @@ export class CreatePartieDto {
   @MaxLength(120)
   name!: string;
 
+  // N'atteste que « id connu » (tous les GAME_SYSTEMS, ouverts ou non) — la règle « ouvert à la
+  // création » est appliquée séparément par PartiesService.create() via isOpenForCreation()
+  // (Story 29.17, registre depuis la Story 37.5). Aucun ValidatorConstraint partagé n'existe dans
+  // ce projet pour unifier les deux niveaux ; un futur point d'entrée acceptant gameSystemId doit
+  // reproduire la vérification du service, ce décorateur seul ne l'empêche pas (revue de code).
   @IsIn(GAME_SYSTEM_IDS)
   gameSystemId!: string;
 

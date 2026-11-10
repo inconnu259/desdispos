@@ -9,6 +9,8 @@ import {
   composeSeanceInfo,
   buildMonthDetails,
   dateKeyToUtcMidnight,
+  entryCoveredDays,
+  entryPartieId,
   nextMeaningfulDate,
   toDateKey,
 } from './day-detail.utils';
@@ -872,5 +874,217 @@ describe('buildDayDetail — la disponibilité du groupe, canal séparé (Story 
   it('ne rend pas un jour « porteur » : le groupe DÉCRIT un créneau, il n’y ajoute rien à faire', () => {
     const detail = buildDayDetail('2026-08-20', [groupEntry()], ALL_LAYERS, [], NOW);
     expect(detail.isEmpty).toBe(true);
+  });
+});
+
+describe('buildDayDetail — le filtre par partie (Story 44.8)', () => {
+  const vote = (partieId: string, key: string, label: string): AgendaEntry => ({
+    key,
+    type: 'votes-en-cours',
+    date: '2026-08-20',
+    label,
+    slot: 'EVENING',
+    vote: {
+      partieId,
+      pollId: key,
+      optionId: 'o1',
+      yes: 1,
+      maybe: 0,
+      no: 0,
+      total: 3,
+      myAnswer: null,
+    },
+  });
+  const HIDDEN = new Set(['p1']);
+
+  it('sans filtre ou avec un ensemble vide, rien ne change', () => {
+    const entries = [seanceEntry(), vote('p2', 'v2', 'Vote B')];
+    const base = buildDayDetail('2026-08-20', entries, ALL_LAYERS, [], NOW);
+    expect(buildDayDetail('2026-08-20', entries, ALL_LAYERS, [], NOW, null)).toEqual(base);
+    expect(buildDayDetail('2026-08-20', entries, ALL_LAYERS, [], NOW, new Set())).toEqual(base);
+  });
+
+  it('le vote d’une partie masquée disparaît du créneau, comme s’il n’existait pas', () => {
+    const detail = buildDayDetail(
+      '2026-08-20',
+      [vote('p1', 'v1', 'Vote A')],
+      ALL_LAYERS,
+      [],
+      NOW,
+      HIDDEN,
+    );
+    expect(detail.slots[2].pollLabel).toBeNull();
+    expect(detail.slots[2].pollVote).toBeNull();
+    expect(detail.slots[2].winner).not.toBe('vote');
+  });
+
+  it('la séance d’une partie masquée garde le créneau INDISPONIBLE mais n’est jamais nommée (FR-50)', () => {
+    const detail = buildDayDetail('2026-08-20', [seanceEntry()], ALL_LAYERS, [decl()], NOW, HIDDEN);
+    expect(detail.slots[2].seanceLabel).toBeNull();
+    expect(detail.slots[2].seanceTarget).toBeNull();
+    expect(detail.slots[2].status).toBe('UNAVAILABLE');
+    expect(detail.slots[2].winner).toBe('seance');
+  });
+
+  it('une séance visible et une masquée sur le même créneau : la visible est nommée, sans « +1 autre »', () => {
+    const hidden = seanceEntry({
+      key: 'seance-s2',
+      seanceId: 's2',
+      label: 'Caché',
+      partieId: 'p1',
+    });
+    const visible = seanceEntry({
+      key: 'seance-s3',
+      seanceId: 's3',
+      label: 'Visible',
+      partieId: 'p2',
+    });
+    const detail = buildDayDetail('2026-08-20', [hidden, visible], ALL_LAYERS, [], NOW, HIDDEN);
+    expect(detail.slots[2].seanceLabel).toBe('Visible');
+  });
+
+  it('les parties non masquées et les déclarations ne sont pas touchées', () => {
+    const detail = buildDayDetail(
+      '2026-08-20',
+      [vote('p2', 'v2', 'Vote B')],
+      ALL_LAYERS,
+      [decl()],
+      NOW,
+      HIDDEN,
+    );
+    expect(detail.slots[2].pollLabel).toBe('Vote B');
+    expect(detail.slots[0].status).toBe('AVAILABLE');
+  });
+
+  it('buildMonthDetails transmet le filtre', () => {
+    const map = buildMonthDetails(['2026-08-20'], [seanceEntry()], ALL_LAYERS, [], NOW, HIDDEN);
+    expect(map.get('2026-08-20')!.slots[2].seanceLabel).toBeNull();
+  });
+
+  it('entryPartieId lit la partie d’une séance, d’un vote, et rien pour une déclaration', () => {
+    expect(entryPartieId(seanceEntry())).toBe('p1');
+    expect(entryPartieId(vote('p9', 'v', 'x'))).toBe('p9');
+    expect(
+      entryPartieId({ key: 'd', type: 'mes-disponibilites', date: '2026-08-20', label: '' }),
+    ).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story 47.5 — voter une plage : toutes les options qui couvrent un créneau
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('buildDayDetail — les plages d’un même vote sur un créneau (Story 47.5)', () => {
+  const participation = (optionId: string, pollId = 'poll-1') => ({
+    partieId: 'p1',
+    pollId,
+    optionId,
+    yes: 1,
+    maybe: 0,
+    no: 0,
+    total: 4,
+    myAnswer: null,
+  });
+  // Durée 3 : samedi matin → samedi soir (a), samedi après-midi → dimanche matin (b). Elles se recouvrent
+  // le samedi après-midi et le samedi soir.
+  const a = pollEntry({
+    key: 'opt-a',
+    date: '2026-08-22',
+    slot: 'MORNING',
+    endDate: '2026-08-22',
+    endSlot: 'EVENING',
+    vote: participation('a'),
+  });
+  const b = pollEntry({
+    key: 'opt-b',
+    date: '2026-08-22',
+    slot: 'AFTERNOON',
+    endDate: '2026-08-23',
+    endSlot: 'MORNING',
+    vote: participation('b'),
+  });
+
+  it('un créneau couvert deux fois porte les deux options, dans l’ordre de leur début, et leur compte', () => {
+    // Entrées passées à l’envers : l’ordre est celui du début, pas celui de la liste.
+    const detail = buildDayDetail('2026-08-22', [b, a], ALL_LAYERS, [], NOW);
+    const afternoon = detail.slots[1];
+    expect(afternoon.pollCount).toBe(2);
+    expect(afternoon.pollVotes.map((v) => v.vote.optionId)).toEqual(['a', 'b']);
+    expect(afternoon.pollVotes[0].range).toBe('sam. 22 matin → sam. 22 soir');
+    expect(afternoon.pollVotes[1].range).toBe('sam. 22 après-midi → dim. 23 matin');
+    expect(afternoon.pollVotes[1].rangeSentence).toBe(
+      'du samedi 22 après-midi au dimanche 23 matin',
+    );
+  });
+
+  it('un créneau couvert une seule fois n’a qu’une option ; pollVote garde son sens (la première)', () => {
+    const detail = buildDayDetail('2026-08-22', [a, b], ALL_LAYERS, [], NOW);
+    const morning = detail.slots[0];
+    expect(morning.pollCount).toBe(1);
+    expect(morning.pollVotes.map((v) => v.vote.optionId)).toEqual(['a']);
+    expect(morning.pollVote?.optionId).toBe('a');
+  });
+
+  it('un créneau seul : une option, sans plage écrite — la sortie d’avant', () => {
+    const single = pollEntry({ vote: participation('s') });
+    const detail = buildDayDetail('2026-08-20', [single], ALL_LAYERS, [], NOW);
+    expect(detail.slots[2].pollCount).toBe(1);
+    expect(detail.slots[2].pollVotes).toHaveLength(1);
+    expect(detail.slots[2].pollVotes[0].range).toBe('');
+    expect(detail.slots[2].pollVote?.optionId).toBe('s');
+  });
+
+  it('un AUTRE vote qui couvre le même créneau ne se mêle pas aux lignes (il reste « +1 autre »)', () => {
+    const other = pollEntry({
+      key: 'opt-z',
+      date: '2026-08-22',
+      slot: 'AFTERNOON',
+      label: 'Autre vote',
+      vote: participation('z', 'poll-2'),
+    });
+    const detail = buildDayDetail('2026-08-22', [a, other], ALL_LAYERS, [], NOW);
+    expect(detail.slots[1].pollVotes.map((v) => v.vote.optionId)).toEqual(['a']);
+    expect(detail.slots[1].pollCount).toBe(1);
+    expect(detail.slots[1].pollLabel).toContain('+1 autre');
+  });
+
+  it('couche « votes en cours » éteinte : ni lignes ni compte (comme pollVote)', () => {
+    const layers = ALL_LAYERS.filter((l) => l !== 'votes-en-cours');
+    const detail = buildDayDetail('2026-08-22', [a, b], layers, [], NOW);
+    expect(detail.slots[1].pollVotes).toEqual([]);
+    expect(detail.slots[1].pollCount).toBe(0);
+    expect(detail.slots[1].pollVote).toBeNull();
+  });
+
+  it('la plage couvre le deuxième jour : le créneau du lendemain porte l’option qui le couvre', () => {
+    const detail = buildDayDetail('2026-08-23', [a, b], ALL_LAYERS, [], NOW);
+    expect(detail.slots[0].pollVotes.map((v) => v.vote.optionId)).toEqual(['b']);
+    expect(detail.slots[0].pollCount).toBe(1);
+  });
+});
+
+describe('entryCoveredDays — les jours d’une plage (Story 47.5)', () => {
+  it('un créneau seul : son jour', () => {
+    expect(entryCoveredDays(pollEntry())).toEqual(['2026-08-20']);
+  });
+
+  it('une plage : chacun de ses jours, du soir au lendemain compris', () => {
+    const span = pollEntry({
+      date: '2026-11-06',
+      slot: 'EVENING',
+      endDate: '2026-11-08',
+      endSlot: 'AFTERNOON',
+    });
+    expect(entryCoveredDays(span)).toEqual(['2026-11-06', '2026-11-07', '2026-11-08']);
+  });
+
+  it('une plage qui franchit la fin du mois', () => {
+    const span = pollEntry({
+      date: '2026-10-31',
+      slot: 'EVENING',
+      endDate: '2026-11-01',
+      endSlot: 'MORNING',
+    });
+    expect(entryCoveredDays(span)).toEqual(['2026-10-31', '2026-11-01']);
   });
 });

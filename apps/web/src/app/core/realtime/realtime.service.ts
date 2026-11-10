@@ -5,12 +5,15 @@ import { ScenariosService } from '../scenarios/scenarios.service';
 import { CharacterService } from '../characters/character.service';
 import { HommeDragonService } from '../homme-dragon/homme-dragon.service';
 import { InvitationsService } from '../invitations/invitations.service';
+import { DatableSeancesService } from '../poll/datable-seances.service';
 import { OpenPollsService } from '../poll/open-polls.service';
 import { MyPartiesService } from '../my-parties/my-parties.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { AnnouncementsService } from '../announcements/announcements.service';
 import { CharacterRolesService } from '../character-roles/character-roles.service';
 import { PartySignalsService } from '../parties/party-signals.service';
+import { BoardGamesService } from '../board-games/board-games.service';
+import { AvailabilityReminderService } from '../availability/availability-reminder.service';
 
 export function partieTopic(partieId: string): string {
   return `partie:${partieId}`;
@@ -53,11 +56,14 @@ export class RealtimeService {
   private readonly hommeDragon = inject(HommeDragonService);
   private readonly invitations = inject(InvitationsService);
   private readonly openPolls = inject(OpenPollsService);
+  private readonly datableSeances = inject(DatableSeancesService);
   private readonly myParties = inject(MyPartiesService);
   private readonly availability = inject(AvailabilityService);
   private readonly announcements = inject(AnnouncementsService);
   private readonly characterRoles = inject(CharacterRolesService);
   private readonly partySignals = inject(PartySignalsService);
+  private readonly boardGames = inject(BoardGamesService);
+  private readonly availabilityReminder = inject(AvailabilityReminderService);
 
   // Table de correspondance topic-prefix -> services à notifier (AD-3), câblée ici, dans
   // RealtimeService lui-même (jamais par le composant appelant connect()/disconnect()) —
@@ -83,9 +89,18 @@ export class RealtimeService {
     { prefix: 'partie:', notifyChanged: () => this.parties.notifyChanged() },
     { prefix: 'partie:', notifyChanged: () => this.scenarios.notifyRealtimeChanged() },
     { prefix: 'partie:', notifyChanged: () => this.characters.notifyChanged() },
-    { prefix: 'partie:', notifyChanged: () => this.hommeDragon.notifyChanged() },
+    // AD-23 : la fiche d'un Homme Dragon n'écoute QUE `user:{id}` (aucun canal `partie:`, quel que
+    // soit son nombre d'aventures) — le niveau suit un scénario clos par l'émission existante de
+    // `ScenariosService` (`notifyPartieSignalsChanged`, `user:` au MJ et aux membres). Les écritures
+    // de fiche n'émettent rien : le client qui écrit se met à jour avec la réponse. La page de la
+    // fiche ouvre `userTopic` elle-même (`connect` / `disconnect` à sa destruction).
+    { prefix: 'user:', notifyChanged: () => this.hommeDragon.notifyChanged() },
     { prefix: 'user:', notifyChanged: () => this.invitations.notifyChanged() },
-    { prefix: 'partie:', notifyChanged: (topic) => this.openPolls.notifyChanged(topic) },
+    // Story 44.2 : mes sondages ouverts (toutes parties, toutes familles) sont UNE liste lue sur `user:{id}`,
+    // que toute écriture de sondage ou de vote prévient (`notifyPartieSignalsChanged`) — plus de `partie:`.
+    { prefix: 'user:', notifyChanged: () => this.openPolls.notifyChanged() },
+    // Story 45.1 : mes rendez-vous à dater — même canal, même règle ; relus seulement une fois lus une première fois.
+    { prefix: 'user:', notifyChanged: () => this.datableSeances.notifyChanged() },
     { prefix: 'user:', notifyChanged: () => this.myParties.notifyChanged() },
     { prefix: 'partie:', notifyChanged: () => this.availability.notifyChanged() },
     { prefix: 'partie:', notifyChanged: () => this.announcements.notifyChanged() },
@@ -94,12 +109,22 @@ export class RealtimeService {
     // le canal 'user:{id}' est déjà ouvert pour l'utilisateur courant, aucune connexion
     // supplémentaire par Partie (même discipline que `myParties` ci-dessus).
     { prefix: 'user:', notifyChanged: () => this.partySignals.notifyChanged() },
+    // Story 52.5 (AD-5) : le rappel « Dispos à déclarer » se relit sur `user:{id}` SEUL — toute écriture de déclaration,
+    // tout changement de la préférence et toute acceptation d'invitation y préviennent ; jamais `partie:`.
+    { prefix: 'user:', notifyChanged: () => this.availabilityReminder.notifyChanged() },
     // Deferred-work (SSE, calendrier personnel) : RÉUTILISE `notifyRealtimeChanged()`, déjà câblée
     // ci-dessus sur 'partie:' — elle ignore déjà quel partieId a changé (REALTIME_WILDCARD), donc
     // convient telle quelle à un événement 'user:{id}' qui agrège plusieurs Parties. CalendarView
     // (contexte personnel) se connecte à user:{id} et recharge GET /me/calendar sur ce même signal
     // `ScenariosService.changed()` — pas de nouveau service, pas de nouvelle méthode.
     { prefix: 'user:', notifyChanged: () => this.scenarios.notifyRealtimeChanged() },
+    // Story 48.1 : ma Ludothèque — toute écriture d'un jeu émet `user:{propriétaire}` ; la page la
+    // relit sur ce signal (autres onglets de la même personne).
+    { prefix: 'user:', notifyChanged: () => this.boardGames.notifyChanged() },
+    // Story 48.3 : la feuille « Ludothèque d'une personne » se relit sur le `partie:{id}` que toute écriture
+    // d'un jeu émet pour chaque partie de ralliement de son propriétaire — la page de la partie est déjà
+    // connectée à ce canal, aucune connexion de plus.
+    { prefix: 'partie:', notifyChanged: () => this.boardGames.notifyChanged() },
   ];
 
   // Une entrée par connexion active (pas par topic) — deux connect() sur le même topic ouvrent

@@ -1,3 +1,4 @@
+import { spanSlots } from '@master-jdr/shared';
 import type {
   AvailabilityDeclarationDto,
   CalendarLayerKey,
@@ -8,6 +9,7 @@ import { computeDisplayStatus } from '../../core/availability/compute-display-st
 import type { AgendaEntry } from './calendar-agenda-view/calendar-agenda-view';
 import type { VoteParticipation } from './poll-track.utils';
 import type { GroupAvailability } from './group-availability.utils';
+import { isSpan, spanCompactLabel, spanSentence, spanShortLabel } from './span-label';
 
 /**
  * Story 36.1 — modèle du rail de détail.
@@ -94,6 +96,15 @@ export interface DaySlotDetail {
    *  seulement quand le rang gagnant est `'vote'` — le texte suit le rang, la piste aussi
    *  (une séance confirmée qui l'emporte n'affiche pas la piste d'un vote concurrent). */
   pollVote: VoteParticipation | null;
+  /** Story 47.5 — TOUTES les options du vote qui couvrent ce créneau (une par option, dans l'ordre de leur
+   *  début), chacune avec sa plage écrite. `pollVote` en est la première et garde son sens : pour un créneau
+   *  couvert une seule fois (ou un créneau seul), la liste n'a qu'une entrée. Même gouvernance que `pollVote`
+   *  (couche `votes-en-cours`) ; c'est LA source du sélecteur de réponse (une ligne par plage) — aucune vue ne
+   *  refiltre. Vide si aucune option ne porte de participation. */
+  pollVotes: SlotPollVote[];
+  /** Story 47.5 — combien de plages de ce vote couvrent le créneau (« ×n » quand n ≥ 2). Même gouvernance que
+   *  `pollVote` ; 0 sans vote affiché. */
+  pollCount: number;
   /** Story 36.8 — la disponibilité du groupe sur ce créneau (FR-53), ou `null`.
    *
    *  🚨 **CE CHAMP NE SUIT PAS LE RANG GAGNANT**, contrairement à `seanceLabel`, `pollLabel` et
@@ -106,6 +117,48 @@ export interface DaySlotDetail {
    *  Il **est** gouverné par sa couche, comme `pollVote` : `disponibilite-groupe` éteinte ⇒
    *  `null`, et la case retrouve alors ses bandes fusionnées (AC10/AC11). */
   group: GroupAvailability | null;
+  /** Story 47.3 — la plage de plusieurs créneaux que ce créneau fait partie, ou `null` (un créneau seul, ou
+   *  l'objet nommé n'est pas une plage). Suit le rang GAGNANT et la gouvernance des couches comme le texte : une
+   *  couche éteinte n'a ni nom ni connecteur, jamais moins d'indisponibilité. */
+  span: SlotSpan | null;
+}
+
+/** Story 47.5 — une option de vote qui couvre un créneau : sa participation et sa plage écrite. */
+export interface SlotPollVote {
+  vote: VoteParticipation;
+  /** « ven. 6 soir → dim. 8 après-midi » — la ligne du sélecteur ; vide pour un créneau seul. */
+  range: string;
+  /** « du vendredi 6 soir au dimanche 8 après-midi » — pour les noms accessibles ; vide pour un créneau seul. */
+  rangeSentence: string;
+  /** « ven. 6 nov. soir → dim. 8 nov. après-midi » — la forme courte des cartes ; vide pour un créneau seul. */
+  rangeShort: string;
+  /** Rang linéaire du premier créneau de l'option : ordre chronologique des lignes. */
+  startIndex: number;
+}
+
+/** Story 47.3 (UX-DR9) — ce qu'une bande ou une ligne du rail sait de la plage qui la couvre. */
+export interface SlotSpan {
+  /** Clé de l'entrée : deux bandes de la même plage la partagent (le nom n'est écrit qu'une fois par ligne). */
+  key: string;
+  /** Nom du rendez-vous. */
+  label: string;
+  /** « du vendredi 6 soir au dimanche 8 après-midi » — nom accessible. */
+  range: string;
+  /** « ven. 6 nov. soir → dim. 8 nov. après-midi » — forme courte. */
+  shortRange: string;
+  /** Ce créneau est le tout premier de la plage. */
+  isStart: boolean;
+  /** Ce jour est le premier jour de la plage (le rail écrit « (suite) » sur les suivants). */
+  isFirstDay: boolean;
+  /** Le matin d'un jour, quand la plage couvre aussi le soir de la veille : connecteur « venant de ». */
+  continuesBefore: boolean;
+  /** Le soir d'un jour, quand la plage couvre aussi le matin du lendemain : connecteur « allant vers ». */
+  continuesAfter: boolean;
+  /** Rang linéaire du créneau (`jour * 3 + créneau`) : permet de dire, sans autre calcul, qu'une bande n'est pas
+   *  le début de sa plage (préfixe « ← » de la ligne de semaine). */
+  index: number;
+  /** Rang linéaire du premier créneau de la plage. */
+  startIndex: number;
 }
 
 export interface DayDetail {
@@ -131,6 +184,132 @@ const MEANINGFUL_TYPES = new Set(['mes-seances', 'votes-en-cours', 'inscriptions
 export function entryCoversSlot(entrySlot: DaySlot | undefined, slot: DaySlot): boolean {
   if (entrySlot == null || entrySlot === 'FULL_DAY' || slot === 'FULL_DAY') return true;
   return entrySlot === slot;
+}
+
+const SLOT_ORDER: Record<RailSlot, number> = { MORNING: 0, AFTERNOON: 1, EVENING: 2 };
+
+/** Numéro de jour (UTC) d'une clé `YYYY-MM-DD` : l'écart entre deux clés est un nombre de jours entiers. */
+function dayNumber(dateKey: string): number {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
+}
+
+/**
+ * Story 47.3 — les rangs linéaires `[de, à]` (inclus) que couvre une entrée, avec `rang = jour * 3 + créneau`
+ * (matin 0, après-midi 1, soir 2). Un créneau absent ou `FULL_DAY` couvre les trois créneaux de son jour ; une
+ * fin sans créneau, tout son jour. `null` pour une entrée sans date. Une fin avant le début est ignorée (donnée
+ * incohérente : l'entrée garde son seul début).
+ */
+export function entryIndexRange(e: AgendaEntry): [number, number] | null {
+  if (!e.date) return null;
+  const startDay = dayNumber(e.date) * 3;
+  const startNamed = e.slot != null && e.slot !== 'FULL_DAY';
+  const from = startDay + (startNamed ? SLOT_ORDER[e.slot as RailSlot] : 0);
+  const single: [number, number] = [from, startNamed ? from : startDay + 2];
+  if (!e.endDate) return single;
+  const endDay = dayNumber(e.endDate) * 3;
+  const endNamed = e.endSlot != null && e.endSlot !== 'FULL_DAY';
+  // Une fin sans créneau : le même jour que le début, c'est le créneau de départ (comme `isSpan`) ; un autre
+  // jour, c'est la fin de ce jour.
+  const to =
+    endDay +
+    (endNamed
+      ? SLOT_ORDER[e.endSlot as RailSlot]
+      : e.endDate === e.date && startNamed
+        ? SLOT_ORDER[e.slot as RailSlot]
+        : 2);
+  return to >= from ? [from, to] : single;
+}
+
+/**
+ * Story 47.3 — l'entrée couvre-t-elle ce créneau de ce jour ? Un créneau seul garde EXACTEMENT la règle de
+ * `entryCoversSlot()` (même jour, `FULL_DAY` joker) ; une plage couvre chaque créneau compris entre son début
+ * et sa fin, du soir au lendemain matin compris. Une cellule `FULL_DAY` est couverte dès que l'un de ses trois
+ * créneaux l'est.
+ */
+export function entryCoversCell(e: AgendaEntry, dateKey: string, slot: DaySlot): boolean {
+  if (!e.endDate) return e.date === dateKey && entryCoversSlot(e.slot, slot);
+  const range = entryIndexRange(e);
+  if (!range) return false;
+  const day = dayNumber(dateKey) * 3;
+  const [cellFrom, cellTo] =
+    slot === 'FULL_DAY' ? [day, day + 2] : [day + SLOT_ORDER[slot], day + SLOT_ORDER[slot]];
+  return range[0] <= cellTo && cellFrom <= range[1];
+}
+
+/**
+ * Story 47.5 — les jours (`YYYY-MM-DD`, dans l'ordre) que couvre une entrée : son jour, ou tous les jours d'une
+ * plage. Dérivé de `spanSlots` (`@master-jdr/shared`, LA fonction des créneaux couverts) sur le nombre de créneaux
+ * que `entryIndexRange` lit dans l'entrée — jamais un second parcours de calendrier. Une entrée sans date : aucun.
+ */
+export function entryCoveredDays(e: AgendaEntry): string[] {
+  const range = entryIndexRange(e);
+  if (!range || !e.date) return [];
+  const count = range[1] - range[0] + 1;
+  const startNamed = e.slot != null && e.slot !== 'FULL_DAY';
+  if (count <= 1 || !startNamed) return [e.date];
+  const days: string[] = [];
+  for (const covered of spanSlots(e.date, e.slot as RailSlot, count)) {
+    if (days[days.length - 1] !== covered.date) days.push(covered.date);
+  }
+  return days;
+}
+
+/** Une entrée touche-t-elle ce jour ? Son jour de début, ou l'un des jours d'une plage. */
+function entryTouchesDay(e: AgendaEntry, dateKey: string): boolean {
+  return e.date === dateKey || (!!e.endDate && e.date < dateKey && dateKey <= e.endDate);
+}
+
+/** Les informations de plage d'un créneau pour l'entrée qui le nomme, ou `null` pour un créneau seul. */
+function spanOf(entry: AgendaEntry, dateKey: string, slot: RailSlot): SlotSpan | null {
+  const range = entryIndexRange(entry);
+  if (!range || !entry.endDate) return null;
+  const start = { date: entry.date, slot: entry.slot };
+  const end = { date: entry.endDate, slot: entry.endSlot };
+  if (!isSpan(start, end)) return null;
+  const index = dayNumber(dateKey) * 3 + SLOT_ORDER[slot];
+  return {
+    key: entry.key,
+    label: entry.label,
+    range: spanSentence(start, end),
+    shortRange: spanShortLabel(start, end),
+    isStart: index === range[0],
+    isFirstDay: entry.date === dateKey,
+    continuesBefore: slot === 'MORNING' && index - 1 >= range[0],
+    continuesAfter: slot === 'EVENING' && index + 1 <= range[1],
+    index,
+    startIndex: range[0],
+  };
+}
+
+/**
+ * Story 47.5 — les options du MÊME vote qui couvrent le créneau, dans l'ordre de leur début. C'est la seule règle
+ * de « qui couvre ce créneau » pour le sélecteur et le « ×n » : `entryCoversCell` (47.3) en décide, ce n'est
+ * qu'un regroupement par vote. Un autre vote qui couvre aussi le créneau reste annoncé par « (+1 autre) ».
+ */
+function coveringVotes(first: AgendaEntry | undefined, matches: AgendaEntry[]): AgendaEntry[] {
+  if (!first) return [];
+  const pollId = first.vote?.pollId;
+  const same = pollId ? matches.filter((e) => e.vote?.pollId === pollId) : [first];
+  return same
+    .map((entry, i) => ({ entry, i, start: entryIndexRange(entry)?.[0] ?? 0 }))
+    .sort((a, b) => a.start - b.start || a.i - b.i)
+    .map((x) => x.entry);
+}
+
+function slotPollVote(entry: AgendaEntry): SlotPollVote | null {
+  if (!entry.vote) return null;
+  const range = entryIndexRange(entry);
+  const start = { date: entry.date, slot: entry.slot };
+  const end = entry.endDate ? { date: entry.endDate, slot: entry.endSlot } : null;
+  const long = end && isSpan(start, end) ? end : null;
+  return {
+    vote: entry.vote,
+    range: long ? spanCompactLabel(start, long) : '',
+    rangeSentence: long ? spanSentence(start, long) : '',
+    rangeShort: long ? spanShortLabel(start, long) : '',
+    startIndex: range?.[0] ?? 0,
+  };
 }
 
 /** `YYYY-MM-DD` → Date minuit UTC, contrat d'entrée de `computeDisplayStatus`. */
@@ -162,6 +341,14 @@ export function toDateKey(date: Date): string {
 }
 
 /**
+ * La partie à laquelle appartient une entrée du calendrier personnel (Story 44.8) : `partieId` pour une séance ou
+ * une inscription, `vote.partieId` pour un vote ; `null` pour ce qui n'appartient à aucune (déclarations).
+ */
+export function entryPartieId(entry: AgendaEntry): string | null {
+  return entry.partieId ?? entry.vote?.partieId ?? null;
+}
+
+/**
  * Construit le détail d'UN jour pour le rail.
  *
  * @param dateKey      Jour à détailler, `YYYY-MM-DD`.
@@ -180,32 +367,46 @@ export function buildDayDetail(
   activeLayers: readonly CalendarLayerKey[],
   declarations: AvailabilityDeclarationDto[],
   now: Date = new Date(),
+  hiddenPartieIds: ReadonlySet<string> | null = null,
 ): DayDetail {
   const active = new Set(activeLayers);
+  const hiddenParty = (e: AgendaEntry): boolean => {
+    const id = entryPartieId(e);
+    return id !== null && !!hiddenPartieIds?.has(id);
+  };
   const utcDate = dateKeyToUtcMidnight(dateKey);
-  const sameDay = entries.filter((e) => e.date === dateKey);
+  // Story 47.3 : les entrées qui TOUCHENT ce jour — son début, ou l'un des jours d'une plage.
+  const sameDay = entries.filter((e) => entryTouchesDay(e, dateKey));
 
   const slots = RAIL_SLOTS.map(({ slot, label, shortLabel }): DaySlotDetail => {
     // Plusieurs entrées peuvent partager le même jour/créneau (ex. deux séances de deux parties
     // distinctes). On n'en agrège pas la liste complète (hors périmètre de la story) mais on ne
     // fait jamais disparaître silencieusement les suivantes : un indicateur minimal les signale.
-    const seanceMatches = sameDay.filter(
-      (e) => e.type === 'mes-seances' && entryCoversSlot(e.slot, slot),
+    const allSeanceMatches = sameDay.filter(
+      (e) => e.type === 'mes-seances' && entryCoversCell(e, dateKey, slot),
     );
+    // Story 44.8 — le filtre par partie. Une séance d'une partie masquée garde le créneau INDISPONIBLE (FR-50,
+    // comme une couche éteinte) mais n'est jamais nommée ; ses votes, eux, disparaissent comme s'ils n'existaient
+    // pas. Les entrées visibles passent d'abord, pour qu'une séance nommée ne soit pas masquée par une autre.
+    const seanceMatches = allSeanceMatches.filter((e) => !hiddenParty(e));
     const pollMatches = sameDay.filter(
-      (e) => e.type === 'votes-en-cours' && entryCoversSlot(e.slot, slot),
+      (e) => e.type === 'votes-en-cours' && entryCoversCell(e, dateKey, slot) && !hiddenParty(e),
     );
     const seance = seanceMatches[0];
+    const blockingSeance = seance ?? allSeanceMatches[0];
     const poll = pollMatches[0];
+    const covering = coveringVotes(poll, pollMatches)
+      .map(slotPollVote)
+      .filter((v): v is SlotPollVote => v !== null);
     // Story 36.8 — le CANAL SÉPARÉ. Résolu ici, avec les autres, pour que grille et rail ne se
     // contredisent jamais (AC16) — mais volontairement HORS de la chaîne `winner` ci-dessous.
     const groupEntry = sameDay.find(
-      (e) => e.type === 'disponibilite-groupe' && entryCoversSlot(e.slot, slot),
+      (e) => e.type === 'disponibilite-groupe' && entryCoversCell(e, dateKey, slot),
     );
 
     // AC6 / FR-50 : une séance confirmée rend le créneau indisponible INDÉPENDAMMENT de
     // l'affichage. La couche retire le texte, jamais le fait d'être pris.
-    const status: SlotStatus = seance
+    const status: SlotStatus = blockingSeance
       ? 'UNAVAILABLE'
       : computeDisplayStatus(utcDate, slot, declarations, now);
 
@@ -215,7 +416,7 @@ export function buildDayDetail(
     // persiste couche éteinte), le rang « vote » est GOUVERNÉ par la couche `votes-en-cours` — la
     // retirer fait retomber le créneau sur le statut déclaré, comme si le vote n'existait pas.
     const voteActive = poll != null && active.has('votes-en-cours');
-    const winner: SlotWinner = seance
+    const winner: SlotWinner = blockingSeance
       ? 'seance'
       : voteActive
         ? 'vote'
@@ -257,10 +458,22 @@ export function buildDayDetail(
       // piste en même temps que le texte. `?? null` et jamais `undefined` — une seule
       // représentation de « rien à afficher ».
       pollVote: poll && active.has('votes-en-cours') ? (poll.vote ?? null) : null,
+      // Story 47.5 — même gouvernance que `pollVote` (la couche éteinte retire aussi la liste et le compte).
+      pollVotes: poll && active.has('votes-en-cours') ? covering : [],
+      // Le compte est celui des lignes réellement servies : « ×n » ne compte jamais une option sans participation.
+      pollCount: poll && active.has('votes-en-cours') ? covering.length : 0,
       // Story 36.8 — gouverné par SA couche, et par rien d'autre : ni le rang gagnant, ni la
       // présence d'une séance ou d'un vote ne l'effacent (AC2). `?? null` et jamais `undefined`
       // — une seule représentation de « rien à afficher », comme partout dans ce fichier.
       group: groupEntry && active.has('disponibilite-groupe') ? (groupEntry.group ?? null) : null,
+      // Story 47.3 — la plage suit le rang GAGNANT, comme le texte : une séance nommée l'emporte, sinon le vote
+      // affiché ; couche éteinte ou rang d'un état déclaré ⇒ aucune plage à dessiner.
+      span:
+        winner === 'seance' && seanceNamed
+          ? spanOf(seance!, dateKey, slot)
+          : winner === 'vote' && poll && active.has('votes-en-cours')
+            ? spanOf(poll, dateKey, slot)
+            : null,
     };
   });
 
@@ -331,10 +544,11 @@ export function buildMonthDetails(
   activeLayers: readonly CalendarLayerKey[],
   declarations: AvailabilityDeclarationDto[],
   now: Date = new Date(),
+  hiddenPartieIds: ReadonlySet<string> | null = null,
 ): Map<string, DayDetail> {
   const out = new Map<string, DayDetail>();
   for (const key of dateKeys) {
-    out.set(key, buildDayDetail(key, entries, activeLayers, declarations, now));
+    out.set(key, buildDayDetail(key, entries, activeLayers, declarations, now, hiddenPartieIds));
   }
   return out;
 }

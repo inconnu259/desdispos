@@ -1,6 +1,10 @@
 import type { CharacterDto, PartieMemberDto } from '@master-jdr/shared';
 import { characterName } from '../../core/characters/character.util';
+import { fillTone } from '../../core/theme/tone-format';
 import { pendingLevelsLocal } from '../characters/character-sheet/level-thresholds';
+
+/** Registre de ton courant (`ThemeToneService.tone()`), résolu par l'appelant pour rester réactif. */
+type Tone = Readonly<Record<string, string>>;
 
 export interface RosterRow {
   member: PartieMemberDto;
@@ -23,6 +27,13 @@ export interface RosterRow {
    *  réel — la priorité d'affichage avec hasPendingLevelUp est une règle de template (Story 27.3),
    *  jamais encodée ici. */
   assignedRoleLabel: string | null;
+  /** Revue de code (bmad-review, 2026-09-21) : `isSelf && !character` seul ne suffit pas à garder
+   *  le slot — il vaut aussi `true` pendant le chargement de `characters()` (avant que
+   *  `canCreateCharacter()` ne sache vraiment répondre) et sur un système sans module/une partie
+   *  clôturée, deux cas où l'ancien code laissait un slot focusable/cliquable promettre une action
+   *  que le clic n'exécutait pas. `canCreate` est la seule source pour l'aria-label, le `tabindex`
+   *  et le routage du clic du slot de création — jamais `isSelf` seul. */
+  canCreate: boolean;
 }
 
 function hasPendingLevelUp(character: CharacterDto | null): boolean {
@@ -31,16 +42,24 @@ function hasPendingLevelUp(character: CharacterDto | null): boolean {
   return pendingLevelsLocal(character.xp, appliedCount).length > 0;
 }
 
-/** Suffixe d'accessibilité — même info que le badge visuel, jamais un indicateur couleur/icône seul. */
-function withLevelUpSuffix(label: string, pending: boolean): string {
-  return pending ? `${label} — montée de niveau disponible` : label;
+/** Suffixe d'accessibilité — même info que le badge visuel, jamais un indicateur couleur/icône seul.
+ *  Le texte vient du registre de ton (`tone`, lu par l'appelant) : cette fonction pure n'injecte rien. */
+function withLevelUpSuffix(tone: Tone, label: string, pending: boolean): string {
+  return pending ? fillTone(tone['parties.roster_aria_levelup'], { label }) : label;
 }
 
 /** Suffixe d'accessibilité pour le rôle assigné (Story 27.3) — même discipline que
  *  withLevelUpSuffix : jamais un badge visuel seul sans équivalent textuel. Le rôle n'est annoncé
  *  que si aucune montée de niveau n'est en attente (même priorité que le badge visuel). */
-function withRoleSuffix(label: string, assignedRoleLabel: string | null, pending: boolean): string {
-  return assignedRoleLabel && !pending ? `${label} — rôle : ${assignedRoleLabel}` : label;
+function withRoleSuffix(
+  tone: Tone,
+  label: string,
+  assignedRoleLabel: string | null,
+  pending: boolean,
+): string {
+  return assignedRoleLabel && !pending
+    ? fillTone(tone['parties.roster_aria_role'], { label, role: assignedRoleLabel })
+    : label;
 }
 
 /**
@@ -51,13 +70,21 @@ function withRoleSuffix(label: string, assignedRoleLabel: string | null, pending
 export function buildRosterRows(
   members: PartieMemberDto[],
   characters: CharacterDto[],
-  mjId: string,
+  ownerId: string | null,
   classLabelFor: (c: CharacterDto) => string,
   roleLabelFor: (c: CharacterDto) => string | null,
+  /** Registre de ton courant : source du libellé thématisé du slot d'initiale (Story 29.15,
+   *  `roster.create_slot_label` — jamais codé en dur, seule source pour l'aria-label/tooltip du slot
+   *  vide de l'utilisateur courant) et des suffixes d'accessibilité (`parties.roster_aria_*`). */
+  tone: Tone,
+  /** Revue de code (bmad-review, 2026-09-21) : valeur de `canCreateCharacter()` du composant
+   *  appelant — `false` tant que `characters()` n'a pas fini de charger, pas seulement quand la
+   *  création est réellement impossible. Seule source de `RosterRow.canCreate`. */
+  createEligible: boolean,
   currentUserId?: string,
 ): RosterRow[] {
   return members.map((member) => {
-    const isMj = member.userId === mjId;
+    const isMj = member.userId === ownerId;
     const isSelf = member.userId === currentUserId;
     const character = characters.find((c) => c.userId === member.userId) ?? null;
     if (isMj) {
@@ -72,16 +99,23 @@ export function buildRosterRows(
         playerLabel: member.displayName,
         classLabel: '',
         ariaLabel: withRoleSuffix(
-          withLevelUpSuffix(`${member.displayName} — MJ`, pending),
+          tone,
+          withLevelUpSuffix(
+            tone,
+            fillTone(tone['parties.roster_aria_mj'], { name: member.displayName }),
+            pending,
+          ),
           assignedRoleLabel,
           pending,
         ),
         hasPendingLevelUp: pending,
         isSelf,
         assignedRoleLabel,
+        canCreate: false,
       };
     }
     if (!character) {
+      const canCreate = isSelf && createEligible;
       return {
         member,
         isMj,
@@ -90,12 +124,16 @@ export function buildRosterRows(
         characterLabel: null,
         playerLabel: member.displayName,
         classLabel: '',
-        ariaLabel: isSelf
-          ? `${member.displayName} — créer mon personnage`
-          : `${member.displayName} — aucun personnage créé`,
+        ariaLabel: canCreate
+          ? fillTone(tone['parties.roster_aria_create'], {
+              name: member.displayName,
+              action: tone['roster.create_slot_label'],
+            })
+          : fillTone(tone['parties.roster_aria_no_character'], { name: member.displayName }),
         hasPendingLevelUp: false,
         isSelf,
         assignedRoleLabel: null,
+        canCreate,
       };
     }
     const name = characterName(character);
@@ -113,8 +151,19 @@ export function buildRosterRows(
       // Deferred-work (2026-08-25) : parenthèses vides si classLabel est vide (ex. "Alice —
       // Fenn ()") — omises quand il n'y a rien à qualifier.
       ariaLabel: withRoleSuffix(
+        tone,
         withLevelUpSuffix(
-          `${member.displayName} — ${name}${classLabel ? ` (${classLabel})` : ''}`,
+          tone,
+          classLabel
+            ? fillTone(tone['parties.roster_aria_character_class'], {
+                name: member.displayName,
+                character: name,
+                class: classLabel,
+              })
+            : fillTone(tone['parties.roster_aria_character'], {
+                name: member.displayName,
+                character: name,
+              }),
           pending,
         ),
         assignedRoleLabel,
@@ -123,6 +172,7 @@ export function buildRosterRows(
       hasPendingLevelUp: pending,
       isSelf,
       assignedRoleLabel,
+      canCreate: false,
     };
   });
 }

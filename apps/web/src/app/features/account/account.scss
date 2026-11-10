@@ -49,7 +49,8 @@ mat-form-field {
   color: var(--mat-sys-primary, #2e7d32);
 }
 /* Story 36.14 — les quatre intentions ont remplacé les six cases techniques. */
-.calendar-intents {
+.calendar-intents,
+.reminder-pref {
   display: flex;
   flex-direction: column;
 }
@@ -71,7 +72,11 @@ mat-form-field {
   border-radius: 6px;
   background: transparent;
   color: var(--mat-sys-on-surface-variant, #888);
-  font-size: 12px;
+  /* Pictogramme <app-icon> : sa taille passe par la variable, plus par font-size. */
+  --app-icon-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   cursor: pointer;
 
@@ -79,5 +84,106 @@ mat-form-field {
   &:focus-visible {
     color: var(--jdr-accent-2, currentColor);
     border-color: var(--jdr-accent-2, currentColor);
+  }
+}
+
+/* ⚠️ Story 48.1 — ligne vers la Ludothèque : toute la ligne est le lien, 44 px au moins. */
+.board-games-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+  margin: 0.75rem 0;
+  padding: 0.25rem 0;
+  color: inherit;
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary, currentColor);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+.board-games-row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.board-games-row__title {
+  font-size: 1rem;
+}
+
+.board-games-row__visibility {
+  font-size: 0.78rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+/* Pictogrammes de la ligne : le « jeux » du thème en tête, « ouvrir » en queue (16 px, décoratifs). */
+.board-games-row__icon,
+.board-games-row__chevron {
+  --app-icon-size: 20px;
+}
+
+.board-games-row__chevron {
+  --app-icon-size: 16px;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+/* Bouton « Fermer le grimoire » : pictogramme décoratif avant le texte. */
+.logout-btn {
+  --app-icon-size: 18px;
+}
+
+.logout-btn app-icon {
+  margin-right: 0.4rem;
+}
+
+/* ⚠️ Story 43.1 (UX-DR13) — zone sensible : filet, étiquette, phrase en 13 px, pilule à contour rouge.
+   Le rouge dit « irréversible » ; l'état est aussi écrit (mot + corbeille), jamais la couleur seule. */
+.danger-zone {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant, #ddd);
+}
+
+.danger-zone__label {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.danger-zone__explain {
+  margin: 0 0 0.75rem;
+  font-size: 13px;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
+.danger-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border: 1.5px solid var(--color-unavailable, #b00020);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-unavailable, #b00020);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  /* Pictogramme <app-icon> décoratif de la pilule. */
+  --app-icon-size: 18px;
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    background: color-mix(in srgb, var(--color-unavailable, #b00020) 12%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: progress;
   }
 }

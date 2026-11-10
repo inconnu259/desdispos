@@ -1,6 +1,11 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import type { ContentEntryDto } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../../../core/theme/theme-tone.service';
+import { DetailSurface } from '../../../../../shared/detail-surface/detail-surface';
+import {
+  createDetailSurfaceHost,
+  detailContent,
+} from '../../../../../shared/detail-surface/detail-surface-host';
 import { ChoiceCard, type ChoiceCardOption } from '../../choice-card/choice-card';
 import { RadioGroupNavDirective } from '../../choice-card/radio-group-nav.directive';
 
@@ -29,7 +34,7 @@ export interface RitualSpellChoice {
 @Component({
   selector: 'app-magic-step',
   standalone: true,
-  imports: [ChoiceCard, RadioGroupNavDirective],
+  imports: [ChoiceCard, RadioGroupNavDirective, DetailSurface],
   templateUrl: './magic-step.html',
   styleUrl: './magic-step.scss',
 })
@@ -73,6 +78,14 @@ export class MagicStep {
         };
       }),
   );
+
+  /** Description de chaque sort : derrière la surface de détail (revue de code 31.4, AC2). */
+  protected readonly detail = createDetailSurfaceHost();
+
+  /** Aide d'un sort, ou `null` sans description (pas de texte ⇒ pas d'aide). */
+  protected spellHelp(spell: RitualSpellChoice) {
+    return detailContent(spell.name, spell.description);
+  }
 
   protected isSpellSelected(key: string): boolean {
     return (this.knownRitualSpells() ?? []).includes(key);

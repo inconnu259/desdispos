@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 const EVEIL_LEVELS = [2, 3, 4, 5] as const;
 
@@ -8,5 +8,6 @@ export class ChooseEveilPowerDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   key!: string;
 }

@@ -1,6 +1,15 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type {
   AvailKind,
@@ -10,8 +19,17 @@ import type {
   DaySlot,
   SlotStatus,
 } from '@master-jdr/shared';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../core/theme/tone-format';
+import type { CalendarInteraction } from '../calendar-interaction';
 import { SelectionBar } from '../selection-bar/selection-bar';
+import { composeSpanKeys } from '../compose-span.utils';
 import { SLOT_LABELS } from '../agenda-badge.utils';
+import { entrySpanShortLabel } from '../span-label';
+import {
+  overlapAriaLabel,
+  overlapMarkLabel,
+} from '../../../shared/duration-stepper/duration-labels';
 import type { AgendaEntry, AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import {
   type DayDetail,
@@ -19,6 +37,8 @@ import {
   type SlotWinner,
   bandsAreUniform,
   buildMonthDetails,
+  type SlotPollVote,
+  type SlotSpan,
   composeSeanceInfo,
   dateKeyToLocalMidnight,
   toDateKey,
@@ -34,11 +54,13 @@ import {
   type GesturePointerType,
   type SelectedCell,
   composeCellKey,
+  mergeCells,
   monthRangeDays,
 } from '../selection.utils';
 
-/** Story 36.10, AC16 — le mot que porte un créneau désigné, identique dans les deux grilles. */
-const COMPOSED_ARIA = 'désigné pour le vote';
+/** Story 36.10, AC16 — clé de ton du mot que porte un créneau désigné, identique dans les deux
+ *  grilles. */
+const COMPOSED_ARIA_KEY = 'common.designe_pour_le_vote';
 
 /** Story 36.15 — bloc JUMEAU de `calendar-week-view.ts` (`SEAL_DATE_FORMAT`). Toute retouche ici
  *  est à reporter là-bas. */
@@ -84,6 +106,11 @@ export interface DayBand {
    *  et `info`. `null` dès que le rang n'est pas « vote » : une séance confirmée qui l'emporte
    *  n'affiche jamais la piste d'un vote concurrent (encadré n°8 de la story). */
   vote: VoteParticipation | null;
+  /** Story 47.5 — toutes les options du vote qui couvrent ce créneau (rang gagnant « vote » seulement) : le
+   *  sélecteur de réponse en fait une ligne par plage. Vide hors rang « vote ». */
+  votes: SlotPollVote[];
+  /** Story 47.5 — le nombre de plages du vote qui couvrent la bande : « ×n » à partir de 2. 0 hors rang « vote ». */
+  overlap: number;
   /** Story 36.8 — la disponibilité du groupe sur ce créneau, sur un **canal séparé** (FR-53).
    *
    *  🚨 **Contrairement à `text`, `info` et `vote` juste au-dessus, ce champ NE SUIT PAS le rang
@@ -94,9 +121,12 @@ export interface DayBand {
   group: GroupAvailability | null;
   /** Aperçu live pendant l'édition dans `ConstraintPanel` — `null` si identique au réel. */
   preview: SlotStatus | null;
+  /** Story 47.3 — la plage de plusieurs créneaux que cette bande couvre, ou `null`. Porte les connecteurs et le nom
+   *  accessible complet ; le NOM VISIBLE (`text`) n'est écrit que sur la première bande de chaque ligne de semaine. */
+  span: SlotSpan | null;
 }
 
-interface DayCell {
+export interface DayCell {
   date: Date;
   isCurrentMonth: boolean;
   isToday: boolean;
@@ -122,12 +152,34 @@ function toFakeDecl(dto: CreateAvailabilityDto): AvailabilityDeclarationDto {
   };
 }
 
+/**
+ * Story 47.3 (UX-DR9) — le nom d'une plage n'est écrit que sur la PREMIÈRE bande visible de chaque ligne de
+ * semaine (dans l'ordre de lecture : jour après jour, matin → soir), précédé de « ← » quand cette bande n'est pas
+ * le début de la plage. Les autres bandes de la ligne restent sans texte : leur nom accessible, lui, est complet.
+ */
+export function nameSpansOncePerRow(week: readonly DayCell[]): void {
+  const named = new Set<string>();
+  for (const cell of week) {
+    for (const band of cell.bands) {
+      const span = band.span;
+      if (!span) continue;
+      if (named.has(span.key)) {
+        band.text = null;
+        continue;
+      }
+      named.add(span.key);
+      if (span.index > span.startIndex) band.text = `← ${band.text ?? span.label}`;
+    }
+  }
+}
+
 export function buildMonth(
   display: Date,
   entries: AgendaEntry[],
   activeLayers: readonly CalendarLayerKey[],
   decls: AvailabilityDeclarationDto[],
   pendingDecl: AvailabilityDeclarationDto | null,
+  hiddenPartieIds: ReadonlySet<string> | null = null,
 ): DayCell[][] {
   const year = display.getFullYear();
   const month = display.getMonth();
@@ -154,9 +206,10 @@ export function buildMonth(
   }
   const dateKeys = cellDates.map(toDateKey);
 
-  const details = buildMonthDetails(dateKeys, entries, activeLayers, decls);
+  const now = new Date();
+  const details = buildMonthDetails(dateKeys, entries, activeLayers, decls, now, hiddenPartieIds);
   const previewDetails = pendingDecl
-    ? buildMonthDetails(dateKeys, entries, activeLayers, declsWithPending)
+    ? buildMonthDetails(dateKeys, entries, activeLayers, declsWithPending, now, hiddenPartieIds)
     : null;
 
   const weeks: DayCell[][] = [];
@@ -193,9 +246,13 @@ export function buildMonth(
             // Story 36.6 — même règle que `text` et `info` : la piste suit le rang GAGNANT.
             // `s.pollVote` est déjà gouverné par la couche `votes-en-cours` (buildDayDetail).
             vote: s.winner === 'vote' ? s.pollVote : null,
+            // Story 47.5 — même règle : la liste des plages et leur compte suivent le rang GAGNANT.
+            votes: s.winner === 'vote' ? s.pollVotes : [],
+            overlap: s.winner === 'vote' ? s.pollCount : 0,
             // Story 36.8 — 🚨 AUCUNE condition de rang ici, et c'est délibéré (cf. `DayBand.group`).
             group: s.group,
             preview: previewStatus !== null && previewStatus !== s.status ? previewStatus : null,
+            span: s.span,
           };
         }),
         // Story 36.8, AC11 — la couche « disponibilité du groupe » allumée INTERDIT la fusion.
@@ -207,6 +264,7 @@ export function buildMonth(
         uniform: bandsAreUniform(previewDetail ?? detail) && !hasGroupChannel(detail),
       });
     }
+    nameSpansOncePerRow(week);
     weeks.push(week);
   }
 
@@ -244,7 +302,7 @@ import {
   standalone: true,
   imports: [
     MatButtonModule,
-    MatIconModule,
+    AppIcon,
     MatProgressSpinnerModule,
     SelectionBar,
     PollTrack,
@@ -254,6 +312,8 @@ import {
   styleUrl: './calendar-month-view.scss',
 })
 export class CalendarMonthView {
+  protected readonly theme = inject(ThemeToneService);
+
   readonly declarations = input<AvailabilityDeclarationDto[]>([]);
   readonly loading = input(false);
   readonly pendingDto = input<CreateAvailabilityDto | null>(null);
@@ -264,6 +324,9 @@ export class CalendarMonthView {
   readonly entries = input<AgendaEntry[]>([]);
   /** Couches actives : gouvernent le TEXTE des bandes, jamais leur rang ni l'indisponibilité. */
   readonly activeLayers = input<readonly CalendarLayerKey[]>([]);
+  /** Story 44.8 — les parties masquées par le filtre du calendrier personnel : leurs votes quittent la case, leurs
+   *  séances y restent en indisponibilité SANS nom (comme une couche éteinte). `null` : aucun filtre. */
+  readonly hiddenPartieIds = input<ReadonlySet<string> | null>(null);
   /**
    * Story 36.9 — les jours que le mode Destinée met en avant (clés `YYYY-MM-DD`), ou `null` hors
    * mode.
@@ -276,24 +339,36 @@ export class CalendarMonthView {
   readonly destinyDates = input<ReadonlySet<string> | null>(null);
 
   /**
-   * Story 36.10 — le mode de composition d'un vote (MJ).
+   * Story 52.1 (AD-7) — l'outil allumé, UN seul à la fois. `composer` (Story 36.10, MJ) est le mode de composition d'un vote.
    *
    * 🚨 **C'est le SEUL mode qui réassigne le tap** (`EXPERIENCE.md:538`, principe 4 ; collision 5).
    * Tant qu'il est actif, un tap ne sélectionne plus, n'ouvre plus le sélecteur de réponse et
    * n'ouvre plus de scénario : il ajoute ou retire un créneau des options. Le rail, lui, continue
    * de suivre — « le rail suit, il ne se commande pas » (principe 2).
    */
-  readonly composing = input(false);
+  readonly interaction = input<CalendarInteraction>('lecture');
+
+  /** Ce qui vide la sélection : lecture et Destinée ne la touchent pas (elles n'ont pas de barre à elles), le composer
+   *  et la déclaration, si. Un computed : l'effet ne se rejoue qu'au changement de portée, pas à chaque interaction. */
+  private readonly selectionScope = computed<CalendarInteraction>(() => {
+    const current = this.interaction();
+    return current === 'destinee' ? 'lecture' : current;
+  });
   /** Les créneaux composés, en clés `YYYY-MM-DD|SLOT` (`composeCellKey`). `null` hors mode.
    *  🚨 Comme `destinyDates`, cette vue ne CALCULE rien : elle reçoit l'ensemble dérivé une fois
    *  par `CalendarView`, et la vue Semaine reçoit exactement le même. */
   readonly composedKeys = input<ReadonlySet<string> | null>(null);
+  /** Story 46.2 — la clé (`AAAA-MM-JJ|créneau`) de la fenêtre de l'automate sélectionnée : sa bande prend un contour
+   *  plein. Reçue, jamais dérivée ici (comme `composedKeys`). */
+  readonly windowKey = input<string | null>(null);
 
   /** Story 36.15 — bloc JUMEAU de `calendar-week-view.ts` (`canSeal`). Même double garde que
    *  `CalendarAgendaView.canSeal` (36.12) : être MJ ET être dans le calendrier d'une partie. */
   readonly canSeal = input(false);
 
   readonly slotSelected = output<SlotSelectedEvent>();
+  /** Story 52.3 — `Échap` en mode déclaration, sélection vide : la vue demande à `CalendarView` d'éteindre le mode. */
+  readonly declarationExitRequested = output<void>();
   readonly displayDateChange = output<Date>();
   /** Story 30.3 : lot construit par un glissement (souris/tactile) ou une validation clavier —
    *  CalendarView construit les items et appelle createDeclarationBatch(), jamais cette vue. */
@@ -316,6 +391,30 @@ export class CalendarMonthView {
    *  annule la SÉLECTION : les deux ne peuvent pas être actifs en même temps, c'est le mode qui
    *  décide lequel s'applique. */
   readonly composeCancelled = output<void>();
+  /** ⚠️ Story 45.3 — la sélection (appui maintenu ou glissement) rejoint la composition : « Ajouter au vote ».
+   *  La vue ne change JAMAIS les créneaux composés, elle les émet ; `CalendarView` en fait l'union. */
+  readonly composeAdded = output<SelectedCell[]>();
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  readonly composeRemoved = output<SelectedCell[]>();
+  /** Story 45.3 — la journée entière est-elle permise dans cette composition ? Faux pour une conjonction ou une
+   *  soirée : la barre ne propose alors pas « Journée ». */
+  readonly composeFullDay = input(true);
+  /** ⚠️ Story 47.4 — les créneaux couverts par les plages des départs désignés (départs exclus), en clés
+   *  `composeCellKey` : ils prennent l'aperçu. Reçus de `CalendarView` (`composeSpanKeys`), jamais dérivés ici. */
+  readonly composeCoverKeys = input<ReadonlySet<string> | null>(null);
+  /** Story 47.4 — la durée composée, en créneaux : au survol d'une bande, la plage qu'elle ouvrirait s'allume. */
+  readonly composeDuration = input(1);
+
+  /** Story 47.4 — la bande survolée à la souris pendant la composition (sa plage s'allume en aperçu). */
+  private readonly hoverStart = signal<{ date: Date; slot: DaySlot } | null>(null);
+  private readonly hoverKeys = computed<ReadonlySet<string>>(() => {
+    const start = this.hoverStart();
+    if (!start || this.interaction() !== 'composer') return new Set();
+    return new Set([
+      composeCellKey(start.date, start.slot),
+      ...composeSpanKeys([start], this.composeDuration()),
+    ]);
+  });
 
   protected readonly displayDate = signal(new Date());
 
@@ -335,6 +434,7 @@ export class CalendarMonthView {
       this.activeLayers(),
       this.declarations(),
       this.pendingDecl(),
+      this.hiddenPartieIds(),
     ),
   );
 
@@ -397,7 +497,9 @@ export class CalendarMonthView {
       partieId: entry.vote.partieId,
       pollId: entry.vote.pollId,
       optionId: entry.vote.optionId,
-      dateLabel: CalendarMonthView.sealDateLabel(entry.date, entry.slot),
+      // Story 47.5 — une plage se scelle écrite de son début à sa fin.
+      dateLabel:
+        entrySpanShortLabel(entry) ?? CalendarMonthView.sealDateLabel(entry.date, entry.slot),
       pollLabel: entry.label,
     };
   });
@@ -441,8 +543,15 @@ export class CalendarMonthView {
     const anchor = this.selectionAnchor();
     if (!anchor) return;
     this.selectionCurrent.set(current);
+    const range = monthRangeDays(anchor.date, current.date).map((date) => ({
+      date,
+      slot: anchor.slot,
+    }));
+    // Story 52.3 — en mode déclaration le glissement AJOUTE sa plage aux créneaux déjà retenus.
     this.selectedCells.set(
-      monthRangeDays(anchor.date, current.date).map((date) => ({ date, slot: anchor.slot })),
+      this.interaction() === 'declaration' && this.dragArmed()
+        ? mergeCells(this.dragBase, range)
+        : range,
     );
   }
 
@@ -486,10 +595,34 @@ export class CalendarMonthView {
   });
 
   constructor() {
+    // Story 45.3 — la sélection ne survit pas à l'entrée ni à la sortie du composer (ni à celles de la déclaration, 52.2) : une barre de déclaration
+    // ne devient pas une barre de composition (ni l'inverse) sous les doigts.
+    effect(() => {
+      this.selectionScope();
+      untracked(() => this.onSelectionCancelled());
+    });
     const init = this.initialDate();
     if (init) {
       this.displayDate.set(new Date(init.getFullYear(), init.getMonth(), 1));
     }
+    // Story 44.3 — la Destinée place la grille sur un autre mois pendant que la vue est montée : elle
+    // suit `initialDate` (la vue Semaine le fait déjà pour `startDate`). Sans effet sur la navigation à la
+    // main, qui émet puis voit revenir le même mois.
+    effect(() => {
+      const next = this.initialDate();
+      if (!next) return;
+      untracked(() => {
+        const shown = this.displayDate();
+        // Les dates émises par cette vue et celles de la Destinée sont à minuit UTC ; la première lecture,
+        // elle, est locale (`new Date()`) : le mois déjà affiché peut donc coïncider avec l'une ou l'autre.
+        const sameLocal =
+          shown.getFullYear() === next.getFullYear() && shown.getMonth() === next.getMonth();
+        const sameUtc =
+          shown.getFullYear() === next.getUTCFullYear() && shown.getMonth() === next.getUTCMonth();
+        if (sameLocal || sameUtc) return;
+        this.displayDate.set(new Date(next.getUTCFullYear(), next.getUTCMonth(), 1));
+      });
+    });
   }
 
   goToToday(): void {
@@ -548,21 +681,38 @@ export class CalendarMonthView {
     // ⚠️ Story 36.3, AC15 — hors mode modification, un tap court est un geste de LECTURE : il
     // désigne le créneau, le rail suit (AC2 de 36.1), et rien ne s'ouvre. Ni le panneau (retiré
     // par l'AC1), ni la barre — celle-ci appartient à l'appui maintenu et au glissement.
+    // ⚠️ Story 52.3 — en MODE DÉCLARATION le tap ne lit plus : il ajoute ou retire le créneau (une journée entière
+    // compte pour un). Le rail reste sur son jour (aucun `slotSelected`), le sélecteur de réponse ne s'ouvre pas, et
+    // le repère de date courante suit le dernier créneau touché. Le `click` qui suit un geste armé est avalé.
+    if (this.interaction() === 'declaration') {
+      this.currentDate.set(date);
+      if (this.suppressNextClick) {
+        this.suppressNextClick = false;
+        return;
+      }
+      this.toggleCell(date, slot);
+      return;
+    }
     this.slotSelected.emit({ date, slot });
     this.currentDate.set(date);
     // 🚨 Story 36.10, AC2/AC12 — LE MODE DE COMPOSITION RÉASSIGNE LE TAP, et il le fait ICI :
     // avant la bascule de sélection, avant l'ouverture du sélecteur de réponse. Le rail a déjà
     // reçu son `slotSelected` juste au-dessus (principe 2) ; tout le reste est neutralisé.
-    if (this.composing()) {
-      this.composeToggled.emit({ date, slot });
-      return;
-    }
     // Un geste armé (appui maintenu ou glissement) se termine par un `click` que le navigateur
     // émet de lui-même. Sans cette garde il rebasculerait aussitôt la case qu'on vient de
     // sélectionner — et un appui maintenu simple ressortait donc du mode modification à la
     // relâche. Défaut constaté à l'écran ; la vue Semaine y échappait faute de (click).
+    // ⚠️ Story 45.3 — avalé AVANT la composition : le geste y existe maintenant, et son `click` ne doit pas
+    // composer la case qu'on vient de sélectionner.
     if (this.suppressNextClick) {
       this.suppressNextClick = false;
+      return;
+    }
+    if (this.interaction() === 'composer') {
+      // Story 45.3 — barre ouverte : le tap bascule la case dans la SÉLECTION (règle des disponibilités) ; sinon il
+      // ajoute ou retire UNE bande de la composition (36.10, inchangé).
+      if (this.selectedCells().length > 0) this.toggleCell(date, slot);
+      else this.composeToggled.emit({ date, slot });
       return;
     }
     // AC17/AC18 — une fois la barre ouverte, le même clic BASCULE le créneau touché. Le geste ne
@@ -574,31 +724,37 @@ export class CalendarMonthView {
     // Story 36.7, AC1 — hors sélection, une bande portant une option de vote ouvre le sélecteur
     // de réponse. La condition est la MÊME que celle qui fait rendre la piste (`band.vote`), donc
     // couche éteinte et rang « séance » gagnant excluent l'ouverture sans une ligne de plus.
-    const vote = this.voteAt(date, slot);
-    if (vote && event?.currentTarget instanceof HTMLElement) {
-      this.voteOptionActivated.emit({ vote, date, slot, anchor: event.currentTarget });
+    const band = this.voteBandAt(date, slot);
+    const vote = band?.vote ?? null;
+    if (band && vote && event?.currentTarget instanceof HTMLElement) {
+      this.voteOptionActivated.emit({
+        vote,
+        lines: band.votes,
+        date,
+        slot,
+        anchor: event.currentTarget,
+      });
     }
   }
 
   /** La participation portée par la bande de ce créneau, ou `null`. Lue sur le modèle DÉJÀ
    *  calculé (`weeks()` ← `buildDayDetail`) : aucune règle de préséance n'est réécrite ici. */
-  private voteAt(date: Date, slot: DaySlot): VoteParticipation | null {
+  private voteBandAt(date: Date, slot: DaySlot): DayBand | null {
     const cell = this.allCells().find((c) => c.date.getTime() === date.getTime());
     if (!cell) return null;
     // Un jour uniforme n'a qu'une bande fusionnée, et « uniforme » veut précisément dire qu'aucun
     // événement n'y est posé (AC4 de la 36.2) : il ne peut donc pas porter de vote.
     const band = cell.bands.find((b) => b.slot === slot);
-    return band?.vote ?? null;
+    return band ?? null;
   }
 
   /** Sélection d'une seule cellule, armée par `Espace` ou par `1`/`2`/`3` (AC7, AC15).
    *  La portée part du créneau visé : c'est la seule valeur qui rende la collision 8 vraie sans
    *  que l'utilisateur ait à toucher la barre. */
   private armSelection(date: Date, slot: DaySlot): void {
-    // 🚨 Story 36.10, AC12 — POINT D'ÉTRANGLEMENT UNIQUE. Appui maintenu, glissement et
-    // `Espace`/`1`/`2`/`3` passent tous par ici : une seule garde neutralise donc les trois
-    // pendant la composition, et aucun chemin d'armement ne peut lui échapper par oubli.
-    if (this.composing()) return;
+    // ⚠️ Story 45.3 — la garde de la 36.10 (AC12) tombe pour l'appui maintenu et le glissement : en composition ils
+    // sélectionnent des jours, que la barre verse au vote. Le clavier, lui, compose directement AVANT d'arriver ici
+    // (`onCellKeySelect`), et `Maj`+flèches reste inerte pendant la composition (`onShiftArrow`).
     this.selectionAnchor.set({ date, slot });
     this.selectionCurrent.set({ date, slot });
     this.selectedCells.set([{ date, slot }]);
@@ -612,54 +768,128 @@ export class CalendarMonthView {
     this.slotSelected.emit({ date: cell.date, slot });
     // Story 36.10, AC2/AC16 — au clavier comme au doigt : en composition, désigner un créneau
     // l'ajoute ou le retire. Sans cette parité, le mode serait inaccessible sans pointeur.
-    if (this.composing()) {
+    if (this.interaction() === 'composer') {
       this.composeToggled.emit({ date: cell.date, slot });
       return;
     }
     this.armSelection(cell.date, slot);
   }
 
+  /** Story 47.5 — « ×2 » : la marque du coin d'une bande couverte par plusieurs plages du même vote. */
+  protected overlapMark(n: number): string {
+    return overlapMarkLabel(n);
+  }
+
   /** Story 36.2, AC12 — le nom accessible d'une bande dit son créneau ET son état EN TOUTES
    *  LETTRES : un lecteur d'écran ne voit ni fond, ni filet, ni trame. Quand un événement est
    *  posé et nommé, c'est son titre qui fait l'état (« Soir : Le Convoi du Nord ») ; quand la
    *  couche est éteinte, on retombe sur l'état de disponibilité, qui lui demeure (AC6). */
-  protected bandAriaLabel(band: DayBand, composed = false): string {
+  protected bandAriaLabel(band: DayBand, composed = false, windowSelected = false): string {
     // Story 36.8, AC15 — 🚨 `.band` porte `role="img"` et un `aria-label` : celui-ci ÉCRASE le
     // contenu, y compris le `role="img"`/`aria-label` propre à `<app-group-gauge>` qu'elle
     // contient désormais. Sans ce repli, le canal serait purement visuel dans la case du Mois —
     // exactement la régression que la revue de la 36.7 a corrigée pour la piste dans le rail.
-    const groupe = band.group ? groupAriaLabel(band.group) : '';
+    const tone = this.theme.tone();
+    const groupe = band.group ? groupAriaLabel(band.group, tone) : '';
 
     // Story 36.5, AC13 : les informations pratiques sont ANNONCÉES, pas seulement affichées —
     // et à l'oreille elles ne sont jamais tronquées, contrairement à l'ellipse visuelle.
-    if (band.text) {
+    // Story 47.3 : une bande de plage dit le rendez-vous ET sa plage entière — même quand son texte visible
+    // est tu (nom une fois par ligne) : le lecteur d'écran ne voit ni connecteur ni flèche.
+    const named = band.span ? `${band.span.label}, ${band.span.range}` : band.text;
+    // Story 47.5 — plusieurs plages du vote sur ce créneau : « ×n » se dit aussi (la marque est visuelle).
+    const overlap = band.overlap >= 2 ? overlapAriaLabel(band.overlap) : '';
+    if (named) {
       // Story 36.6, AC14 — la piste code par la PROPORTION : sans ce texte, elle n'existe pas
       // pour un lecteur d'écran. Elle s'ajoute au titre du vote, elle ne le remplace pas.
-      const participation = band.vote ? participationAriaLabel(band.vote) : '';
-      const parts = [`${band.label} : ${band.text}`];
+      const participation = band.vote ? participationAriaLabel(band.vote, tone) : '';
+      const parts = [`${band.label} : ${named}`];
       if (band.info) parts.push(band.info);
       if (participation) parts.push(participation);
+      if (overlap) parts.push(overlap);
       if (groupe) parts.push(groupe);
       // Story 36.10, AC16 — l'état composé est ANNONCÉ. Le liseré qui le montre n'existe pas pour
       // un lecteur d'écran, et « jamais la couleur seule » (P-1) vaut aussi pour un filet.
-      if (composed) parts.push(COMPOSED_ARIA);
+      if (composed) parts.push(tone[COMPOSED_ARIA_KEY]);
+      if (windowSelected) parts.push(tone['calendar.window_selected_aria']);
       return parts.join(' — ');
     }
     const labels: Record<SlotStatus, string> = {
-      AVAILABLE: 'disponible',
-      UNAVAILABLE: 'indisponible',
-      UNKNOWN: 'non déclaré',
+      AVAILABLE: tone['calendar.week_status_available'],
+      UNAVAILABLE: tone['calendar.week_status_unavailable'],
+      UNKNOWN: tone['calendar.month_status_unknown'],
     };
     const parts = [`${band.label} : ${labels[band.status]}`];
     if (groupe) parts.push(groupe);
-    if (composed) parts.push(COMPOSED_ARIA);
+    if (composed) parts.push(tone[COMPOSED_ARIA_KEY]);
+    if (windowSelected) parts.push(tone['calendar.window_selected_aria']);
     return parts.join(' — ');
+  }
+
+  /** Nom accessible d'une case du mois courant : son numéro, suivi de « aujourd'hui » le cas
+   *  échéant. `null` pour un jour hors du mois affiché (la case est alors masquée aux lecteurs). */
+  protected cellAriaLabel(cell: DayCell): string | null {
+    if (!cell.isCurrentMonth) return null;
+    const day = cell.date.getDate();
+    return cell.isToday
+      ? fillTone(this.theme.tone()['calendar.month_day_today_aria'], { day })
+      : String(day);
   }
 
   /** Story 36.10, AC13 — ce créneau fait-il partie de la composition en cours ? Test
    *  d'appartenance pur : la vue ne dérive rien, elle lit l'ensemble reçu (comme `destinyDates`). */
+  protected isBandWindow(cell: DayCell, slot: DaySlot): boolean {
+    return this.windowKey() === composeCellKey(cell.date, slot);
+  }
+
+  /** Une bande fusionnée porte les trois créneaux : elle est contournée dès que le jour de la fenêtre est le sien. */
+  protected isUniformWindow(cell: DayCell): boolean {
+    const key = this.windowKey();
+    if (key === null) return false;
+    const day = composeCellKey(cell.date, 'FULL_DAY').split('|')[0];
+    return key.startsWith(`${day}|`);
+  }
+
   protected isBandComposed(cell: DayCell, slot: DaySlot): boolean {
     return this.composedKeys()?.has(composeCellKey(cell.date, slot)) ?? false;
+  }
+
+  /** ⚠️ Story 47.4 — la bande est-elle couverte par la plage d'un départ désigné, ou par celle que la bande
+   *  survolée ouvrirait ? Elle prend alors l'aperçu (un départ garde son tireté). Rien à 1 créneau. */
+  protected isBandSpanPreview(cell: DayCell, slot: DaySlot): boolean {
+    if (this.composeDuration() <= 1 || this.isBandComposed(cell, slot)) return false;
+    const key = composeCellKey(cell.date, slot);
+    return (this.composeCoverKeys()?.has(key) ?? false) || this.hoverKeys().has(key);
+  }
+
+  /** ⚠️ Story 47.4 — un jour « uniforme » (une seule bande fusionnée) ne peut pas montrer un créneau précis : dès
+   *  qu'un départ désigné ou la plage d'un départ touche l'un de ses créneaux (durée > 1), il se déplie en ses trois
+   *  bandes. À 1 créneau, la grille reste celle d'avant. */
+  protected showsSlotBands(cell: DayCell): boolean {
+    if (!cell.uniform) return true;
+    if (this.interaction() !== 'composer' || this.composeDuration() <= 1) return false;
+    const marks = [this.composedKeys(), this.composeCoverKeys(), this.hoverKeys()];
+    return (['MORNING', 'AFTERNOON', 'EVENING'] as const).some((slot) => {
+      const key = composeCellKey(cell.date, slot);
+      return marks.some((set) => set?.has(key) ?? false);
+    });
+  }
+
+  /** Story 47.4 — survol d'une bande pendant la composition (`null` : la souris la quitte). Souris seulement : au
+   *  doigt, l'entrée émulée après un tap n'a pas de sortie et laisserait une plage allumée. Un jour passé n'en ouvre pas. */
+  protected onBandHover(event: PointerEvent, cell: DayCell | null, slot?: DaySlot): void {
+    if (event.pointerType !== 'mouse') return;
+    if (
+      !cell ||
+      !slot ||
+      cell.isPast ||
+      this.interaction() !== 'composer' ||
+      this.composeDuration() <= 1
+    ) {
+      if (this.hoverStart() !== null) this.hoverStart.set(null);
+      return;
+    }
+    this.hoverStart.set({ date: cell.date, slot });
   }
 
   /** Story 36.8 — vrai quand la bande rend la JAUGE (et non des pastilles). Seule la jauge est
@@ -677,6 +907,7 @@ export class CalendarMonthView {
     return this.bandAriaLabel(
       { ...cell.bands[0], label: 'Journée' },
       this.isBandComposed(cell, 'FULL_DAY'),
+      this.isUniformWindow(cell),
     );
   }
 
@@ -767,7 +998,11 @@ export class CalendarMonthView {
       // comprise, et non plus seulement au doigt. C'est lui qui sépare désormais lire (tap court)
       // de déclarer (appui long). Le glissement reste la seconde porte, plus découvrable en
       // ordinateur.
-      longPressTimer: setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
+      // Story 52.3 — en mode déclaration il n'y a plus d'appui long : un tap lent bascule le créneau comme un tap vif.
+      longPressTimer:
+        this.interaction() === 'declaration'
+          ? null
+          : setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
       fromBand,
     };
   }
@@ -787,7 +1022,9 @@ export class CalendarMonthView {
     const moved = Math.hypot(dx, dy) > MOVE_THRESHOLD_PX;
 
     if (!this.dragArmed()) {
-      if (down.pointerType === 'touch') {
+      // ⚠️ Story 52.3 — en mode déclaration le doigt n'a plus besoin de l'appui maintenu : il suit la règle d'axe de la
+      // souris (horizontal = sélection immédiate, vertical = défilement de la page).
+      if (down.pointerType === 'touch' && this.interaction() !== 'declaration') {
         // Appui maintenu requis (AC4) : un déplacement avant l'expiration du délai laisse le
         // défilement natif se produire, on n'appelle pas preventDefault().
         if (moved) {
@@ -803,6 +1040,9 @@ export class CalendarMonthView {
       // des lignes de semaine. Le tactile n'en a pas besoin : l'appui maintenu l'assure déjà.
       if (Math.abs(dx) <= Math.abs(dy)) {
         this.cancelLongPressTimer();
+        // En mode déclaration, un départ vertical est un défilement : le relâchement qui suit ne doit pas compter comme
+        // un tap (sinon faire défiler cocherait un créneau).
+        if (this.interaction() === 'declaration') this.pointerDown = null;
         return;
       }
       this.armDrag(down.cell, down.slot);
@@ -829,6 +1069,8 @@ export class CalendarMonthView {
     this.pointerDown = null;
     if (!wasArmed) {
       // Relâché sans déplacement ni appui maintenu écoulé → tap normal (AC3, AC9).
+      // Story 52.3 — un `pointercancel` (le navigateur prend la main pour défiler) n'est pas un tap.
+      if (event.type === 'pointercancel' && this.interaction() === 'declaration') return;
       // Un pointerdown parti d'une bande ne rejoue pas de tap FULL_DAY : la bande gère déjà
       // son propre tap via son (click), qui n'est pas passé par ce mécanisme.
       if (down && !down.fromBand) this.onCellClick(down.cell.date, 'FULL_DAY');
@@ -848,8 +1090,15 @@ export class CalendarMonthView {
     // effaçant l'extension en cours.
     this.cancelLongPressTimer();
     this.dragArmed.set(true);
+    // Story 52.3 — en mode déclaration, les créneaux déjà retenus survivent au geste : il y AJOUTE sa plage.
+    this.dragBase = this.interaction() === 'declaration' ? this.selectedCells() : [];
     this.armSelection(cell.date, slot);
+    if (this.dragBase.length > 0)
+      this.selectedCells.set(mergeCells(this.dragBase, this.selectedCells()));
   }
+
+  /** Story 52.3 — les créneaux retenus avant le glissement en cours (mode déclaration), auxquels sa plage s'ajoute. */
+  private dragBase: SelectedCell[] = [];
 
   private cancelLongPressTimer(): void {
     if (this.pointerDown?.longPressTimer) clearTimeout(this.pointerDown.longPressTimer);
@@ -873,7 +1122,7 @@ export class CalendarMonthView {
   protected onShiftArrow(cell: DayCell, direction: -1 | 1): void {
     // AC12 — `Maj` + flèches étend une SÉLECTION ; il n'y en a pas pendant la composition. Cette
     // garde est distincte de celle d'`armSelection()` : ce chemin pose l'ancre lui-même.
-    if (cell.isPast || this.composing()) return;
+    if (cell.isPast || this.interaction() === 'composer') return;
     // Ancre posée sans `current` : tant qu'aucune extension n'a abouti, aucune sélection ne
     // s'affiche. C'est ce qui fait qu'un Maj+flèche buttant sur le bord du mois ne sélectionne
     // rien du tout (garde issue de la revue de code de la story 30.3) — ne pas passer par
@@ -890,8 +1139,19 @@ export class CalendarMonthView {
 
   /** Story 36.10, AC3 — `Échap` a UNE signification à un instant donné, jamais deux : en
    *  composition il quitte le mode sans rien écrire, sinon il annule la sélection comme avant. */
-  protected onEscape(): void {
-    if (this.composing()) {
+  onEscape(): void {
+    // Story 52.3 — en mode déclaration, `Échap` vide d'abord la sélection ; vide, il éteint le mode (comme « Terminer »).
+    if (this.interaction() === 'declaration' && this.selectedCells().length === 0) {
+      this.declarationExitRequested.emit();
+      return;
+    }
+    if (this.interaction() === 'composer') {
+      // Story 45.3 — une barre de sélection ouverte se ferme d'abord : `Échap` n'a qu'UN sens à la fois, celui de la
+      // couche la plus proche. Sans barre, il quitte le composer.
+      if (this.selectedCells().length > 0) {
+        this.onSelectionCancelled();
+        return;
+      }
       this.composeCancelled.emit();
       return;
     }
@@ -918,6 +1178,23 @@ export class CalendarMonthView {
     const target = this.selectedCells()[0] ?? this.selectionAnchor();
     if (!target) return;
     this.declarationPanelRequested.emit({ date: target.date, slot: target.slot });
+    this.onSelectionCancelled();
+  }
+
+  /** ⚠️ Story 45.3 — « Ajouter au vote » : la sélection rejoint les créneaux composés (cumul, sans touche de
+   *  modification), puis la barre se ferme. Rien n'est écrit : seul « Valider » écrit. */
+  protected onComposeAdd(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeAdded.emit(cells);
+    this.onSelectionCancelled();
+  }
+
+  /** Story 45.3 — « Retirer » : ces créneaux quittent la composition. */
+  protected onComposeRemove(): void {
+    const cells = this.selectedCells();
+    if (cells.length === 0) return;
+    this.composeRemoved.emit(cells);
     this.onSelectionCancelled();
   }
 

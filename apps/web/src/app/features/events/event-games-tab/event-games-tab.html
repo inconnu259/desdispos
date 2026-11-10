@@ -1,0 +1,179 @@
+<!-- Stories 49.1, 49.2 et 49.4 : onglet des jeux sur place. La région d'annonce est TOUJOURS présente (une région ajoutée
+     en même temps que son texte n'est pas lue) ; aucun bandeau visible. -->
+<div class="egt">
+  <div class="egt__live" role="status" aria-live="polite">{{ announcement() }}</div>
+
+  @if (data(); as dto) {
+    <app-games-summary
+      [total]="siteTotal()"
+      [fitting]="fitting()"
+      [headcount]="headcount()"
+      [(fitOnly)]="fitOnly"
+      [(sortEnvy)]="sortEnvy"
+    />
+
+    @if (siteTotal() === 0) {
+      <p class="egt__empty">{{ theme.tone()['event_games.empty'] }}</p>
+      <!-- Un participant autre que l'hôte a son lien dans « Dans mon … » (une seule fois). -->
+      @if (canFill() && !showMine()) {
+        <a class="egt__link" routerLink="/profile/board-games">{{
+          theme.tone()['event_games.fill_link']
+        }}</a>
+      }
+    } @else {
+      @if (hostTotal() > 0) {
+        <app-games-section
+          [sectionKey]="hostSectionKey"
+          [title]="sectionTitle()"
+          [total]="hostTotal()"
+          [shown]="fitOnly() ? hostView().length : null"
+        >
+          <ng-container
+            [ngTemplateOutlet]="rows"
+            [ngTemplateOutletContext]="{ $implicit: hostView(), headcount: dto.participantsCount }"
+          />
+        </app-games-section>
+      }
+      @if (broughtTotal() > 0) {
+        <app-games-section
+          [sectionKey]="broughtSectionKey"
+          [title]="theme.tone()['event_games.brought_section']"
+          [total]="broughtTotal()"
+          [shown]="fitOnly() ? broughtView().length : null"
+        >
+          <ng-container
+            [ngTemplateOutlet]="rows"
+            [ngTemplateOutletContext]="{
+              $implicit: broughtView(),
+              headcount: dto.participantsCount,
+            }"
+          />
+        </app-games-section>
+      }
+    }
+
+    @if (showMine() && mineLoaded() && (libraryEmpty() || mineTotal() > 0)) {
+      <app-games-section
+        [sectionKey]="mineSectionKey"
+        [title]="theme.tone()['event_games.mine_section']"
+        [total]="mineTotal()"
+        [shown]="fitOnly() ? mineView().length : null"
+      >
+        @if (libraryEmpty()) {
+          <p class="egt__empty">{{ theme.tone()['event_games.mine_empty'] }}</p>
+          <a class="egt__link" routerLink="/profile/board-games">{{
+            theme.tone()['event_games.fill_link']
+          }}</a>
+        } @else {
+          <ng-container
+            [ngTemplateOutlet]="rows"
+            [ngTemplateOutletContext]="{ $implicit: mineView(), headcount: dto.participantsCount }"
+          />
+        }
+      </app-games-section>
+    }
+
+    <!-- Story 49.4 : section du bas, l'hôte seul, seulement s'il a écarté un jeu — même quand « Chez moi » est vide.
+         Le filtre « Jouables à N » ne la touche pas : ces jeux ne sont pas sur place. -->
+    @if (showExcluded()) {
+      <app-games-section
+        [sectionKey]="excludedSectionKey"
+        [title]="theme.tone()['event_games.excluded_section']"
+        [total]="excludedGames().length"
+        [note]="theme.tone()['event_games.excluded_note']"
+      >
+        <ul class="egt__list">
+          @for (game of excludedGames(); track game.id) {
+            <li [attr.data-game-id]="game.id">
+              <app-unavailable-row
+                [game]="game"
+                [restoreLabel]="theme.tone()['event_games.restore_btn']"
+                [busy]="isBusy(game.id)"
+                (restore)="onRestore(game)"
+              />
+            </li>
+          }
+        </ul>
+      </app-games-section>
+    }
+  } @else if (failed()) {
+    <p class="egt__error">{{ theme.tone()['board_games.error_fallback'] }}</p>
+  }
+</div>
+
+<ng-template #rows let-items let-headcount="headcount">
+  <ul class="egt__list">
+    @for (item of items; track item.game.id) {
+      <li [attr.data-game-id]="item.game.id">
+        <app-game-row
+          [game]="item.game"
+          [headcount]="headcount"
+          [duplicateCount]="item.duplicateCount"
+          [byText]="item.byText"
+          [alsoText]="item.alsoText"
+          [warnText]="item.warnText"
+          [actionLabel]="
+            item.action === 'bring'
+              ? theme.tone()['event_games.bring_btn']
+              : item.action === 'unbring'
+                ? theme.tone()['event_games.unbring_btn']
+                : null
+          "
+          [actionBusy]="isBusy(item.game.id)"
+          (act)="onAct(item)"
+          [menuLabel]="menuLabel(item)"
+          [menuOpen]="menuGame()?.id === item.game.id"
+          (menu)="openMenu(item.game, $event)"
+          [envy]="item.envy ? (envyViews().get(item.game.nameKey) ?? noEnvy()) : null"
+          [envyNamesOpen]="envyNamesOpen() && envyNamesGame()?.id === item.game.id"
+          (envyToggle)="onEnvyToggle(item.game.nameKey)"
+          (envyNames)="openEnvyNames(item.game, $event)"
+        />
+      </li>
+    }
+  </ul>
+</ng-template>
+
+<!-- Story 49.4 : le menu ⋮ des jeux de l'hôte — un seul `cdkConnectedOverlay`, tenu par l'onglet (même patron que le ⋮ de
+     la fiche de personnage, jamais `MatMenu`). Une entrée ; le fond (transparent) referme. -->
+<ng-template
+  cdkConnectedOverlay
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  [cdkConnectedOverlayOrigin]="menuOrigin()"
+  [cdkConnectedOverlayOpen]="menuGame() !== null"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPositions]="ROW_MENU_POSITIONS"
+  cdkConnectedOverlayPush
+  [cdkConnectedOverlayViewportMargin]="8"
+  (backdropClick)="closeMenu(true)"
+  (overlayKeydown)="onMenuKeydown($event)"
+>
+  <div class="egt-menu" role="menu" [attr.aria-label]="menuAriaLabel()">
+    <button type="button" role="menuitem" class="egt-menu__item" (click)="onExcludeChosen()">
+      {{ theme.tone()['event_games.exclude_entry'] }}
+    </button>
+  </div>
+</ng-template>
+
+<!-- Story 49.5 : la liste des noms d'une Envie — un seul `cdkConnectedOverlay`, tenu par l'onglet, ancré sur le compte
+     touché. `role="dialog"` nommé, Échap et fond ferment, le focus revient au compte. -->
+<ng-template
+  cdkConnectedOverlay
+  cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+  [cdkConnectedOverlayOrigin]="envyNamesOrigin()"
+  [cdkConnectedOverlayOpen]="envyNamesOpen()"
+  [cdkConnectedOverlayHasBackdrop]="true"
+  [cdkConnectedOverlayPositions]="ROW_MENU_POSITIONS"
+  cdkConnectedOverlayPush
+  [cdkConnectedOverlayViewportMargin]="8"
+  (backdropClick)="closeEnvyNames(true)"
+  (overlayKeydown)="onEnvyNamesKeydown($event)"
+>
+  <div class="egt-names" role="dialog" tabindex="-1" [attr.aria-label]="envyNamesAriaLabel()">
+    <ul class="egt-names__list">
+      @for (user of envyNamesList(); track user.userId) {
+        <li>{{ user.displayName }}</li>
+      }
+    </ul>
+  </div>
+</ng-template>

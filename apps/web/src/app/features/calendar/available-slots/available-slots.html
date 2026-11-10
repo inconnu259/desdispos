@@ -1,33 +1,86 @@
 <section class="available-slots">
-  <h2 class="available-slots__title">{{ theme.tone()['section.slots'] }}</h2>
+  <h2 class="available-slots__title">
+    @if (foldable()) {
+      <button
+        type="button"
+        class="available-slots__fold"
+        [attr.aria-expanded]="!folded()"
+        (click)="foldToggled.emit()"
+      >
+        <span>{{ title() }}</span>
+        <app-icon [name]="folded() ? 'deplier' : 'replier'" />
+      </button>
+    } @else {
+      {{ title() }}
+    }
+  </h2>
 
-  @if (loading()) {
-    <div class="available-slots__loading" aria-busy="true" aria-label="Chargement en cours">
+  <!-- Story 46.1 — repliée, seul le titre reste. -->
+  @if (!collapsed() && loading()) {
+    <div
+      class="available-slots__loading"
+      aria-busy="true"
+      [attr.aria-label]="theme.tone()['common.chargement_en_cours']"
+    >
       <span class="available-slots__skeleton" aria-hidden="true"></span>
       <span class="available-slots__skeleton" aria-hidden="true"></span>
       <span class="available-slots__skeleton" aria-hidden="true"></span>
     </div>
   }
 
-  @if (error()) {
+  @if (!collapsed() && error()) {
     <p class="available-slots__error" role="alert">{{ error() }}</p>
   }
 
-  @if (!loading() && !error() && sortedSlots().length === 0) {
+  @if (!collapsed() && !loading() && !error() && sortedSlots().length === 0) {
     <p class="available-slots__empty">{{ theme.tone()['empty.no_slots'] }}</p>
   }
 
-  @if (!loading() && !error() && sortedSlots().length > 0) {
-    <ul class="available-slots__list" aria-label="Créneaux disponibles">
+  @if (!collapsed() && !loading() && !error() && sortedSlots().length > 0) {
+    <ul class="available-slots__list" [attr.aria-label]="theme.tone()['calendar.slots_list_aria']">
       @for (s of sortedSlots(); track s.date + s.slot) {
         <li>
           @if (isMjSlot(s)) {
-            <app-creneau-card [slot]="$any(s)" />
+            <app-creneau-card
+              [slot]="$any(s)"
+              [selectable]="selectable()"
+              [selected]="selectedKey() === windowKey($any(s))"
+              (selectToggled)="onSelectToggled($any(s))"
+              [canAdd]="canAdd()"
+              (addRequested)="addRequested.emit($any(s))"
+              (hideRequested)="hideRequested.emit($any(s))"
+            />
           } @else {
             <app-aggregated-creneau-card [slot]="$any(s)" />
           }
         </li>
       }
     </ul>
+  }
+
+  <!-- Story 46.4 — les fenêtres masquées : un lien en pied (absent s'il n'y en a pas), puis chacune à 55 % avec
+       « Démasquer ». Jamais comptées dans le titre, jamais sélectionnables. -->
+  @if (!collapsed() && hiddenSlots().length > 0) {
+    <button
+      type="button"
+      class="available-slots__hidden-toggle"
+      [attr.aria-expanded]="hiddenOpen()"
+      (click)="hiddenOpen.set(!hiddenOpen())"
+    >
+      {{ hiddenLabel() }}
+    </button>
+    @if (hiddenOpen()) {
+      <ul class="available-slots__list available-slots__list--hidden">
+        @for (s of hiddenSlots(); track windowKey(s)) {
+          <li>
+            <app-creneau-card
+              [slot]="s"
+              [hiddenWindow]="true"
+              (showRequested)="showRequested.emit(s)"
+            />
+          </li>
+        }
+      </ul>
+    }
   }
 </section>

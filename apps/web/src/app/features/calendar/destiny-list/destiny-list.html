@@ -1,0 +1,37 @@
+<div class="destiny-list">
+  <p class="destiny-list__title">{{ theme.tone()['calendar.destiny_list_title'] }}</p>
+  <p class="destiny-list__subtitle">{{ theme.tone()['calendar.destiny_list_subtitle'] }}</p>
+
+  <!-- La destinée active, en tête : son nom, et la sortie du mode. Elle n'est pas répétée plus bas. -->
+  @if (active(); as current) {
+    <div class="destiny-list__head">
+      <span class="destiny-list__head-text">
+        <span class="destiny-list__name"
+          ><app-icon class="destiny-list__glyph" name="destinee" /> {{ current.title }}</span
+        >
+        <span class="destiny-list__meta">{{ current.meta }}</span>
+      </span>
+      <button type="button" class="destiny-list__quit" (click)="quit.emit()">
+        {{ theme.tone()['calendar.destiny_quit'] }}
+      </button>
+    </div>
+  }
+
+  @for (group of groups(); track group.name) {
+    <section class="destiny-list__group">
+      <h3 class="destiny-list__group-name">{{ group.name }}</h3>
+      @for (row of group.rows; track row.pollId) {
+        <button type="button" class="destiny-list__row" (click)="chosen.emit(row.pollId)">
+          <span class="destiny-list__text">
+            <span class="destiny-list__name">{{ row.title }}</span>
+            <span class="destiny-list__meta">{{ row.meta }}</span>
+          </span>
+          <!-- L'état est écrit, jamais une couleur seule (P-1). -->
+          <span class="destiny-list__pill destiny-list__pill--{{ row.state }}">{{
+            row.stateLabel
+          }}</span>
+        </button>
+      }
+    </section>
+  }
+</div>

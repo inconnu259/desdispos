@@ -2,6 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GroupGauge } from './group-gauge';
 import type { GroupAvailability, GroupMember } from '../group-availability.utils';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 function member(id: string, status: GroupMember['status']): GroupMember {
   return { userId: id, pseudo: id, displayName: id.toUpperCase(), status };
@@ -157,12 +160,12 @@ describe('GroupGauge (Story 36.8)', () => {
     it('dit les deux vides EN TOUTES LETTRES — jamais la couleur seule (P-1)', async () => {
       await render(group({ unknown: 4 }));
       expect((fixture.nativeElement as HTMLElement).getAttribute('aria-label')).toContain(
-        "personne ne s'est prononcé",
+        GRIMOIRE_TONE['calendar.util_group_nobody'],
       );
 
       await render(group({ unavailable: 4 }));
       expect((fixture.nativeElement as HTMLElement).getAttribute('aria-label')).toContain(
-        'tout le monde est bloqué',
+        GRIMOIRE_TONE['calendar.util_group_all_blocked'],
       );
     });
 

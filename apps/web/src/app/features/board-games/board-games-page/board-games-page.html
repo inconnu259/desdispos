@@ -1,0 +1,202 @@
+<!-- Champs d'une saisie (`QuickAddRow`), partagés par l'ajout et la correction en ligne (Story 48.2) :
+     `entry` porte les valeurs et les règles, `actions` les boutons placés en bout de ligne. -->
+<ng-template #entryFields let-entry let-actions="actions">
+  <label class="quick-add__field quick-add__field--name">
+    <span class="quick-add__label">{{ theme.tone()['board_games.field_name'] }}</span>
+    <input
+      class="quick-add__input"
+      type="text"
+      name="name"
+      autocomplete="off"
+      maxlength="80"
+      [value]="entry.name()"
+      (input)="onInput(entry, 'name', $event)"
+    />
+  </label>
+
+  <div class="quick-add__line">
+    <div class="quick-add__field">
+      <span class="quick-add__label" [id]="entry.idPrefix + '-players-label'">{{
+        theme.tone()['board_games.field_players']
+      }}</span>
+      <div
+        class="quick-add__players"
+        role="group"
+        [attr.aria-labelledby]="entry.idPrefix + '-players-label'"
+      >
+        <input
+          class="quick-add__input quick-add__input--number"
+          type="number"
+          name="minPlayers"
+          inputmode="numeric"
+          min="1"
+          max="99"
+          step="1"
+          [attr.aria-label]="theme.tone()['board_games.field_players_min_aria']"
+          [value]="entry.minPlayers()"
+          (input)="onInput(entry, 'min', $event)"
+        />
+        <span class="quick-add__to" aria-hidden="true">{{
+          theme.tone()['board_games.field_players_to']
+        }}</span>
+        <input
+          class="quick-add__input quick-add__input--number"
+          type="number"
+          name="maxPlayers"
+          inputmode="numeric"
+          min="1"
+          max="99"
+          step="1"
+          [attr.aria-label]="theme.tone()['board_games.field_players_max_aria']"
+          [attr.aria-invalid]="entry.maxBelowMin() ? 'true' : null"
+          [attr.aria-describedby]="entry.maxBelowMin() ? entry.idPrefix + '-max-below-min' : null"
+          [value]="entry.maxPlayers()"
+          (input)="onInput(entry, 'max', $event)"
+        />
+      </div>
+      @if (entry.maxBelowMin()) {
+        <p class="quick-add__message" [id]="entry.idPrefix + '-max-below-min'">
+          {{ theme.tone()['board_games.max_below_min'] }}
+        </p>
+      }
+    </div>
+
+    <label class="quick-add__field">
+      <span class="quick-add__label">{{ theme.tone()['board_games.field_duration'] }}</span>
+      <input
+        class="quick-add__input quick-add__input--number"
+        type="number"
+        name="durationMin"
+        inputmode="numeric"
+        min="1"
+        max="1440"
+        step="1"
+        [value]="entry.durationMin()"
+        (input)="onInput(entry, 'duration', $event)"
+      />
+    </label>
+
+    <ng-container [ngTemplateOutlet]="actions" />
+  </div>
+</ng-template>
+
+<ng-template #addActions>
+  <button class="quick-add__submit" type="submit" [disabled]="!add.canSubmit()">
+    {{ theme.tone()['board_games.add_btn'] }}
+  </button>
+</ng-template>
+
+<ng-template #editActions>
+  <div class="quick-add__actions">
+    <button class="quick-add__submit" type="submit" [disabled]="!edit.canSubmit()">
+      {{ theme.tone()['board_games.save_btn'] }}
+    </button>
+    <!-- ⚠️ Absent de la planche (décision du 2026-10-30) : ferme sans enregistrer, comme `Échap`. -->
+    <button class="quick-add__secondary" type="button" (click)="closeEdit()">
+      {{ theme.tone()['common.annuler'] }}
+    </button>
+    <button
+      class="quick-add__secondary"
+      type="button"
+      [disabled]="edit.submitting()"
+      (click)="removeEditing()"
+    >
+      {{ theme.tone()['board_games.remove_btn'] }}
+    </button>
+  </div>
+</ng-template>
+
+<div class="board-games-page">
+  <!-- ⚠️ Story 48.1 — `QuickAddRow` : saisie en série en tête. `Entrée` dans n'importe quel champ
+       ajoute (envoi natif du formulaire) ; nom vide ou max < min : bouton inactif. -->
+  <form class="quick-add quick-add--add" novalidate (submit)="onSubmit($event)">
+    <ng-container
+      [ngTemplateOutlet]="entryFields"
+      [ngTemplateOutletContext]="{ $implicit: add, actions: addActions }"
+    />
+
+    <p class="quick-add__hint">{{ theme.tone()['board_games.hint'] }}</p>
+    @if (add.error()) {
+      <p class="quick-add__message" role="alert">{{ add.error() }}</p>
+    }
+  </form>
+
+  <!-- ⚠️ Story 48.2 — ligne d'état polie entre la saisie et la liste (dans le flux, sans
+       surimpression) : « Jeu retiré · Annuler » pendant 8 s. Toujours présente (vide, masquée
+       visuellement) pour que l'annonce soit fiable. -->
+  <div
+    #statusRegion
+    class="board-games-page__status"
+    [class.board-games-page__status--idle]="!removed()"
+    role="status"
+    aria-live="polite"
+  >
+    @if (removed()) {
+      @if (undoError(); as message) {
+        <span class="board-games-page__status-text">{{ message }}</span>
+      } @else {
+        <span class="board-games-page__status-text">{{ theme.tone()['board_games.removed'] }}</span>
+        <span class="board-games-page__status-sep" aria-hidden="true">·</span>
+        <button
+          class="board-games-page__undo"
+          type="button"
+          [disabled]="undoing()"
+          (click)="undo()"
+        >
+          {{ theme.tone()['board_games.undo_btn'] }}
+        </button>
+      }
+    }
+  </div>
+
+  @if (loadError()) {
+    <p class="board-games-page__message" role="alert">
+      {{ theme.tone()['board_games.error_fallback'] }}
+    </p>
+  }
+
+  @if (rows().length > 0) {
+    <ul class="board-games-list" [attr.aria-label]="theme.tone()['board_games.title']">
+      @for (row of rows(); track row.id) {
+        @if (editingId() === row.id) {
+          <li class="board-games-list__row board-games-list__row--editing">
+            <!-- ⚠️ Story 48.2 — correction en ligne : la même saisie, préremplie. `Entrée`
+                 enregistre, `Échap` ferme sans enregistrer. -->
+            <form
+              class="quick-add quick-add--edit"
+              novalidate
+              (submit)="onSave($event)"
+              (keydown)="onEditKeydown($event)"
+            >
+              <ng-container
+                [ngTemplateOutlet]="entryFields"
+                [ngTemplateOutletContext]="{ $implicit: edit, actions: editActions }"
+              />
+              @if (edit.error()) {
+                <p class="quick-add__message" role="alert">{{ edit.error() }}</p>
+              }
+            </form>
+          </li>
+        } @else {
+          <li class="board-games-list__row">
+            <div class="board-games-list__text">
+              <span class="board-games-list__name">{{ row.name }}</span>
+              @if (row.measures) {
+                <span class="board-games-list__measures">{{ row.measures }}</span>
+              }
+            </div>
+            <button
+              class="board-games-list__edit"
+              type="button"
+              [attr.data-game-id]="row.id"
+              [attr.aria-label]="row.editAria"
+              (click)="openEdit(row.game)"
+            >
+              <app-icon name="modifier" />
+            </button>
+          </li>
+        }
+      }
+    </ul>
+  }
+</div>

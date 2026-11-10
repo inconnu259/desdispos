@@ -4,6 +4,10 @@ import { vi } from 'vitest';
 import type { AvailKind, DaySlot } from '@master-jdr/shared';
 import type { AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import { SelectionBar } from './selection-bar';
+import { TONE_MAP } from '../../../core/theme/tones';
+import { fillTone } from '../../../core/theme/tone-format';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const SEAL_CANDIDATE: AgendaSealRequest = {
   partieId: 'p1',
@@ -44,16 +48,37 @@ describe('SelectionBar', () => {
     TestBed.configureTestingModule({ imports: [SelectionBar] });
   });
 
+  it('Story 52.3 — la barre est collante en mode déclaration seulement', () => {
+    create(2);
+    expect(fixture.nativeElement.classList).not.toContain('selection-bar-sticky');
+
+    for (const mode of ['composer', 'destinee', 'lecture'] as const) {
+      fixture.componentRef.setInput('interaction', mode);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.classList).not.toContain('selection-bar-sticky');
+    }
+
+    fixture.componentRef.setInput('interaction', 'declaration');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.classList).toContain('selection-bar-sticky');
+  });
+
   it('affiche le nombre de créneaux sélectionnés', () => {
     create(4, 'mar. → ven., soirée');
-    expect(el.textContent).toContain('4 créneaux');
+    expect(el.textContent).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.selbar_count_many'], { n: 4 }),
+    );
     expect(el.textContent).toContain('mar. → ven., soirée');
   });
 
   it('un seul créneau → singulier', () => {
     create(1);
-    expect(el.textContent).toContain('1 créneau');
-    expect(el.textContent).not.toContain('1 créneaux');
+    expect(el.textContent).toContain(
+      fillTone(GRIMOIRE_TONE['calendar.selbar_count_one'], { n: 1 }),
+    );
+    expect(el.textContent).not.toContain(
+      fillTone(GRIMOIRE_TONE['calendar.selbar_count_many'], { n: 1 }),
+    );
   });
 
   it('clic sur Disponible émet markAvailable', () => {
@@ -76,7 +101,7 @@ describe('SelectionBar', () => {
     create(2);
     const spy = vi.fn();
     fixture.componentInstance.cancelled.subscribe(spy);
-    buttonByText('Annuler').click();
+    buttonByText(GRIMOIRE_TONE['common.annuler']).click();
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
@@ -127,7 +152,7 @@ describe('SelectionBar', () => {
     create(2);
     const spy = vi.fn();
     fixture.componentInstance.otherRequested.subscribe(spy);
-    buttonByText('Autre…').click();
+    buttonByText(GRIMOIRE_TONE['calendar.selbar_other']).click();
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
@@ -177,5 +202,87 @@ describe('SelectionBar', () => {
     fixture.componentInstance.sealRequested.subscribe(spy);
     (el.querySelector('.seal-btn') as HTMLButtonElement).click();
     expect(spy).toHaveBeenCalledWith(SEAL_CANDIDATE);
+  });
+
+  // ── Story 45.3 — la barre en version composition ──
+
+  describe('version composition (Story 45.3)', () => {
+    function createCompose(scope: DaySlot | null = 'EVENING', fullDayAllowed = true): void {
+      fixture = TestBed.createComponent(SelectionBar);
+      fixture.componentRef.setInput('count', 3);
+      fixture.componentRef.setInput('scope', scope);
+      fixture.componentRef.setInput('composeMode', true);
+      fixture.componentRef.setInput('fullDayAllowed', fullDayAllowed);
+      // Un candidat à sceller ne doit JAMAIS s'afficher en composition.
+      fixture.componentRef.setInput('sealCandidate', SEAL_CANDIDATE);
+      fixture.detectChanges();
+      el = fixture.nativeElement;
+    }
+
+    it('perd Sceller, Disponible, Indisponible et « Autre… » ; garde le compte, la portée et Annuler', () => {
+      createCompose();
+      expect(el.querySelector('.seal-btn')).toBeNull();
+      expect(el.querySelector('.kind-btn')).toBeNull();
+      expect(el.querySelector('.other-btn')).toBeNull();
+      expect(el.querySelectorAll('.scope-seg')).toHaveLength(4);
+      expect(buttonByText(GRIMOIRE_TONE['common.annuler'])).toBeTruthy();
+    });
+
+    it('« Ajouter au vote » et « Retirer » émettent composeAdd et composeRemove', () => {
+      createCompose();
+      const add = vi.fn();
+      const remove = vi.fn();
+      fixture.componentInstance.composeAdd.subscribe(add);
+      fixture.componentInstance.composeRemove.subscribe(remove);
+
+      buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_add']).click();
+      buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_remove']).click();
+
+      expect(add).toHaveBeenCalledTimes(1);
+      expect(remove).toHaveBeenCalledTimes(1);
+    });
+
+    it('« Annuler » émet cancelled (la sélection, pas le composer)', () => {
+      createCompose();
+      const cancelled = vi.fn();
+      fixture.componentInstance.cancelled.subscribe(cancelled);
+      buttonByText(GRIMOIRE_TONE['common.annuler']).click();
+      expect(cancelled).toHaveBeenCalledTimes(1);
+    });
+
+    it('sans journée entière (groupe, soirée) : le segment « Journée » n’est pas proposé', () => {
+      createCompose('EVENING', false);
+      const labels = Array.from(el.querySelectorAll('.scope-seg')).map((b) =>
+        b.textContent!.trim(),
+      );
+      expect(labels).toEqual(['Matin', 'Après-m.', 'Soir']);
+    });
+
+    it('sans journée entière et portée « journée » : « Ajouter au vote » est désactivé et la raison est ÉCRITE', () => {
+      createCompose('FULL_DAY', false);
+      const add = buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_add']);
+      expect(add.disabled).toBe(true);
+      expect(el.querySelector('.selection-bar__hint')?.textContent?.trim()).toBe(
+        GRIMOIRE_TONE['calendar.selbar_compose_pick_moment'],
+      );
+      expect(add.getAttribute('aria-describedby')).toBe('selbar-compose-hint');
+    });
+
+    it('en JDR (journée permise), « Journée » est proposée et « Ajouter » reste actif', () => {
+      createCompose('FULL_DAY', true);
+      expect(el.querySelectorAll('.scope-seg')).toHaveLength(4);
+      expect(buttonByText(GRIMOIRE_TONE['calendar.selbar_compose_add']).disabled).toBe(false);
+      expect(el.querySelector('.selection-bar__hint')).toBeNull();
+    });
+
+    it('les flèches ne circulent que sur les portées proposées', () => {
+      createCompose('EVENING', false);
+      const changed: DaySlot[] = [];
+      fixture.componentInstance.scopeChange.subscribe((s) => changed.push(s));
+      el.querySelector('.selection-bar__scope')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+      );
+      expect(changed).toEqual(['MORNING']);
+    });
   });
 });

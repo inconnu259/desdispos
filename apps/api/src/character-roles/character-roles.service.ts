@@ -7,7 +7,7 @@ import {
 import type { CharacterGroupRoleDto } from '@master-jdr/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { hasPrismaErrorCode } from '../common/prisma-error.util';
-import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
 import { GameSystemService } from '../game-systems/game-system.service';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 
@@ -30,15 +30,16 @@ function toDto(role: {
 /**
  * Assignation d'un rôle de groupe par le MJ (Epic 27, Story 27.2 — AD-5/AD-6/AD-8). Module dédié,
  * jamais fondu dans `CharacterModule` (portée cross-personnage à l'échelle de la Partie, pas
- * propriétaire-ou-MJ sur un personnage donné). Écriture MJ-only (`getOwned`), lecture ouverte à
- * tout membre (`getViewable`) — aucun nouveau guard NestJS, même pattern que
- * `XpDistributionsService`/`AnnouncementsService`.
+ * propriétaire-ou-MJ sur un personnage donné). Écriture MJ-only (`GROUP_ROLE_ASSIGN`,
+ * `GROUP_ROLE_UNASSIGN`), lecture ouverte à tout membre (`GROUP_ROLE_READ`), toutes décidées par
+ * `PermissionService` ; seule l'assignation exige la capacité `groupRoles` du système — aucun
+ * nouveau guard NestJS.
  */
 @Injectable()
 export class CharacterRolesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly parties: PartiesService,
+    private readonly permissions: PermissionService,
     private readonly gameSystems: GameSystemService,
     private readonly realtimeEvents: RealtimeEventsService,
   ) {}
@@ -49,7 +50,7 @@ export class CharacterRolesService {
     characterId: string,
     roleKey: string,
   ): Promise<CharacterGroupRoleDto> {
-    const partie = await this.parties.getOwned(partieId, mjId);
+    const { partie } = await this.permissions.assert(mjId, 'GROUP_ROLE_ASSIGN', { partieId });
 
     const content = await this.gameSystems.getContent(partie.gameSystemId);
     const validRoleKeys = (content['groupRole'] ?? []).map((entry) => entry.key);
@@ -97,7 +98,7 @@ export class CharacterRolesService {
   }
 
   async unassign(partieId: string, mjId: string, characterId: string): Promise<void> {
-    await this.parties.getOwned(partieId, mjId);
+    await this.permissions.assert(mjId, 'GROUP_ROLE_UNASSIGN', { partieId });
 
     const result = await this.prisma.characterGroupRole.deleteMany({
       where: { partieId, characterId },
@@ -109,7 +110,7 @@ export class CharacterRolesService {
   }
 
   async listForPartie(partieId: string, userId: string): Promise<CharacterGroupRoleDto[]> {
-    await this.parties.getViewable(partieId, userId);
+    await this.permissions.assert(userId, 'GROUP_ROLE_READ', { partieId });
     const roles = await this.prisma.characterGroupRole.findMany({
       where: { partieId },
       orderBy: { assignedAt: 'asc' },

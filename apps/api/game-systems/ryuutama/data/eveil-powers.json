@@ -2,37 +2,43 @@
   {
     "key": "escorte-du-dragon",
     "label": "Escorte du dragon",
+    "famille": "deplacement",
     "ps": 2,
-    "description": "L'homme-dragon guide les voyageurs perdus. Un échec sur un test d'orientation est transformé en réussite."
+    "description": "L'homme-dragon guide les voyageurs égarés : un test d'orientation raté devient une réussite."
   },
   {
     "key": "couche-du-dragon",
     "label": "Couche du dragon",
+    "famille": "deplacement",
     "ps": 2,
-    "description": "L'homme-dragon veille sur le sommeil des voyageurs. Un échec sur un test de campement est transformé en réussite."
+    "description": "L'homme-dragon veille sur le repos des voyageurs : un test de campement raté devient une réussite."
   },
   {
     "key": "cadeau-du-dragon",
     "label": "Cadeau du dragon",
+    "famille": "deplacement",
     "ps": 2,
-    "description": "L'homme-dragon s'assure que les voyageurs ne manquent de rien. Il amène suffisamment d'eau et de vivres pour les trois prochains jours de voyage."
+    "description": "L'homme-dragon pourvoit aux besoins des voyageurs en leur apportant assez d'eau et de nourriture pour les trois jours de voyage suivants."
   },
   {
     "key": "rugissement-du-dragon",
     "label": "Rugissement du dragon",
+    "famille": "combat",
     "ps": 1,
-    "description": "Le rugissement du dragon donne un regain d'énergie aux voyageurs. Ils peuvent utiliser une nouvelle fois les objets du champ de bataille. Cet éveil peut être utilisé n'importe quand en combat."
+    "description": "Le rugissement du dragon ravive les forces des voyageurs, qui peuvent utiliser à nouveau les objets du champ de bataille. Utilisable à tout moment du combat."
   },
   {
     "key": "protection-du-dragon",
     "label": "Protection du dragon",
+    "famille": "combat",
     "ps": 2,
-    "description": "L'homme-dragon s'interpose et prend un coup destiné à un ou plusieurs voyageurs. Cette cicatrice ne s'effacera jamais, mais l'homme-dragon ne perd aucun point de souffle à cause de cette blessure. Cet éveil s'utilise après que les dégâts ont été lancés."
+    "description": "L'homme-dragon s'interpose pour encaisser un coup destiné à un ou plusieurs voyageurs. Il en garde une cicatrice à jamais, mais cette blessure ne lui coûte aucun point de souffle. S'utilise une fois les dégâts lancés."
   },
   {
     "key": "attaque-du-dragon",
     "label": "Attaque du dragon",
+    "famille": "combat",
     "ps": 3,
-    "description": "L'homme-dragon souffle sur un ennemi des voyageurs. Le monstre pris pour cible subit d6 + d6 de dégâts contre lesquels toute protection est inefficace. Cependant, le souffle ne peut tuer les monstres : les PV de ces derniers ne peuvent descendre en dessous de 1. Cet éveil peut être utilisé n'importe quand en combat."
+    "description": "L'homme-dragon souffle sur un ennemi des voyageurs, qui subit d6 + d6 dégâts ignorant toute protection. Ce souffle ne peut toutefois pas tuer : les PV du monstre ne descendent pas sous 1. Utilisable à tout moment du combat."
   }
 ]

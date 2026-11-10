@@ -1,0 +1,67 @@
+<mat-card class="visibility-locks-card">
+  <!-- Aucun titre ici : il vit dans le bandeau contextuel du Shell (même convention que
+       PartieForm, Story 29.5). -->
+  @if (loading()) {
+    <mat-progress-spinner mode="indeterminate" diameter="32" />
+  } @else if (accessDenied()) {
+    <p class="visibility-locks-card__error" role="alert">
+      {{ theme.tone()['parties.locks_access_denied'] }}
+    </p>
+    <a mat-stroked-button [routerLink]="['/parties', partieId]">{{
+      theme.tone()['common.retour_a_la_partie']
+    }}</a>
+  } @else {
+    <p class="visibility-locks-card__help">{{ theme.tone()['parties.locks_help'] }}</p>
+
+    @if (error()) {
+      <p class="visibility-locks-card__error" role="alert">{{ error() }}</p>
+    }
+
+    @for (field of lockableFields(); track field.key) {
+      <div class="visibility-locks-card__field">
+        <mat-checkbox
+          [checked]="isLocked(field.key)"
+          [disabled]="saving()"
+          (change)="toggle(field.key)"
+        >
+          {{ field.label }}
+        </mat-checkbox>
+        @if (field.subFields.length > 0) {
+          <div class="visibility-locks-card__subfields">
+            @for (sub of field.subFields; track sub.key) {
+              <mat-checkbox
+                class="visibility-locks-card__checkbox--sub"
+                [checked]="isLocked(field.key, sub.key)"
+                [disabled]="saving()"
+                (change)="toggle(field.key, sub.key)"
+              >
+                {{ sub.label }}
+              </mat-checkbox>
+            }
+          </div>
+        }
+      </div>
+    } @empty {
+      <p class="visibility-locks-card__empty">{{ theme.tone()['parties.locks_empty'] }}</p>
+    }
+
+    <div class="visibility-locks-card__actions">
+      <button mat-button type="button" [disabled]="saving()" (click)="cancel()">{{
+        theme.tone()['common.annuler']
+      }}</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="saving()"
+        (click)="save()"
+      >
+        @if (saving()) {
+          {{ theme.tone()['common.enregistrement'] }}
+        } @else {
+          {{ theme.tone()['common.enregistrer'] }}
+        }
+      </button>
+    </div>
+  }
+</mat-card>

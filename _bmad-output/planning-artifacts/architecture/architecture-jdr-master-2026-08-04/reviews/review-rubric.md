@@ -153,7 +153,7 @@ Les trois autres retombent dans la ligne « gouverné par les conventions » —
 | Temps réel | **Décidée mais non applicable** (AD-14, §2) | À reprendre |
 | Structure front | Décidée — AD-11, AD-12, AD-13, source tree | Bonne, hors P-1 (§4) |
 | Stack / dépendances | Décidée — aucun ajout | Net |
-| **Enveloppe opérationnelle (déploiement, environnements, exploitation)** | **Explicitement traitée en Deferred** : aucun service externe, aucune variable d'environnement, aucune évolution de la topologie Docker Compose ; les deux aménagements de développement (`API_BASE` calculé, `WEB_ORIGIN` multi-origines) sont nommés et rendus à la propriété du Palier 10 | **Traitement exemplaire.** La dimension n'est pas décidée par défaut ni oubliée : elle est nommée, bornée, et son propriétaire est désigné. C'est la bonne façon de ne pas décider |
+| **Enveloppe opérationnelle (déploiement, environnements, exploitation)** | **Explicitement traitée en Deferred** : aucun service externe, aucune variable d'environnement, aucune évolution de la topologie Docker Compose ; les deux aménagements de développement (`API_BASE` calculé, `WEB_ORIGIN` multi-origines) sont nommés et rendus à la propriété du Palier 11 | **Traitement exemplaire.** La dimension n'est pas décidée par défaut ni oubliée : elle est nommée, bornée, et son propriétaire est désigné. C'est la bonne façon de ne pas décider |
 | Migration / reprise de données | **Partielle** — le backfill `displayName ← pseudo` est dit ; la reprise du thème local ne l'est pas (§5) | Point mineur |
 | Tests / observabilité | Non traitée | Acceptable à cette altitude sur ce projet (conventions de test déjà établies au dépôt, aucune AD n'en dépend) |
 

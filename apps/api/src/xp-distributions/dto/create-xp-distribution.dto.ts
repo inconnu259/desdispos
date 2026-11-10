@@ -8,6 +8,8 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -20,6 +22,7 @@ class XpDistributionEntryInput {
   // — un montant négatif ferait décroître Character.xp via le même chemin qu'un gain.
   @IsInt()
   @Min(0)
+  @Max(100_000)
   amount!: number;
 
   @IsOptional()
@@ -37,17 +40,24 @@ export class CreateXpDistributionDto {
 
   @IsOptional()
   @IsInt()
+  @Min(0)
+  @Max(1000)
   difficulty?: number;
 
   @IsOptional()
   @IsInt()
+  @Min(0)
+  @Max(1000)
   breaths?: number;
 
   @IsOptional()
   @IsInt()
+  @Min(0)
+  @Max(1000)
   monsterLevel?: number;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   note?: string;
 }

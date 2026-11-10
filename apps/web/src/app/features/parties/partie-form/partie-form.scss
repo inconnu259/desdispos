@@ -43,6 +43,73 @@ mat-form-field {
   gap: 0.35rem;
 }
 
+// Bascule quête / ralliement (Story 38.2) : deux options sur toute la largeur, zone de toucher d'au
+// moins 44 px de haut (planche validée).
+.mode-toggle {
+  width: 100%;
+  // Story 45.7 : deux lignes par option (nom du thème + ligne en clair), 56 px de haut.
+  --mat-button-toggle-height: 56px;
+}
+
+.mode-toggle .mat-button-toggle {
+  flex: 1 1 0;
+}
+
+.mode-toggle ::ng-deep .mat-button-toggle-button {
+  min-height: 56px;
+}
+
+// Story 45.7 — deux lignes par option. `.mat-button-toggle-label-content` appartient au gabarit de Material (hors de
+// l'encapsulation de ce composant) : `::ng-deep`, borné aux deux groupes du formulaire. Material fixe la hauteur de
+// ligne à celle du bouton, ce qui superposerait les deux lignes : on la reprend sur les lignes elles-mêmes.
+.mode-toggle ::ng-deep .mat-button-toggle-label-content,
+.kind-toggle ::ng-deep .mat-button-toggle-label-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.3;
+  padding: 8px 12px;
+  white-space: normal;
+}
+
+.mode-toggle ::ng-deep .mat-button-toggle-label-content {
+  align-items: center;
+  text-align: center;
+}
+
+.kind-toggle ::ng-deep .mat-button-toggle-label-content {
+  align-items: flex-start;
+  text-align: left;
+}
+
+// Une nature s'étend sur autant de lignes qu'il faut : pas de hauteur fixe, jamais tronquée.
+.kind-toggle {
+  --mat-button-toggle-height: auto;
+}
+
+.kind-toggle ::ng-deep .mat-button-toggle-button {
+  height: auto;
+  min-height: 56px;
+}
+
+.option-name,
+.option-plain {
+  display: block;
+  line-height: 1.3;
+}
+
+.option-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+// La ligne en clair : 12 px, atténuée, jamais tronquée (elle revient à la ligne).
+.option-plain {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant, #666);
+}
+
 // Vertical : « Campagne épisodique » ne tient pas sur une ligne étroite, et un groupe horizontal
 // tronquait le libellé sur mobile (AC1).
 .kind-toggle {
@@ -71,35 +138,100 @@ mat-form-field {
 }
 
 .cover-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
   margin-top: 1rem;
-  flex-wrap: wrap;
 }
 
-.cover-preview {
-  flex-shrink: 0;
-  border-radius: 8px;
+// Aperçu de la couverture (Story 38.3) : cadre de 170 px, arrondi 14 px, pleine largeur du formulaire.
+.cover-frame {
+  position: relative;
+  height: 170px;
+  border-radius: 14px;
   overflow: hidden;
 }
 
-.cover-preview--file {
-  width: 88px;
-  height: 88px;
+// Plus spécifique que `:host(.party-banner-host--large)` (124 px) de la bannière.
+.cover-frame .cover-banner {
+  display: block;
+  width: 100%;
+  height: 170px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cover-image {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
-.cover-actions {
+.cover-chips {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
+  gap: 8px;
 }
 
-.cover-upload-label {
-  font-size: 0.85rem;
+// Puce translucide « Changer » / « Retirer ». Zone de toucher portée à 44 px par `::after`.
+.cover-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(8, 6, 16, 0.58);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+
+  &:focus-visible,
+  &:has(.cover-file-input:focus-visible) {
+    // Double anneau : le blanc seul disparaît sur une couverture claire.
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(8, 6, 16, 0.9);
+  }
+
+  &:disabled,
+  &.cover-chip--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Contraste forcé : fonds et ombres sont neutralisés, la bordure reste le seul contour visible.
+@media (forced-colors: active) {
+  .cover-chip {
+    border: 2px solid ButtonText;
+  }
+}
+
+// Pictogramme <app-icon> « modifier », décoratif (la puce est nommée par son texte).
+.cover-chip__icon {
+  --app-icon-size: 16px;
+}
+
+// Champ fichier natif masqué SOUS la puce, mais jamais retiré de l'arbre : Tab l'atteint.
+.cover-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: inherit;
 }
 
 .cover-progress {

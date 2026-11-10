@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type { DaySlot } from '@master-jdr/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../core/theme/tone-format';
 import {
   type RailTarget,
   composeSeanceInfo,
@@ -26,6 +27,7 @@ import {
   pollGroupBadge,
   sectionIdFor,
 } from '../agenda-badge.utils';
+import { entrySpanShortLabel, isSpan, spanShortLabel } from '../span-label';
 
 /** Type d'entrée affichée dans la vue Agenda (Story 30.6, AC2) — un par couche pertinente.
  *
@@ -66,6 +68,11 @@ export interface AgendaEntry {
    *  exploitable pour ranger l'entrée dans la bonne ligne. `undefined` = créneau inconnu, traité
    *  comme `FULL_DAY` en lecture (même convention que `compute-display-status.ts`). */
   slot?: DaySlot;
+  /** Story 47.3 — fin de la plage d'un rendez-vous de plusieurs créneaux (`YYYY-MM-DD` et créneau). Absentes pour
+   *  un créneau seul : `date` / `slot` en sont alors le début ET la fin. UNE entrée par rendez-vous — la grille et
+   *  le rail la déplient (`entryCoversCell`), l'Agenda l'écrit « début → fin ». */
+  endDate?: string;
+  endSlot?: DaySlot;
   /** Story 36.1, Task 4 bis : identifiants de navigation. Renseignés uniquement pour les entrées
    *  ouvrables — aujourd'hui les séances, dont on ouvre le SCÉNARIO qui les porte (aucun écran de
    *  séance n'existe). Absents pour toute entrée non ouvrable. */
@@ -249,7 +256,7 @@ export class CalendarAgendaView {
    *
    * 🚨 **Deux conditions, décidées par le parent** : être MJ **et** être dans le calendrier d'une
    * partie. Le calendrier personnel agrège plusieurs parties et ne sait de AUCUNE d'elles si j'en
-   * suis le MJ — `MyCalendarPollEntry` ne porte ni rôle ni `mjId`, et ne doit pas les porter
+   * suis le MJ — `MyCalendarPollEntry` ne porte ni rôle ni `ownerId`, et ne doit pas les porter
    * (AD-9). Un bouton *Sceller* y échouerait en 403 une ligne sur deux.
    *
    * 🚨 Ce drapeau est une affaire d'**interface**, jamais de sécurité : `PollService.choose()`
@@ -392,7 +399,14 @@ export class CalendarAgendaView {
    */
   protected metaLine(entry: AgendaEntry): string {
     const parts: string[] = [];
-    if (entry.date) parts.push(this.dateWithSlot(entry.date, entry.slot));
+    if (entry.date) {
+      // Story 47.3 : UNE ligne par rendez-vous — « ven. 6 nov. soir → dim. 8 nov. après-midi » pour une plage.
+      const start = { date: entry.date, slot: entry.slot };
+      const end = entry.endDate ? { date: entry.endDate, slot: entry.endSlot } : null;
+      parts.push(
+        isSpan(start, end) ? spanShortLabel(start, end) : this.dateWithSlot(entry.date, entry.slot),
+      );
+    }
     if (entry.type === 'inscriptions-ouvertes') {
       if (entry.detail) parts.push(entry.detail);
       // Revue de code de la 36.11 : ce libellé était codé en dur alors que tous les autres
@@ -478,14 +492,15 @@ export class CalendarAgendaView {
   private missingLabel(group: AgendaVoteGroup): string {
     const names = this.missingByPoll()[group.pollId] ?? [];
     if (names.length === 0) return '';
+    const tone = this.theme.tone();
     const listed = names.slice(0, MAX_LISTED_MISSING).join(', ');
     const rest = names.length - MAX_LISTED_MISSING;
-    return this.theme
-      .tone()
-      ['calendar.agenda.missing_voters'].replace(
-        '{names}',
-        rest > 0 ? `${listed} et ${rest} autre${rest > 1 ? 's' : ''}` : listed,
-      );
+    const moreKey =
+      rest > 1 ? 'calendar.agenda_missing_more_many' : 'calendar.agenda_missing_more_one';
+    return tone['calendar.agenda.missing_voters'].replace(
+      '{names}',
+      rest > 0 ? fillTone(tone[moreKey], { listed, rest }) : listed,
+    );
   }
 
   /** AC8 — l'intention du lecteur prime ; à défaut, la maturité décide (« d'office » = par
@@ -568,18 +583,20 @@ export class CalendarAgendaView {
    *  [Source: EXPERIENCE.md §6 bis] — même formulation qu'au rail. */
   protected openLabel(entry: AgendaEntry): string {
     const meta = this.metaLine(entry);
+    const tone = this.theme.tone();
     return meta
-      ? `Ouvrir le scénario ${entry.label} — ${meta}`
-      : `Ouvrir le scénario ${entry.label}`;
+      ? fillTone(tone['common.ouvrir_le_scenario_label_info'], { label: entry.label, info: meta })
+      : fillTone(tone['common.ouvrir_le_scenario_label'], { label: entry.label });
   }
 
   /** Revue de code 36.7 : même repli qu'au rail — `[attr.aria-label]` écrase le contenu du
    *  bouton, y compris le `role="img"`/`aria-label` propre à `<app-poll-track>` qu'il enveloppe. */
   protected voteAriaLabel(entry: AgendaEntry): string {
-    const detail = entry.vote ? participationAriaLabel(entry.vote) : null;
+    const tone = this.theme.tone();
+    const detail = entry.vote ? participationAriaLabel(entry.vote, tone) : null;
     return detail
-      ? `Répondre au vote — ${entry.label} — ${detail}`
-      : `Répondre au vote — ${entry.label}`;
+      ? fillTone(tone['common.repondre_au_vote_label_detail'], { label: entry.label, detail })
+      : fillTone(tone['common.repondre_au_vote_label'], { label: entry.label });
   }
 
   /** Date à minuit LOCAL, comme les grilles — jamais UTC (cf. `dateKeyToLocalMidnight`). */
@@ -598,6 +615,10 @@ export class CalendarAgendaView {
 
   /** Le créneau proposé, lu en colonne : « ven. 28 août, soir ». */
   protected optionLabel(entry: AgendaEntry): string {
+    // Story 47.5 — un candidat de plusieurs créneaux s'écrit de son début à sa fin, ici comme dans la confirmation
+    // de scellement (qui réutilise ce libellé) ; un créneau seul reste inchangé.
+    const span = entrySpanShortLabel(entry);
+    if (span) return span;
     const date = OPTION_DATE_FORMAT.format(dateKeyToLocalMidnight(entry.date));
     return entry.slot && entry.slot !== 'FULL_DAY'
       ? `${date}, ${SLOT_LABELS[entry.slot].toLowerCase()}`

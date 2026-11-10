@@ -90,3 +90,18 @@ describe('SetInfosPratiquesDto (Story 36.5)', () => {
     expect(errors.some((e) => e.property === 'notePratique')).toBe(true);
   });
 });
+
+describe('SetInfosPratiquesDto — durée (Story 47.1)', () => {
+  it('durée absente → valide (inchangée)', async () => {
+    expect(await check(empty)).toHaveLength(0);
+  });
+
+  it.each([1, 6, 45])('%i créneaux → valide', async (durationSlots) => {
+    expect(await check({ ...empty, durationSlots })).toHaveLength(0);
+  });
+
+  it.each([0, 46, 2.5])('durée %s → refusée', async (durationSlots) => {
+    const errors = await check({ ...empty, durationSlots });
+    expect(errors.map((e) => e.property)).toEqual(['durationSlots']);
+  });
+});

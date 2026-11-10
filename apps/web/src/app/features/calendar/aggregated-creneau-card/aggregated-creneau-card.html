@@ -3,11 +3,13 @@
     <span class="agg-card__date">{{ formatDate(slot().date) }}</span>
     <span class="agg-card__slot">{{ slotLabel() }}</span>
   </header>
-  <div class="agg-card__counts" aria-label="Disponibilités">
-    <span title="Disponibles">✅ {{ slot().available }}</span>
-    <span title="Inconnus">⚠️ {{ slot().unknown }}</span>
+  <div class="agg-card__counts" [attr.aria-label]="theme.tone()['calendar.agg_counts_aria']">
+    <span [title]="theme.tone()['calendar.agg_available_title']"><app-icon name="dispo-oui" [label]="theme.tone()['calendar.agg_available_title']" /> {{ slot().available }}</span>
+    <span [title]="theme.tone()['calendar.agg_unknown_title']"><app-icon name="dispo-partiel" [label]="theme.tone()['calendar.agg_unknown_title']" /> {{ slot().unknown }}</span>
     @if (slot().unavailable > 0) {
-      <span title="Indisponibles">❌ {{ slot().unavailable }}</span>
+      <span [title]="theme.tone()['calendar.agg_unavailable_title']"
+        ><app-icon name="dispo-non" [label]="theme.tone()['calendar.agg_unavailable_title']" /> {{ slot().unavailable }}</span
+      >
     }
     <span class="agg-card__total">/ {{ slot().total }}</span>
   </div>

@@ -1,23 +1,25 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import type { ScenarioDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../core/icons/app-icon';
 import { ScenarioEditor } from '../scenario-editor/scenario-editor';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 @Component({
   selector: 'app-scenario-detail',
-  imports: [ScenarioEditor, RouterLink, MatButtonModule, MatIconModule],
+  imports: [ScenarioEditor, RouterLink, MatButtonModule, AppIcon],
   templateUrl: './scenario-detail.html',
   styleUrl: './scenario-detail.scss',
 })
 export class ScenarioDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly scenarios = inject(ScenariosService);
+  protected readonly theme = inject(ThemeToneService);
 
   // Transmis par l'état de navigation quand disponible (ScenarioForm après création,
-  // ScenarioDrafts/ScenarioTimeline au clic sur une ligne, qui l'ont déjà en mémoire) — évite un
+  // ScenarioList/ScenarioTimeline au clic sur une ligne, qui l'ont déjà en mémoire) — évite un
   // aller-retour réseau dans le cas courant. `extras.state` n'est lisible que pendant la navigation
   // en cours, donc capturé ici en constructeur.
   private readonly navigationScenario = inject(Router).getCurrentNavigation()?.extras.state?.[
@@ -34,7 +36,9 @@ export class ScenarioDetail implements OnInit {
   async ngOnInit(): Promise<void> {
     const scenarioId = this.route.snapshot.paramMap.get('scenarioId');
     if (!scenarioId || !this.partieId) {
-      this.loadError.set('Scénario introuvable — revenez à la liste des Brouillons.');
+      this.loadError.set(
+        this.theme.tone()['common.scenario_introuvable_revenez_a_la_liste_des_brouillons'],
+      );
       this.loading.set(false);
       return;
     }
@@ -51,12 +55,14 @@ export class ScenarioDetail implements OnInit {
     try {
       const found = (await this.scenarios.listAll(this.partieId)).find((s) => s.id === scenarioId);
       if (!found) {
-        this.loadError.set('Scénario introuvable — revenez à la liste des Brouillons.');
+        this.loadError.set(
+          this.theme.tone()['common.scenario_introuvable_revenez_a_la_liste_des_brouillons'],
+        );
         return;
       }
       this.scenario.set(found);
     } catch {
-      this.loadError.set('Impossible de charger le scénario. Réessayez.');
+      this.loadError.set(this.theme.tone()['common.impossible_de_charger_le_scenario_reessayez']);
     } finally {
       this.loading.set(false);
     }

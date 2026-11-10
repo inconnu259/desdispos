@@ -1,0 +1,28 @@
+<h2 mat-dialog-title>{{ theme.tone()['parties.confirm_title'] }}</h2>
+
+<mat-dialog-content>
+  <p class="ced__heading">{{ heading() }}</p>
+  <p class="ced__warning">{{ theme.tone()['partie.ralliement_event_cancel_event_warning'] }}</p>
+
+  @if (error(); as message) {
+    <p class="ced__error" role="alert">{{ message }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" class="ced__cancel" [disabled]="busy()" (click)="cancel()">
+    {{ theme.tone()['partie.ralliement_event_cancel_btn'] }}
+  </button>
+  <!-- Irréversible : bouton ROUGE plein (UX-DR12), toujours écrit en toutes lettres. -->
+  <button
+    mat-flat-button
+    type="button"
+    class="ced__confirm"
+    [disabled]="busy()"
+    [attr.aria-busy]="busy()"
+    (click)="confirm()"
+  >
+    <app-icon name="avertissement" />
+    {{ theme.tone()['partie.ralliement_event_cancel_event_confirm_btn'] }}
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,57 @@
+[
+  {
+    "key": "race",
+    "label": "Choisir sa race",
+    "text": "Il existe quatre races d'hommes-dragons, nommées d'après la couleur de leurs écailles sous forme de dragon. Toutes ont pour mission de raconter l'histoire des voyageurs, mais chacune l'oriente à sa manière : choisissez la vôtre selon ce que vous voulez faire vivre à la table."
+  },
+  {
+    "key": "artefact",
+    "label": "Choisir son artefact",
+    "text": "Un artefact est un trésor chargé d'une immense puissance mystique, capable de faire plier jusqu'aux lois de l'univers. Il peut prendre toutes les formes : épée, coupe, encyclopédie, anneau… Chaque race en garde trois, et chaque homme-dragon se consacre à un seul d'entre eux. Choisissez-en un parmi ceux de votre race, donnez-lui un nom et, si vous le souhaitez, décrivez l'inscription qu'il porte. Il reste actif pendant toute la partie ; vous pouvez en changer entre deux séances, jamais en cours de jeu."
+  },
+  {
+    "key": "nom",
+    "label": "Nom",
+    "text": "Donnez un nom à votre homme-dragon."
+  },
+  {
+    "key": "artefactNom",
+    "label": "Nom de l'artefact",
+    "text": "Donnez un nom à votre artefact : c'est ainsi que les voyageurs en parleront, et il figurera sur votre fiche. Ce nom est requis pour créer la fiche."
+  },
+  {
+    "key": "artefactInscription",
+    "label": "Inscription de l'artefact",
+    "text": "Facultatif : décrivez la gravure, la devise ou la marque que porte votre artefact. Elle s'affichera sur votre fiche."
+  },
+  {
+    "key": "apparence",
+    "label": "Apparence",
+    "text": "Décrivez son allure, sa tenue, l'impression qu'il laisse à ceux qui le croisent. Un homme-dragon n'a pas d'âge : il peut aussi bien ressembler à un enfant qu'à un vieillard."
+  },
+  {
+    "key": "caractere",
+    "label": "Caractère",
+    "text": "Est-il doux, sévère, espiègle ? Son tempérament colorera profondément les aventures des voyageurs. Comme il observe surtout de loin, vous pouvez aussi garder son caractère secret pour le moment."
+  },
+  {
+    "key": "vocation",
+    "label": "Vocation",
+    "text": "Ce que votre homme-dragon attend des histoires qu'il fait vivre aux voyageurs : c'est la raison d'être de la campagne. Par exemple : savourer de beaux paysages et de bons repas, ne jamais cesser de rire, pousser chacun à poursuivre ses rêves…"
+  },
+  {
+    "key": "demeure",
+    "label": "Demeure",
+    "text": "Le lieu mystique où il réside. Choisissez sa taille, son aspect et ceux qui y vivent avec lui. Par exemple : un palais dans la cime d'un arbre géant, une tour dressée sur un lac au bleu surnaturel, une retraite cachée derrière une chute d'eau…"
+  },
+  {
+    "key": "mondesProteges",
+    "label": "Mondes protégés",
+    "text": "Notez le monde où intervient votre homme-dragon, ou tous ces mondes s'il y en a plusieurs."
+  },
+  {
+    "key": "avatar",
+    "label": "Choisir son avatar",
+    "text": "Un homme-dragon a trois formes : un humain ailé et cornu, un imposant dragon, et son avatar. Cette dernière varie beaucoup d'un homme-dragon à l'autre et lui sert notamment à approcher les voyageurs sans révéler ce qu'il est : serpent blanc, vieux sage, oiseau…"
+  }
+]

@@ -8,6 +8,9 @@ import type { ScenarioDto } from '@master-jdr/shared';
 import { ScenarioDetail } from './scenario-detail';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService } from '../../../core/realtime/realtime.service';
+import { TONE_MAP } from '../../../core/theme/tones';
+
+const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];
 
 const SCENARIO: ScenarioDto = {
   id: 's1',
@@ -120,7 +123,7 @@ describe('ScenarioDetail', () => {
 
     const comp = fixture.componentInstance as any;
     expect(comp.loading()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Chargement…');
+    expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['common.chargement']);
 
     resolveListAll([SCENARIO]);
     for (let i = 0; i < 10; i++) {
@@ -165,12 +168,23 @@ describe('ScenarioDetail', () => {
 
   it('lien "Retour à la partie" présent même sur la branche d’erreur (pas seulement quand le scénario a chargé)', async () => {
     const { fixture } = await createComponent(undefined, []);
-    expect(fixture.nativeElement.querySelector('a')?.textContent).toContain('Retour à la partie');
+    expect(fixture.nativeElement.querySelector('a')?.textContent).toContain(
+      GRIMOIRE_TONE['character.back_to_partie_cta'],
+    );
+  });
+
+  it('le lien de retour porte le pictogramme retour, décoratif', async () => {
+    const { fixture } = await createComponent(SCENARIO);
+    const link = fixture.nativeElement.querySelector('a') as HTMLAnchorElement;
+    expect(link.querySelector('app-icon')?.getAttribute('data-icon')).toBe('retour');
+    expect(link.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('lien "Retour à la partie" présent quand le scénario a chargé', async () => {
     const { fixture } = await createComponent(SCENARIO);
-    expect(fixture.nativeElement.querySelector('a')?.textContent).toContain('Retour à la partie');
+    expect(fixture.nativeElement.querySelector('a')?.textContent).toContain(
+      GRIMOIRE_TONE['character.back_to_partie_cta'],
+    );
   });
 
   it('état de navigation présent mais scenarioId différent du paramètre de route → tente la liste de secours', async () => {

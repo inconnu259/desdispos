@@ -144,6 +144,15 @@ describe('ScenariosService', () => {
     await p;
   });
 
+  it('addSeance avec une durée → POST /scenarios/:id/seances avec { durationSlots }', async () => {
+    const p = service.addSeance('s1', 6);
+    const req = http.expectOne(`${API}/scenarios/s1/seances`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ durationSlots: 6 });
+    req.flush({ ...scenario, seances: [] });
+    await p;
+  });
+
   it('addSeance → POST /scenarios/:id/seances sans body', async () => {
     const p = service.addSeance('s1');
     const req = http.expectOne(`${API}/scenarios/s1/seances`);
@@ -174,6 +183,18 @@ describe('ScenariosService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ options });
     expect(req.request.withCredentials).toBe(true);
+    req.flush(scenario);
+    await p;
+  });
+
+  it('Story 47.4 — createSeancePoll porte la durée dans le corps quand elle est donnée', async () => {
+    const options = [
+      { date: '2026-08-01', slot: 'EVENING' as const },
+      { date: '2026-08-08', slot: 'EVENING' as const },
+    ];
+    const p = service.createSeancePoll('seance1', options, undefined, 6);
+    const req = http.expectOne(`${API}/scenarios/seances/seance1/poll`);
+    expect(req.request.body).toEqual({ options, durationSlots: 6 });
     req.flush(scenario);
     await p;
   });

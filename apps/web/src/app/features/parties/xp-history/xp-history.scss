@@ -1,5 +1,10 @@
 .xp-history {
-  margin-top: 1rem;
+  // Revue de code (retouche UX 2026-09-23) : ce composant n'a qu'un seul point d'usage
+  // (partie-detail.html, zone Consultation), qui l'enveloppe désormais toujours dans le patron
+  // .zone-card -- son propre padding fournit déjà l'espacement. Un margin-top ici s'additionnait
+  // au padding du parent (les marges ne fusionnent pas à travers un parent qui a du padding),
+  // créant ~1,9rem d'espace mort au-dessus du titre au lieu de 0,9rem.
+  margin-top: 0;
 }
 
 .xp-history__title {

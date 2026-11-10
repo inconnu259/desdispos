@@ -1,5 +1,7 @@
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { AppIcon } from '../../../../core/icons/app-icon';
+import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 
 export interface InventoryItemView {
   id: string;
@@ -14,11 +16,13 @@ export interface InventoryItemView {
 @Component({
   selector: 'app-inventory-item-row',
   standalone: true,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, AppIcon],
   templateUrl: './inventory-item-row.html',
   styleUrl: './inventory-item-row.scss',
 })
 export class InventoryItemRow {
+  protected readonly theme = inject(ThemeToneService);
+
   readonly item = input.required<InventoryItemView>();
   readonly editable = input(false);
   /** Propriétaire seul (DESIGN.md : le MJ "ajoute"/"édite" une ligne, jamais "supprime"). */

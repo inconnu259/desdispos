@@ -1,8 +1,10 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { CharacterDto, ListViewMode } from '@master-jdr/shared';
+import type { CharacterDto, ListViewMode, MyHommeDragonDto } from '@master-jdr/shared';
 import { characterName } from '../../../core/characters/character.util';
 import { CharacterAvatar } from '../character-avatar/character-avatar';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
+import { NatureMarker } from '../../../shared/nature-marker/nature-marker';
+import { hommeDragonName } from '../../../core/homme-dragon/homme-dragon.util';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { pendingLevelsLocal } from '../character-sheet/level-thresholds';
 
@@ -17,7 +19,7 @@ const AVATAR_SIZE_BY_DENSITY: Record<ListViewMode, 26 | 44 | 64> = {
 @Component({
   selector: 'app-character-summary-card',
   standalone: true,
-  imports: [CharacterAvatar, IdentityLabel],
+  imports: [CharacterAvatar, IdentityLabel, NatureMarker],
   templateUrl: './character-summary-card.html',
   styleUrl: './character-summary-card.scss',
   host: {
@@ -28,7 +30,13 @@ const AVATAR_SIZE_BY_DENSITY: Record<ListViewMode, 26 | 44 | 64> = {
 export class CharacterSummaryCard {
   protected readonly theme = inject(ThemeToneService);
 
-  readonly character = input.required<CharacterDto>();
+  /** Personnage affiché. Absent quand la carte porte un Homme Dragon (`hommeDragon`, Story 33.5) :
+   *  exactement l'un des deux est fourni. Tous les sites d'appel existants fournissent `character`. */
+  readonly character = input<CharacterDto | null>(null);
+  /** Homme Dragon du MJ (Story 33.5) — même carte, même densité, avec un `NatureMarker` ; ni
+   *  pastille de niveau, ni bulle de montée de niveau, ni statistiques. `null` par défaut :
+   *  n'affecte aucun site d'appel existant. */
+  readonly hommeDragon = input<MyHommeDragonDto | null>(null);
   readonly className = input<string>('');
   /** N'affiche le badge MJ/pseudo que si le **viewer** est le MJ — jamais pour un joueur (AC3). */
   readonly showOwnerInfo = input(false);
@@ -55,11 +63,18 @@ export class CharacterSummaryCard {
 
   readonly selected = output<void>();
 
-  protected readonly name = computed(() => characterName(this.character()));
+  protected readonly name = computed(() => {
+    const dragon = this.hommeDragon();
+    if (dragon) return hommeDragonName(dragon.nom);
+    const character = this.character();
+    return character ? characterName(character) : '';
+  });
   protected readonly avatarSize = computed(() => AVATAR_SIZE_BY_DENSITY[this.density()]);
   /** Gabarit « Niv. {n} » — même patron `.replace()` que `Dashboard.moreLabel()`. */
   protected readonly levelLabel = computed(() =>
-    this.theme.tone()['character.level_badge'].replace('{n}', String(this.character().level)),
+    this.theme
+      .tone()
+      ['character.level_badge'].replace('{n}', String(this.character()?.level ?? '')),
   );
 
   /** Sous-ligne unique du mode liste (Story 29.9, retour utilisateur) — « Classe · Partie ».
@@ -71,6 +86,7 @@ export class CharacterSummaryCard {
 
   protected readonly hasPendingLevelUp = computed(() => {
     const c = this.character();
+    if (!c) return false;
     const appliedCount = ((c.sheetData as any)?.levelUps?.length as number | undefined) ?? 0;
     return pendingLevelsLocal(c.xp, appliedCount).length > 0;
   });

@@ -2,13 +2,14 @@ import { Component, effect, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import type { CharacterNoteDto } from '@master-jdr/shared';
+import { AppIcon } from '../../../../core/icons/app-icon';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 
 @Component({
   selector: 'app-notes-journal',
   standalone: true,
-  imports: [DatePipe, MatButtonModule],
+  imports: [DatePipe, MatButtonModule, AppIcon],
   templateUrl: './notes-journal.html',
   styleUrl: './notes-journal.scss',
 })
@@ -37,7 +38,7 @@ export class NotesJournal {
     try {
       this.notes.set(await this.characterSvc.getNotes(id));
     } catch {
-      this.loadError.set("Le journal n'a pas pu être chargé.");
+      this.loadError.set(this.theme.tone()['characters_sheet.notes_load_error']);
     }
   }
 

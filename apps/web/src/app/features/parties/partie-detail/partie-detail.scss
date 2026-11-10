@@ -51,7 +51,7 @@ mat-tab-group {
   background: var(--mat-sys-surface-variant, #f0f0f0);
   font-size: 0.9rem;
 
-  mat-icon {
+  app-icon {
     flex-shrink: 0;
   }
 }
@@ -68,8 +68,9 @@ mat-tab-group {
   color: var(--mat-sys-on-surface-variant, #666);
   font-size: 0.9rem;
 
-  mat-icon {
+  app-icon {
     flex-shrink: 0;
+    --app-icon-size: 1rem;
   }
 }
 
@@ -82,11 +83,123 @@ mat-tab-group {
   }
 }
 
-.my-sheet-tab {
+.party-sheets-tab {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   align-items: flex-start;
+}
+
+// Story 32.2 : trois zones (Action/Consultation/Référence) dans l'onglet Détails -- pur
+// regroupement visuel, aucun nouveau composant partagé (cf. les contraintes de la story).
+// Espacement vertical entre zones et entre blocs d'une même zone, dans le même esprit que
+// .scheduling-widget/.reference-sheets/.prep-sheets ci-dessous (margin-top, pas de nouvelle
+// dépendance CSS).
+//
+// Retouche UX (2026-09-23, DESIGN.md §2) : l'espacement entre zones (2rem) et entre le titre de
+// zone et son premier bloc (1rem) est agrandi -- retour d'usage réel sur la Story 32.2, trop serré.
+.details-zone {
+  margin-top: 2rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  &__title {
+    margin: 0 0 1rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+
+  // Les blocs internes (scheduling-widget, xp-section, announcement-section, app-xp-history,
+  // announcements-feed, reference-sheets, prep-sheets...) gardent leur propre `margin-top` -- cette
+  // règle évite seulement un double espacement entre le titre de zone et le premier bloc.
+  > .details-zone__title + * {
+    margin-top: 0;
+  }
+}
+
+// Retouche UX (2026-09-23, DESIGN.md §2/§4) : patron de carte à liseré partagé par les trois zones
+// -- fond neutre, liseré gauche 3px teinté selon la zone (Action=violet/accent-2,
+// Consultation=vert/accent-1, Référence=neutre/text-muted), même rayon que le reste du composant.
+// Appliqué à .scheduling-widget (zone Action, ci-dessous) et, depuis partie-detail.html, à
+// app-xp-history et à chaque app-annonce-card (zone Consultation) -- ces deux composants ne sont
+// pas modifiés, seul leur élément hôte reçoit ces classes depuis ce template (aucun ::ng-deep).
+.zone-card {
+  display: block;
+  background: var(--jdr-surface, var(--mat-sys-surface-container-high, #1a1428));
+  border-left: 3px solid var(--jdr-text-muted, #9b8fb0);
+  border-radius: 0.5rem;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.7rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  &--action {
+    border-left-color: var(--jdr-accent-2, #9b6dff);
+  }
+
+  &--consultation {
+    border-left-color: var(--jdr-accent-1, #7ec8a4);
+  }
+
+  &--reference {
+    border-left-color: var(--jdr-text-muted, #9b8fb0);
+  }
+
+  // app-annonce-card porte déjà son propre fond/bordure/padding (annonce-card.scss, hors
+  // périmètre de cette retouche) -- ce modificateur retire le fond/padding dupliqués de la carte
+  // partagée et ne garde que le liseré de couleur + l'espacement entre cartes, pour ne pas
+  // superposer deux boîtes visuellement concurrentes.
+  &--flush {
+    background: none;
+    border-radius: 0;
+    padding: 0 0 0 0.75rem;
+  }
+}
+
+// Retouche UX (2026-09-23, DESIGN.md §2/§3) : barre d'icônes partagée entre les déclencheurs MJ de
+// la zone Action (XP/annonce) et le pied de carte (Retranscrire/Sceller/Clore/Supprimer) --
+// alignement horizontal avec retour à la ligne automatique, l'espacement vient de la mise en ligne
+// elle-même (EXPERIENCE.md « Barre d'icônes partagée »).
+.icon-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  &__btn {
+    // Cible tactile ≥ 44px effective même en version compacte (EXPERIENCE.md, Accessibility Floor).
+    min-height: 44px;
+
+    // Icônes du jeu (palier 10.7) : 20 px dans un bouton portant un libellé.
+    app-icon {
+      --app-icon-size: 1.25rem;
+      vertical-align: middle;
+    }
+  }
+
+  // Vérification visuelle réelle (bmad-build, 2026-09-23) : `color="warn"` sur `mat-button` n'a
+  // AUCUN EFFET avec le theming M3 (`mat.theme()`, cf. styles.scss) -- documenté par Angular
+  // Material lui-même (« This is supported in M2 themes only and has no effect in M3 themes »).
+  // Le texte de « Supprimer » restait rendu dans la couleur d'accent du thème, invisible comme
+  // signal destructeur. Patron déjà en place ailleurs dans ce même fichier (`.notice.error`) :
+  // référencer `--mat-sys-error` directement. Spécificité : `.mat-mdc-button:not(:disabled)`
+  // (0,2,0) impose son propre `color` -- `&.mat-mdc-button` (au lieu d'une classe seule) égale
+  // cette spécificité, et l'ordre de déclaration (cette règle vient après, dans la feuille du
+  // composant) tranche en sa faveur.
+  &__btn--danger.mat-mdc-button {
+    color: var(--mat-sys-error, #b3261e);
+  }
 }
 
 .muted {
@@ -95,18 +208,38 @@ mat-tab-group {
 .notice.error {
   color: var(--mat-sys-error, #b3261e);
 }
+// Retouche UX (2026-09-23, DESIGN.md §1/§2) : rejoint le patron .zone-card partagé (liseré violet
+// de la zone Action) -- remplace l'ancien encadré pleine bordure par le liseré gauche 3px commun
+// aux trois zones.
 .scheduling-widget {
+  @extend .zone-card;
+  @extend .zone-card--action;
   margin-top: 1rem;
-  padding: 1rem;
-  border: 1px solid var(--mat-sys-outline-variant, #ccc);
-  border-radius: 0.5rem;
 
-  h3 {
+  // Story 32.2 (revue de code) : démoté de h3 à h4 -- le nouveau titre de zone (.details-zone__title)
+  // est désormais le h3 qui regroupe ce bloc, ce h4 reste son enfant dans le plan de titres.
+  // Retouche UX (2026-09-23, DESIGN.md §1) : teinte accent-2 (violet), même couleur que le liseré
+  // de la carte -- « titre de carte, zone Action » du tableau des couleurs du delta.
+  h4 {
     margin: 0 0 0.5rem;
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--mat-sys-on-surface-variant, #666);
+    color: var(--jdr-accent-2, #9b6dff);
+  }
+
+  // Story 32.3 — le badge d'état rejoint le titre du widget. La marge basse du h4 est reprise par
+  // l'en-tête pour que l'espacement d'origine soit conservé au pixel près.
+  &__header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+
+    h4 {
+      margin-bottom: 0;
+    }
   }
 
   .next-session-date {
@@ -123,24 +256,95 @@ mat-tab-group {
   }
 }
 
-.troupe-toggle {
-  margin-top: 1rem;
+// Retouche UX (2026-09-23, DESIGN.md §2/§3/§4) : grimoires de référence/préparation repliés par
+// défaut (<details>/<summary> natifs -- pas de MatExpansionModule, cf. contraintes de la story) --
+// patron partagé entre .reference-sheets et .prep-sheets.
+.download-sheet {
+  margin-top: 0.9rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant, #666);
+    padding: 0.35rem 0;
+
+    // Repli du triangle natif du navigateur -- le chevron (app-icon ci-dessous) le remplace, tourné
+    // au clic, cf. .download-sheet[open] plus bas.
+    &::-webkit-details-marker {
+      display: none;
+    }
+    &::marker {
+      content: '';
+    }
+  }
+
+  &__chevron {
+    --app-icon-size: 1rem;
+    // `deplier` pointe vers le bas : refermée la feuille le tourne de -90° (il pointe à droite, comme
+    // avant), ouverte il reprend sa position.
+    transform: rotate(-90deg);
+    transition: transform 0.15s ease;
+  }
+
+  // Revue de code (retouche UX 2026-09-23) : le libellé du résumé est un <h4> (plan de titres,
+  // remplace le <h3> perdu par le passage à <details>/<summary> natifs -- un lecteur d'écran
+  // naviguant par titre doit encore trouver « Grimoires de référence »/« ...préparation »). Les
+  // autres propriétés de texte (taille, casse, graisse, couleur) restent héritées de `summary`
+  // ci-dessus ; seul le margin par défaut du <h4> doit être neutralisé pour ne pas casser
+  // l'alignement flex avec le chevron.
+  &__title {
+    margin: 0;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+
+  &[open] .download-sheet__chevron {
+    transform: none;
+  }
+}
+
+// Retouche UX (2026-09-23, DESIGN.md §3) : puce de téléchargement -- remplace le bouton
+// mat-stroked-button pleine largeur par une puce compacte icône + libellé, forme pilule.
+// --mdc-outlined-button-container-shape est la variable publique Material (pas une classe privée)
+// qui pilote la forme du bouton "stroked" ; border-radius en secours si jamais absente.
+.dl-chip {
+  --mdc-outlined-button-container-shape: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0 0.9rem;
+  font-size: 0.8rem;
+  // Cible tactile ≥ 44×44px effective même compacte (EXPERIENCE.md, Accessibility Floor).
+  min-height: 44px;
+
+  app-icon {
+    --app-icon-size: 1.1rem;
+    vertical-align: middle;
+  }
 }
 
 .reference-sheets {
   margin-top: 1rem;
 
-  h3 {
-    margin: 0 0 0.5rem;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--mat-sys-on-surface-variant, #666);
-  }
-
   &__links {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
+    padding-top: 0.5rem;
   }
 
   &__error {
@@ -152,22 +356,92 @@ mat-tab-group {
 .prep-sheets {
   margin-top: 1rem;
 
-  h3 {
-    margin: 0 0 0.5rem;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--mat-sys-on-surface-variant, #666);
-  }
-
   &__links {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    padding-top: 0.5rem;
   }
 
   &__error {
     color: var(--mat-sys-error, #b3261e);
     margin: 0.5rem 0 0;
+  }
+}
+
+// Icônes du jeu (palier 10.7, story 51.4) : ~20 px dans les boutons des listes de membres et du
+// panneau d'invitations (libellé écrit à côté, ou bouton nommé par son aria-label). Posé AVANT
+// `.admin-badge` : l'icône du badge, dans une `.result-row`, doit garder sa taille de 16 px.
+.result-row,
+.search-row,
+.link-row {
+  app-icon {
+    --app-icon-size: 1.25rem;
+    vertical-align: middle;
+  }
+}
+
+// Titre de la liste des membres : pictogramme décoratif teinté de l'accent-1 du thème.
+.members-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  app-icon {
+    --app-icon-size: 1.5rem;
+    color: var(--jdr-accent-1, var(--mat-sys-primary));
+  }
+}
+
+// Story 39.4 : badge d'administrateur d'un groupe (Missives) — pictogramme ET mot, jamais la couleur
+// seule ; teinte d'accent du thème, aucune animation.
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 0.5rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--jdr-accent-1, var(--mat-sys-primary));
+  border-radius: 999px;
+  color: var(--jdr-accent-1, var(--mat-sys-primary));
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  app-icon {
+    --app-icon-size: 1rem;
+  }
+}
+
+// Story 42.2 : soirée annulée — le filet passe au rouge de l'annulé ; le mot « annulée » et le pictogramme
+// portent le sens (jamais la couleur seule), le pictogramme prend le rouge lisible (>= 4,5:1).
+.closed-banner--cancelled {
+  border-left-color: var(--color-unavailable, #e74c3c);
+
+  app-icon {
+    color: var(--color-cancelled-text, #f26a5c);
+  }
+}
+
+/* ⚠️ Story 48.3 — le nom d'un autre membre de « Missives » / « Invités » / « Invitations » : un bouton de
+   44 px au moins qui ouvre sa Ludothèque. Même texte que la ligne inerte, souligné en pointillé pour se
+   savoir touchable ; aucun jeton neuf, aucun rouge. */
+.library-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
   }
 }

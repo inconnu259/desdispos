@@ -1,14 +1,24 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ThemeToneService } from '../../../core/theme/theme-tone.service';
+import { AuthBand } from '../auth-band/auth-band';
 
 @Component({
   selector: 'app-rollback-email-change',
-  imports: [RouterLink, MatCardModule, MatButtonModule],
+  imports: [AuthBand, RouterLink, MatCardModule, MatButtonModule],
   templateUrl: './rollback-email-change.html',
   styleUrl: './rollback-email-change.scss',
 })
@@ -16,6 +26,10 @@ export class RollbackEmailChange {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
+  protected readonly tone = inject(ThemeToneService).tone;
+  /** Conteneur `role="status"` persistant : reçoit le focus quand le bouton activé disparaît. */
+  private readonly status = viewChild<ElementRef<HTMLElement>>('status');
 
   protected readonly token = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('token') ?? '')),
@@ -35,8 +49,9 @@ export class RollbackEmailChange {
       // Accusé de réception affiché avant la redirection (revue de code, patron ConfirmEmailChange)
       // — l'utilisateur doit voir que le rollback a bien eu lieu avant d'être envoyé ailleurs.
       this.restored.set(true);
+      afterNextRender(() => this.status()?.nativeElement.focus(), { injector: this.injector });
     } catch {
-      this.error.set('Lien invalide ou expiré.');
+      this.error.set(this.tone()['auth.rollback_error']);
     } finally {
       this.loading.set(false);
     }

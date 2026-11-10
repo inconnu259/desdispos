@@ -1,11 +1,11 @@
 import { Global, Module } from '@nestjs/common';
-import { PartiesModule } from '../parties/parties.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 import { RealtimeEventsService } from './realtime-events.service';
 import { RealtimeController } from './realtime.controller';
 
 @Global()
 @Module({
-  imports: [PartiesModule],
+  imports: [PermissionsModule],
   controllers: [RealtimeController],
   providers: [RealtimeEventsService],
   exports: [RealtimeEventsService],

@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { XpDistributionDto } from '@master-jdr/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { PartiesService } from '../parties/parties.service';
+import { PermissionService } from '../permissions/permission.service';
 import { CharacterService } from '../characters/character.service';
 import { CreateXpDistributionDto } from './dto/create-xp-distribution.dto';
 
@@ -12,7 +12,7 @@ export class XpDistributionsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly parties: PartiesService,
+    private readonly permissions: PermissionService,
     private readonly characters: CharacterService,
   ) {}
 
@@ -21,7 +21,7 @@ export class XpDistributionsService {
     mjId: string,
     dto: CreateXpDistributionDto,
   ): Promise<XpDistributionDto> {
-    await this.parties.getOwned(partieId, mjId);
+    await this.permissions.assert(mjId, 'XP_DISTRIBUTION_CREATE', { partieId });
 
     // Valider que CHAQUE characterId appartient à cette Partie AVANT toute écriture (batch, pas
     // N requêtes) — rejette la requête entière plutôt qu'une application partielle (AD-6).
@@ -91,7 +91,7 @@ export class XpDistributionsService {
     mjId: string,
     pagination?: { skip?: number; take?: number },
   ): Promise<XpDistributionDto[]> {
-    await this.parties.getOwned(partieId, mjId);
+    await this.permissions.assert(mjId, 'XP_DISTRIBUTION_READ', { partieId });
     const distributions = await this.prisma.xpDistribution.findMany({
       where: { partieId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

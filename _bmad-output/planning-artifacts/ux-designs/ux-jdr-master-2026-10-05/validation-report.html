@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation UX : Dés Dispos, delta 34.3</title>
+<style>
+  :root {
+    --bg: #fafaf9; --surface: #ffffff; --border: #e7e5e4; --text: #1c1917; --muted: #78716c;
+    --sev-low: #64748b; --sev-medium: #ca8a04; --sev-high: #ea580c; --sev-critical: #dc2626;
+    --fate-integre: #15803d; --fate-ecart: #b45309; --fate-report: #475569;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  header.report-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .synthesis { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; font-size: 15.5px; }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+  .dimension-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .dim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 22px; font-weight: 600; line-height: 1.2; }
+  .dim-card .dim-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  section summary { padding: 14px 20px; cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 12px; }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before { content: "▸"; display: inline-block; color: var(--muted); transition: transform 0.15s ease; }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 { display: inline; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; flex: 1; }
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+  .findings-list { padding: 0 20px 4px; }
+  article.finding { padding: 14px 0; border-top: 1px solid var(--border); }
+  article.finding:first-child { border-top: none; }
+  article.finding header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .badge { font-size: 10.5px; padding: 3px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; white-space: nowrap; }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: #854d0e; }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: #c2410c; }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .badge-fate-integre { background: rgba(21, 128, 61, 0.13); color: var(--fate-integre); }
+  .badge-fate-ecart { background: rgba(180, 83, 9, 0.15); color: var(--fate-ecart); }
+  .badge-fate-report { background: rgba(71, 85, 105, 0.13); color: var(--fate-report); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .finding-note, .finding-fix, .finding-fate { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong.k { color: var(--muted); font-weight: 500; }
+  .finding-fate { border-left: 3px solid var(--border); padding-left: 10px; margin-top: 8px; }
+  .finding-fate.f-integre { border-left-color: var(--fate-integre); }
+  .finding-fate.f-ecart { border-left-color: var(--fate-ecart); }
+  .finding-fate.f-report { border-left-color: var(--fate-report); }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; background: rgba(120, 113, 108, 0.12); padding: 1px 4px; border-radius: 3px; }
+  .table-wrap { padding: 0 20px 18px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-top: 1px solid var(--border); }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; border-top: none; }
+  td.id { font-weight: 600; white-space: nowrap; }
+  .mechanical { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 24px; font-size: 14px; }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ol, .mechanical ul { margin: 0; padding-left: 22px; }
+  .mechanical li { margin-bottom: 8px; color: var(--text); }
+  .reviewer-source { font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  footer.report-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+  @media (max-width: 600px) { .container { padding: 20px 16px 48px; } }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="report-header">
+      <div class="title">
+        <h1>jdr-master, delta écrans d'authentification (34.3) : rapport de validation UX</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-10-05/</div>
+      </div>
+    </header>
+
+    <div class="synthesis">
+      <p>Une seule lentille a été lancée : la <strong>revue d'accessibilité adversariale</strong> (<code>review-accessibilite.md</code>). <strong>Il n'y a pas eu de revue de rubrique</strong> (<code>review-rubric.md</code> n'existe pas) : ce rapport ne porte donc aucun verdict par catégorie (couverture des flux, jetons, composants, états, références visuelles, surcharge, héritage, forme) et ne dit rien de ces huit contrôles. Le verdict de la revue, avant amendement : <strong>non conforme WCAG 2.2 AA en l'état</strong>, sans que la direction visuelle soit en cause, tous les contrastes de texte mesurés passant. Les écarts venaient du code existant (<code>lang="en"</code>, aucun titre ni repère, validation muette, messages non annoncés), d'omissions du delta (aucune pause de la bande, bord de champ à ~2:1, libellés longs sous le bouton œil, hauteurs fixes) et d'affirmations du delta que la mesure contredisait (« aucun texte tronqué à 320 px »).</p>
+      <p>Sort des 19 constats (0 critique, 8 hauts, 5 moyens, 6 bas) : <strong>13 intégrés</strong> aux spines, <strong>1 écart accepté</strong> (H1, animation en boucle avec pause au clic qui fige l'animation sur place : WCAG 2.2.2 partiellement non satisfait <strong>et</strong> 2.1.1 non satisfait pour cette commande, décisions de l'utilisateur) et <strong>5 reports</strong> (M2, B1, B2, B4, B5). Deux autres décisions de l'utilisateur élargissent le périmètre de la spec 34.3 sans laisser de non-conformité : les <strong>textes de validation</strong> (H5) et le <strong>jeton de bordure corrigé dans toute l'application</strong> (H7). Les huit constats hauts sont tous traités (sept intégrés, un écart accepté) ; aucun report ne porte sur une gravité haute. Depuis la rédaction de ce rapport, deux décisions de l'utilisateur ont tranché le mécanisme de la pause (gel sur place, une comète ou une luciole figée pouvant rester sous l'accroche, écart 2.1.1 ajouté) et le <code>role="alert"</code> de « Lien expiré. » (retiré), et les deux planches de référence ont été amendées pour refléter les spines. Reste ouvert, hors constats : plusieurs recettes (contraste forcé, capture de contraste, remplissage automatique, 320 px) ne sont pas faites.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card"><div class="dim-name">Gravité : Critiques</div><div class="dim-verdict" style="color: var(--sev-critical)">0</div></div>
+      <div class="dim-card"><div class="dim-name">Gravité : Hauts</div><div class="dim-verdict" style="color: var(--sev-high)">8</div></div>
+      <div class="dim-card"><div class="dim-name">Gravité : Moyens</div><div class="dim-verdict" style="color: var(--sev-medium)">5</div></div>
+      <div class="dim-card"><div class="dim-name">Gravité : Bas</div><div class="dim-verdict" style="color: var(--sev-low)">6</div></div>
+    </div>
+    <div class="dimension-summary">
+      <div class="dim-card"><div class="dim-name">Sort : Intégrés</div><div class="dim-verdict" style="color: var(--fate-integre)">13</div><div class="dim-sub">7 haute · 4 moyenne · 2 basse</div></div>
+      <div class="dim-card"><div class="dim-name">Sort : Écart accepté</div><div class="dim-verdict" style="color: var(--fate-ecart)">1</div><div class="dim-sub">1 haute</div></div>
+      <div class="dim-card"><div class="dim-name">Sort : Reports</div><div class="dim-verdict" style="color: var(--fate-report)">5</div><div class="dim-sub">1 moyenne · 4 basse</div></div>
+    </div>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Périmètre de la validation</h2></summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>Lentille lancée :</strong> accessibilité (<code>review-accessibilite.md</code>), la seule. <strong>Non lancée :</strong> la grille de validation (rubrique à huit catégories) et toute autre lentille. Il n'y a donc pas de cartes de verdict par catégorie dans ce rapport : elles ne seraient pas fondées.</p>
+            <p>« Intégré » signifie <em>écrit dans les spines</em> (<code>DESIGN.md</code>, <code>EXPERIENCE.md</code>) : le code et la spec 34.3 restent à amender à la reprise du build. Les preuves citent fichier et section ; les numéros de ligne renvoient aux fichiers à la date du rapport.</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Sort final des 19 constats</h2></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Constat</th><th>Gravité</th><th>Sort</th><th>Où (fichier, section)</th></tr></thead>
+            <tbody>
+              <tr><td class="id">H1</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-ecart">écart accepté</span></td><td>Animation en boucle infinie, sans pause, arrêt ni masquage (2.2.2, A)<br><span class="finding-location">EXPERIENCE.md § 4, 5, 6, 7, 11 (i)(j) ; DESIGN.md § 1</span></td></tr>
+              <tr><td class="id">H2</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td><code>&lt;html lang="en"&gt;</code> en réel alors que la spec affirme <code>fr</code> (3.1.1, A)<br><span class="finding-location">EXPERIENCE.md § 7 « Langue » ; § 11 (a)</span></td></tr>
+              <tr><td class="id">H3</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Titre de page identique partout, aucun signal au changement d'écran (2.4.2 A ; 4.1.3 ; 2.4.3)<br><span class="finding-location">EXPERIENCE.md § 2 (colonne titre), § 7 « Titre de page », § 11 (b)</span></td></tr>
+              <tr><td class="id">H4</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Aucun titre ni repère dans le code ; les maquettes contredisent la spec (1.3.1, 2.4.1, A)<br><span class="finding-location">EXPERIENCE.md § 7 « Structure », § 4 « Carte d'authentification » ; DESIGN.md § 7</span></td></tr>
+              <tr><td class="id">H5</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Validation muette : aucune erreur de champ, nommée ni annoncée (3.3.1, 3.3.3, 1.4.1, 3.3.2)<br><span class="finding-location">EXPERIENCE.md § 3 (table des règles, 4 clés), § 4 « Validation des formulaires », § 5 « Champ invalide », § 7 « Erreurs de champ »</span></td></tr>
+              <tr><td class="id">H6</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Messages d'état sans rôle, réussites non annoncées, focus perdu (4.1.3 AA ; 2.4.3)<br><span class="finding-location">EXPERIENCE.md § 5 (tableau d'états), § 7 « Annonces d'état », § 11 (i)</span></td></tr>
+              <tr><td class="id">H7</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Bord de champ sous 3:1 dans les trois thèmes (1.4.11, AA)<br><span class="finding-location">DESIGN.md § 2 (jeton <code>--mat-sys-outline</code>, tableau des valeurs, encadré des contrastes) ; EXPERIENCE.md § 7 « Contrastes », § 11 (a)</span></td></tr>
+              <tr><td class="id">H8</td><td><span class="badge badge-sev-high">haute</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Libellés longs en collision avec le bouton œil, à 320 et 375 px (1.4.10, 1.4.4, AA)<br><span class="finding-location">EXPERIENCE.md § 2 (ligne de contenu), § 4 « Champs », § 9 ; DESIGN.md § 4 « Champs » (ligne 259)</span></td></tr>
+              <tr><td class="id">M1</td><td><span class="badge badge-sev-medium">moyenne</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Hauteurs fixes : bande de 196 px à <code>overflow: hidden</code>, bouton de 48 px, tailles en <code>px</code> (1.4.4, 1.4.12, 1.4.10)<br><span class="finding-location">DESIGN.md frontmatter (<code>auth-band.minHeight</code>), § 4 « Action principale » ; EXPERIENCE.md § 4, § 7 « Reflow », § 9</span></td></tr>
+              <tr><td class="id">M2</td><td><span class="badge badge-sev-medium">moyenne</span></td><td><span class="badge badge-fate-report">report</span></td><td>Bouton œil : <code>aria-pressed</code> et libellé changeant cumulés (4.1.2)<br><span class="finding-location">EXPERIENCE.md § 4 « Bouton de révélation », § 7, § 11 (i)(k)</span></td></tr>
+              <tr><td class="id">M3</td><td><span class="badge badge-sev-medium">moyenne</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>État « repos » non sain en Émeraude (comète figée) ; objets lumineux sous le texte<br><span class="finding-location">DESIGN.md § 1 « Composition de repos », frontmatter <code>auth-band-scene.rest-state</code> et <code>paused-state</code> ; EXPERIENCE.md § 5 « Sans mouvement » et « Bande en pause », § 11 (f)(j)</span></td></tr>
+              <tr><td class="id">M4</td><td><span class="badge badge-sev-medium">moyenne</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Mode contraste forcé (Windows) non spécifié (1.4.3, 1.4.11)  ❓<br><span class="finding-location">DESIGN.md § 7 « Contraste forcé » ; EXPERIENCE.md § 5 « Contraste forcé », § 7</span></td></tr>
+              <tr><td class="id">M5</td><td><span class="badge badge-sev-medium">moyenne</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Focus visible non spécifié pour liens, bouton principal et liens-boutons (2.4.7, 1.4.11)<br><span class="finding-location">DESIGN.md frontmatter <code>focus-ring</code>, § 7 « Focus visible » ; EXPERIENCE.md § 6, § 7 « Focus »</span></td></tr>
+              <tr><td class="id">B1</td><td><span class="badge badge-sev-low">basse</span></td><td><span class="badge badge-fate-report">report</span></td><td>Marge de contraste de l'accroche en Émeraude à 320 px, voile inopérant à droite<br><span class="finding-location">EXPERIENCE.md § 7 « Contrastes », § 11 (i) et « Autres points » ; DESIGN.md § 2 (encadré des contrastes)</span></td></tr>
+              <tr><td class="id">B2</td><td><span class="badge badge-sev-low">basse</span></td><td><span class="badge badge-fate-report">report</span></td><td>Erreur en Atelier Cuivré à 4,513:1, marge nulle (1.4.3)<br><span class="finding-location">EXPERIENCE.md § 7 « Contrastes », § 11 (i)(k) ; DESIGN.md § 2</span></td></tr>
+              <tr><td class="id">B3</td><td><span class="badge badge-sev-low">basse</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>« Rejoindre » : états non annoncés, nom de partie sans espaces, erreur sans rôle<br><span class="finding-location">EXPERIENCE.md § 5 « Chargement », § 7 « Structure » et « Annonces d'état »</span></td></tr>
+              <tr><td class="id">B4</td><td><span class="badge badge-sev-low">basse</span></td><td><span class="badge badge-fate-report">report</span></td><td>Erreur de connexion non reliée aux champs ; pas de suggestion de correction<br><span class="finding-location">EXPERIENCE.md § 7 « Erreurs de champ » (exception de sécurité), § 11 (i)(k)</span></td></tr>
+              <tr><td class="id">B5</td><td><span class="badge badge-sev-low">basse</span></td><td><span class="badge badge-fate-report">report</span></td><td>Remplissage automatique sur thème sombre  ❓<br><span class="finding-location">EXPERIENCE.md § 11 (i)</span></td></tr>
+              <tr><td class="id">B6</td><td><span class="badge badge-sev-low">basse</span></td><td><span class="badge badge-fate-integre">intégré</span></td><td>Logo : nom accessible redondant, <code>id</code> SVG globaux<br><span class="finding-location">EXPERIENCE.md § 7 « Décor » (doublon supprimé)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Décisions de l'utilisateur qui s'écartent de la revue ou de la spec</h2></summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>Animation en boucle avec pause au clic</strong> (H1). WCAG 2.2.2 (A) <strong>partiellement non satisfait</strong>, écart accepté. Remplace l'arrêt automatique à 5 s proposé par la revue. À revoir si l'application devient publique. <code>EXPERIENCE.md</code> § 7, § 11 (j) ; <code>DESIGN.md</code> § 1 ; <code>.memlog.md</code>.</p>
+            <p><strong>La pause fige l'animation sur place</strong> (H1, M3). <code>animation-play-state: paused</code>, état non mémorisé ; ce n'est pas un retour à la composition de repos (alternative recommandée par la revue, écartée). Conséquence assumée : une comète ou une luciole figée peut rester sous l'accroche (contraste 1,0 à 3,3:1 mesuré). <strong>Écart accepté en plus de 2.2.2</strong> : <strong>2.1.1</strong> (clavier, A), la pause étant réservée au clic / toucher. <code>EXPERIENCE.md</code> § 4, § 5, § 11 (j) ; <code>DESIGN.md</code> § 1.</p>
+            <p><strong><code>role="alert"</code> retiré du message « Lien expiré. » de Rejoindre</strong> (H6). Message présent au chargement, non produit par une action : texte simple sous le <code>h1</code>. <code>EXPERIENCE.md</code> § 5, § 11 (i).</p>
+            <p><strong>Textes de validation ajoutés dans la 34.3</strong> (H5). Écart de <strong>périmètre</strong> par rapport à la spec 34.3 (« aucun texte nouveau », « aucun changement fonctionnel ») : levée consignée, aucune non-conformité résiduelle. <code>EXPERIENCE.md</code> § 3, § 11 (a)(h).</p>
+            <p><strong>Jeton de bordure <code>--mat-sys-outline</code> corrigé pour toute l'application</strong> (H7). Écart de <strong>périmètre</strong> (la revue proposait une variable locale) : même contraste, mais effet sur tous les formulaires et composants ; non-régression visuelle à planifier. <code>DESIGN.md</code> § 2 ; <code>EXPERIENCE.md</code> § 11 (a)(k).</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Revue d'accessibilité (voix adverse)</h2>
+          <span class="reviewer-source">review-accessibilite.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>Verdict de la revue :</strong> non conforme WCAG 2.2 AA en l'état ; la direction visuelle n'est pas en cause, tous les contrastes de texte mesurés passent. Trois sources d'écarts : le code existant (défauts de niveau A), les omissions du delta, et des affirmations du delta que la mesure contredit (« aucun texte tronqué à 320 px », « composition au repos complète »). Tout se corrigeait par quelques attributs, un <code>min-height</code>, un déplacement de texte et un minuteur de 5 secondes, sans toucher à la direction artistique.</p>
+            <p><strong>Comptage :</strong> 19 constats, 0 critique, 8 hauts, 5 moyens, 6 bas. Aucun constat ne bloquait seul la tâche (se connecter, s'inscrire) au lecteur d'écran ou au clavier.</p>
+            <p><strong>Limites déclarées :</strong> texte sur la bande <em>modélisé, non photographié</em> (à confirmer par capture) ; lecteur d'écran réel, contraste forcé Windows et remplissage automatique non testés (constats marqués ❓ : M4, B5). Mesures en direct sur <code>localhost:4200</code> (code avant mise en forme 34.3). Le thème 3 s'appelle encore <code>medieval-steampunk</code> dans le code.</p>
+            <p><strong>Ce qui tenait (à ne pas casser) :</strong> contrastes de texte de la carte (≥ 5,17:1), cibles tactiles, décor <code>aria-hidden</code>, zoom autorisé, <code>autocomplete</code>, pas de clignotement dangereux, thème stable pendant la visite, reflow 320 px sans barre horizontale.</p>
+            <p>Constats critiques : aucun. Chaque constat ci-dessous cite le sort final (voir aussi le tableau).</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H1 : Animation en boucle infinie, sans pause, arrêt ni masquage (2.2.2, A)</h3>
+              <span class="finding-location">review-accessibilite.md § H1 ; EXPERIENCE.md § 4, 7 ; DESIGN.md § 1</span>
+            </header>
+            <div class="finding-note">Le mouvement démarre seul, dure plus de 5 s, accompagne un contenu (le formulaire) et n'est pas essentiel : les trois conditions de 2.2.2 sont réunies. <code>prefers-reduced-motion</code> est un réglage système que la plupart des personnes concernées n'ont pas activé et n'est pas une technique suffisante. Mesuré : 19 animations infinies en Émeraude, 14 en Forêt, 7 en Atelier.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Arrêt automatique à 5 s vers un état de repos sain (classe <code>is-still</code>, <code>animation: none</code>, immédiat sous reduced-motion) ; variante : bouton pause de 44 px.</div>
+            <div class="finding-fate f-ecart"><span class="badge badge-fate-ecart">écart accepté</span> <strong>Écart d'accessibilité accepté, décisions de l'utilisateur (2026-10-05).</strong> Boucle conservée ; pause / reprise au clic ou au toucher sur le fond animé, sans bouton visible ; arrêt à 5 s non retenu. <strong>La pause fige l'animation sur place</strong> (<code>animation-play-state: paused</code>, état non mémorisé), sans retour à la composition de repos ; une comète ou une luciole figée peut rester sous l'accroche (contraste 1,0 à 3,3:1 mesuré). Raison donnée : peu d'effort d'accessibilité à ce stade, à revoir si l'application devient publique. <strong>WCAG 2.2.2</strong> reste partiellement non satisfait (commande non découvrable, décor <code>aria-hidden</code> ; seul <code>prefers-reduced-motion</code> coupe l'animation sans geste) et <strong>WCAG 2.1.1</strong> (clavier, niveau A) n'est pas satisfait pour cette commande (clic seulement) : les deux écarts sont acceptés (2.1.1 relevé par ce rapport, puis accepté par l'utilisateur). Consigné dans <code>EXPERIENCE.md</code> § 7 « Mouvement » et § 11 (j), et dans <code>DESIGN.md</code> § 1. Les bannières de partie et le compte à rebours relèvent de la même règle (hors périmètre ; réglage global « Animations » au backlog).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H2 : <code>&lt;html lang="en"&gt;</code> en réel alors que la spec affirme <code>fr</code> (3.1.1, A)</h3>
+              <span class="finding-location">review-accessibilite.md § H2 ; EXPERIENCE.md § 7</span>
+            </header>
+            <div class="finding-note"><code>index.html</code> ligne 2 porte <code>lang="en"</code> (confirmé en direct) ; les maquettes en <code>fr</code> masquaient l'écart. Un lecteur d'écran lit le français avec une voix anglaise.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>&lt;html lang="fr"&gt;</code> dans <code>index.html</code> ; critère de recette <code>document.documentElement.lang === 'fr'</code>.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Écrit au contrat : <code>&lt;html lang="fr"&gt;</code> et critère de recette <code>document.documentElement.lang === 'fr'</code> (<code>EXPERIENCE.md</code> § 7 « Langue »). Reste à faire à la reprise du build : amender la spec 34.3 (<code>index.html</code> y figure déjà).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H3 : Titre de page identique partout, aucun signal au changement d'écran (2.4.2 A ; 4.1.3 ; 2.4.3)</h3>
+              <span class="finding-location">review-accessibilite.md § H3 ; EXPERIENCE.md § 2, 7, 11 (b)</span>
+            </header>
+            <div class="finding-note">Sept écrans partagent le même titre (« Web » aujourd'hui) ; aucune propriété <code>title</code> sur les routes ; aucune annonce au changement d'écran. Le « compromis » du titre fixe ne tenait pas : le titre par route ne coûte rien.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Propriété <code>title</code> par route + <code>TitleStrategy</code> à suffixe, <code>LiveAnnouncer</code> à chaque <code>NavigationEnd</code>, titre dynamique pour <code>join/:token</code>.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré avec deux écarts par rapport au correctif proposé : format <strong>préfixe</strong> « Dés Dispos – &lt;page&gt; » (décision de l'utilisateur, <code>.memlog.md</code>) au lieu du suffixe ; titre de <code>join</code> fixe « Dés Dispos – Rejoindre », le titre dynamique avec le nom de la partie n'est pas retenu (<code>EXPERIENCE.md</code> § 11 (k)). <code>TitleStrategy</code> + <code>LiveAnnouncer</code> spécifiés (§ 7). Le titre fixe de § 11 (b) est abandonné. Six des noms de page restent <code>[ASSUMPTION]</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H4 : Aucun titre ni repère dans le code ; les maquettes contredisent la spec (1.3.1, 2.4.1, A)</h3>
+              <span class="finding-location">review-accessibilite.md § H4 ; EXPERIENCE.md § 4, 7 ; DESIGN.md § 7</span>
+            </header>
+            <div class="finding-note"><code>&lt;mat-card-title&gt;</code> rend un <code>&lt;div&gt;</code> (aucun titre en direct), aucun <code>main</code> / <code>header</code>. Les maquettes rendent le titre de carte en <code>h2</code> et posent <code>&lt;main&gt;</code> sur la carte elle-même : copier les maquettes produit un <code>h2</code> sans <code>h1</code>.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>&lt;h1 matCardTitle&gt;</code> ; <code>&lt;header&gt;</code> frère de <code>&lt;main&gt;</code> ; <code>&lt;main&gt;</code> = conteneur de la carte avec <code>aria-labelledby</code> ; corriger les deux planches ; <code>overflow-wrap: anywhere</code> sur le <code>h1</code>.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Écrit au contrat : un seul <code>h1</code> par écran (<code>&lt;h1 matCardTitle&gt;</code>), <code>&lt;header&gt;</code> frère de <code>&lt;main&gt;</code>, <code>&lt;main&gt;</code> conteneur de la carte, <code>overflow-wrap: anywhere</code>. Les planches de <code>mockups/</code> ont été amendées depuis (titre de carte en <code>h1</code>, <code>&lt;main aria-labelledby&gt;</code> distinct de la carte ; incohérence 2).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H5 : Validation muette : aucune erreur de champ, nommée ni annoncée (3.3.1, 3.3.3, 1.4.1, 3.3.2)</h3>
+              <span class="finding-location">review-accessibilite.md § H5 ; EXPERIENCE.md § 3, 4, 5, 7</span>
+            </header>
+            <div class="finding-note">Envoi invalide = <code>return</code> sans message ; aucun <code>&lt;mat-error&gt;</code> dans les six gabarits ; seule la couleur des contours change, focus laissé sur <code>&lt;body&gt;</code>. La règle « pseudo de 3 caractères » n'est donnée nulle part. Ne rien faire aurait été un choix de non-conformité de niveau A.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>markAllAsTouched()</code>, focus sur le premier champ invalide, un <code>&lt;mat-error&gt;</code> court par règle ; arbitrer la levée de « aucun texte nouveau » ou reporter à l'épic 35.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré par <strong>décision de l'utilisateur : textes de validation ajoutés, dans la 34.3</strong> (<code>.memlog.md</code>, décision VALIDATION DES FORMULAIRES). Quatre clés de ton × trois thèmes qui nomment toujours la règle (<code>auth.field_required</code>, <code>auth.field_email_invalid</code>, <code>auth.field_pseudo_min</code>, <code>auth.field_password_min</code>), <code>aria-invalid</code> + <code>aria-describedby</code>, focus sur le premier champ invalide. <strong>Écart de périmètre assumé</strong> : la spec 34.3 interdisait tout texte nouveau et un changement fonctionnel ; l'interdiction est levée (<code>EXPERIENCE.md</code> § 11 (a), (h)). Reste : rédiger les textes thématiques finaux, test de parité, source unique des seuils 3 et 8.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H6 : Messages d'état sans rôle, réussites non annoncées, focus perdu (4.1.3 AA ; 2.4.3)</h3>
+              <span class="finding-location">review-accessibilite.md § H6 ; EXPERIENCE.md § 5, 7, 11 (k)</span>
+            </header>
+            <div class="finding-note">Cinq écrans sans <code>role="alert"</code> ; trois états de réussite muets alors que le bouton activé disparaît et que le focus tombe sur <code>&lt;body&gt;</code> ; « Chargement… » de <code>join</code> hors région de statut.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>role="alert"</code> sur les erreurs après action ; texte simple sous le <code>h1</code> pour les messages présents au chargement ; conteneur <code>role="status"</code> persistant + focus déplacé après réussite.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré tel que dans la revue : <code>role="alert"</code> (erreurs après action, tous écrans), <code>role="status"</code> persistant (réussites, « Chargement… »), focus déplacé, messages présents au chargement en texte simple. <code>EXPERIENCE.md</code> § 11 (k) signale que la décision de l'utilisateur ne disait que « alert pour erreurs, status pour succès » : le détail vient de la revue, et il <strong>retire</strong> le <code>role="alert"</code> prévu pour la raison d'un lien expiré sur « rejoindre ». <strong>Décision de l'utilisateur ensuite : <code>role="alert"</code> retiré de « Lien expiré. »</strong> (message présent au chargement, non produit par une action) ; <code>mockups/key-rejoindre.html</code> amendée en conséquence.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H7 : Bord de champ sous 3:1 dans les trois thèmes (1.4.11, AA)</h3>
+              <span class="finding-location">review-accessibilite.md § H7 ; DESIGN.md § 2 ; EXPERIENCE.md § 7, 11 (a)</span>
+            </header>
+            <div class="finding-note">Contour 1 px seul signe de la zone de saisie : 2,40 / 1,96 / 2,34:1, surtout critique en Forêt. Zone d'action principale de l'écran.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Variable <strong>locale</strong> <code>--mat-form-field-outlined-outline-color</code> sur la carte d'authentification : <code>#6e6383</code> / <code>#54735c</code> / <code>#8b6541</code> (3,21 / 3,26 / 3,12:1).</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré par <strong>décision de l'utilisateur : jeton de bordure corrigé dans toute l'application</strong> (<code>styles.scss</code>) au lieu de la variable locale proposée (« je vois pas trop la diff, donc on fait ça dans toute l'appli », <code>.memlog.md</code>). Mêmes valeurs que la revue. Recalcul indépendant par le présent rapport sur la surface de carte : 3,21 / 3,25 / 3,12:1 (conforme aux 3,2 / 3,3 / 3,1 du <code>DESIGN.md</code>). <strong>Écart de périmètre assumé</strong> : le jeton sert à tous les formulaires et à d'autres composants ; le <strong>contrôle visuel de non-régression sur l'application entière</strong> reste à planifier (<code>DESIGN.md</code> § 2 ; <code>EXPERIENCE.md</code> § 11 (a) et (k)). Les planches portent désormais les valeurs corrigées.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">haute</span>
+              <h3 class="finding-title">H8 : Libellés longs en collision avec le bouton œil, à 320 et 375 px (1.4.10, 1.4.4, AA)</h3>
+              <span class="finding-location">review-accessibilite.md § H8 ; EXPERIENCE.md § 2, 4, 9 ; DESIGN.md § 4</span>
+            </header>
+            <div class="finding-note">Contredit « aucun texte tronqué » : mesuré en direct, « caractères) » passe sous l'icône œil à 320 px (<code>/register</code>) et à 375 px (<code>/reset-password</code>).</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Consigne sortie du libellé : <code>&lt;mat-label&gt;Mot de passe&lt;/mat-label&gt;</code> + <code>&lt;mat-hint&gt;8+ caractères&lt;/mat-hint&gt;</code> ; hint « 3+ caractères » au pseudo.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré : « 8+ caractères » en <code>mat-hint</code> sous les deux champs de mot de passe, libellés raccourcis ; le message de validation remplace l'aide tant que la règle n'est pas respectée. Le hint « 3+ caractères » du pseudo n'est pas retenu (le message de validation nomme déjà la règle, <code>EXPERIENCE.md</code> § 11 (k)). Recette 320 px à faire.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">moyenne</span>
+              <h3 class="finding-title">M1 : Hauteurs fixes : bande de 196 px à <code>overflow: hidden</code>, bouton de 48 px, tailles en <code>px</code> (1.4.4, 1.4.12, 1.4.10)</h3>
+              <span class="finding-location">review-accessibilite.md § M1 ; DESIGN.md § 3, 4, 7 ; EXPERIENCE.md § 4, 7</span>
+            </header>
+            <div class="finding-note">Zoom navigateur OK, mais la taille de texte système ne grossit que le texte : accroche et bloc-marque rognés dans une bande fixe, libellé de bouton sur trois lignes qui déborde. Georgia absente sur Android : repli plus large.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>min-height</code> jamais <code>height</code> ; <code>overflow: hidden</code> sur le seul calque de décor ; bouton <code>height: auto</code> ; tailles en <code>rem</code>.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré en partie : <code>min-height</code> sur la bande (196 px) et sur le bouton principal (48 px, <code>padding-block</code> 12 px, libellé à la ligne), <code>overflow</code> limité au calque de décor, recette 320 px avec « Continuer vers la réinitialisation du mot de passe » puis espacement de texte 1.4.12. <strong>Non contraint</strong> : les tailles en <code>rem</code> restent une <code>[ASSUMPTION]</code> (<code>DESIGN.md</code> § 3 ; <code>EXPERIENCE.md</code> § 11).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">moyenne</span>
+              <h3 class="finding-title">M2 : Bouton œil : <code>aria-pressed</code> et libellé changeant cumulés (4.1.2)</h3>
+              <span class="finding-location">review-accessibilite.md § M2 ; EXPERIENCE.md § 4, 7, 11 (k)</span>
+            </header>
+            <div class="finding-note">Le motif WAI-ARIA des boutons à bascule demande un libellé constant : « Masquer le mot de passe, bouton à bascule, enfoncé » se lit comme une double négation.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Retirer <code>aria-pressed</code> ou fixer le libellé ; mettre à jour la spec 34.2 et ses tests.</div>
+            <div class="finding-fate f-report"><span class="badge badge-fate-report">report</span> <strong>Report</strong> : le bouton est livré en 34.2 (spec et tests) ; l'arbitrage (retirer <code>aria-pressed</code> ou fixer le libellé) n'est pas pris. <code>EXPERIENCE.md</code> § 4 le marque « arbitrage en report » et § 7 décrit « forme + libellé (+ <code>aria-pressed</code> tant que M2 est en report) ».</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">moyenne</span>
+              <h3 class="finding-title">M3 : État « repos » non sain en Émeraude (comète figée) ; objets lumineux sous le texte</h3>
+              <span class="finding-location">review-accessibilite.md § M3 ; DESIGN.md § 1, frontmatter ; EXPERIENCE.md § 5, 11 (f)(k)</span>
+            </header>
+            <div class="finding-note"><code>.fly</code> sans opacité de base : animations annulées, la comète reste opacité 1, tête allumée, sur le sommet du logo et le « D » (x 10-80, y 33-67 à 375 px). Transitoire : contraste de l'accroche 1,0 à 3,3:1 sous une comète ou une luciole. En Atelier la jauge effleure la zone de protection du logo.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>.fly { opacity: 0 }</code> au repos ; vérifier sur capture sous reduced-motion et après arrêt ; décaler la jauge de 8 px ou accepter.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré pour l'état <strong>sous <code>prefers-reduced-motion</code></strong> : <code>.fly</code> à <code>opacity: 0</code>, composition au repos sans comète, rien ne chevauche le logo ni le texte (vérifié à la lecture du CSS seulement, § 11 (f)). <strong>Résiduel</strong> : (a) la <strong>pause au clic</strong> fige l'animation sur place et peut laisser une comète ou une luciole sous l'accroche (contraste 1,0 à 3,3:1) : <strong>écart accepté par l'utilisateur</strong> (incohérence 1, § 11 (j)) ; (b) la jauge d'Atelier qui effleure le logo reste un choix visuel non tranché (§ 11 (k)).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">moyenne</span>
+              <h3 class="finding-title">M4 : Mode contraste forcé (Windows) non spécifié (1.4.3, 1.4.11)  ❓</h3>
+              <span class="finding-location">review-accessibilite.md § M4 ; DESIGN.md § 7 ; EXPERIENCE.md § 5, 7</span>
+            </header>
+            <div class="finding-note">Aucune mention de <code>forced-colors</code> : remplissages SVG possiblement convertis en aplats sous le texte, bouton pilule sans frontière. Non testé faute d'outil.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>@media (forced-colors: active)</code> : scène et voile masqués, bord <code>1px solid ButtonText</code> ; recette manuelle Windows 11.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Spécifié (scène et voile masqués, action principale bordée <code>ButtonText</code>). <strong>Recette manuelle</strong> Windows 11 « Aquatique » et « Crépuscule » à faire ; ❓ non testé.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">moyenne</span>
+              <h3 class="finding-title">M5 : Focus visible non spécifié pour liens, bouton principal et liens-boutons (2.4.7, 1.4.11)</h3>
+              <span class="finding-location">review-accessibilite.md § M5 ; DESIGN.md § 7 ; EXPERIENCE.md § 6, 7</span>
+            </header>
+            <div class="finding-note">Le focus Material du bouton plein (anneau <code>accent-2</code>, 3,34:1 en Atelier) et le contour par défaut des liens étaient supposés conformes ; un <code>outline: none</code> pour obtenir la pilule le ferait disparaître.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> <code>:focus-visible</code> = contour 2 px <code>accent-1</code>, décalage 2 px, jamais <code>outline: none</code>.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré tel que proposé (≥ 5,2:1 sur carte dans les trois thèmes) ; le bouton œil garde son focus livré en 34.2 (<code>[ASSUMPTION]</code>). Vérifier à la recette que la pilule affiche le contour.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">basse</span>
+              <h3 class="finding-title">B1 : Marge de contraste de l'accroche en Émeraude à 320 px, voile inopérant à droite</h3>
+              <span class="finding-location">review-accessibilite.md § B1 ; DESIGN.md § 2 ; EXPERIENCE.md § 7, 11</span>
+            </header>
+            <div class="finding-note">5,23:1 au pic d'animation (marge 0,7) : passe, mais le voile tombe à ~1 % à l'extrémité droite de l'accroche, là où commence le filigrane. Aucun garde-fou : un halo ou une accroche plus long le feraient chuter.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Critère de recette ≥ 4,5:1 mesuré sur capture à 320 px dans les trois thèmes ; ne pas toucher au filigrane sans remesure ; option : plafonner l'accroche à 200 px.</div>
+            <div class="finding-fate f-report"><span class="badge badge-fate-report">report</span> <strong>Report</strong> : aucun changement de design. Critère de recette repris (mesure sur capture à 320 et 375 px, trois thèmes, au pic) et consigne « ne pas modifier le filigrane sans refaire la mesure » ; plafonnement à 200 px non retenu.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">basse</span>
+              <h3 class="finding-title">B2 : Erreur en Atelier Cuivré à 4,513:1, marge nulle (1.4.3)</h3>
+              <span class="finding-location">review-accessibilite.md § B2 ; EXPERIENCE.md § 7, 11</span>
+            </header>
+            <div class="finding-note">Hérité. Toute transparence (<code>opacity</code>, fondu d'apparition, fond de carte plus clair) le fait tomber sous 4,5:1.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Interdire l'opacité sur <code>auth-error</code> ou éclaircir l'erreur (<code>#d66f82</code>, 5,0:1).</div>
+            <div class="finding-fate f-report"><span class="badge badge-fate-report">report</span> <strong>Report</strong> : marge nulle connue et consignée ; garde-fou ou éclaircissement à décider.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">basse</span>
+              <h3 class="finding-title">B3 : « Rejoindre » : états non annoncés, nom de partie sans espaces, erreur sans rôle</h3>
+              <span class="finding-location">review-accessibilite.md § B3 ; EXPERIENCE.md § 5, 7</span>
+            </header>
+            <div class="finding-note">« Chargement… » sans région de statut ; un nom long sans espaces déborde la carte à 320 px.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Cf. H3, H4, H6 : « Chargement… » dans le conteneur <code>role="status"</code>, <code>overflow-wrap: anywhere</code> sur le <code>h1</code>.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré par H4 et H6 (conteneur <code>role="status"</code> persistant, <code>overflow-wrap: anywhere</code>).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">basse</span>
+              <h3 class="finding-title">B4 : Erreur de connexion non reliée aux champs ; pas de suggestion de correction</h3>
+              <span class="finding-location">review-accessibilite.md § B4 ; EXPERIENCE.md § 7</span>
+            </header>
+            <div class="finding-note">Le message <code>role="alert"</code> n'est relié à aucun champ ; l'absence de suggestion sur <code>auth.login_invalid</code> est admissible (garde-fou d'énumération).</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Optionnel : <code>aria-describedby</code> du message sur le champ de mot de passe.</div>
+            <div class="finding-fate f-report"><span class="badge badge-fate-report">report</span> <strong>Report</strong> : le <code>aria-describedby</code> optionnel n'est pas décidé ; l'exception de sécurité sur <code>auth.login_invalid</code> est intégrée (§ 7).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">basse</span>
+              <h3 class="finding-title">B5 : Remplissage automatique sur thème sombre  ❓</h3>
+              <span class="finding-location">review-accessibilite.md § B5 ; EXPERIENCE.md § 11 (i)</span>
+            </header>
+            <div class="finding-note">Chrome et Edge appliquent un fond et une couleur propres aux champs remplis, de contraste variable ; non testé.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Essai en recette dans les trois thèmes (≥ 4,5:1) ; <code>:-webkit-autofill</code> seulement si l'essai échoue.</div>
+            <div class="finding-fate f-report"><span class="badge badge-fate-report">report</span> <strong>Report</strong> : à tester à la recette ; correctif conditionnel à l'échec de l'essai.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">basse</span>
+              <h3 class="finding-title">B6 : Logo : nom accessible redondant, <code>id</code> SVG globaux</h3>
+              <span class="finding-location">review-accessibilite.md § B6 ; EXPERIENCE.md § 7 « Décor »</span>
+            </header>
+            <div class="finding-note"><code>logo-bloc-marque.svg</code> porte <code>role="img" aria-label</code> : inliné à côté du texte « Dés Dispos », le nom serait lu deux fois ; le masque <code>g-cut</code> est global.</div>
+            <div class="finding-fix"><strong class="k">Correctif de la revue :</strong> Pictogramme <code>aria-hidden</code> + texte HTML ; <code>id</code> uniques ou <code>&lt;defs&gt;</code> partagé une fois.</div>
+            <div class="finding-fate f-integre"><span class="badge badge-fate-integre">intégré</span> Intégré : bloc-marque de la bande = pictogramme + texte HTML (pas <code>logo-bloc-marque.svg</code>), <code>id</code> du masque uniques ou <code>&lt;defs&gt;</code> partagé. Le doublon du point « Décor » en § 7 a été supprimé (incohérence 5).</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Incohérences entre la revue et les documents amendés</h3>
+      <p>Six incohérences relevées à la rédaction du rapport ; <strong>cinq sont résolues</strong> et la n° 4 est <strong>sans objet</strong> (aucun écart à résoudre).</p>
+      <ol>
+        <li><strong>Pause au clic : le memlog et <code>EXPERIENCE.md</code> se contredisaient, et la revue déconseillait le mécanisme du memlog.</strong> <span class="badge badge-fate-integre">résolue</span><br>Le memlog fixait le gel à l'instant du clic (<code>animation-play-state: paused</code>) ; <code>EXPERIENCE.md</code> § 11 (k) le disait non tranché et proposait un retour à l'état de repos sain ; la revue (H1, M3, B1) avait mesuré 1,0 à 3,3:1 sous une comète ou une luciole et recommandé <code>none</code>. <strong>Résolue par décision de l'utilisateur (2026-10-05)</strong> : la pause <strong>fige l'animation sur place</strong> (<code>animation-play-state: paused</code>), état non mémorisé, pas de retour au repos. Conséquence assumée : une comète ou une luciole figée peut rester sous l'accroche (contraste 1,0 à 3,3:1 mesuré) ; écarts acceptés WCAG 2.2.2 (partiel) et 2.1.1 (pause au clic seulement). Aligné dans <code>EXPERIENCE.md</code> § 4, § 5, § 7, § 11 (j) et dans <code>DESIGN.md</code> § 1 ; le point a quitté les questions ouvertes (§ 11 (k)). M3 reste « intégré » pour l'état sous <code>prefers-reduced-motion</code> ; l'état en pause relève de l'écart accepté.</li>
+        <li><strong>Les planches de référence promues dans <code>mockups/</code> n'avaient pas été amendées.</strong> <span class="badge badge-fate-integre">résolue</span><br><strong>Résolue</strong> par l'amendement de <code>mockups/key-connexion.html</code> et <code>key-rejoindre.html</code> (sans refonte ni nouveau fichier) : titre de carte en <code>h1</code> et <code>&lt;main aria-labelledby&gt;</code> distinct de la carte, <code>.fly</code> à <code>opacity: 0</code> de base, jetons de bordure <code>#6e6383</code> / <code>#54735c</code> / <code>#8b6541</code>, <code>role="alert"</code> retiré de « Lien expiré. », pause au clic en <code>animation-play-state: paused</code> (petit script), variante « envoi invalide » avec messages de validation (connexion). <strong>Non reflété sur les planches</strong> : l'aide « 8+ caractères » (<code>mat-hint</code>), faute d'écran qui la porte (inscription et réinitialisation ne sont pas maquettées, <code>EXPERIENCE.md</code> § 11 (e)). La phrase de <code>DESIGN.md</code> § 1 sur la composition de repos a été remplacée par une définition vérifiable (rendu avec <code>animation: none</code>) ; la règle « les spines l'emportent sur les planches » reste valable.</li>
+        <li><strong>La revue n'avait pas été mise à jour avec le sort des constats.</strong> <span class="badge badge-fate-integre">résolue</span><br><strong>Résolue</strong> : <code>review-accessibilite.md</code> est en <code>status: final</code> et renvoie à ce rapport pour le sort de chaque constat. Les comptages (19 ; 0 / 8 / 5 / 6 ; 13 intégrés, 1 écart, 5 reports) restent cohérents entre la revue, <code>EXPERIENCE.md</code> § 11 (i) et ce rapport.</li>
+        <li><strong>Les intégrations H3, H5, H7 divergent du correctif proposé.</strong> <span class="badge badge-fate-integre">sans objet</span><br>H3 : préfixe au lieu du suffixe, pas de titre dynamique pour <code>join</code>. H5 : textes ajoutés (la revue demandait d'arbitrer). H7 : jeton global au lieu d'une variable locale. Documenté dans <code>EXPERIENCE.md</code> § 11 (i)(k) ; aucune contradiction entre les documents, <strong>pas d'écart à résoudre</strong>.</li>
+        <li><strong><code>EXPERIENCE.md</code> § 7 contenait deux fois le point « Décor ».</strong> <span class="badge badge-fate-integre">résolue</span><br><strong>Résolue</strong> : doublon supprimé, version enrichie conservée en tête de § 7. La mention de <code>aria-pressed</code> dans « Information jamais par la couleur seule » précise désormais que M2 est en report.</li>
+        <li><strong>Le périmètre de l'écart accepté sur 2.2.2 était sous-déclaré.</strong> <span class="badge badge-fate-integre">résolue</span><br><strong>Résolue</strong> : l'utilisateur accepte aussi l'écart <strong>WCAG 2.1.1</strong> (clavier, niveau A : pause au clic seulement) ; consigné dans <code>EXPERIENCE.md</code> § 7 et § 11 (j), <code>DESIGN.md</code> § 1 et § 8.</li>
+      </ol>
+    </div>
+    <div class="mechanical">
+      <h3>Reste à faire (à décider)</h3>
+      <ul>
+        <li>Arbitrer M2 (<code>aria-pressed</code> ou libellé fixe, impact spec 34.2), B2 (erreur Atelier), B4 (<code>aria-describedby</code>), B1 (plafond de l'accroche), jauge d'Atelier.</li>
+        <li>Recettes : contraste forcé Windows (M4), capture de contraste nom + accroche à 320 et 375 px au pic (B1), remplissage automatique (B5), 320 px avec libellé long et espacement de texte 1.4.12 (M1, H8), composition de repos sous <code>prefers-reduced-motion</code> (M3 : lucioles et volutes visibles à leur position de départ, rien ne doit chevaucher le logo ni le texte).</li>
+        <li>Contrôle visuel de non-régression de <code>--mat-sys-outline</code> sur toute l'application (H7).</li>
+        <li>Rédiger les textes thématiques des 4 clés de validation, de l'accroche et de la ligne d'orientation, avec test de parité (H5).</li>
+        <li>Amender la spec 34.3 (conflits listés en <code>EXPERIENCE.md</code> § 11 (a)).</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Revue : _bmad-output/planning-artifacts/ux-designs/ux-jdr-master-2026-10-05/review-accessibilite.md</span>
+        <span>Rubrique : non lancée</span>
+        <span>Généré : 2026-10-05</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

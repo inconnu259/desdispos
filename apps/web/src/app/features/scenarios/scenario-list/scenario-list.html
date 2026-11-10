@@ -1,0 +1,48 @@
+<div class="scenario-list">
+  <div class="header">
+    <h2>{{ theme.tone()['scenarios.list_title'] }}</h2>
+    <button mat-flat-button type="button" (click)="newScenario()">
+      {{ theme.tone()['scenarios.list_new_button'] }}
+    </button>
+  </div>
+
+  @if (loadError()) {
+    <p class="error">{{ loadError() }}</p>
+  } @else if (isEmpty()) {
+    <p class="empty">{{ theme.tone()['common.aucun_scenario_pour_l_instant'] }}</p>
+  } @else {
+    @for (section of sections(); track section.status) {
+      <!-- Le titre de section et le badge des lignes partagent la MÊME clé de registre : un seul
+           vocabulaire d'état, jamais deux mots pour la même chose. -->
+      <section class="scenario-section">
+        <h3 class="scenario-section__title">
+          {{ theme.tone()[section.labelKey] }}
+          <span class="scenario-section__count">{{ section.scenarios.length }}</span>
+        </h3>
+        <ul>
+          @for (scenario of section.scenarios; track scenario.id) {
+            <li
+              class="scenario-row"
+              role="button"
+              tabindex="0"
+              (click)="openScenario(scenario)"
+              (keydown.enter)="openScenario(scenario)"
+              (keydown.space)="$event.preventDefault(); openScenario(scenario)"
+            >
+              <span class="scenario-row__title">{{ scenario.title }}</span>
+              <app-scenario-status-badge [status]="scenario.status" />
+              @if (scenario.status === 'BROUILLON') {
+                <button mat-button type="button" (click)="openToPlayers(scenario, $event)">
+                  {{ theme.tone()['common.ouvrir_aux_joueurs'] }}
+                </button>
+              }
+              <!-- Story 53.3 — « Ma situation » du MJ sur la PROCHAINE séance du chapitre : « Je mène »
+                   s'il en reste une à venir, aucune ligne sinon. Texte seul, sous la ligne. -->
+              <app-situation-line class="scenario-row__situation" [value]="chapterSituation(scenario)" />
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</div>

@@ -83,3 +83,22 @@ export function buildBatchItems(
 export function composeCellKey(date: Date, slot: DaySlot): string {
   return `${toISODate(date)}|${slot}`;
 }
+
+/**
+ * Story 52.3 — réunit des créneaux sans doublon, triés par date (l'ordre existant d'un même jour est gardé). Sert au
+ * glissement du mode déclaration, qui AJOUTE sa plage aux créneaux déjà retenus au lieu de les remplacer.
+ */
+export function mergeCells(
+  base: readonly SelectedCell[],
+  added: readonly SelectedCell[],
+): SelectedCell[] {
+  const seen = new Set<string>();
+  const merged: SelectedCell[] = [];
+  for (const cell of [...base, ...added]) {
+    const key = composeCellKey(cell.date, cell.slot);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(cell);
+  }
+  return merged.sort((a, b) => a.date.getTime() - b.date.getTime());
+}

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import type {
+  AccountDeletionImpactDto,
   AnnouncementDto,
   AuthUser,
   CalendarLayerKey,
@@ -57,6 +58,7 @@ export class AccountService {
   updatePreferences(prefs: {
     partiesSort?: PartieSort;
     hideFinishedParties?: boolean;
+    availabilityReminder?: boolean;
     partiesViewMode?: ListViewMode;
     charactersViewMode?: ListViewMode;
     charactersSort?: CharacterSort;
@@ -64,6 +66,25 @@ export class AccountService {
   }): Promise<AuthUser> {
     return firstValueFrom(
       this.http.patch<AuthUser>(`${API_BASE}/me/preferences`, prefs, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Story 43.1 — ce que l'effacement du compte emporterait (lecture seule, recalculé à chaque appel). */
+  getDeletionImpact(): Promise<AccountDeletionImpactDto> {
+    return firstValueFrom(
+      this.http.get<AccountDeletionImpactDto>(`${API_BASE}/me/deletion-impact`, {
+        withCredentials: true,
+      }),
+    );
+  }
+
+  /** Story 43.2 — efface le compte connecté ; le mot de passe est dans le corps, jamais dans l'URL. */
+  deleteAccount(password: string): Promise<{ ok: true }> {
+    return firstValueFrom(
+      this.http.delete<{ ok: true }>(`${API_BASE}/me`, {
+        body: { password },
         withCredentials: true,
       }),
     );

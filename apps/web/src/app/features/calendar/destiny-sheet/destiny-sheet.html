@@ -1,0 +1,68 @@
+<section
+  class="destiny-sheet"
+  role="region"
+  [attr.aria-label]="model().region"
+  [class.destiny-sheet--expanded]="expanded()"
+>
+  <div class="destiny-sheet__peek">
+    <!-- La poignée : replié, son nom est son texte (titre + résumé) ; déplié, il ne reste que la barre, nommée
+         explicitement. Un bouton de 44 px au moins, jamais un glissement seul. -->
+    <button
+      type="button"
+      class="destiny-sheet__handle"
+      [attr.aria-expanded]="expanded()"
+      aria-controls="destiny-sheet-body"
+      [attr.aria-label]="expanded() ? model().collapseAria : null"
+      (click)="toggled.emit()"
+    >
+      <span class="destiny-sheet__grip" aria-hidden="true"></span>
+      @if (!expanded()) {
+        <span class="destiny-sheet__title">{{ model().title }}</span>
+        <span class="destiny-sheet__summary">{{ model().summary }}</span>
+      }
+    </button>
+    @if (!expanded()) {
+      <!-- L'état est écrit, jamais une couleur seule (P-1). -->
+      <span class="destiny-sheet__pill destiny-sheet__pill--{{ model().state }}">{{
+        model().stateLabel
+      }}</span>
+    }
+  </div>
+
+  <div id="destiny-sheet-body" class="destiny-sheet__body" [hidden]="!expanded()">
+    @if (expanded()) {
+      <app-destiny-board
+        [model]="model().board"
+        [announce]="false"
+        (slotChosen)="slotChosen.emit($event)"
+        (whoRequested)="whoRequested.emit()"
+        (fixRequested)="fixRequested.emit()"
+        (extendRequested)="extendRequested.emit()"
+        (modifyRequested)="modifyRequested.emit()"
+        (otherRequested)="otherRequested.emit()"
+      />
+    }
+  </div>
+
+  <div class="destiny-sheet__actions">
+    <button
+      type="button"
+      class="destiny-sheet__toggle"
+      [attr.aria-expanded]="expanded()"
+      aria-controls="destiny-sheet-body"
+      (click)="toggled.emit()"
+    >
+      {{ expanded() ? model().hideLabel : model().datesLabel }}
+      <app-icon [name]="expanded() ? 'deplier' : 'replier'" />
+    </button>
+    <!-- Story 44.6 — replié, l'organisateur fixe la date sans déplier ; déplié, le bouton est celui du plateau. -->
+    @if (!expanded() && model().fixLabel) {
+      <button type="button" class="destiny-sheet__fix" (click)="fixRequested.emit()">
+        {{ model().fixLabel }}
+      </button>
+    }
+  </div>
+
+  <!-- L'annonce du créneau courant : vide au montage, réécrite à chaque changement. -->
+  <p class="destiny-sheet__sr" aria-live="polite">{{ model().announcement }}</p>
+</section>

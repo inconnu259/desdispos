@@ -24,12 +24,14 @@ model User {
   mustResetPassword Boolean    @default(false) // Story 28.6 — posé par rollbackEmailChange(), remis à false par resetPassword()
   partiesSort         String  @default("urgence") // AD-1 — union fermée dans @master-jdr/shared (Story 29.8)
   hideFinishedParties Boolean @default(false) // AD-1 — préférence d'affichage, appliquée côté front (Story 29.8)
+  availabilityReminder Boolean @default(true) // AD-5 (Story 52.4) — rappel « Dispos à déclarer » ; vrai par défaut, aucune reprise de données
   partiesViewMode     String  @default("medium") // AD-1 — une paire PAR LISTE, jamais partagée (Story 29.9)
   charactersViewMode  String  @default("medium") // AD-1 (Story 29.9)
   charactersSort      String  @default("partie") // AD-1 — vocabulaire disjoint de celui des parties (Story 29.9)
   calendarLayersSetAt DateTime? // AD-16 — null = jamais réglé, le jeu par défaut s'applique (Story 30.4)
 
-  mjOfParties               Partie[]                   @relation("PartieMJ")
+  ownedParties              Partie[]                   @relation("PartieOwner")
+  ownedEvents               Event[]                    @relation("EventOwner")
   memberships               Membership[]
   invitesSent               Invitation[]               @relation("InvitationInviter")
   invitesRecv               Invitation[]               @relation("InvitationInvitee")
@@ -46,8 +48,13 @@ model User {
   emailChangeTokens         EmailChangeToken[]
   emailChangeRollbackTokens EmailChangeRollbackToken[]
   favorites                 PartieFavorite[]
+  hiddenParties             PartieHidden[]
+  hiddenSlotWindows         SlotWindowHidden[]
   announcementReads         AnnouncementRead[]
   calendarLayers            UserCalendarLayer[]
+  boardGames                BoardGame[]
+  eventGameBrings           EventGameBring[]
+  eventGameEnvies           EventGameEnvy[]
 }
 
 enum PartieKind {
@@ -56,20 +63,23 @@ enum PartieKind {
   CAMPAGNE_EPISODIQUE
 }
 
-/// Une partie (one-shot ou campagne). Le MJ = le créateur (`mjId`) ; les joueurs sont des `Membership`.
+/// Une partie (one-shot ou campagne). Le propriétaire = le créateur (`ownerId`, le MJ pour la famille
+/// `jdr`) ; les joueurs sont des `Membership`. `ownerId` est nullable (AD-5) : la suppression du
+/// compte propriétaire laisse la partie en place (`SetNull`), sans propriétaire.
 model Partie {
   id           String     @id @default(uuid())
   name         String
   kind         PartieKind
   gameSystemId String
   description  String?
-  mjId         String
-  mj           User       @relation("PartieMJ", fields: [mjId], references: [id], onDelete: Cascade)
+  ownerId      String?
+  owner        User?      @relation("PartieOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt    DateTime   @default(now())
 
   nextSessionDate DateTime? // Date confirmée de la prochaine séance (mise à jour par Epic 3)
   nextSessionSlot DaySlot? // Créneau confirmé
-  reminderSentAt  DateTime? // null = rappel pas encore envoyé pour le créneau courant (Epic 5)
+  nextSessionEndDate DateTime? // Story 47.2 — fin de la plage de la prochaine séance (= nextSessionDate pour un créneau)
+  nextSessionEndSlot DaySlot? // Story 47.2 — créneau de fin de cette plage
   closedAt        DateTime? // AD-8 — seul état persisté ; "en cours"/"pas encore commencée" dérivés à la lecture (Story 29.6)
   coverImageUrl   String? // Story 29.12, AD-19 — null = bannière générée. Seule donnée persistée (jamais dimensions/checksum/horodatage, qui seraient du dérivé)
 
@@ -79,12 +89,40 @@ model Partie {
   polls               SessionPoll[]
   characters          Character[]
   xpDistributions     XpDistribution[]
-  scenarios           Scenario[]
+  events              Event[]
   scenarioDocuments   ScenarioDocument[]
   announcements       Announcement[]
-  hommeDragons        HommeDragon[]
   characterGroupRoles CharacterGroupRole[]
   favorites           PartieFavorite[]
+  hiddenBy            PartieHidden[]
+  hiddenSlotWindows   SlotWindowHidden[]
+  visibilityLocks     PartieVisibilityLock[]
+
+  /// AD-23 — l'Homme Dragon que cette partie (une « aventure ») suit : au plus un, par construction.
+  /// Écrivains autorisés : `HommeDragonService` (create, link, unlink) et `PartiesService.update`
+  /// (remise à NULL quand `gameSystemId` change). Jamais exposé par `PartieDto`.
+  hommeDragonId String?
+  hommeDragon   HommeDragon? @relation(fields: [hommeDragonId], references: [id], onDelete: SetNull)
+
+  @@index([hommeDragonId])
+}
+
+/// Une clé de fiche verrouillée (anti-spoil) pour une Partie (Story 31.6) — état multi-valué, donc
+/// relationnel (AD-1/AD-16, même convention que `UserCalendarLayer`), jamais un JSON fourre-tout.
+/// Une ligne = une clé (ou sous-clé) effectivement retirée de la fiche pour tout lecteur qui n'est
+/// ni le propriétaire du personnage ni le MJ de la Partie. `fieldKey` référence une clé déclarée
+/// `lockable` dans `sheetSchema` (`GameSystemService.getSchema`) ; `subField` (optionnel) cible un
+/// sous-champ d'une clé objet déclarant `lockableFields` (ex. `fieldKey="attributes"`,
+/// `subField="AGI"`). `subField` null = la clé entière est verrouillée. Écriture MJ-only,
+/// déclarative et complète (`PartiesService.setVisibilityLocks`), jamais un delta.
+model PartieVisibilityLock {
+  id       String  @id @default(uuid())
+  partieId String
+  partie   Partie  @relation(fields: [partieId], references: [id], onDelete: Cascade)
+  fieldKey String
+  subField String?
+
+  @@unique([partieId, fieldKey, subField])
 }
 
 /// Une partie marquée favorite par un utilisateur (Story 29.8) — état multi-valué, donc relationnel
@@ -98,6 +136,64 @@ model PartieFavorite {
   createdAt DateTime @default(now())
 
   @@unique([userId, partieId])
+}
+
+/// « Retirer de ma liste » (Story 42.5, AD-10) : masquage DÉFINITIF d'une partie terminée ou annulée,
+/// pour un seul utilisateur. Une ligne par (utilisateur, partie) ; la partie disparaît de SES lectures
+/// (liste, signaux, calendrier personnel) côté serveur, sans paramètre pour la réafficher. Les lignes
+/// d'une partie disparaissent à sa réouverture (`PartiesService.reopen`).
+model PartieHidden {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partieId  String
+  partie    Partie   @relation(fields: [partieId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, partieId])
+  @@index([partieId])
+}
+
+/// Un jeu de la Ludothèque d'une personne (Story 48.1, épic 48). Saisie manuelle seulement : nom
+/// obligatoire, joueurs et durée facultatifs. `nameKey` = `boardGameNameKey(name)` (@master-jdr/shared),
+/// calculée par l'API à l'écriture : deux jeux de même clé sont refusés dans une même Ludothèque.
+/// Seul `board-games/` écrit cette table ; elle disparaît en cascade avec son propriétaire. Story 49.2 : un jeu
+/// apporté à une soirée vit dans `EventGameBring` (écrit par `events/`) ; retirer le jeu retire ses apports.
+model BoardGame {
+  id          String   @id @default(uuid())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name        String
+  nameKey     String
+  minPlayers  Int?
+  maxPlayers  Int?
+  durationMin Int?
+  createdAt   DateTime @default(now())
+
+  gameBrings  EventGameBring[]
+  /// Story 49.4 : les soirées pour lesquelles l'hôte a écarté ce jeu (`EventGameExcluded`, écrit par `events/`).
+  gameExclusions EventGameExcluded[]
+
+  @@unique([ownerId, nameKey])
+}
+
+/// Story 46.4 — une fenêtre de l'automate que le MJ a masquée (« Masquer » dans la liste des éphémérides). Par
+/// utilisateur ET par partie ; la clé naturelle est celle de la fenêtre servie (jour, créneau de départ, durée en
+/// créneaux — 1 jusqu'à l'épic 47), recopiée de la réponse, jamais d'un paramètre de page. Seul `parties/` l'écrit. Une
+/// ligne dont la date est passée est ignorée à la lecture. Rien ne change pour les joueurs ni pour les dispos.
+model SlotWindowHidden {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partieId      String
+  partie        Partie   @relation(fields: [partieId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  startSlot     DaySlot
+  durationSlots Int
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, partieId, date, startSlot, durationSlots], map: "SlotWindowHidden_key")
+  @@index([partieId])
 }
 
 /// Une couche de calendrier active pour un utilisateur (Story 30.4) — état multi-valué, donc
@@ -122,14 +218,22 @@ enum InvitationStatus {
   REVOKED
 }
 
-/// Un JOUEUR dans une partie (le MJ n'est pas un membership, il est `Partie.mjId`).
+/// Rôle d'un membre (Story 38.2) : `ADMIN` = créateur d'un ralliement, `MEMBER` = tout autre membre.
+enum MembershipRole {
+  ADMIN
+  MEMBER
+}
+
+/// Un JOUEUR dans une partie (le MJ n'est pas un membership, il est `Partie.ownerId`). Pour un
+/// ralliement, le créateur est aussi un membership `ADMIN` (Story 38.2).
 model Membership {
-  id       String   @id @default(uuid())
+  id       String         @id @default(uuid())
   userId   String
   partieId String
-  joinedAt DateTime @default(now())
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  partie   Partie   @relation(fields: [partieId], references: [id], onDelete: Cascade)
+  role     MembershipRole @default(MEMBER)
+  joinedAt DateTime       @default(now())
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partie   Partie         @relation(fields: [partieId], references: [id], onDelete: Cascade)
 
   @@unique([userId, partieId])
 }
@@ -146,6 +250,9 @@ model Invitation {
   status        InvitationStatus @default(PENDING)
   createdAt     DateTime         @default(now())
   respondedAt   DateTime?
+  /// Adresse saisie par l'invitant quand l'invitation part d'un e-mail (et non d'un pseudo) : tant
+  /// qu'elle n'est pas acceptée, l'invitant voit cette adresse, jamais le compte qu'elle désigne.
+  invitedEmail  String?
 
   @@unique([partieId, inviteeUserId])
 }
@@ -278,19 +385,22 @@ model AvailabilityDeclaration {
 
 /// Vote de date lancé par le MJ pour déterminer la prochaine séance.
 model SessionPoll {
-  id          String       @id @default(uuid())
-  partieId    String
-  partie      Partie       @relation(fields: [partieId], references: [id], onDelete: Cascade)
-  createdById String
-  scenarioRef String?
-  status      PollStatus   @default(OPEN)
-  expiresAt   DateTime?
-  chosenDate  DateTime?
-  chosenSlot  DaySlot?
-  createdAt   DateTime     @default(now())
-  options     PollOption[]
-  votes       PollVote[]
-  seance      Seance?
+  id            String       @id @default(uuid())
+  partieId      String
+  partie        Partie       @relation(fields: [partieId], references: [id], onDelete: Cascade)
+  createdById   String
+  scenarioRef   String?
+  status        PollStatus   @default(OPEN)
+  expiresAt     DateTime?
+  chosenDate    DateTime?
+  chosenSlot    DaySlot?
+  /// Story 40.7 : instant d'envoi de l'unique relance de la veille de l'échéance (conjonction d'un groupe) ;
+  /// remis à null quand l'hôte prolonge le vote.
+  relanceSentAt DateTime?
+  createdAt     DateTime     @default(now())
+  options       PollOption[]
+  votes         PollVote[]
+  seance        Seance?
 
   @@index([partieId, status])
 }
@@ -392,24 +502,23 @@ model Character {
   @@index([userId])
 }
 
-/// Personnage du MJ pour Ryuutama (Story 10.1, Epic 10). Un seul par [userId, partieId,
-/// gameSystemId] — toujours le MJ de la Partie. Pas de verrouillage optimiste (AD-2, MJ seul
-/// écrivain) ; pas de colonne `derived` (AD-3, niveau/PS/historique/voyageurs protégés calculés
-/// à la lecture par HommeDragonService, jamais persistés).
+/// Personnage du MJ pour Ryuutama (Story 10.1, Epic 10). AD-23 : il n'est plus rattaché à UNE
+/// partie — c'est `Partie.hommeDragonId` qui porte le lien (0..N aventures, une partie au plus un
+/// Homme Dragon). Toujours possédé par un MJ (`userId`). Pas de verrouillage optimiste (AD-2, MJ
+/// seul écrivain) mais écritures sous verrou de ligne (AD-23) ; pas de colonne `derived` (AD-3,
+/// niveau/PS/historique/voyageurs protégés calculés à la lecture par HommeDragonService, jamais
+/// persistés). `sheetData` (réserve comprise) reste attaché à l'Homme Dragon, jamais à l'aventure.
 model HommeDragon {
   id           String     @id @default(uuid())
   userId       String
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  partieId     String
-  partie       Partie     @relation(fields: [partieId], references: [id], onDelete: Cascade)
   gameSystemId String
   gameSystem   GameSystem @relation(fields: [gameSystemId], references: [id])
   sheetData    Json
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  parties      Partie[]
 
-  @@unique([userId, partieId, gameSystemId])
-  @@index([partieId])
   @@index([userId])
 }
 
@@ -495,43 +604,86 @@ enum ScenarioStatus {
   PASSE
 }
 
-/// Unité de contenu narratif d'une Partie (Story 7.1). Un one-shot = un scénario unique
+/// Événement de base d'une Partie (Story 37.3, AD-3) — ce qui porte les séances, donc les votes de
+/// date et les inscriptions. Un scénario JDR en est l'extension 1:1 (`Scenario.id` = `Event.id`) ;
+/// le ralliement (épics 38+) réutilisera l'événement seul, sans scénario caché.
+/// Écrivain unique : `EventsService` (module `events/`). `ownerId` = propriétaire de la partie à
+/// la création (`SetNull` : la suppression du compte laisse l'événement en place).
+model Event {
+  id          String   @id @default(uuid())
+  partieId    String
+  partie      Partie   @relation(fields: [partieId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  ownerId     String?
+  owner       User?    @relation("EventOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  /// Annulation (Story 42.1, AD-9) : posée sous le verrou de l'événement, définitive (jamais effacée).
+  /// Ralliement seulement — le JDR n'annule rien. Un événement annulé refuse toute action et sort des
+  /// rappels, des indisponibilités, de `nextSessionDate` et des calendriers personnels.
+  cancelledAt DateTime?
+
+  scenario Scenario?
+  seances  Seance[]
+  gameBrings EventGameBring[]
+  /// Story 49.4 : les jeux de l'hôte écartés pour cette soirée seulement (`EventGameExcluded`).
+  gameExclusions EventGameExcluded[]
+  /// Story 49.5 : les Envies de cette soirée (`EventGameEnvy`, par nom de jeu).
+  gameEnvies EventGameEnvy[]
+
+  @@index([partieId])
+}
+
+/// Unité de contenu narratif d'une Partie (Story 7.1), extension JDR d'un `Event` depuis la
+/// Story 37.3 : sa clé primaire EST l'identifiant de l'événement — `partieId`, `title`,
+/// `description` et `createdAt` vivent sur l'événement. Un one-shot = un scénario unique
 /// (créé automatiquement, cf. PartiesService.create). Cycle de vie anti-spoil :
 /// BROUILLON (invisible joueurs) → A_VENIR (titre+date seuls) → COURANT (contenu complet) → PASSE.
 /// Pas de verrouillage optimiste (AD-3) : MJ seul écrivain de son contenu propre.
 model Scenario {
-  id           String         @id @default(uuid())
-  partieId     String
-  partie       Partie         @relation(fields: [partieId], references: [id], onDelete: Cascade)
-  title        String
-  description  String?
+  id           String         @id
+  event        Event          @relation(fields: [id], references: [id], onDelete: Cascade)
   status       ScenarioStatus @default(BROUILLON)
   dureeHeures  Int?
   dureeSeances Int?
   resumeFin    String? // rétrospective, FR-15 (Epic 8) — champ créé maintenant, non écrit par 7.1
-  createdAt    DateTime       @default(now())
   closedAt     DateTime?
 
-  seances        Seance[]
   documents      ScenarioDocument[]
   participants   ScenarioParticipant[]
   announcements  Announcement[]
   characterNotes CharacterNote[]
 
-  @@index([partieId, status])
+  @@index([status])
 }
 
-/// Une soirée de jeu rattachée à un scénario (Epic 8, non exploité par la Story 7.1).
-/// Relation vers SessionPoll (linéaire/one-shot) OU Inscription[] (épisodique), jamais les deux (AD-4).
+/// Une soirée de jeu rattachée à un événement (Epic 8 ; `eventId` remplace `scenarioId` depuis la
+/// Story 37.3, mêmes valeurs). Relation vers SessionPoll (linéaire/one-shot) OU Inscription[]
+/// (épisodique), jamais les deux (AD-4). Écrivain : `EventsService`, sauf `compteRendu`
+/// (`ScenariosService`).
 model Seance {
   id             String       @id @default(uuid())
-  scenarioId     String
-  scenario       Scenario     @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  eventId        String
+  event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   pollId         String?      @unique
   poll           SessionPoll? @relation(fields: [pollId], references: [id])
   inscriptionMin Int?
   inscriptionMax Int?
-  dateValidee    DateTime?
+  /// Date de la séance (Story 37.4, AD-4) : plage continue, SEULE source de la date. Écrite au
+  /// choix d'une option de vote (`EventsService.chooseDate`), effacée à sa remise à zéro.
+  /// Depuis la Story 47.1 la fin vaut `spanEnd(début, durationSlots)` (créneaux enchaînés) ; seul
+  /// `events/` l'écrit. `startSlot` vide = « sans créneau » à l'affichage, `FULL_DAY` pour les
+  /// disponibilités.
+  startDate      DateTime?
+  startSlot      DaySlot?
+  endDate        DateTime?
+  endSlot        DaySlot?
+  /// Durée du rendez-vous en créneaux enchaînés (Story 47.1, AD-10) : 1 par défaut, 45 au plus.
+  /// Vaut pour toutes les options du sondage de la séance ; écrite par `events/` seul.
+  durationSlots  Int          @default(1)
+  /// Rappel de la veille (Story 37.9, AD-12) : null = pas encore envoyé pour la date courante de
+  /// cette séance. Remis à null à chaque écriture ou effacement de la plage (`EventsService`).
+  reminderSentAt DateTime?
   compteRendu    String?
   /// Informations pratiques (Story 36.5, dérogation D-15 amendée le 2026-08-19).
   /// heureRdv est une ÉTIQUETTE, jamais un instant : String "HH:MM" que rien ne parse,
@@ -546,14 +698,23 @@ model Seance {
   inscriptions Inscription[]
 }
 
+/// Statut d'une inscription (Story 40.4) : `RESERVED` = place réservée par l'hôte d'une conjonction,
+/// pas encore acceptée (elle compte dans la capacité, n'expire jamais) ; `CONFIRMED` = inscription
+/// confirmée. Défaut `CONFIRMED` : toute ligne existante, et toute ligne du JDR, reste confirmée.
+enum InscriptionStatus {
+  RESERVED
+  CONFIRMED
+}
+
 /// Inscription à capacité limitée (Epic 8, Story 8.3 — campagne épisodique uniquement).
 model Inscription {
-  id        String   @id @default(uuid())
+  id        String            @id @default(uuid())
   seanceId  String
-  seance    Seance   @relation(fields: [seanceId], references: [id], onDelete: Cascade)
+  seance    Seance            @relation(fields: [seanceId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    InscriptionStatus @default(CONFIRMED)
+  createdAt DateTime          @default(now())
 
   @@unique([seanceId, userId])
 }
@@ -631,4 +792,57 @@ model CharacterGroupRole {
 
   @@unique([partieId, roleKey])
   @@unique([partieId, characterId])
+}
+
+/// Un jeu qu'un participant apporte à une soirée (Story 49.2, épic 49) : au plus un apport par jeu et par
+/// soirée. Seul `events/` écrit cette table, sous le verrou de l'événement ; elle disparaît en cascade avec
+/// l'événement, le jeu (retiré de la Ludothèque) ou la personne (compte supprimé). Le départ d'un participant
+/// ne retire pas encore ses apports : lus seulement pour les participants actuels, purgés par la Story 49.3.
+model EventGameBring {
+  id          String    @id @default(uuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  boardGameId String
+  boardGame   BoardGame @relation(fields: [boardGameId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([eventId, boardGameId])
+  @@index([boardGameId])
+  @@index([userId])
+}
+
+/// Un jeu de l'hôte écarté pour UNE soirée (Story 49.4, épic 49) : il reste dans la Ludothèque et sur les autres
+/// soirées. Au plus une ligne par jeu et par soirée. Seul `events/` écrit cette table, sous le verrou de
+/// l'événement ; elle disparaît en cascade avec l'événement ou le jeu (retiré de la Ludothèque). Pas de lien vers
+/// `User` : l'hôte est celui de l'événement, jamais copié.
+model EventGameExcluded {
+  id          String    @id @default(uuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  boardGameId String
+  boardGame   BoardGame @relation(fields: [boardGameId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([eventId, boardGameId])
+  @@index([boardGameId])
+}
+
+/// Une Envie (Story 49.5, épic 49) : une personne dit qu'elle veut jouer à un jeu, PAR NOM (`nameKey`, la clé
+/// normalisée de la Ludothèque) et non par identifiant de jeu — le même nom tenu par deux sources, ou qui
+/// revient, partage une seule envie. Au plus une Envie par personne, par nom et par soirée. Seul `events/`
+/// écrit cette table, sous le verrou de l'événement ; elle disparaît en cascade avec l'événement ou la personne.
+/// Pas de lien vers `BoardGame` : l'Envie est purgée par `events/` quand le nom quitte la soirée.
+model EventGameEnvy {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nameKey   String
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId, nameKey])
+  @@index([userId])
 }

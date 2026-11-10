@@ -1,11 +1,12 @@
 import { Component, HostListener, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { LIST_VIEW_MODES, type ListViewMode } from '@master-jdr/shared';
+import { AppIcon } from '../../core/icons/app-icon';
+import type { IconName } from '../../core/icons/icon-registry.generated';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 
 export interface ListControlBarSortOption {
@@ -23,7 +24,7 @@ const SCROLL_THRESHOLD = 48;
 @Component({
   selector: 'app-list-control-bar',
   standalone: true,
-  imports: [FormsModule, MatButtonModule, MatIconModule],
+  imports: [FormsModule, MatButtonModule, AppIcon],
   templateUrl: './list-control-bar.html',
   styleUrl: './list-control-bar.scss',
 })
@@ -71,10 +72,10 @@ export class ListControlBar {
     this.lastScrollY = y;
   }
 
-  protected modeIcon(mode: ListViewMode): string {
-    if (mode === 'large') return 'grid_view';
-    if (mode === 'medium') return 'view_agenda';
-    return 'view_list';
+  protected modeIcon(mode: ListViewMode): IconName {
+    if (mode === 'large') return 'vue-large';
+    if (mode === 'medium') return 'vue-moyenne';
+    return 'vue-compacte';
   }
 
   protected modeAriaLabel(mode: ListViewMode): string {

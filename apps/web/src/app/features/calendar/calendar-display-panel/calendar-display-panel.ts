@@ -32,8 +32,13 @@ export class CalendarDisplayPanel {
   readonly active = input<readonly CalendarLayerKey[]>([]);
   /** AC5 — la légende est fermée par défaut ; cet interrupteur est son seul réglage. */
   readonly legendVisible = input(false);
+  /** Story 44.8 — mes parties actives, pour le filtre du calendrier personnel (vide : pas de section). */
+  readonly parties = input<readonly { id: string; name: string }[]>([]);
+  /** Les parties décochées. */
+  readonly hiddenPartieIds = input<ReadonlySet<string>>(new Set());
 
   readonly layerToggled = output<CalendarLayerKey>();
+  readonly partieToggled = output<string>();
   readonly legendToggled = output<void>();
   readonly resetRequested = output<void>();
 

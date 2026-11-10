@@ -1,5 +1,8 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { AppIcon } from '../../../../core/icons/app-icon';
+import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
+import { fillTone } from '../../../../core/theme/tone-format';
 
 export interface FieldEditPencilOption {
   key: string;
@@ -11,7 +14,7 @@ let nextDatalistId = 0;
 @Component({
   selector: 'app-field-edit-pencil',
   standalone: true,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, AppIcon],
   templateUrl: './field-edit-pencil.html',
   styleUrl: './field-edit-pencil.scss',
 })
@@ -23,6 +26,12 @@ export class FieldEditPencil {
   /** Suggestions catalogue optionnelles (ex. armes seedées) — combobox, jamais un select strict (AC7 Story 6.7). */
   readonly options = input<FieldEditPencilOption[]>([]);
   readonly confirm = output<string | number>();
+
+  protected readonly theme = inject(ThemeToneService);
+  /** aria-label du crayon : « Modifier [label] » — le nom du champ reste un libellé de fiche. */
+  protected readonly fieldEditAria = computed(() =>
+    fillTone(this.theme.tone()['characters_sheet.field_edit_aria'], { label: this.label() }),
+  );
 
   protected readonly datalistId = `field-edit-pencil-datalist-${nextDatalistId++}`;
 

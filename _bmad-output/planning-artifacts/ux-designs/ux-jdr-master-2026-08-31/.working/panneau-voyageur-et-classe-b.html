@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Panneau Voyageur, équipement mobile, classe (piste B)</title>
+<style>
+/* Tokens : thème Grimoire Émeraude (base ux-jdr-master-20260626). Aucun token neuf. */
+:root{--bg:#0d0a14;--surface:#1a1428;--high:#241c38;--a1:#7ec8a4;--a2:#9b6dff;--grad:linear-gradient(135deg,#7ec8a4,#9b6dff);--text:#e8e8f0;--muted:#8d8aa0;--line:rgba(255,255,255,.08);--sel:rgba(155,109,255,.16);--danger:#e05252}
+*{box-sizing:border-box}
+body{margin:0;background:#07050c;color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:20px;margin:36px 0 4px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.lead{color:var(--muted);max-width:860px}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:16px}
+.cap{font-size:12px;color:var(--muted);max-width:380px;margin:8px 0 0}.cap b{color:var(--a1)}
+.phone{width:360px;height:700px;background:var(--bg);border:2px solid #2a2440;border-radius:26px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.desk{width:1040px;background:var(--bg);border:2px solid #2a2440;border-radius:12px;overflow:hidden}
+.nav{padding:9px 14px;background:var(--high);font-weight:600;font-size:13px;text-align:center}
+.prog{height:4px;background:#2a2438}.prog>div{height:100%;background:var(--grad)}
+.body{padding:12px;flex:1;overflow:hidden}
+.cols{display:flex}.main{flex:0 0 62%;padding:14px;border-right:1px solid var(--line)}.side{flex:1;padding:12px;display:flex;flex-direction:column;gap:12px;min-width:0}
+h3{font-size:15px;margin:0 0 6px}
+.mode{display:flex;gap:8px;margin-bottom:10px}.mode div{flex:1;min-height:44px;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px}.mode .on{border-color:var(--a2);background:var(--sel)}
+.gauge .t{font-weight:600;font-size:13px}.gauge .tr{height:8px;border-radius:4px;background:#2a2438;margin:4px 0 10px;overflow:hidden}.gauge .tr>div{height:100%;background:var(--a1)}
+.search{height:44px;border:1px solid var(--line);border-radius:4px;background:var(--high);color:var(--muted);padding:0 10px;display:flex;align-items:center;margin-bottom:8px;font-size:13px}
+.grp{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-top:1px solid var(--line)}.grp b{color:var(--text);font-weight:600}.grp em{font-style:normal;color:var(--a1);font-size:16px}
+.it{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 6px 0 10px;border-radius:6px;background:var(--surface);margin-bottom:4px;font-size:13px}
+.it .p{color:var(--muted)}.it .nm{text-decoration:underline dotted;font-weight:600}
+.add{color:var(--a1);font-weight:600;padding:0 10px}
+.step{display:flex;align-items:center;gap:2px}.step span{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;font-size:18px;color:var(--a1);border:1px solid var(--line);background:var(--high)}.step span.q{width:36px;border:0;background:none;color:var(--text);font-size:14px}
+.it.on{border:1px solid rgba(126,200,164,.4)}
+.chipf{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);font-size:13px;margin:0 6px 8px 0}.chipf.on{border-color:var(--a2);background:var(--sel)}
+/* panneau voyageur */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.card h4{margin:0 0 6px;font-size:16px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}.pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;background:rgba(155,109,255,.16);color:#c9b6ff;white-space:nowrap}.pill.g{background:rgba(126,200,164,.16);color:var(--a1)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px;margin:8px 0 0}.kv dt{color:var(--muted)}.kv dd{margin:0;font-weight:600}
+.attr{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}.attr div{background:var(--high);border-radius:8px;padding:4px 0;text-align:center}.attr small{display:block;font-size:10px;color:var(--muted)}.attr b{font-size:16px}
+.sep{height:1px;background:var(--line);margin:10px 0}
+.hint{font-size:12px;color:var(--muted);font-style:italic;margin:6px 0 0}
+.cart li{display:flex;justify-content:space-between;align-items:center;min-height:36px;font-size:13px;list-style:none}.cart{padding:0;margin:6px 0 0}
+.cart .x{color:var(--danger);font-size:12px;font-weight:600;border:1px solid rgba(224,82,82,.4);border-radius:6px;padding:2px 8px}
+.tot{display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--line);padding-top:6px;margin-top:4px;font-size:13px}
+/* classe B */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cc{border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--high);min-height:44px}.cc b{display:block;font-weight:500;font-size:13px}.cc i{font-style:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;color:var(--muted);line-height:1.3}
+.big{grid-column:1/-1;border:1px solid var(--a2);background:var(--sel);border-radius:10px;overflow:hidden}
+.big .hd{padding:8px 10px;display:flex;justify-content:space-between;align-items:center}.big .hd b{font-size:15px}.big .hd span{font-size:11px;color:var(--a2);font-weight:600}
+.big .in{padding:0 10px 10px}
+.desc{font-size:12.5px;color:#cfcde0;margin:0 0 8px}
+.lbl{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:8px 0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid rgba(155,109,255,.5);background:rgba(155,109,255,.10);border-radius:999px;padding:0 12px;min-height:34px;display:inline-flex;align-items:center;font-size:13px;font-weight:600}.chip::after{content:"ⓘ";margin-left:6px;font-size:12px;color:var(--a2)}
+.tag2{border:1px solid var(--line);color:#cfcde0;background:var(--high);border-radius:6px;padding:2px 8px;font-size:12px}
+.must{margin-top:8px;border:1px solid rgba(240,192,64,.5);background:rgba(240,192,64,.07);border-radius:10px;padding:8px 10px}
+.must .t{display:flex;justify-content:space-between;font-size:13px;font-weight:600}.must .t span{font-size:11px;color:#f0c040}
+.sb{margin-top:6px;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--high);display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:13px;color:var(--muted)}
+.disc{display:flex;justify-content:space-between;align-items:center;min-height:44px;border-top:1px solid rgba(155,109,255,.3);margin-top:8px;font-size:13px;font-weight:600;color:var(--a1)}
+.bar{display:flex;gap:8px;padding:8px 12px;background:var(--surface);border-top:1px solid var(--line)}.bar div{flex:1;min-height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600;border:1px solid var(--line)}.bar .go{background:var(--grad);color:#0d0a14;border:0}
+</style>
+</head>
+<body>
+<h1>Panneau « Voyageur », équipement mobile, classe (piste B)</h1>
+<p class="lead">Suite des retours du 2026-09-20. Trois choses à valider : la colonne de droite sur desktop (Voyageur qui se remplit + Panier dessous), l'équipement sur mobile (quantité et suppression sur la ligne de l'objet), et la piste B de l'étape Classe avec les précisions (re-clic = désélection, choix obligatoire toujours visible). Contenu réel, thème Grimoire Émeraude.</p>
+
+<h2>1. Desktop — colonne de droite (étape Équipement)</h2>
+<div class="row">
+  <div class="desk">
+    <div class="nav">Étape 6/8 · Équipement</div><div class="prog"><div style="width:75%"></div></div>
+    <div class="cols">
+      <div class="main">
+        <div class="mode"><div>Nécessaire pré-fait</div><div class="on">Achat libre</div></div>
+        <div class="gauge"><div class="t">Budget · 340 / 1000 Po</div><div class="tr"><div style="width:34%"></div></div></div>
+        <div class="search">🔍&nbsp; Rechercher un objet…</div>
+        <div class="grp"><span><b>Objets</b> · 54</span><em>▾</em></div>
+        <div class="it on"><span><span class="nm">Corde</span> <span class="p">— 50 Po</span></span><span class="step"><span>−</span><span class="q">×2</span><span>+</span></span></div>
+        <div class="it"><span><span class="nm">Torche</span> <span class="p">— 5 Po</span></span><span class="add">Ajouter</span></div>
+        <div class="it on"><span><span class="nm">Rations</span> <span class="p">— 10 Po</span></span><span class="step"><span>−</span><span class="q">×4</span><span>+</span></span></div>
+        <div class="grp"><span><b>Contenants</b> · 9</span><em>▸</em></div>
+        <div class="grp"><span><b>Animaux</b> · 5</span><em>▸</em></div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <h4>TEST 31.4</h4>
+          <div class="pills"><span class="pill">PV 8</span><span class="pill g">PE 12</span><span class="pill">Condition 10</span><span class="pill g">Initiative 14</span><span class="pill">Encombrement max 7</span></div>
+          <dl class="kv"><dt>Classe</dt><dd>Chasseur</dd><dt>Type</dt><dd>Technique</dd><dt>Arme</dt><dd>Dague</dd></dl>
+          <div class="attr"><div><small>AGI</small><b>6</b></div><div><small>ESP</small><b>6</b></div><div><small>INT</small><b>8</b></div><div><small>VIG</small><b>4</b></div></div>
+        </div>
+        <div class="card">
+          <h4>Panier <span style="font-size:12px;color:var(--muted);font-weight:400">· 6 objets</span></h4>
+          <ul class="cart"><li><span>2× Corde</span><span class="x">Retirer</span></li><li><span>4× Rations</span><span class="x">Retirer</span></li></ul>
+          <div class="tot"><span>Total</span><span>340 Po</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="cap"><b>Colonne de droite, deux blocs séparés</b> : « Voyageur » (identité, pastilles <b>qui passent à la ligne</b>, puis lignes qui apparaissent au fil des étapes) et, dessous, « Panier » (l'ancien panier de l'étape, avec « Retirer »). Le Panier n'apparaît que s'il contient quelque chose. Le texte d'aide « Les statistiques dérivées… » qui débordait passe à la ligne aussi.</p>
+</div>
+
+<h2>2. Desktop — le bloc « Voyageur » se remplit au fil des étapes</h2>
+<div class="row">
+  <div style="width:300px">
+    <div class="card"><h4>Voyageur</h4><p class="hint">Les statistiques dérivées apparaîtront une fois les attributs assignés.</p></div>
+    <p class="cap"><b>Étape 1</b> — rien encore.</p>
+  </div>
+  <div style="width:300px">
+    <div class="card"><h4>Voyageur</h4><dl class="kv"><dt>Classe</dt><dd>Fermier</dd></dl><p class="hint">Les statistiques dérivées apparaîtront une fois les attributs assignés.</p></div>
+    <p class="cap"><b>Étape 2</b> — classe choisie (et son choix obligatoire : « Métier d'appoint : Cuisinier »).</p>
+  </div>
+  <div style="width:300px">
+    <div class="card"><h4>Voyageur</h4><dl class="kv"><dt>Classe</dt><dd>Météomancien</dd><dt>Type</dt><dd>Magie</dd><dt>Saison</dt><dd>Été</dd><dt>Sorts</dt><dd>Bénédiction de la main rouge, Cloche d'alarme</dd></dl>
+      <div class="attr"><div><small>AGI</small><b>6</b></div><div><small>ESP</small><b>8</b></div><div><small>INT</small><b>6</b></div><div><small>VIG</small><b>4</b></div></div>
+      <div class="pills" style="margin-top:8px"><span class="pill">PV 8</span><span class="pill g">PE 16</span><span class="pill">Condition 10</span></div></div>
+    <p class="cap"><b>Type Magie</b> — la saison et les sorts s'ajoutent ; les attributs et pastilles apparaissent dès que les 4 valeurs sont posées.</p>
+  </div>
+  <div style="width:300px">
+    <div class="card"><h4>Éléa Brumecendre</h4><dl class="kv"><dt>Classe</dt><dd>Chasseur</dd><dt>Type</dt><dd>Technique</dd><dt>Sexe</dt><dd>Femme</dd><dt>Âge</dt><dd>27 ans</dd><dt>Village</dt><dd>Vallombre</dd><dt>Motivation</dt><dd>Retrouver son maître</dd></dl></div>
+    <p class="cap"><b>Étape Narratif</b> — le nom devient le titre du bloc, les autres champs s'y ajoutent à mesure qu'ils sont renseignés (un champ vide n'affiche rien).</p>
+  </div>
+</div>
+
+<h2>3. Mobile — équipement : quantité et suppression sur la ligne</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="nav">Étape 6/8 · Équipement</div><div class="prog"><div style="width:75%"></div></div>
+      <div class="body">
+        <div class="mode"><div>Nécessaire pré-fait</div><div class="on">Achat libre</div></div>
+        <div class="gauge"><div class="t">Budget · 340 / 1000 Po</div><div class="tr"><div style="width:34%"></div></div></div>
+        <div class="search">🔍&nbsp; Rechercher un objet…</div>
+        <div><span class="chipf">Tout</span><span class="chipf on">Ma sélection · 6</span></div>
+        <div class="grp" style="border-top:0"><span><b>Objets</b> · 2</span><em>▾</em></div>
+        <div class="it on"><span><span class="nm">Corde</span> <span class="p">50 Po</span></span><span class="step"><span>−</span><span class="q">×2</span><span>+</span></span></div>
+        <div class="it on"><span><span class="nm">Rations</span> <span class="p">10 Po</span></span><span class="step"><span>−</span><span class="q">×4</span><span>+</span></span></div>
+      </div>
+      <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+    </div>
+    <p class="cap">Sur mobile pas de colonne : <b>« Ajouter » devient un compteur − ×2 +</b> dès qu'un objet est pris (« − » à ×1 le retire). Pour <b>relire ce qu'on a pris</b> sans parcourir 68 objets : le filtre « Ma sélection · 6 » (à côté de « Tout ») ne montre que les objets choisis. Le Panier de fin de page disparaît (redondant).</p>
+  </div>
+  <div>
+    <div class="phone">
+      <div class="nav">Étape 6/8 · Équipement</div><div class="prog"><div style="width:75%"></div></div>
+      <div class="body">
+        <div class="gauge"><div class="t">Budget · 340 / 1000 Po</div><div class="tr"><div style="width:34%"></div></div></div>
+        <div><span class="chipf on">Tout</span><span class="chipf">Ma sélection · 6</span></div>
+        <div class="grp" style="border-top:0"><span><b>Objets</b> · 54</span><em>▾</em></div>
+        <div class="it on"><span><span class="nm">Corde</span> <span class="p">50 Po</span></span><span class="step"><span>−</span><span class="q">×2</span><span>+</span></span></div>
+        <div class="it"><span><span class="nm">Savon</span> <span class="p">5 Po</span></span><span class="add">Ajouter</span></div>
+        <div class="it"><span><span class="nm">Torche</span> <span class="p">5 Po</span></span><span class="add">Ajouter</span></div>
+        <div class="it on"><span><span class="nm">Rations</span> <span class="p">10 Po</span></span><span class="step"><span>−</span><span class="q">×4</span><span>+</span></span></div>
+        <div class="grp"><span><b>Contenants</b> · 9</span><em>▸</em></div>
+        <div class="grp"><span><b>Animaux</b> · 5</span><em>▸</em></div>
+      </div>
+      <div class="bar"><div>❮ Précédent</div><div class="go">Suivant ❯</div></div>
+    </div>
+    <p class="cap">Vue « Tout » : les objets pris se repèrent d'un coup d'œil (liseré vert + compteur), les autres gardent « Ajouter ». Le même compteur s'applique sur desktop dans le catalogue de gauche.</p>
+  </div>
+</div>
+
+<h2>4. Mobile — étape Classe, piste B (carte déployée en place)</h2>
+<div class="row">
+  <div>
+    <div class="phone">
+      <div class="nav">Étape 1/8 · Classe</div><div class="prog"><div style="width:12%"></div></div>
+      <div class="body">
+        <div class="grid">
+          <div class="cc"><b>Guérisseur</b><i>Respectés de tous…</i></div>
+          <div class="cc"><b>Professeur</b><i>Les professeurs ont accumulé…</i></div>
+          <div class="big">
+            <div class="hd"><b>Fermier</b><span>Toucher pour désélectionner</span></div>
+            <div class="in">
+              <p class="desc">Vivant en accord avec la nature, les fermiers ont généralement un métier d'appoint. D'une part il garantit leur pitance, et d'autre part il leur permet d'être très polyvalents.</p>
+              <div class="lbl">Talents</div>
+              <div class="chips"><span class="chip">Dressage</span><span class="chip">Métier d'appoint</span><span class="chip">Robuste</span></div>
+              <div class="must"><div class="t"><span>Talent emprunté (Métier d'appoint)</span><span>OBLIGATOIRE</span></div><div class="sb"><span>— Choisir —</span><span>▾</span></div></div>
+              <div class="disc"><span>Occupations et actions</span><span>▾</span></div>
+            </div>
+          </div>
+          <div class="cc"><b>Navigateur</b><i>Ces marins passent…</i></div>
+          <div class="cc"><b>Artisan</b><i>Ces spécialistes savent…</i></div>
+        </div>
+      </div>
+      <div class="bar"><div>❮ Précédent</div><div class="go" style="opacity:.4">Suivant ❯</div></div>
+    </div>
+    <p class="cap"><b>Le choix obligatoire</b> (cadre ambré, mention « OBLIGATOIRE ») est <b>toujours visible</b> dans la carte, jamais replié — c'est lui qui bloque « Suivant ». Occupations et actions restent repliées (référence). <b>Re-toucher la classe la désélectionne</b> : la carte se referme et redevient une carte comme les autres.</p>
+  </div>
+  <div>
+    <div class="phone">
+      <div class="nav">Étape 1/8 · Classe</div><div class="prog"><div style="width:12%"></div></div>
+      <div class="body">
+        <div class="grid">
+          <div class="cc"><b>Guérisseur</b><i>Respectés de tous…</i></div>
+          <div class="cc"><b>Professeur</b><i>Les professeurs ont accumulé…</i></div>
+          <div class="big">
+            <div class="hd"><b>Artisan</b><span>Toucher pour désélectionner</span></div>
+            <div class="in">
+              <p class="desc">Ces spécialistes savent créer tout ce qui est joli, efficace ou simplement pratique.</p>
+              <div class="lbl">Talents</div>
+              <div class="chips"><span class="chip">Création</span><span class="chip">Réparation</span><span class="chip">Transformation</span></div>
+              <div class="must"><div class="t"><span>Type d'objet de spécialité</span><span>OBLIGATOIRE</span></div><div class="sb"><span>Ex. : cordonnerie…</span></div></div>
+              <div class="disc"><span>Occupations et actions ▴</span></div>
+              <div class="lbl" style="margin-top:0">Occupations</div>
+              <div class="chips"><span class="tag2">Cordonnier</span><span class="tag2">Cuisinier</span><span class="tag2">Forgeron</span><span class="tag2">Tailleur</span></div>
+              <div class="lbl">Actions</div>
+              <div class="chips"><span class="tag2">Assembler</span><span class="tag2">Construire</span><span class="tag2">Coudre</span><span class="tag2">Fabriquer</span><span class="tag2">Forger</span><span class="tag2">Préparer</span><span class="tag2">Réparer</span></div>
+            </div>
+          </div>
+          <div class="cc"><b>Chasseur</b><i>Les chasseurs abattent…</i></div>
+          <div class="cc"><b>Marchand</b><i>Ces commerçants…</i></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Cas <b>Artisan</b> : la spécialité (champ texte) est le choix obligatoire, visible en permanence. Occupations et actions dépliées : petites étiquettes sobres, pas de puces à liste.</p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,10 +1,14 @@
 <div class="detail-surface-backdrop" (click)="close()" aria-hidden="true"></div>
 <div
   class="detail-surface-panel"
+  [class.detail-surface-panel--split]="split()"
+  [class.detail-surface-panel--wide]="wide()"
+  [style.--detail-surface-width]="widthVar()"
   role="dialog"
-  [attr.aria-modal]="isDesktop() ? null : 'true'"
-  [attr.aria-label]="title() || 'Détail'"
-  [cdkTrapFocus]="!isDesktop()"
+  aria-modal="true"
+  [attr.aria-label]="title() || theme.tone()['common.detail']"
+  [attr.aria-describedby]="describedBy()"
+  cdkTrapFocus
   (keydown)="onKeydown($event)"
 >
   <button
@@ -12,8 +16,58 @@
     type="button"
     class="detail-surface-close"
     (click)="close()"
-    aria-label="Fermer"
-  >✕</button>
-  <h2 class="detail-surface-title">{{ title() || 'Détail' }}</h2>
-  <p class="detail-surface-body">{{ body() || 'Aucune description disponible.' }}</p>
+    [attr.aria-label]="closeLabel()"
+  >
+    <app-icon name="fermer" />
+  </button>
+  @if (hasHeader()) {
+    <header class="detail-surface-header"><ng-content select="[detail-header]" /></header>
+  } @else {
+    <h2 class="detail-surface-title">{{ title() || theme.tone()['common.detail'] }}</h2>
+  }
+  <div class="detail-surface-content">
+  @if (isStructured()) {
+    @if (hasRows()) {
+      <table class="detail-surface-rows">
+        <tbody>
+          @for (row of rows(); track row.label) {
+            <tr>
+              <th scope="row">{{ row.label }}</th>
+              <td>{{ row.value }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+    @if (narrative()) {
+      @if (hasRows() && !isDesktop()) {
+        <button
+          type="button"
+          class="detail-surface-disclosure"
+          [attr.aria-expanded]="narrativeOpen()"
+          [attr.aria-controls]="narrativeOpen() ? 'detail-surface-narrative' : null"
+          (click)="toggleNarrative()"
+        >
+          <app-icon
+            class="detail-surface-disclosure__icon"
+            [class.detail-surface-disclosure__icon--closed]="!narrativeOpen()"
+            name="deplier"
+          />
+          {{ narrativeOpen() ? theme.tone()['detail.narrative_hide'] : theme.tone()['detail.narrative_show'] }}
+        </button>
+        @if (narrativeOpen()) {
+          <p id="detail-surface-narrative" class="detail-surface-narrative">{{ narrative() }}</p>
+        }
+      } @else {
+        <p id="detail-surface-narrative" class="detail-surface-narrative">{{ narrative() }}</p>
+      }
+    }
+  } @else if (!custom()) {
+    <p class="detail-surface-body">{{ body() || theme.tone()['common.aucune_description_disponible'] }}</p>
+  }
+  <ng-content />
+  </div>
+  @if (hasFooter()) {
+    <footer class="detail-surface-footer"><ng-content select="[detail-footer]" /></footer>
+  }
 </div>

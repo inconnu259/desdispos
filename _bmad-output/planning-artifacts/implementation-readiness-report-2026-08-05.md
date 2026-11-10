@@ -196,7 +196,7 @@ Le PRD ne comporte **aucune section NFR numérotée**. Les exigences non fonctio
 
 **Points ouverts restants (§7)** — aucun bloquant déclaré : Q-1 (périmètre refonte création/édition de partie), Q-14 (garde-fous autocomplétion), Q-15 (image de couverture vs bannière selon les modes ; animation de thème), Q-16 (formulation du plancher d'accessibilité — *« avant l'écriture des stories »*), Q-17 (plafond de badges par carte et priorité entre signaux).
 
-**Dette consignée dans l'addendum §4.2** — aménagements temporaires à reprendre au Palier 10 : `API_BASE` calculé depuis `window.location`, `WEB_ORIGIN` multi-origines. Hors périmètre du palier mais à ne pas perdre.
+**Dette consignée dans l'addendum §4.2** — aménagements temporaires à reprendre au Palier 11 : `API_BASE` calculé depuis `window.location`, `WEB_ORIGIN` multi-origines. Hors périmètre du palier mais à ne pas perdre.
 
 ### PRD Completeness Assessment
 

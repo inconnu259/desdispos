@@ -1,5 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
-import type { SouffleGroup } from '@master-jdr/game-rules';
+import type { SouffleGroup } from '@desdispos/game-rules';
 
 // Page A4 portrait (points PDF, origine en bas à gauche), comme le gabarit officiel.
 const PAGE_WIDTH = 595.276;

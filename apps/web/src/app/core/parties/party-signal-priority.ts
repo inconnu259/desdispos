@@ -1,4 +1,4 @@
-import type { PartySignalCode } from '@master-jdr/shared';
+import type { PartySignalCode } from '@desdispos/shared';
 
 /**
  * Ordre de priorité des 11 signaux (AC8, dont `RESERVATION_A_CONFIRMER` depuis la Story 40.4) — trois catégories déclarées par l'AC (« ce qui bloque

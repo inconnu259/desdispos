@@ -1,9 +1,9 @@
 import { Test } from '@nestjs/testing';
 
-// character.service.ts importe @master-jdr/game-rules (ESM, non transpilé par ts-jest par défaut) —
+// character.service.ts importe @desdispos/game-rules (ESM, non transpilé par ts-jest par défaut) —
 // mock requis même si findMine() n'exerce aucune de ces fonctions (patron déjà établi par
 // characters.controller.spec.ts/character.service.spec.ts).
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   mapToPdfFields: jest.fn(),

@@ -1,4 +1,4 @@
-import type { PartieKind } from '@master-jdr/shared';
+import type { PartieKind } from '@desdispos/shared';
 
 /**
  * Port de la couche 1 : prolonger le vote d'une conjonction (Story 40.7). Implémenté par `events/`, qui

@@ -13,7 +13,7 @@ import type {
   HommeDragonDto,
   PartieDto,
   PartySignalsDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { HommeDragonSheet } from './homme-dragon-sheet';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { CharacterService } from '../../../core/characters/character.service';

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { EventCardDto } from '@master-jdr/shared';
+import type { EventCardDto } from '@desdispos/shared';
 import { API_BASE as API } from '../../core/api-base';
 import { EventsApiService } from './events-api.service';
 

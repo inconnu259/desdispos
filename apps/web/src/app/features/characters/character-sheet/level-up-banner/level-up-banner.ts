@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 import { pendingLevelsLocal } from '../level-thresholds';
 

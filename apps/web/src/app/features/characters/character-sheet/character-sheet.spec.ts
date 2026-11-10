@@ -9,7 +9,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, Subject } from 'rxjs';
 import { vi } from 'vitest';
-import type { AuthUser, CharacterDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { AuthUser, CharacterDto, GameSystemContentDto } from '@desdispos/shared';
 import { CharacterSheet } from './character-sheet';
 import { CharacterService } from '../../../core/characters/character.service';
 import { AuthService } from '../../../core/auth/auth.service';

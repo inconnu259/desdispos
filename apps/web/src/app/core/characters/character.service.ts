@@ -21,7 +21,7 @@ import type {
   UpdateAnimalDto,
   UpdateContenantDto,
   UpdateInventoryItemDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 
 @Injectable({ providedIn: 'root' })

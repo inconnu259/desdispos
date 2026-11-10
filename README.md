@@ -79,8 +79,8 @@ dans `.env`, et l'IP LAN ajoutée à `WEB_ORIGIN` (liste séparée par des virgu
 | Front | Angular 22 + Angular Material, signals — `apps/web` (tests : Vitest via `ng test`) |
 | API | NestJS 11 + Prisma 7 — `apps/api` (tests : Jest) |
 | Base | PostgreSQL 17 |
-| Partagé | `packages/shared` (`@master-jdr/shared`) : types **et** valeurs runtime |
-| Règles de jeu | `packages/game-rules` (`@master-jdr/game-rules`) : règles Ryuutama exécutables (Vitest) |
+| Partagé | `packages/shared` (`@desdispos/shared`) : types **et** valeurs runtime |
+| Règles de jeu | `packages/game-rules` (`@desdispos/game-rules`) : règles Ryuutama exécutables (Vitest) |
 | E-mail | SMTP (gabarits Handlebars) ; Mailpit en dev |
 | Outillage | Monorepo pnpm, 100 % conteneurisé |
 
@@ -101,8 +101,8 @@ dans `.env`, et l'IP LAN ajoutée à `WEB_ORIGIN` (liste séparée par des virgu
 │     │                      # board-games, homme-dragon, account, auth, join, announcements
 │     └─ scripts/            # générateur du registre d'icônes
 ├─ packages/
-│  ├─ shared/                # @master-jdr/shared
-│  └─ game-rules/            # @master-jdr/game-rules
+│  ├─ shared/                # @desdispos/shared
+│  └─ game-rules/            # @desdispos/game-rules
 ├─ docker/                   # image de dev, Dockerfiles et nginx de prod, script de sauvegarde
 ├─ docs/                     # spec, backlog, sécurité, checklist, déploiement (+ contenu de règles)
 ├─ docker-compose.yml        # dev : db + deps + api + web + mailpit

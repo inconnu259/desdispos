@@ -4,9 +4,9 @@ import * as argon2 from 'argon2';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { RYUUTAMA_ID } from '../src/game-systems/supported-game-systems';
 import { writeDocumentFile } from '../src/scenarios/document-storage.util';
-import type { HommeDragonSheetData } from '@master-jdr/game-rules';
+import type { HommeDragonSheetData } from '@desdispos/game-rules';
 
-// `@master-jdr/game-rules` est un package ESM — `ts-node` (CJS, ce script) ne peut pas le
+// `@desdispos/game-rules` est un package ESM — `ts-node` (CJS, ce script) ne peut pas le
 // `require()` (cf. package.json `"type": "module"` du package). Les stats dérivées sont donc
 // recalculées ici avec la même formule que `computeDerived()` (packages/game-rules), plutôt que
 // de modifier la configuration ESM/CJS du monorepo pour un script de seed de dev.
@@ -157,7 +157,7 @@ function computeDerived(sheetData: RyuutamaSheetData) {
  *   Lendemain », « La Veillée des Absents ») gardent le signal HOMME_DRAGON_A_CREER et l'entrée
  *   « Créer un Homme Dragon pour… » de « Personnages ».
  * Les valeurs de niveau et de réserve ci-dessus sont écrites en dur (voir plus bas) : ce script est
- * CJS et ne peut pas importer `@master-jdr/game-rules` (ESM) — à resynchroniser avec les règles
+ * CJS et ne peut pas importer `@desdispos/game-rules` (ESM) — à resynchroniser avec les règles
  * (`homme-dragon-derived.ts`, `homme-dragon-reserve.ts`) si elles bougent.
  *
  * Cas de test documenté : dissocier « Les Annales de Brume » de Kaien ramène son niveau de 5 à 2
@@ -204,7 +204,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
 
 const DEMO_PASSWORD = '12345Demo';
 
-/** Système sans module de création de personnage (cf. `GAME_SYSTEMS` de `@master-jdr/shared`).
+/** Système sans module de création de personnage (cf. `GAME_SYSTEMS` de `@desdispos/shared`).
  *  Littéral local : ce script CJS n'importe pas les valeurs runtime du package partagé (ESM). */
 const DRACONIS_ID = 'draconis';
 
@@ -356,7 +356,7 @@ async function createHommeDragon(userId: string, sheetData: HommeDragonSheetData
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Copies locales de règles de `@master-jdr/shared` (package ESM, non importable par ce script CJS)
+// Copies locales de règles de `@desdispos/shared` (package ESM, non importable par ce script CJS)
 // — à resynchroniser si elles bougent là-bas.
 // ─────────────────────────────────────────────────────────────────────────────
 

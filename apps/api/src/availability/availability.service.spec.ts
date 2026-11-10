@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import type { DaySlot, PartieRole } from '@master-jdr/shared';
+import type { DaySlot, PartieRole } from '@desdispos/shared';
 import { AvailabilityService, DeclarationLike } from './availability.service';
 import type { OccupiedSpansPort } from './ports/occupied-spans.port';
 import type { ActivePartiesPort } from './ports/active-parties.port';

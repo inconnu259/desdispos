@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { CharacterDto, MyHommeDragonDto } from '@master-jdr/shared';
+import type { CharacterDto, MyHommeDragonDto } from '@desdispos/shared';
 import { CharacterSummaryCard } from './character-summary-card';
 import { API_BASE } from '../../../core/api-base';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';

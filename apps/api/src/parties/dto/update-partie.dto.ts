@@ -1,6 +1,6 @@
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { GAME_SYSTEMS } from '@master-jdr/shared';
-import type { PartieKind } from '@master-jdr/shared';
+import { GAME_SYSTEMS } from '@desdispos/shared';
+import type { PartieKind } from '@desdispos/shared';
 
 const GAME_SYSTEM_IDS: string[] = GAME_SYSTEMS.map((s) => s.id);
 const PARTIE_KINDS: PartieKind[] = ['ONE_SHOT', 'CAMPAGNE_LINEAIRE', 'CAMPAGNE_EPISODIQUE'];

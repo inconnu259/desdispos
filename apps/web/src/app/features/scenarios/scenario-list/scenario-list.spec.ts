@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
-import type { ScenarioDto, SeanceDto } from '@master-jdr/shared';
+import type { ScenarioDto, SeanceDto } from '@desdispos/shared';
 import { ScenarioList } from './scenario-list';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';

@@ -1,4 +1,4 @@
-import type { ContentEntryDto, HommeDragonRace } from '@master-jdr/shared';
+import type { ContentEntryDto, HommeDragonRace } from '@desdispos/shared';
 import { RACE_LABELS } from '../homme-dragon-races';
 
 /** Forme (lue défensivement) d'une entrée des catalogues `souffle` / `souffleRituel`. */

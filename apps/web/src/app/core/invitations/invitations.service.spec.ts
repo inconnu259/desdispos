@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { InvitationDto } from '@master-jdr/shared';
+import type { InvitationDto } from '@desdispos/shared';
 import { InvitationsService } from './invitations.service';
 import { API_BASE } from '../api-base';
 

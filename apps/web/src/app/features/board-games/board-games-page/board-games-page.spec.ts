@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import type { AuthUser, BoardGameDto } from '@master-jdr/shared';
+import type { AuthUser, BoardGameDto } from '@desdispos/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';

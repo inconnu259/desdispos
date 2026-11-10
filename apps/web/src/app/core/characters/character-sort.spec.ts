@@ -1,4 +1,4 @@
-import type { MyCharacterDto } from '@master-jdr/shared';
+import type { MyCharacterDto } from '@desdispos/shared';
 import { sortCharacters } from './character-sort';
 import { makeCharacterDto } from './character-dto.fixture';
 

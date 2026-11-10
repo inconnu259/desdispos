@@ -1,4 +1,4 @@
-import { DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
+import { DEFAULT_CALENDAR_LAYER_KEYS } from '@desdispos/shared';
 import { SessionSerializer } from './session.serializer';
 import { UsersService } from '../users/users.service';
 import { callArg } from '../common/test-utils/jest-typed';

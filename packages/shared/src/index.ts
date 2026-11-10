@@ -1784,7 +1784,7 @@ export interface CharacterSnapshotDto {
 
 /**
  * Payload de POST /characters/:id/level-up. `capabilities[].type` reste `string` ici (pas
- * `CapabilityType`, qui vit dans `@master-jdr/game-rules` — `packages/shared` ne doit pas en
+ * `CapabilityType`, qui vit dans `@desdispos/game-rules` — `packages/shared` ne doit pas en
  * dépendre). Aux niveaux 4/6/10, deux capacités sont octroyées conjointement (Attribut ET
  * spéciale) — le tableau en contient alors deux ; sinon une seule.
  */
@@ -1914,7 +1914,7 @@ export interface UpdateNarrativeFieldDto {
  * `apps/api/src/characters/ryuutama-pdf.service.ts`. La duplication est un héritage : elle datait
  * d'une époque où Jest ne transformait pas ce package comme dépendance de workspace, ce qui cassait
  * tout import de valeur runtime côté API. Cette contrainte est levée — `transformIgnorePatterns`
- * transforme désormais `@master-jdr/shared` (cf. la config `jest` d'`apps/api/package.json`), et
+ * transforme désormais `@desdispos/shared` (cf. la config `jest` d'`apps/api/package.json`), et
  * l'API importe déjà des valeurs d'ici (`GAME_SYSTEMS` dans `parties/dto/create-partie.dto.ts`,
  * `THEMES` dans `auth/auth.service.ts`). Tant que la duplication subsiste : si ces valeurs
  * changent, mettre à jour les deux emplacements.

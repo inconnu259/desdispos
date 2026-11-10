@@ -19,10 +19,10 @@ import type {
   ScenarioDto,
   SeanceDto,
   SessionPollDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 // Import RUNTIME du registre des systèmes (Story 40.3) : la famille de la partie choisit la branche
 // des routes d'inscription partagées. Jamais `import type` sur une valeur.
-import { familyOf } from '@master-jdr/shared';
+import { familyOf } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
 import { GroupEventsService } from '../events/group-events.service';

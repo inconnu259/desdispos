@@ -6,7 +6,7 @@ import {
   type HommeDragonAventureVoyageurs,
 } from './homme-dragon-voyageurs.ts';
 
-/** Miroir local des champs de `HommeDragonDto` (`@master-jdr/shared`) nécessaires au mapping PDF
+/** Miroir local des champs de `HommeDragonDto` (`@desdispos/shared`) nécessaires au mapping PDF
  * — jamais importé directement depuis `packages/shared` (frontière types-only, même convention
  * que `HommeDragonRace`/`HommeDragonSheetData` dans `validate-homme-dragon.ts`). */
 export interface HommeDragonPdfInput {

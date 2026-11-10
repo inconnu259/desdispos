@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { ContentEntryDto } from '@master-jdr/shared';
+import type { ContentEntryDto } from '@desdispos/shared';
 import { AttributesStep } from './attributes-step';
 import { fillTone } from '../../../../../core/theme/tone-format';
 import { TONE_MAP } from '../../../../../core/theme/tones';

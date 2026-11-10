@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import type { UserLibraryDto } from '@master-jdr/shared';
+import type { UserLibraryDto } from '@desdispos/shared';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';

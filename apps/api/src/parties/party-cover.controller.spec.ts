@@ -1,7 +1,7 @@
 // PartyCoverController -> get-cover.dto.ts -> import RUNTIME (pas `import type`) de
-// LIST_VIEW_MODES depuis @master-jdr/shared (ESM, non transformé par ts-jest) — même piège déjà
+// LIST_VIEW_MODES depuis @desdispos/shared (ESM, non transformé par ts-jest) — même piège déjà
 // documenté pour GAME_SYSTEMS (parties.controller.spec.ts) et THEMES (account.controller.spec.ts).
-jest.mock('@master-jdr/shared', () => ({
+jest.mock('@desdispos/shared', () => ({
   LIST_VIEW_MODES: ['large', 'medium', 'compact'],
 }));
 

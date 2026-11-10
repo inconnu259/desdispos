@@ -8,7 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { ContentEntryDto } from '@master-jdr/shared';
+import type { ContentEntryDto } from '@desdispos/shared';
 import { AppIcon } from '../../../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../../../core/theme/theme-tone.service';
 import { DetailSurface } from '../../../../../shared/detail-surface/detail-surface';

@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 
 /** Déclaration de disponibilité telle que lue pour compter les libres d'un créneau (forme minimale
  *  d'`AvailabilityDeclaration`). */

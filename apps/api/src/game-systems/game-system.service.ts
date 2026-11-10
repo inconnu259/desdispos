@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Prisma } from '@prisma/client';
-import type { GameSystemDto, GameSystemSchemaDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { GameSystemDto, GameSystemSchemaDto, GameSystemContentDto } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../permissions/permission.service';
 import { RYUUTAMA_ID } from './supported-game-systems';

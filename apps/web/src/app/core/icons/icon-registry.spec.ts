@@ -47,7 +47,7 @@ describe('Registre d’icônes généré', () => {
     }
   });
 
-  it('chaque icône de sens porte un dessin pour chacun des thèmes de @master-jdr/shared', () => {
+  it('chaque icône de sens porte un dessin pour chacun des thèmes de @desdispos/shared', () => {
     for (const name of THEMED_ICON_NAMES) {
       expect(Object.keys(THEMED_ICONS[name]).sort()).toEqual([...THEMES].sort());
     }

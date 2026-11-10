@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 jest.mock('node:fs/promises', () => ({
   readFile: jest.fn(),
 }));
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   mapNotesToPdfFields: jest.fn(() => [
     { field: 'Note.0.0', value: '01/07/2026', kind: 'text' },
     { field: 'Note.0.1', value: 'Première entrée', kind: 'text' },
@@ -12,9 +12,9 @@ jest.mock('@master-jdr/game-rules', () => ({
 }));
 
 import { readFile } from 'node:fs/promises';
-import { mapNotesToPdfFields } from '@master-jdr/game-rules';
+import { mapNotesToPdfFields } from '@desdispos/game-rules';
 import { NotesPdfService } from './notes-pdf.service';
-import type { CharacterNoteDto } from '@master-jdr/shared';
+import type { CharacterNoteDto } from '@desdispos/shared';
 
 const mockSetText = jest.fn();
 const mockSave = jest.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));

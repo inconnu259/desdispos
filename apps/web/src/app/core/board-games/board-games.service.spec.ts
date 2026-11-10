@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { BoardGameDto } from '@master-jdr/shared';
+import type { BoardGameDto } from '@desdispos/shared';
 import { BoardGamesService } from './board-games.service';
 import { API_BASE } from '../api-base';
 

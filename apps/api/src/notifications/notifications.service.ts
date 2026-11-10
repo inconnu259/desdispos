@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import type { DaySlot } from '@prisma/client';
-import { GAME_SYSTEMS, atelierUrl, familyOf, type PartieKind } from '@master-jdr/shared';
+import { GAME_SYSTEMS, atelierUrl, familyOf, type PartieKind } from '@desdispos/shared';
 import {
   EventsService,
   type ReminderSeance,

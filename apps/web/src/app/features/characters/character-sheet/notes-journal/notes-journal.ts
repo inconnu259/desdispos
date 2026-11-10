@@ -1,7 +1,7 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-import type { CharacterNoteDto } from '@master-jdr/shared';
+import type { CharacterNoteDto } from '@desdispos/shared';
 import { AppIcon } from '../../../../core/icons/app-icon';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';

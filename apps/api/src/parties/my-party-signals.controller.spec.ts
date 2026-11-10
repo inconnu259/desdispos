@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 import { makeAuthUser } from '../common/test-utils/fixtures';
 import { MyPartySignalsController } from './my-party-signals.controller';
 import { PartySignalsService } from './party-signals.service';

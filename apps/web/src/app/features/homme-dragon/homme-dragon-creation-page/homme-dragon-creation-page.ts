@@ -1,7 +1,7 @@
 import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import type { HommeDragonDto, PartieDto } from '@master-jdr/shared';
+import type { HommeDragonDto, PartieDto } from '@desdispos/shared';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';

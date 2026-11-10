@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AvailabilityDeclarationDto, CalendarLayerKey } from '@master-jdr/shared';
+import type { AvailabilityDeclarationDto, CalendarLayerKey } from '@desdispos/shared';
 import type { AgendaEntry } from './calendar-agenda-view/calendar-agenda-view';
 import {
   RAIL_SLOTS,

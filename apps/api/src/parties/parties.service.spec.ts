@@ -61,8 +61,8 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { readFile, unlink, writeFile } from 'node:fs/promises';
-import type { AggregatedSlotDto, AvailableSlotDto, PartieKind } from '@master-jdr/shared';
-import { GAME_SYSTEMS, isOpenForCreation, kindsOf } from '@master-jdr/shared';
+import type { AggregatedSlotDto, AvailableSlotDto, PartieKind } from '@desdispos/shared';
+import { GAME_SYSTEMS, isOpenForCreation, kindsOf } from '@desdispos/shared';
 import { AvailabilityService } from '../availability/availability.service';
 import type { EventCancellationMailer } from '../events/event-cancellation-mailer.service';
 import { EVENING_CANCELLED_MESSAGE, EventsService } from '../events/events.service';
@@ -3534,7 +3534,7 @@ describe('PartiesService', () => {
   });
 
   describe('convertKind (Story 29.14 — garde de conversion de type)', () => {
-    // La VRAIE matrice de `@master-jdr/shared` est exercée ici : les verdicts ne sont jamais
+    // La VRAIE matrice de `@desdispos/shared` est exercée ici : les verdicts ne sont jamais
     // simulés, ils sont produits par l'état que ces tests posent dans les mocks Prisma. La table
     // de vérité elle-même (les 6 transitions × leurs états limites) est couverte séparément par
     // `apps/web/src/app/core/parties/partie-kind-transition.spec.ts`.

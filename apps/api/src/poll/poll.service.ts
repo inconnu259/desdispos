@@ -1,8 +1,8 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { DaySlot, PartieKind, PartieRole, SessionPollDto } from '@master-jdr/shared';
+import type { DaySlot, PartieKind, PartieRole, SessionPollDto } from '@desdispos/shared';
 // Import RUNTIME du registre des systèmes (Story 40.5) : la famille de la partie décide si le vote
 // passe par les règles d'un groupe. Jamais `import type` sur une valeur.
-import { defaultPollDeadline, familyOf } from '@master-jdr/shared';
+import { defaultPollDeadline, familyOf } from '@desdispos/shared';
 import { countParticipants } from '../common/participant-count.util';
 import { PermissionService, type PartieGrant } from '../permissions/permission.service';
 import {

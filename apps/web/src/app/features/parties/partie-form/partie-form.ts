@@ -15,8 +15,8 @@ import {
   familyOf,
   isOpenForCreation,
   kindsOf,
-} from '@master-jdr/shared';
-import type { PartieKind, PartieKindTransitionRefusal, ScenarioDto } from '@master-jdr/shared';
+} from '@desdispos/shared';
+import type { PartieKind, PartieKindTransitionRefusal, ScenarioDto } from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { CoverUpload } from '../../../core/parties/cover-upload';
 import { PartiesService } from '../../../core/parties/parties.service';

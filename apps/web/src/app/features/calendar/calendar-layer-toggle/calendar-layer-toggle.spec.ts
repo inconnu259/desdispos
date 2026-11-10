@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { CalendarLayerKey } from '@master-jdr/shared';
+import type { CalendarLayerKey } from '@desdispos/shared';
 import { CalendarLayerToggle } from './calendar-layer-toggle';
 
 async function createToggle(keys: CalendarLayerKey[], active: CalendarLayerKey[]) {

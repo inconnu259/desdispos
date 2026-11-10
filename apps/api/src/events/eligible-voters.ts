@@ -1,4 +1,4 @@
-import type { InscriptionStatus } from '@master-jdr/shared';
+import type { InscriptionStatus } from '@desdispos/shared';
 
 /** Ce qu'il faut savoir d'une conjonction pour dire qui peut voter sur son sondage de dates. */
 export interface EligibleVotersInput {

@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
-import type { EventCardDto, EventParticipantDto, PartieMemberDto } from '@master-jdr/shared';
+import type { EventCardDto, EventParticipantDto, PartieMemberDto } from '@desdispos/shared';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';

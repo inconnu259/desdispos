@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { familyOf, type EventBoardGamesDto } from '@master-jdr/shared';
+import { familyOf, type EventBoardGamesDto } from '@desdispos/shared';
 import { BoardGamesService } from '../board-games/board-games.service';
 import {
   PermissionService,

@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { PartieDto } from '@master-jdr/shared';
+import type { PartieDto } from '@desdispos/shared';
 import { PartiesService } from '../parties/parties.service';
 
 /** Deux listes désignent le même ensemble de parties (mêmes id, rôle et nom, dans le même ordre). */

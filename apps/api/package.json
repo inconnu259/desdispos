@@ -26,8 +26,8 @@
     "migrate:equipment-unify": "ts-node prisma/migrate-equipment-unify.ts"
   },
   "dependencies": {
-    "@master-jdr/game-rules": "workspace:*",
-    "@master-jdr/shared": "workspace:*",
+    "@desdispos/game-rules": "workspace:*",
+    "@desdispos/shared": "workspace:*",
     "@nestjs-modules/mailer": "^2.3.7",
     "@nestjs/common": "^11.2.3",
     "@nestjs/core": "^11.2.3",
@@ -105,7 +105,7 @@
       ]
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!@master-jdr/)"
+      "/node_modules/(?!@desdispos/)"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

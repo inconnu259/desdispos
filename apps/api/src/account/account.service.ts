@@ -5,7 +5,7 @@ import {
   type AccountDeletionImpactDto,
   type AnnouncementDto,
   type Theme,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { AuthService } from '../auth/auth.service';
 import { PartiesService } from '../parties/parties.service';
 import { PermissionService } from '../permissions/permission.service';

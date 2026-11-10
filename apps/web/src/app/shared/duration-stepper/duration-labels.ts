@@ -1,4 +1,4 @@
-import { spanEnd, type DaySlot } from '@master-jdr/shared';
+import { spanEnd, type DaySlot } from '@desdispos/shared';
 import { SLOT_LABELS } from '../../features/calendar/agenda-badge.utils';
 import { shortDayLabel } from '../../features/events/event-card.util';
 

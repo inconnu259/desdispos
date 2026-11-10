@@ -9,7 +9,7 @@ import {
   output,
   viewChildren,
 } from '@angular/core';
-import type { VoteAnswer } from '@master-jdr/shared';
+import type { VoteAnswer } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { type VoteLine, type VoteParticipation, answerLabel } from '../poll-track.utils';

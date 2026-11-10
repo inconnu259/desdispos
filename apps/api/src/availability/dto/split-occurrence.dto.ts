@@ -1,6 +1,6 @@
 import { IsDateString, IsIn, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { AvailKind, DaySlot } from '@master-jdr/shared';
+import type { AvailKind, DaySlot } from '@desdispos/shared';
 
 const AVAIL_KINDS: AvailKind[] = ['UNAVAILABLE', 'AVAILABLE'];
 const DAY_SLOTS: DaySlot[] = ['MORNING', 'AFTERNOON', 'EVENING', 'FULL_DAY'];

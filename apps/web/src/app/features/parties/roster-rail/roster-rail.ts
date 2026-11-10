@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
-import type { CharacterDto, PartieMemberDto } from '@master-jdr/shared';
+import type { CharacterDto, PartieMemberDto } from '@desdispos/shared';
 import { CharacterAvatar } from '../../characters/character-avatar/character-avatar';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { IdentityLabel } from '../../../shared/identity/identity-label';

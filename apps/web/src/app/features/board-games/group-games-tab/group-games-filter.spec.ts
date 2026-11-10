@@ -1,4 +1,4 @@
-import type { GroupBoardGameDto } from '@master-jdr/shared';
+import type { GroupBoardGameDto } from '@desdispos/shared';
 import { countGroupOwners, filterGroupGames, matchesGroupFit } from './group-games-filter';
 
 function game(

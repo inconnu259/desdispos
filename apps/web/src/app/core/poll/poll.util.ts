@@ -1,10 +1,10 @@
-import { hasAnswered } from '@master-jdr/shared';
+import { hasAnswered } from '@desdispos/shared';
 import type {
   PartieMemberDto,
   PollOptionDto,
   RankableOption,
   SessionPollDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 /** Les options sur lesquelles `userId` a voté. */
 function votedOptionIds(poll: SessionPollDto, userId: string): string[] {
@@ -48,7 +48,7 @@ export function hasUnansweredOptions(poll: SessionPollDto, userId: string): bool
 
 /**
  * Story 54.2 — une option de vote telle que `bestOption` / `rankedEntrySlots` la lisent : le `RankableOption`
- * de `@master-jdr/shared` plus l'identifiant de l'option et le nombre de « non ».
+ * de `@desdispos/shared` plus l'identifiant de l'option et le nombre de « non ».
  */
 export type PollRankableOption = RankableOption & { optionId: string; no: number };
 

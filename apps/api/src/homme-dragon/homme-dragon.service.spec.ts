@@ -7,12 +7,12 @@ import {
 import { Test } from '@nestjs/testing';
 
 // HommeDragonService importe validateHommeDragon/computeHommeDragonDerived/levelForScenariosPasse
-// depuis @master-jdr/game-rules (ESM, non transformé par ts-jest) — même mécanisme que ailleurs
+// depuis @desdispos/game-rules (ESM, non transformé par ts-jest) — même mécanisme que ailleurs
 // dans le projet (cf. mémoire d'équipe : "game-rules ESM jest.mock") pour éviter "Unexpected token
 // export" au chargement du module. levelForScenariosPasse/computeHommeDragonDerived sont réimplémentées
 // ici à l'identique (fonctions pures, triviales) plutôt que mockées en jest.fn() — les tests Story 10.3
 // vérifient une vraie table de vérité niveau/PS, pas juste que la fonction est appelée.
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validateHommeDragon: jest.fn(),
   ARTEFACT_CADEAU_LEVEL: 4,
   // Règles de la réserve (Story 33.6) : testées pour de bon, avec le vrai paquet, dans
@@ -46,7 +46,7 @@ jest.mock('@master-jdr/game-rules', () => ({
   },
 }));
 
-import { validateHommeDragon } from '@master-jdr/game-rules';
+import { validateHommeDragon } from '@desdispos/game-rules';
 import { HommeDragonService } from './homme-dragon.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PartiesService } from '../parties/parties.service';

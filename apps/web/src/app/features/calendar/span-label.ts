@@ -1,4 +1,4 @@
-import { spanEnd, type DaySlot } from '@master-jdr/shared';
+import { spanEnd, type DaySlot } from '@desdispos/shared';
 import { SLOT_LABELS } from './agenda-badge.utils';
 
 /**
@@ -79,7 +79,7 @@ export const SPAN_CONTINUED = '(suite)';
 
 /**
  * Story 47.5 (FR-20) — la fin d'un créneau candidat de `durationSlots` créneaux, ou `null` pour un créneau seul
- * (durée 1, journée entière, durée incohérente). Seul passage par `spanEnd` (`@master-jdr/shared`) des libellés de
+ * (durée 1, journée entière, durée incohérente). Seul passage par `spanEnd` (`@desdispos/shared`) des libellés de
  * candidats : la plage d'un vote se dit partout de la même façon, jamais recalculée à la main.
  */
 function candidateEnd(

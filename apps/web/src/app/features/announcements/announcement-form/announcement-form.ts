@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import type { AnnouncementDto, ScenarioDto } from '@master-jdr/shared';
+import type { AnnouncementDto, ScenarioDto } from '@desdispos/shared';
 import { AnnouncementsService } from '../../../core/announcements/announcements.service';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto } from '@desdispos/shared';
 import { LevelUpBanner } from './level-up-banner';
 import { TONE_MAP } from '../../../../core/theme/tones';
 

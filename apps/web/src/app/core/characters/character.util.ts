@@ -1,4 +1,4 @@
-import type { CharacterDto, ContentEntryDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { CharacterDto, ContentEntryDto, GameSystemContentDto } from '@desdispos/shared';
 
 /** Nom narratif du personnage, ou libellé de repli si le joueur ne l'a pas renseigné. */
 export function characterName(character: CharacterDto): string {

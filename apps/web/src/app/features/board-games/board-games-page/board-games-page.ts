@@ -16,7 +16,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import type { BoardGameDto, CreateBoardGameInput } from '@master-jdr/shared';
+import type { BoardGameDto, CreateBoardGameInput } from '@desdispos/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';

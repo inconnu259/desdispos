@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { randomUUID } from 'node:crypto';
-import type { PartieKind, ScenarioStatus } from '@master-jdr/shared';
+import type { PartieKind, ScenarioStatus } from '@desdispos/shared';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import {

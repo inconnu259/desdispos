@@ -239,13 +239,13 @@ l'étape 10 — la méthode dépend de la version de Raspberry Pi OS ❓ (voir l
 ## Étape 7 — Récupérer le site
 
 ```bash
-git clone https://github.com/inconnu259/jdr-master.git ~/desdispos
+git clone https://github.com/inconnu259/desdispos.git ~/desdispos
 cd ~/desdispos
 ```
 
 Si le dépôt est **privé**, GitHub demandera une authentification : le plus propre est une
 **clé de déploiement en lecture seule** (GitHub → dépôt → *Settings* → *Deploy keys*), générée sur le
-Pi avec `ssh-keygen -t ed25519`, puis un clone en `git@github.com:inconnu259/jdr-master.git`.
+Pi avec `ssh-keygen -t ed25519`, puis un clone en `git@github.com:inconnu259/desdispos.git`.
 
 ---
 

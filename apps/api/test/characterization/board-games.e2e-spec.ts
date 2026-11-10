@@ -5,7 +5,7 @@ import type {
   EventBoardGamesDto,
   EventEnvyDto,
   UserLibraryDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import {
   RealtimeEventsService,
   partieTopic,

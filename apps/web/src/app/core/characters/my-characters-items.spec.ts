@@ -1,4 +1,4 @@
-import type { MyCharacterDto, MyHommeDragonDto } from '@master-jdr/shared';
+import type { MyCharacterDto, MyHommeDragonDto } from '@desdispos/shared';
 import { makeCharacterDto } from './character-dto.fixture';
 import { filterMyItems, itemName, mergeMyItems, sortMyItems } from './my-characters-items';
 

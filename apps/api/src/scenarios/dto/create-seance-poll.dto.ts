@@ -13,9 +13,9 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 // Import RUNTIME : le plafond est une valeur (un `import type` l'effacerait).
-import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS } from '@desdispos/shared';
 import { DURATION_CAP_MESSAGE, DURATION_INVALID_MESSAGE } from '../../events/seance-span';
 
 // Copie exacte de la validation de PollOptionInput (apps/api/src/poll/dto/create-poll.dto.ts) —

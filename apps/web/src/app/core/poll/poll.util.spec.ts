@@ -1,5 +1,5 @@
-import { bestOption, hasAnswered } from '@master-jdr/shared';
-import type { PartieMemberDto, SessionPollDto } from '@master-jdr/shared';
+import { bestOption, hasAnswered } from '@desdispos/shared';
+import type { PartieMemberDto, SessionPollDto } from '@desdispos/shared';
 import {
   getMissingVoters,
   getMissingVotersForOption,

@@ -1,4 +1,4 @@
-import { DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
+import { DEFAULT_CALENDAR_LAYER_KEYS } from '@desdispos/shared';
 import { toAuthUser, type UserForAuth } from './to-auth-user.util';
 
 function makeUser(overrides: Partial<UserForAuth> = {}): UserForAuth {

@@ -9,7 +9,7 @@ import type {
   CharacterNoteDto,
   PartieKind,
   ScenarioDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';

@@ -9,7 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import type { AuthUser, BoardGameDto } from '@master-jdr/shared';
+import type { AuthUser, BoardGameDto } from '@desdispos/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { BoardGamesService } from './board-games.service';

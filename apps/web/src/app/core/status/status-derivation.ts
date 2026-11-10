@@ -3,7 +3,7 @@ import type {
   ScenarioStatus,
   SeanceInscriptionDto,
   SessionPollDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { hasUnansweredOptions } from '../poll/poll.util';
 import {
   imminenceIntensity,

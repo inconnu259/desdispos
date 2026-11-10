@@ -9,7 +9,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import type { UpdateBoardGameInput } from '@master-jdr/shared';
+import type { UpdateBoardGameInput } from '@desdispos/shared';
 import { trimIfString } from '../../common/dto/trim.transform';
 import {
   BOARD_GAME_DURATION_MAX,

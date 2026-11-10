@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { XpDistributionDto } from '@master-jdr/shared';
+import type { XpDistributionDto } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../permissions/permission.service';
 import { CharacterService } from '../characters/character.service';

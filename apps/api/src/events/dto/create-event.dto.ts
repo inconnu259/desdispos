@@ -20,9 +20,9 @@ import type {
   EventPollOptionInput,
   EventSlot,
   UpdateEventDto as UpdateEventPayload,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 // Import RUNTIME : le plafond est une valeur (un `import type` l'effacerait).
-import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS } from '@desdispos/shared';
 import { DURATION_CAP_MESSAGE } from '../seance-span';
 
 /** `HH:MM` en 24 h, heures et minutes paddées — même règle que les informations pratiques d'une

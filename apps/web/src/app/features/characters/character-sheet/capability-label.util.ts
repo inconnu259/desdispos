@@ -1,4 +1,4 @@
-import type { CharacterDto, CharacterSnapshotDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { CharacterDto, CharacterSnapshotDto, GameSystemContentDto } from '@desdispos/shared';
 import { findContentEntry } from '../../../core/characters/character.util';
 
 export interface LevelUpEntry {

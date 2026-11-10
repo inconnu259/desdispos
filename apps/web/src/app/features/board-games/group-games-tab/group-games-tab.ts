@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import type { GroupBoardGameDto, UserLibraryOwnerDto } from '@master-jdr/shared';
+import type { GroupBoardGameDto, UserLibraryOwnerDto } from '@desdispos/shared';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

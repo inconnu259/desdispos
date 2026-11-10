@@ -1,4 +1,4 @@
-import type { AnnouncementDto } from '@master-jdr/shared';
+import type { AnnouncementDto } from '@desdispos/shared';
 
 /**
  * Factory de fixture partagée pour `AnnouncementDto` dans les tests — évite la duplication de

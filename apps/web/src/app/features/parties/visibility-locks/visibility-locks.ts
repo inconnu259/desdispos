@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import type { GameSystemSchemaDto, PartieDto } from '@master-jdr/shared';
+import type { GameSystemSchemaDto, PartieDto } from '@desdispos/shared';
 import { CharacterService } from '../../../core/characters/character.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ContextualNavService } from '../../../core/navigation/contextual-nav.service';

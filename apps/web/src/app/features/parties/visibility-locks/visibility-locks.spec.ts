@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
-import type { GameSystemSchemaDto, PartieDto, VisibilityLockPathDto } from '@master-jdr/shared';
+import type { GameSystemSchemaDto, PartieDto, VisibilityLockPathDto } from '@desdispos/shared';
 import { VisibilityLocks } from './visibility-locks';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { CharacterService } from '../../../core/characters/character.service';

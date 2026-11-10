@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { vi } from 'vitest';
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto } from '@desdispos/shared';
 import { LevelUpWizard, type LevelUpWizardData } from './level-up-wizard';
 import { CharacterService } from '../../../../core/characters/character.service';
 

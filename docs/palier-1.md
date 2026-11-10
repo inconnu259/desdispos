@@ -236,5 +236,5 @@ en `.ts` / `.html` / `.scss` (les tout petits — `app`, `confirm-dialog` — re
 **Pièges déjà rencontrés (éviter de les redécouvrir)** :
 - DTO `class-validator` : un **type** importé utilisé dans une signature décorée doit être en `import type { … }`
   séparé (sinon **TS1272**).
-- Front : alias `@master-jdr/shared` via `paths` dans `apps/web/tsconfig.json` (**sans `baseUrl`**, déprécié TS6).
+- Front : alias `@desdispos/shared` via `paths` dans `apps/web/tsconfig.json` (**sans `baseUrl`**, déprécié TS6).
 - Agent : recharger le PATH depuis le registre avant tout `docker …` (cf. `CLAUDE.md`).

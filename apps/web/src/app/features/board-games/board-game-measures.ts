@@ -1,4 +1,4 @@
-import type { BoardGameDto } from '@master-jdr/shared';
+import type { BoardGameDto } from '@desdispos/shared';
 import { fillTone } from '../../core/theme/tone-format';
 
 type Tone = Record<string, string>;

@@ -16,11 +16,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import type {
-  AvailabilityDeclarationDto,
-  CreateAvailabilityDto,
-  DaySlot,
-} from '@master-jdr/shared';
+import type { AvailabilityDeclarationDto, CreateAvailabilityDto, DaySlot } from '@desdispos/shared';
 import {
   AvailabilityService,
   ConflictError,

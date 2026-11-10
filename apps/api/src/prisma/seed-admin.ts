@@ -19,7 +19,7 @@ export function readAdminSeedConfig(env: NodeJS.ProcessEnv): AdminSeedConfig {
     );
   }
   return {
-    email: env.ADMIN_EMAIL ?? 'admin@master-jdr.local',
+    email: env.ADMIN_EMAIL ?? 'admin@desdispos.local',
     pseudo: env.ADMIN_PSEUDO ?? 'admin',
     password,
   };

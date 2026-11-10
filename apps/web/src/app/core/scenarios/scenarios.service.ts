@@ -13,7 +13,7 @@ import type {
   SetResumeFinDto,
   SetSeanceCapacityDto,
   UpdateScenarioDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 
 // Sentinel reconnu par matchesPartie() — un événement temps réel générique (Story 19.1) n'a

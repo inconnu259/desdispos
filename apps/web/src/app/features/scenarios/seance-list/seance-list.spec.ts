@@ -5,7 +5,7 @@ import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { of, Subject } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
-import type { ScenarioDto, SeanceDto, SessionPollDto } from '@master-jdr/shared';
+import type { ScenarioDto, SeanceDto, SessionPollDto } from '@desdispos/shared';
 import { SeanceList } from './seance-list';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';

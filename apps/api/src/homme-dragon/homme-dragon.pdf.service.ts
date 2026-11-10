@@ -2,9 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PDFDocument, PDFTextField, StandardFonts } from 'pdf-lib';
-import type { HommeDragonDto, HommeDragonRace } from '@master-jdr/shared';
-import { availableSouffles, mapHommeDragonToPdfFields } from '@master-jdr/game-rules';
-import type { SouffleCatalogEntry } from '@master-jdr/game-rules';
+import type { HommeDragonDto, HommeDragonRace } from '@desdispos/shared';
+import { availableSouffles, mapHommeDragonToPdfFields } from '@desdispos/game-rules';
+import type { SouffleCatalogEntry } from '@desdispos/game-rules';
 import { GameSystemService } from '../game-systems/game-system.service';
 import { RYUUTAMA_ID } from '../game-systems/supported-game-systems';
 import type { HommeDragonPdfFormat } from './dto/export-homme-dragon-pdf.dto';
@@ -15,7 +15,7 @@ const PDF_TEMPLATE_PATH = join(
   'game-systems/ryuutama/assets/Ryuutama_fiche_homme-dragon_big_edit.pdf',
 );
 
-/** Dupliquée depuis `homme-dragon-sheet.ts` (frontend) plutôt que partagée : `@master-jdr/shared`
+/** Dupliquée depuis `homme-dragon-sheet.ts` (frontend) plutôt que partagée : `@desdispos/shared`
  * est une frontière types-only, effacée au runtime (même contrainte déjà documentée dans
  * `ryuutama-pdf.service.ts` pour `RYUUTAMA_PDF_PORTRAIT_WIDTH/HEIGHT`). */
 const RACE_LABELS: Record<HommeDragonRace, string> = {

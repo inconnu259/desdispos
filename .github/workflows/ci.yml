@@ -19,7 +19,7 @@ env:
   # démarrer. Aucune connexion SMTP n'est ouverte — nodemailer se connecte au premier envoi.
   MAIL_HOST: localhost
   MAIL_PORT: '1025'
-  MAIL_FROM: ci@master-jdr.local
+  MAIL_FROM: ci@desdispos.local
 
   # `prisma.config.ts` résout DATABASE_URL au CHARGEMENT de la config, donc toute commande
   # Prisma l'exige — y compris `generate`, qui ne se connecte pourtant jamais. D'où cette
@@ -87,9 +87,9 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: jdr
-          POSTGRES_PASSWORD: jdr
-          POSTGRES_DB: jdr_test
+          POSTGRES_USER: desdispos
+          POSTGRES_PASSWORD: desdispos
+          POSTGRES_DB: desdispos_test
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready
@@ -104,7 +104,7 @@ jobs:
         ports: ['1025:1025', '8025:8025']
 
     env:
-      DATABASE_URL: postgresql://jdr:jdr@localhost:5432/jdr_test?schema=public
+      DATABASE_URL: postgresql://desdispos:desdispos@localhost:5432/desdispos_test?schema=public
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (2026-07-16)
@@ -137,9 +137,9 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: jdr
-          POSTGRES_PASSWORD: jdr
-          POSTGRES_DB: jdr_test
+          POSTGRES_USER: desdispos
+          POSTGRES_PASSWORD: desdispos
+          POSTGRES_DB: desdispos_test
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready
@@ -150,7 +150,7 @@ jobs:
     env:
       # PrismaService jette si DATABASE_URL est absent, et onModuleInit appelle $connect() :
       # app.e2e-spec.ts boote AppModule, il lui faut donc une base réellement joignable.
-      DATABASE_URL: postgresql://jdr:jdr@localhost:5432/jdr_test?schema=public
+      DATABASE_URL: postgresql://desdispos:desdispos@localhost:5432/desdispos_test?schema=public
       SESSION_SECRET: ci-secret-non-sensible
       WEB_ORIGIN: http://localhost:4200
 

@@ -21,7 +21,7 @@ import type {
   ScenarioDocumentDto,
   ScenarioDto,
   UpdateScenarioDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { CharacterService } from '../../../core/characters/character.service';
 import { PartiesService } from '../../../core/parties/parties.service';

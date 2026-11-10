@@ -1,5 +1,5 @@
 import { Component, inject, input, output } from '@angular/core';
-import type { CalendarLayerKey } from '@master-jdr/shared';
+import type { CalendarLayerKey } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 
 /** Bandeau de bascule des couches du calendrier (Story 30.6, AC1/AC3/AC4) — composant de rendu

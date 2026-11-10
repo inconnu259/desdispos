@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { spanEnd, spanSlots } from '@master-jdr/shared';
+import { spanEnd, spanSlots } from '@desdispos/shared';
 import {
   DURATION_CAP_MESSAGE,
   isSeancePast,

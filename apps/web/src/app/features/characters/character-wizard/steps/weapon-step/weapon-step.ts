@@ -9,14 +9,14 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { ContentEntryDto } from '@master-jdr/shared';
+import type { ContentEntryDto } from '@desdispos/shared';
 import {
   resolveWeapon,
   type WeaponCategoryEntry,
   type WeaponItemEntry,
   type WeaponItemContentData,
   type WeaponCategoryContentData,
-} from '@master-jdr/game-rules';
+} from '@desdispos/game-rules';
 import { ThemeToneService } from '../../../../../core/theme/theme-tone.service';
 import { DetailSurface } from '../../../../../shared/detail-surface/detail-surface';
 import {

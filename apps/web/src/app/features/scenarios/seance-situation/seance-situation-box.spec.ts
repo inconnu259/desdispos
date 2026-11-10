@@ -1,4 +1,4 @@
-import type { SeanceDto, SessionPollDto } from '@master-jdr/shared';
+import type { SeanceDto, SessionPollDto } from '@desdispos/shared';
 import { seanceSituationBox, voteDeadlineLabel } from './seance-situation-box';
 
 const TODAY = '2026-11-07';

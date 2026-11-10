@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
-import type { PartieDto, PartieKind, ScenarioDto } from '@master-jdr/shared';
+import type { PartieDto, PartieKind, ScenarioDto } from '@desdispos/shared';
 import { PartieForm } from './partie-form';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { MyPartiesService } from '../../../core/my-parties/my-parties.service';

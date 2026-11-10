@@ -107,7 +107,7 @@ function targetModule(fromRel: string, specifier: string): string | null {
 }
 
 /** Importations hors liste blanche d'une source, au format « fichier → spécificateur ». Un
- *  spécificateur non relatif (paquet npm, `@master-jdr/*`) n'est pas un module métier du dépôt. */
+ *  spécificateur non relatif (paquet npm, `@desdispos/*`) n'est pas un module métier du dépôt. */
 function forbiddenImports(fromRel: string, source: string): string[] {
   const own = fromRel.split('/')[0];
   return importedSpecifiers(source)

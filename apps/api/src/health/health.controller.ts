@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { HealthStatus } from '@master-jdr/shared';
+import type { HealthStatus } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('health')

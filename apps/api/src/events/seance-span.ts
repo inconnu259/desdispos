@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { MAX_SLOT_WINDOW_SLOTS, spanEnd, type DaySlot } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS, spanEnd, type DaySlot } from '@desdispos/shared';
 import { parseDayKey, todayKeyUtc } from './day-key';
 
 /** Story 47.1 : durée hors bornes (entier de 1 à 45 créneaux). */

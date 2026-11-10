@@ -1,4 +1,4 @@
-import type { CreateAvailabilityDto, DaySlot } from '@master-jdr/shared';
+import type { CreateAvailabilityDto, DaySlot } from '@desdispos/shared';
 
 export interface ConstraintFormValue {
   slot: DaySlot;

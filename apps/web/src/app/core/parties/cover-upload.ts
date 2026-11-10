@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import type { PartieDto } from '@master-jdr/shared';
+import type { PartieDto } from '@desdispos/shared';
 import { PartiesService } from './parties.service';
 
 /** Formats acceptés par le contrôleur de couverture (`party-cover.controller.ts`). */

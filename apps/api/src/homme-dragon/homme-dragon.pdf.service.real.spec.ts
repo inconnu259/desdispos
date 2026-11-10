@@ -2,7 +2,7 @@
 // gitignoré (sous droits), on en fabrique donc un équivalent avec les mêmes noms de champs.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { HommeDragonDto } from '@master-jdr/shared';
+import type { HommeDragonDto } from '@desdispos/shared';
 import { Test } from '@nestjs/testing';
 
 jest.mock('node:fs/promises', () => ({ readFile: jest.fn() }));

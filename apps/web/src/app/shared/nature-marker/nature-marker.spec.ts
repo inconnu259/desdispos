@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { NatureMarker } from './nature-marker';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../core/theme/tones';
-import { THEMES } from '@master-jdr/shared';
+import { THEMES } from '@desdispos/shared';
 
 async function createFixture(
   compact: boolean,

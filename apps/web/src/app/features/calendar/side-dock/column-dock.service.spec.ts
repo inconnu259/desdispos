@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { ColumnDockService } from './column-dock.service';
 
-const LS_KEY = 'master-jdr.calendar.column-closed';
+const LS_KEY = 'desdispos.calendar.column-closed';
 
 describe('ColumnDockService (Story 46.1)', () => {
   beforeEach(() => localStorage.removeItem(LS_KEY));

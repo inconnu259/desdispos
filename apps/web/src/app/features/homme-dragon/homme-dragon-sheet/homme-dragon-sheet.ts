@@ -23,8 +23,8 @@ import type {
   HommeDragonAventureDto,
   HommeDragonDto,
   HommeDragonRace,
-} from '@master-jdr/shared';
-import { ARTEFACT_CADEAU_LEVEL, SOUFFLES_RITUELS_LEVEL } from '@master-jdr/game-rules';
+} from '@desdispos/shared';
+import { ARTEFACT_CADEAU_LEVEL, SOUFFLES_RITUELS_LEVEL } from '@desdispos/game-rules';
 import { ReserveSection } from '../reserve-section/reserve-section';
 import { RACES, RACE_LABELS, RACE_TAGS } from '../homme-dragon-races';
 import {

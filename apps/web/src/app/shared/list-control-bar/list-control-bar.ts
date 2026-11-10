@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
-import { LIST_VIEW_MODES, type ListViewMode } from '@master-jdr/shared';
+import { LIST_VIEW_MODES, type ListViewMode } from '@desdispos/shared';
 import { AppIcon } from '../../core/icons/app-icon';
 import type { IconName } from '../../core/icons/icon-registry.generated';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';

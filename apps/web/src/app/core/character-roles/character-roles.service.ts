@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { CharacterGroupRoleDto } from '@master-jdr/shared';
+import type { CharacterGroupRoleDto } from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 
 @Injectable({ providedIn: 'root' })

@@ -2,12 +2,12 @@ import {
   checkPartieKindTransition,
   type PartieKind,
   type PartieKindTransitionState,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 /**
  * Table de vérité de la matrice de conversion (Story 29.14, Task 2).
  *
- * La fonction vit dans `@master-jdr/shared` — point de dérivation unique consommé par le serveur
+ * La fonction vit dans `@desdispos/shared` — point de dérivation unique consommé par le serveur
  * ET par le formulaire d'édition. Ce fichier couvre la table elle-même : les 6 transitions, leurs
  * états limites et trois invariants transverses. Côté API, `parties.service.spec.ts` exerce la
  * MÊME fonction (aucun verdict simulé) mais sous l'angle de son application par le service.

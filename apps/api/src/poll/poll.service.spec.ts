@@ -22,7 +22,7 @@ import { testGrant } from '../common/test-utils/grant';
 import { RealtimeEventsService, partieTopic } from '../realtime/realtime-events.service';
 import { anyOf, callArg, mockCalls } from '../common/test-utils/jest-typed';
 import { HIDDEN_DRAFT_POLL_WHERE, VISIBLE_POLL_WHERE } from '../permissions/scenario-visibility';
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 
 /**
  * Mock construit sans annotation `: any` : l'inference donne un vrai type aux modeles et a leurs

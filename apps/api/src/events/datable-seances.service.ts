@@ -5,7 +5,7 @@ import {
   isPartieActive,
   partieStatus,
   type DatableSeanceEntry,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {

@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { DerivedStats, RyuutamaSheetData } from '@master-jdr/game-rules';
-import type { ContentEntryDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { DerivedStats, RyuutamaSheetData } from '@desdispos/game-rules';
+import type { ContentEntryDto, GameSystemContentDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 
 export interface SummaryRow {

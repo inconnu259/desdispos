@@ -1,8 +1,8 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
-import type { PartieMemberDto, SessionPollDto } from '@master-jdr/shared';
-import { bestOption } from '@master-jdr/shared';
+import type { PartieMemberDto, SessionPollDto } from '@desdispos/shared';
+import { bestOption } from '@desdispos/shared';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import {

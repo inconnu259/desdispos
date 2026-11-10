@@ -1,4 +1,4 @@
-import type { CharacterDto, PartieMemberDto } from '@master-jdr/shared';
+import type { CharacterDto, PartieMemberDto } from '@desdispos/shared';
 import { characterName } from '../../core/characters/character.util';
 import { fillTone } from '../../core/theme/tone-format';
 import { pendingLevelsLocal } from '../characters/character-sheet/level-thresholds';

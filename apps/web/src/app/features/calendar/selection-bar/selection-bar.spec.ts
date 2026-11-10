@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ComponentFixture } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { AvailKind, DaySlot } from '@master-jdr/shared';
+import type { AvailKind, DaySlot } from '@desdispos/shared';
 import type { AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import { SelectionBar } from './selection-bar';
 import { TONE_MAP } from '../../../core/theme/tones';

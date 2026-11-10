@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { AccountDeletionImpactDto } from '@master-jdr/shared';
+import { AccountDeletionImpactDto } from '@desdispos/shared';
 import { Harness, TestUser, body } from './harness';
 
 /**

@@ -1,5 +1,5 @@
 import { IsDateString, IsIn, IsInt, IsOptional, Max, Min, ValidateIf } from 'class-validator';
-import type { AvailKind, DaySlot, RecurKind } from '@master-jdr/shared';
+import type { AvailKind, DaySlot, RecurKind } from '@desdispos/shared';
 
 const AVAIL_KINDS: AvailKind[] = ['UNAVAILABLE', 'AVAILABLE'];
 const RECUR_KINDS: RecurKind[] = ['RECURRING', 'PUNCTUAL'];

@@ -1,5 +1,5 @@
 import { Component, computed, input, model } from '@angular/core';
-import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS } from '@desdispos/shared';
 import {
   DURATION_TEXT,
   durationDetail,

@@ -18,7 +18,7 @@ import type {
   CreateAvailabilityDto,
   DaySlot,
   SlotStatus,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import type { CalendarInteraction } from '../calendar-interaction';

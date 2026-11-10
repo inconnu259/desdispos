@@ -1,10 +1,10 @@
 import { BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-// `CharacterService` (importé ci-dessous comme token DI) importe `@master-jdr/game-rules`
+// `CharacterService` (importé ci-dessous comme token DI) importe `@desdispos/game-rules`
 // (module ESM) — le mocker évite l'échec de transform Jest, même pattern que
 // `character.service.spec.ts`.
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   levelForXp: jest.fn(),

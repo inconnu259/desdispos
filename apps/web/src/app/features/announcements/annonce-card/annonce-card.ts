@@ -1,6 +1,6 @@
 import { Component, inject, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import type { AnnouncementDto } from '@master-jdr/shared';
+import type { AnnouncementDto } from '@desdispos/shared';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 

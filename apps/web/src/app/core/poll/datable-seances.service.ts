@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { DatableSeanceEntry } from '@master-jdr/shared';
+import type { DatableSeanceEntry } from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 
 /**

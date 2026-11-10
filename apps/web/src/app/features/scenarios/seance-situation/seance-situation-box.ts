@@ -1,4 +1,4 @@
-import type { SeanceDto } from '@master-jdr/shared';
+import type { SeanceDto } from '@desdispos/shared';
 import { daysBetweenKeys } from '../../../core/status/status-badge.model';
 import type { SeanceSituation } from '../../../core/status/status-derivation';
 

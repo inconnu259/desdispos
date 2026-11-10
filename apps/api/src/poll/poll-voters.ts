@@ -1,4 +1,4 @@
-import type { GameSystemFamily } from '@master-jdr/shared';
+import type { GameSystemFamily } from '@desdispos/shared';
 
 /** Ce qu'il faut savoir d'une partie pour dire qui peut voter sur ses sondages. */
 export interface PollVotersInput {

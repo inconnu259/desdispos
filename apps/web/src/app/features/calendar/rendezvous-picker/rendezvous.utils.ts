@@ -5,7 +5,7 @@ import {
   type EventCardDto,
   type GameSystemFamily,
   type ScenarioDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 /** La nature d'un rendez-vous à dater, telle que le choix l'écrit : une séance de JDR ou une soirée isolée. */
 export type RendezvousNature = 'seance' | 'soiree' | 'seance_poll';

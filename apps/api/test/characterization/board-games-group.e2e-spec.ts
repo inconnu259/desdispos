@@ -1,5 +1,5 @@
 import request from 'supertest';
-import type { BoardGameDto, GroupBoardGamesDto } from '@master-jdr/shared';
+import type { BoardGameDto, GroupBoardGamesDto } from '@desdispos/shared';
 import { RALLIEMENT_UNAVAILABLE_MESSAGE } from '../../src/permissions/permission.service';
 import { Harness, body, keysOf, type Agent } from './harness';
 

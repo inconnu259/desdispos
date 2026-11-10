@@ -4,8 +4,8 @@ import request from 'supertest';
 import type { Request, Response } from 'express';
 
 // AccountController -> AccountService -> toDto() (AnnouncementsService, Story 29.13, AD-17) ->
-// transitivement CharacterService -> @master-jdr/game-rules (ESM, non transformé par ts-jest).
-jest.mock('@master-jdr/game-rules', () => ({
+// transitivement CharacterService -> @desdispos/game-rules (ESM, non transformé par ts-jest).
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   pendingLevels: jest.fn(),

@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type { PartieKind } from '@master-jdr/shared';
+import type { PartieKind } from '@desdispos/shared';
 
 /**
  * Port de la couche 1 : « cette personne peut-elle voter sur ce sondage de groupe ? » (Story 40.5).

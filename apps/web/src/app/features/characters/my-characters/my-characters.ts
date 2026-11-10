@@ -5,8 +5,8 @@ import type {
   ListViewMode,
   MyCharacterDto,
   MyHommeDragonDto,
-} from '@master-jdr/shared';
-import { CHARACTER_SORTS } from '@master-jdr/shared';
+} from '@desdispos/shared';
+import { CHARACTER_SORTS } from '@desdispos/shared';
 import { CharacterService } from '../../../core/characters/character.service';
 import {
   filterMyItems,

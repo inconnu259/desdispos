@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { PartySignalsDto } from '@master-jdr/shared';
+import type { PartySignalsDto } from '@desdispos/shared';
 import { PartySignalsService } from './party-signals.service';
 import { API_BASE as API } from '../api-base';
 

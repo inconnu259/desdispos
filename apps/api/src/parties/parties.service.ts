@@ -20,12 +20,12 @@ import type {
   PartieRole,
   PartieStatus,
   SlotStatus,
-} from '@master-jdr/shared';
-// Imports RUNTIME de `@master-jdr/shared` dans ce service : la matrice de conversion (Story 29.14,
+} from '@desdispos/shared';
+// Imports RUNTIME de `@desdispos/shared` dans ce service : la matrice de conversion (Story 29.14,
 // partagée avec le formulaire d'édition) et les lecteurs du registre des systèmes (Story 37.5,
 // même source que `PartieForm`). `apps/api/package.json` (`transformIgnorePatterns`)
-// laisse déjà ts-jest transformer `@master-jdr/*` : `parties.service.spec.ts` n'a donc besoin
-// d'AUCUN `jest.mock('@master-jdr/shared')` pour ces imports (la vraie matrice/le vrai
+// laisse déjà ts-jest transformer `@desdispos/*` : `parties.service.spec.ts` n'a donc besoin
+// d'AUCUN `jest.mock('@desdispos/shared')` pour ces imports (la vraie matrice/le vrai
 // registre y sont exercés). Ce mock n'est requis que côté `parties.controller.spec.ts`, pour une
 // tout autre raison : les DTO évaluent `@IsIn(GAME_SYSTEM_IDS)` au chargement de la classe.
 import {
@@ -36,7 +36,7 @@ import {
   MAX_SLOT_WINDOW_SLOTS,
   partieStatus,
   spanSlots,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { AvailabilityService } from '../availability/availability.service';
 import { EventCancellationMailer } from '../events/event-cancellation-mailer.service';
 import { EVENING_CANCELLED_MESSAGE, EventsService } from '../events/events.service';
@@ -1032,7 +1032,7 @@ export class PartiesService implements PartieSignalsPort {
    * effets. Un refus lève AVANT toute écriture (AC10) : évaluer après avoir écrit laisserait une
    * partie convertie suivie d'une exception, le pire des deux mondes.
    *
-   * La matrice vit dans `@master-jdr/shared` et non ici : le formulaire d'édition la consomme
+   * La matrice vit dans `@desdispos/shared` et non ici : le formulaire d'édition la consomme
    * aussi, pour désactiver les types inatteignables. Deux tables de règles divergeraient.
    */
   async convertKind(id: string, userId: string, dto: ConvertPartieKindDto): Promise<PartieDto> {

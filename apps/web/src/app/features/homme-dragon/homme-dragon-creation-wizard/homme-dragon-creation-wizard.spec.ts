@@ -4,7 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { vi } from 'vitest';
-import type { GameSystemContentDto, HommeDragonDto } from '@master-jdr/shared';
+import type { GameSystemContentDto, HommeDragonDto } from '@desdispos/shared';
 import { HommeDragonCreationWizard } from './homme-dragon-creation-wizard';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { CharacterService } from '../../../core/characters/character.service';

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { AvailabilityDeclarationDto } from '@master-jdr/shared';
+import type { AvailabilityDeclarationDto } from '@desdispos/shared';
 import { AvailabilityService } from './availability.service';
 import { API_BASE } from '../api-base';
 

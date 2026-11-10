@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
+import { CALENDAR_LAYER_KEYS } from '@desdispos/shared';
 import { UpdatePreferencesDto } from './update-preferences.dto';
 
 async function validateDto(body: Record<string, unknown>) {

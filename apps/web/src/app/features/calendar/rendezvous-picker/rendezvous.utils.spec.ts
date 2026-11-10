@@ -1,5 +1,5 @@
-import { isComposableSeance } from '@master-jdr/shared';
-import type { DatableSeanceEntry, EventCardDto, ScenarioDto } from '@master-jdr/shared';
+import { isComposableSeance } from '@desdispos/shared';
+import type { DatableSeanceEntry, EventCardDto, ScenarioDto } from '@desdispos/shared';
 import {
   groupRendezvous,
   jdrComposable,

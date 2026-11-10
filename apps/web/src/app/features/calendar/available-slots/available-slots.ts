@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
-import type { AggregatedSlotDto, AvailableSlotDto, DaySlot } from '@master-jdr/shared';
+import type { AggregatedSlotDto, AvailableSlotDto, DaySlot } from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { AggregatedCreneauCard } from '../aggregated-creneau-card/aggregated-creneau-card';

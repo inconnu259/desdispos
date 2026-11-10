@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import type { CharacterGroupRoleDto } from '@master-jdr/shared';
+import type { CharacterGroupRoleDto } from '@desdispos/shared';
 import { CharacterRolesService } from './character-roles.service';
 import { API_BASE } from '../api-base';
 

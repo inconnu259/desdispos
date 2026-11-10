@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import type { GameSystemCapability, PermissionAction } from '@master-jdr/shared';
+import type { GameSystemCapability, PermissionAction } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { objectLike } from '../common/test-utils/jest-typed';
 import {

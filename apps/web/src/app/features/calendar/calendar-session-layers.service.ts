@@ -1,5 +1,5 @@
 import { Injectable, effect, inject } from '@angular/core';
-import type { CalendarLayerKey } from '@master-jdr/shared';
+import type { CalendarLayerKey } from '@desdispos/shared';
 import { AuthService } from '../../core/auth/auth.service';
 
 /**

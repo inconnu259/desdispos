@@ -1,7 +1,7 @@
 // Fichier généré par scripts/generate-icons.mjs, ne pas modifier.
 // Source : src/assets-src/icons/. Régénérer : `docker compose exec web node scripts/generate-icons.mjs`.
 
-import type { Theme } from '@master-jdr/shared';
+import type { Theme } from '@desdispos/shared';
 
 /** Balises admises dans un dessin (cf. la liste blanche du générateur). */
 export type IconTag = 'path' | 'circle' | 'ellipse' | 'rect' | 'line' | 'polyline' | 'polygon';

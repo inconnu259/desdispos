@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Component, input, signal } from '@angular/core';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 import { HommeDragonPage } from './homme-dragon-page';
 import { HommeDragonSheet } from '../homme-dragon-sheet/homme-dragon-sheet';
 import { AuthService } from '../../../core/auth/auth.service';

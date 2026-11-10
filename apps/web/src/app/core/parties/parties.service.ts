@@ -11,7 +11,7 @@ import type {
   UserSearchResultDto,
   VisibilityLockPathDto,
   XpDistributionDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 
 // `API_BASE` (importé ci-dessus) était masqué par une redéfinition en dur — corrigé pour que l'app

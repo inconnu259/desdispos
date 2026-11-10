@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import type { Theme } from '@master-jdr/shared';
+import type { Theme } from '@desdispos/shared';
 import { ThemeToneService } from '../theme/theme-tone.service';
 import { AppIcon } from './app-icon';
 import { COMMON_ICONS, THEMED_ICONS, type IconName } from './icon-registry.generated';

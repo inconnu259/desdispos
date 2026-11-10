@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { VoteAnswer } from '@master-jdr/shared';
+import type { VoteAnswer } from '@desdispos/shared';
 import { THEMES, TONE_MAP } from '../../core/theme/tones';
 import {
   type VoteParticipation,

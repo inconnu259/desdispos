@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { PartieDto } from '@master-jdr/shared';
+import type { PartieDto } from '@desdispos/shared';
 import { CoverUpload, MAX_COVER_SIZE, coverRefusal } from './cover-upload';
 import { PartiesService } from './parties.service';
 

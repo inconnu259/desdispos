@@ -1,13 +1,13 @@
-// AD-13 : la liste des thèmes valides est déclarée une seule fois, dans @master-jdr/shared —
+// AD-13 : la liste des thèmes valides est déclarée une seule fois, dans @desdispos/shared —
 // ré-exportée ici pour que les sites d'appel existants (import depuis `core/theme/tones`) continuent
 // de fonctionner sans modification.
-import type { Theme } from '@master-jdr/shared';
+import type { Theme } from '@desdispos/shared';
 import { atelierCuivre } from './atelier-cuivre';
 import { foretAncienne } from './foret-ancienne';
 import { grimoireEmeraude } from './grimoire-emeraude';
 
-export type { Theme } from '@master-jdr/shared';
-export { THEMES } from '@master-jdr/shared';
+export type { Theme } from '@desdispos/shared';
+export { THEMES } from '@desdispos/shared';
 
 export const THEME_NAMES: Record<Theme, string> = {
   'grimoire-emeraude': 'Grimoire Émeraude',

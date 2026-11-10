@@ -1,10 +1,10 @@
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto } from '@desdispos/shared';
 import { Test } from '@nestjs/testing';
 
 jest.mock('node:fs/promises', () => ({
   readFile: jest.fn(),
 }));
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   mapEquipmentToPdfFields: jest.fn(() => [
     { field: 'joueur', value: 'Alice', kind: 'text' },
     { field: 'ObjetRow1', value: 'Corde', kind: 'text' },
@@ -13,7 +13,7 @@ jest.mock('@master-jdr/game-rules', () => ({
 }));
 
 import { readFile } from 'node:fs/promises';
-import { mapEquipmentToPdfFields } from '@master-jdr/game-rules';
+import { mapEquipmentToPdfFields } from '@desdispos/game-rules';
 import { EquipmentPdfService } from './equipment-pdf.service';
 import { Logger } from '@nestjs/common';
 

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
-import type { ContentEntryDto, HommeDragonRace } from '@master-jdr/shared';
+import type { ContentEntryDto, HommeDragonRace } from '@desdispos/shared';
 import { ReservePicker } from './reserve-picker';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 

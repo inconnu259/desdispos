@@ -8,7 +8,7 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
-import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS } from '@desdispos/shared';
 import { DURATION_CAP_MESSAGE } from '../../events/seance-span';
 
 /** `HH:MM` en 24 h, heures et minutes paddées. Volontairement strict : la valeur n'est

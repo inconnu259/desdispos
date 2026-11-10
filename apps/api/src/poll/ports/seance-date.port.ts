@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 
 /**
  * Port de la couche 1 : poser la date d'une séance quand un vote est clos (Story 37.8, AD-15).

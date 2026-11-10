@@ -10,7 +10,7 @@ import type {
   MyHommeDragonDto,
   SetReserveSlotDto,
   UpdateHommeDragonDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 
 /**

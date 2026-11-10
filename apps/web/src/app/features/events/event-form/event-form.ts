@@ -9,7 +9,7 @@ import type {
   EventPollOptionInput,
   EventSlot,
   PartieMemberDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';

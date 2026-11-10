@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import type { ScenarioDto, ScenarioStatus } from '@master-jdr/shared';
+import type { ScenarioDto, ScenarioStatus } from '@desdispos/shared';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { ScenarioStatusBadge } from '../scenario-status-badge/scenario-status-badge';

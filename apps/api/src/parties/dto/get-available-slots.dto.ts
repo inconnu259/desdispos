@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS } from '@desdispos/shared';
 import { IsDateString, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 /** Story 47.6 : refus écrit d'une durée de fenêtre hors bornes (ou non entière). */

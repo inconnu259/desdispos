@@ -1,6 +1,6 @@
-// Story 37.5 : registre unique des systèmes de jeu (`GAME_SYSTEMS` de `@master-jdr/shared`) et
+// Story 37.5 : registre unique des systèmes de jeu (`GAME_SYSTEMS` de `@desdispos/shared`) et
 // ses quatre lecteurs. Le VRAI registre est exercé (aucun `jest.mock`) : `transformIgnorePatterns`
-// laisse ts-jest transformer `@master-jdr/*`.
+// laisse ts-jest transformer `@desdispos/*`.
 import {
   GAME_SYSTEMS,
   badgeOf,
@@ -9,7 +9,7 @@ import {
   isOpenForCreation,
   kindsOf,
   type GameSystemCapability,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 const ALL_CAPABILITIES: GameSystemCapability[] = [
   'characters',

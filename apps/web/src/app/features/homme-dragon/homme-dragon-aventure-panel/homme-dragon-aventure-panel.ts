@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
-import type { HommeDragonRefDto, MyHommeDragonDto } from '@master-jdr/shared';
+import type { HommeDragonRefDto, MyHommeDragonDto } from '@desdispos/shared';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { hommeDragonName } from '../../../core/homme-dragon/homme-dragon.util';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

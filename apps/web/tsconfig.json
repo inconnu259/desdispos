@@ -16,8 +16,8 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "paths": {
-      "@master-jdr/shared": ["../../packages/shared/src/index.ts"],
-      "@master-jdr/game-rules": ["../../packages/game-rules/src/index.ts"]
+      "@desdispos/shared": ["../../packages/shared/src/index.ts"],
+      "@desdispos/game-rules": ["../../packages/game-rules/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

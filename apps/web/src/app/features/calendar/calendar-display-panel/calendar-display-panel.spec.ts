@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { CalendarLayerKey } from '@master-jdr/shared';
+import type { CalendarLayerKey } from '@desdispos/shared';
 import { CalendarDisplayPanel } from './calendar-display-panel';
 
 const KEYS: CalendarLayerKey[] = ['mes-indisponibilites', 'mes-disponibilites', 'mes-seances'];

@@ -3,7 +3,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AccountDeletionImpactDto } from '@master-jdr/shared';
+import type { AccountDeletionImpactDto } from '@desdispos/shared';
 import { AccountService } from '../../../core/account/account.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP, type Theme } from '../../../core/theme/tones';

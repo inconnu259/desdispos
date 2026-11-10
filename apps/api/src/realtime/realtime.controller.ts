@@ -11,7 +11,7 @@ import {
 import type { Request } from 'express';
 import { from, interval, merge, of, type Observable } from 'rxjs';
 import { catchError, concatMap, filter, finalize, map, share, takeUntil } from 'rxjs/operators';
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { PermissionService } from '../permissions/permission.service';

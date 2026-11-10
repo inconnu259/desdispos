@@ -1,5 +1,5 @@
 import { Component, inject, input, output } from '@angular/core';
-import type { CalendarLayerKey } from '@master-jdr/shared';
+import type { CalendarLayerKey } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { CalendarLayerToggle } from '../calendar-layer-toggle/calendar-layer-toggle';
 

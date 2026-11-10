@@ -1,4 +1,4 @@
-# CLAUDE.md — master-jdr
+# CLAUDE.md — desdispos
 
 Plateforme web open source de gestion de parties de JDR (multi-systèmes, MJ + joueurs).
 **Vision : `docs/spec.md` · Feuille de route : `docs/backlog.md`.** Lire ces deux fichiers en début de session.
@@ -47,9 +47,12 @@ Docker nommés (cf. `docker-compose.yml`).
 - **Architecture plugin** : systèmes de jeu modulaires, fiche **pilotée par un schéma** (spec §5).
   Penser modularité multi-système et contenu data-driven dès qu'on touche aux systèmes.
 - **Sécurité** : checklist `docs/security.md` ; durcissement (argon2, throttler, Helmet,
-  validation) dès le palier auth. La CI (`.github/workflows/ci.yml`) fait tourner les types et le
-  build de l'API plus tous les tests (unitaires + e2e) — pas le lint, pas le build front, et
-  **aucune analyse statique de sécurité** (pas de Semgrep). Cette revue-là passe par
+  validation) dès le palier auth. La CI (`.github/workflows/ci.yml`) fait tourner le lint (API et
+  web), les types et le build de l'API, le build du front, le contrôle du registre d'icônes et tous
+  les tests (unitaires + e2e, ceux-ci en série : une seule base partagée) ; sa porte `ci-ok` est
+  exigée pour fusionner dans `master` (jeu de règles « Protection master », fusion classique
+  seulement). CodeQL (`codeql.yml`) et `pnpm audit` (`audit.yml`, seuil `high`) tournent à part,
+  hors de `ci-ok`. Ni Semgrep ni revue de sécurité humaine en CI : celle-ci passe par
   `/security-review`.
 - **Langue du code** : ce dépôt déroge à la règle globale « code et commentaires en anglais ».
   Ici, commentaires et messages d'erreur sont **en français**, comme les ~5 200 lignes

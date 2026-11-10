@@ -12,7 +12,7 @@ import {
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
-import type { PartieDto } from '@master-jdr/shared';
+import type { PartieDto } from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { CoverUpload } from '../../../core/parties/cover-upload';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

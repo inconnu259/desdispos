@@ -13,7 +13,7 @@ import type {
   PartySignalsDto,
   SessionPollDto,
   Theme,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { Dashboard } from './dashboard';
 import { MyPartiesService } from '../../core/my-parties/my-parties.service';
 import { InvitationsService } from '../../core/invitations/invitations.service';

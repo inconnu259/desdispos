@@ -1,4 +1,4 @@
-import { MAX_SLOT_WINDOW_SLOTS, type DaySlot } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS, type DaySlot } from '@desdispos/shared';
 import { IsDateString, IsIn, IsInt, Matches, Max, Min } from 'class-validator';
 
 const DAY_SLOTS: DaySlot[] = ['MORNING', 'AFTERNOON', 'EVENING', 'FULL_DAY'];

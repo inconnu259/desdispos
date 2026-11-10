@@ -9,7 +9,7 @@ import type {
   EventBringDto,
   EventCardDto,
   EventEnvyDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
@@ -18,7 +18,7 @@ import { EventsApiService } from '../events-api.service';
 import { EventGamesTab } from './event-games-tab';
 import { GamesSectionStateService } from './games-section-state.service';
 
-const LS_KEY = 'master-jdr.event-games.collapsed-sections';
+const LS_KEY = 'desdispos.event-games.collapsed-sections';
 const HOST = 'host';
 const ME = 'me';
 

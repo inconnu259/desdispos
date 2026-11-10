@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { OpenPollEntry, PartieDto } from '@master-jdr/shared';
+import type { OpenPollEntry, PartieDto } from '@desdispos/shared';
 import { OpenPollsService } from './open-polls.service';
 import { PollService } from './poll.service';
 import { MyPartiesService } from '../my-parties/my-parties.service';

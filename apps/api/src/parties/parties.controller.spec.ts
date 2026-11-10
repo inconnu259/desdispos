@@ -1,9 +1,9 @@
 import { Test } from '@nestjs/testing';
 
 // PartiesController -> create-partie.dto.ts/update-partie.dto.ts -> import RUNTIME (pas `import
-// type`) de GAME_SYSTEMS depuis @master-jdr/shared (ESM, non transformé par ts-jest) — même piège
-// déjà documenté pour THEMES (account.controller.spec.ts) et @master-jdr/game-rules (mémoire projet).
-jest.mock('@master-jdr/shared', () => ({
+// type`) de GAME_SYSTEMS depuis @desdispos/shared (ESM, non transformé par ts-jest) — même piège
+// déjà documenté pour THEMES (account.controller.spec.ts) et @desdispos/game-rules (mémoire projet).
+jest.mock('@desdispos/shared', () => ({
   // Réduit à ce que lisent les DTO (`id`, et `name` pour la lisibilité) — pas la forme complète
   // du registre (Story 37.5).
   GAME_SYSTEMS: [
@@ -15,7 +15,7 @@ jest.mock('@master-jdr/shared', () => ({
   ],
 }));
 
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 import { makeAuthUser } from '../common/test-utils/fixtures';
 import { PartiesController } from './parties.controller';
 import { PartiesService } from './parties.service';

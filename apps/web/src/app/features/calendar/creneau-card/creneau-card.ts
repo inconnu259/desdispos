@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { AvailableSlotDto, DaySlot, SlotStatus } from '@master-jdr/shared';
+import type { AvailableSlotDto, DaySlot, SlotStatus } from '@desdispos/shared';
 import type { IconName } from '../../../core/icons/icon-registry.generated';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

@@ -49,7 +49,7 @@ import type {
   SessionPollDto,
   UpdateEventDto,
   VoteAnswer,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import {
   CALENDAR_LAYER_KEYS,
   DEFAULT_CALENDAR_LAYER_KEYS,
@@ -62,7 +62,7 @@ import {
   isPartieActive,
   sortOptionsChronologically,
   spanEnd,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import {
   AvailabilityService,
   ConflictError,

@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import type { AvailKind, DaySlot } from '@master-jdr/shared';
+import type { AvailKind, DaySlot } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import type { AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';

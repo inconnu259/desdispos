@@ -19,7 +19,7 @@ import type {
   ScenarioDto,
   SeanceDto,
   SessionPollDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
@@ -27,7 +27,7 @@ import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { PollService } from '../../../core/poll/poll.service';
 import { pollRankableOptions } from '../../../core/poll/poll.util';
-import { atelierUrl } from '@master-jdr/shared';
+import { atelierUrl } from '@desdispos/shared';
 import { composeSeanceInfo, toDateKey } from '../../calendar/day-detail.utils';
 import { rankedEntrySlots } from '../../events/event-card.util';
 import {

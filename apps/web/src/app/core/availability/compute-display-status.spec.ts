@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeDisplayStatus } from './compute-display-status';
-import type { AvailabilityDeclarationDto } from '@master-jdr/shared';
+import type { AvailabilityDeclarationDto } from '@desdispos/shared';
 
 const NOW = new Date('2026-06-30T12:00:00Z');
 const WED = new Date('2026-07-01T00:00:00Z'); // getUTCDay() === 3 (Wednesday)

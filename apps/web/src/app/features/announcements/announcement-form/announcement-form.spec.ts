@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
-import type { ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDto } from '@desdispos/shared';
 import { AnnouncementFormComponent } from './announcement-form';
 import { AnnouncementsService } from '../../../core/announcements/announcements.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';

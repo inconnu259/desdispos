@@ -1,8 +1,8 @@
 import type { Request } from 'express';
 
 // AuthController -> AuthService -> import RUNTIME (pas `import type`) de THEMES depuis
-// @master-jdr/shared (ESM, non transformé par ts-jest) — même piège déjà documenté pour
-// GAME_SYSTEMS/@master-jdr/game-rules (Story 28.4, revue de code).
+// @desdispos/shared (ESM, non transformé par ts-jest) — même piège déjà documenté pour
+// GAME_SYSTEMS/@desdispos/game-rules (Story 28.4, revue de code).
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 

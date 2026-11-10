@@ -16,10 +16,10 @@ import type {
   MyCalendarSeanceEntry,
   PartieKind,
   PartieProgress,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 // Import RUNTIME du registre des systèmes (Story 40.1) : la famille de la partie choisit qui
 // participe à une séance datée dans les ports du calendrier. Jamais `import type` sur une valeur.
-import { familyOf, isPartieActive, partieStatus, spanSlots } from '@master-jdr/shared';
+import { familyOf, isPartieActive, partieStatus, spanSlots } from '@desdispos/shared';
 import type { ActivePartiesPort } from '../availability/ports/active-parties.port';
 import type { OccupiedSpan, OccupiedSpansPort } from '../availability/ports/occupied-spans.port';
 import type {

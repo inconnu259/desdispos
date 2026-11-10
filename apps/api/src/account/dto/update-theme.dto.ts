@@ -1,5 +1,5 @@
 import { IsIn } from 'class-validator';
-import { THEMES, type Theme } from '@master-jdr/shared';
+import { THEMES, type Theme } from '@desdispos/shared';
 
 export class UpdateThemeDto {
   @IsIn(THEMES)

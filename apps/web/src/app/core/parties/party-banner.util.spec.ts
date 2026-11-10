@@ -1,4 +1,4 @@
-import { THEMES, type Theme } from '@master-jdr/shared';
+import { THEMES, type Theme } from '@desdispos/shared';
 import {
   BANNER_BOUNDS,
   BANNER_VIEWBOX_HEIGHT,

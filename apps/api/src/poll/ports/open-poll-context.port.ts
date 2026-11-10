@@ -1,4 +1,4 @@
-import type { OrganizerCan, PartieStatus } from '@master-jdr/shared';
+import type { OrganizerCan, PartieStatus } from '@desdispos/shared';
 
 /**
  * Ce que la couche 2 sait d'un sondage ouvert et que `poll/` ne peut pas lire lui-même (Story 44.2, AD-15) :

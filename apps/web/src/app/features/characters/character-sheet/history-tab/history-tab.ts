@@ -1,6 +1,6 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import type { CharacterSnapshotDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { CharacterSnapshotDto, GameSystemContentDto } from '@desdispos/shared';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../../core/theme/tone-format';

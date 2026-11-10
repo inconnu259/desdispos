@@ -1,4 +1,4 @@
-import { spanSlots, type DaySlot } from '@master-jdr/shared';
+import { spanSlots, type DaySlot } from '@desdispos/shared';
 import { composeCellKey } from './selection.utils';
 import { toDateKey } from './day-detail.utils';
 
@@ -11,7 +11,7 @@ export interface ComposeStart {
 /**
  * Story 47.4 — les créneaux qu'allument les plages des départs désignés, en clés `AAAA-MM-JJ|CRÉNEAU`
  * (`composeCellKey`), départs EXCLUS : un départ garde son trait tireté (`band--composed`), les autres bandes de
- * sa plage prennent l'aperçu. Le dépliage est celui de `spanSlots` (`@master-jdr/shared`), seule règle de
+ * sa plage prennent l'aperçu. Le dépliage est celui de `spanSlots` (`@desdispos/shared`), seule règle de
  * couverture : soir → matin du lendemain. À 1 créneau rien n'est allumé (la grille reste celle d'avant), et une
  * journée entière n'existe qu'à 1 : au-delà, elle n'a pas de plage.
  */

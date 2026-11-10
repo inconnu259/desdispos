@@ -1,5 +1,5 @@
 import { IsString, Matches } from 'class-validator';
-import type { ExtendPollDto as ExtendPollPayload } from '@master-jdr/shared';
+import type { ExtendPollDto as ExtendPollPayload } from '@desdispos/shared';
 
 /** Clé de jour `YYYY-MM-DD` (la validité calendaire et les bornes sont vérifiées par le service). */
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;

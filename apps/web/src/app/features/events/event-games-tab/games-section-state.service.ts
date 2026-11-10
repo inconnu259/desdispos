@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 /** Une seule clé pour toutes les sections : ce que l'on retient, ce sont les sections que j'ai repliées. */
-const LS_KEY = 'master-jdr.event-games.collapsed-sections';
+const LS_KEY = 'desdispos.event-games.collapsed-sections';
 
 /**
  * Story 49.1 — l'état « replié » des sections de l'onglet des jeux sur place, par section (`host`, puis les

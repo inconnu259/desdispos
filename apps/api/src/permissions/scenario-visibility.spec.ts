@@ -1,4 +1,4 @@
-import type { PartieKind, ScenarioStatus } from '@master-jdr/shared';
+import type { PartieKind, ScenarioStatus } from '@desdispos/shared';
 import {
   HIDDEN_DRAFT_POLL_WHERE,
   HIDDEN_DRAFT_SCENARIO_WHERE,

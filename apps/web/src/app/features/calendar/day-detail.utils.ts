@@ -1,10 +1,10 @@
-import { spanSlots } from '@master-jdr/shared';
+import { spanSlots } from '@desdispos/shared';
 import type {
   AvailabilityDeclarationDto,
   CalendarLayerKey,
   DaySlot,
   SlotStatus,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { computeDisplayStatus } from '../../core/availability/compute-display-status';
 import type { AgendaEntry } from './calendar-agenda-view/calendar-agenda-view';
 import type { VoteParticipation } from './poll-track.utils';
@@ -20,7 +20,7 @@ import { isSpan, spanCompactLabel, spanSentence, spanShortLabel } from './span-l
  */
 
 /** Les trois créneaux nommés du jour. `FULL_DAY` n'en est pas un : c'est un joker qui les couvre
- *  tous les trois en lecture. Dérivé de `DaySlot` (`@master-jdr/shared`) plutôt que dupliqué à la
+ *  tous les trois en lecture. Dérivé de `DaySlot` (`@desdispos/shared`) plutôt que dupliqué à la
  *  main, pour ne pas driver silencieusement si `DaySlot` évolue. */
 export type RailSlot = Exclude<DaySlot, 'FULL_DAY'>;
 
@@ -239,7 +239,7 @@ export function entryCoversCell(e: AgendaEntry, dateKey: string, slot: DaySlot):
 
 /**
  * Story 47.5 — les jours (`YYYY-MM-DD`, dans l'ordre) que couvre une entrée : son jour, ou tous les jours d'une
- * plage. Dérivé de `spanSlots` (`@master-jdr/shared`, LA fonction des créneaux couverts) sur le nombre de créneaux
+ * plage. Dérivé de `spanSlots` (`@desdispos/shared`, LA fonction des créneaux couverts) sur le nombre de créneaux
  * que `entryIndexRange` lit dans l'entrée — jamais un second parcours de calendrier. Une entrée sans date : aucun.
  */
 export function entryCoveredDays(e: AgendaEntry): string[] {

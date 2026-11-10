@@ -1,10 +1,5 @@
-import { hasAnswered } from '@master-jdr/shared';
-import type {
-  DaySlot,
-  EventCardDto,
-  EventParticipantDto,
-  OpenPollOption,
-} from '@master-jdr/shared';
+import { hasAnswered } from '@desdispos/shared';
+import type { DaySlot, EventCardDto, EventParticipantDto, OpenPollOption } from '@desdispos/shared';
 import type { SituationValue, StatusBadgeState } from '../../core/status/status-derivation';
 import { daysBetweenKeys, imminenceIntensity } from '../../core/status/status-badge.model';
 import { fillTone } from '../../core/theme/tone-format';
@@ -623,7 +618,7 @@ export function pollSummaryLabel(options: readonly { date: string }[], tone: Eve
 /** Un créneau candidat avec le décompte de ses réponses, tel que la confirmation « Fixer la date » le liste. */
 export interface RankedPollSlot {
   id: string;
-  /** Jour et moment du créneau : `bestOption` (@master-jdr/shared) en a besoin pour le classer. */
+  /** Jour et moment du créneau : `bestOption` (@desdispos/shared) en a besoin pour le classer. */
   date: string;
   slot: DaySlot;
   /** « sam. 25 oct. · soir ». */

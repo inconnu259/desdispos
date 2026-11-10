@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { vi } from 'vitest';
-import type { GameSystemContentDto, GameSystemSchemaDto } from '@master-jdr/shared';
+import type { GameSystemContentDto, GameSystemSchemaDto } from '@desdispos/shared';
 import { CharacterWizard } from './character-wizard';
 import { CharacterService } from '../../../core/characters/character.service';
 import { PartiesService } from '../../../core/parties/parties.service';

@@ -1,4 +1,4 @@
-import type { InscriptionStatus } from '@master-jdr/shared';
+import type { InscriptionStatus } from '@desdispos/shared';
 
 /** Ce qu'il faut savoir d'une soirée à venir pour dire qui y participe (épic 49). */
 export interface ParticipantsOfInput {

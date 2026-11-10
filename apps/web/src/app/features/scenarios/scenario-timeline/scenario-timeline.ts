@@ -18,7 +18,7 @@ import { map } from 'rxjs/operators';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { Router } from '@angular/router';
-import type { CharacterDto, PartieKind, ScenarioDto, SeanceDto } from '@master-jdr/shared';
+import type { CharacterDto, PartieKind, ScenarioDto, SeanceDto } from '@desdispos/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

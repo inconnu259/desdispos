@@ -1,4 +1,4 @@
-import type { PartieDto, PartieSort, PartySignalsDto } from '@master-jdr/shared';
+import type { PartieDto, PartieSort, PartySignalsDto } from '@desdispos/shared';
 import { dominantCategory, type SignalCategory } from './party-signal-priority';
 import { partieKindSortRank } from './parties.util';
 

@@ -1,4 +1,4 @@
-import type { PartieDto, PartySignalsDto } from '@master-jdr/shared';
+import type { PartieDto, PartySignalsDto } from '@desdispos/shared';
 import { pinFavorites, sortParties } from './party-sort';
 
 function makeParty(overrides: Partial<PartieDto> = {}): PartieDto {

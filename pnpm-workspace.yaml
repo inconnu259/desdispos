@@ -48,6 +48,9 @@ overrides:
   fast-uri: ^3.1.7
   # mysql2 : tiré par le CLI Prisma pour ses adaptateurs ; l'application n'utilise que PostgreSQL.
   mysql2: ^3.22.0
+  # zod < 4.6.6 : épuisement mémoire sur de grandes collections contraintes. @angular/forms 22.2.5
+  # épingle 4.4.3 ; même version majeure. Retrait possible quand Angular épinglera >= 4.6.6.
+  'zod@^4': ^4.6.6
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Vulnérabilités écartées de `pnpm audit` — voir docs/security.md § Dépendances

@@ -33,6 +33,24 @@ overrides:
   # 2.2.0 exactement : la surcharge l'en sort (version mineure, envois couverts par les tests).
   # Retrait possible quand @nestjs/platform-express épinglera >= 2.5.0.
   multer: ^2.5.0
+  # Copies indirectes (mailer/mjml, Prisma, Jest, ESLint, jsdom), corrigées SANS changer de version
+  # majeure : un sélecteur par majeure présente, pour ne jamais imposer une majeure à un appelant.
+  # Correctifs d'avis élevés (DoS, analyse, validation TLS) ; aucun chemin d'exécution de l'API ne
+  # dépend d'une API retirée entre ces versions de correctif.
+  'undici@^6': ^6.29.1
+  'undici@^7': ^7.30.1
+  'js-yaml@^3': ^3.15.2
+  'js-yaml@^4': ^4.3.2
+  'brace-expansion@^1': ^1.1.20
+  'brace-expansion@^2': ^2.1.6
+  'brace-expansion@^5': ^5.0.11
+  source-map-js: ^1.2.2
+  fast-uri: ^3.1.7
+  # mysql2 : tiré par le CLI Prisma pour ses adaptateurs ; l'application n'utilise que PostgreSQL.
+  mysql2: ^3.22.0
+  # zod < 4.6.6 : épuisement mémoire sur de grandes collections contraintes. @angular/forms 22.2.5
+  # épingle 4.4.3 ; même version majeure. Retrait possible quand Angular épinglera >= 4.6.6.
+  'zod@^4': ^4.6.6
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Vulnérabilités écartées de `pnpm audit` — voir docs/security.md § Dépendances
@@ -73,3 +91,13 @@ auditConfig:
     - GHSA-wqvq-jvpq-h66f
     - GHSA-r7g4-qg5f-qqm2
     - GHSA-p6gq-j5cr-w38f
+
+    # ── nodemailer 9.0.5 (via @nestjs-modules/mailer > preview-email) ──
+    # Le mailer charge `preview-email` au démarrage (`require` dans un try) mais ne l'APPELLE que si
+    # son option `preview` est activée — jamais dans cette API (aucune option `preview` dans
+    # src/email). Le corriger imposerait nodemailer 10 (majeure) à un appelant qui ne l'attend pas :
+    # refusé, même règle que ci-dessus. L'envoi réel passe par la dépendance DIRECTE nodemailer 10,
+    # non concernée par ces avis.
+    # CONDITION DE RETRAIT : que preview-email (ou le mailer) accepte nodemailer >= 10.0.6.
+    - GHSA-2x7j-588g-ccc2
+    - GHSA-v53p-9fqp-m79j

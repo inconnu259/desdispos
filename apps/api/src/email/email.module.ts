@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
-import { MailerModule } from '@nestjs-modules/mailer';
+import { MailerModule, type MailerOptions } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
+import type { MailDefaults } from 'nodemailer/lib/mailer';
 import { EmailService } from './email.service';
 import { mailRequireTls } from '../config/env';
 
@@ -27,6 +28,11 @@ function readMailConfig() {
     MailerModule.forRootAsync({
       useFactory: () => {
         const { host, from, port } = readMailConfig();
+        // Valeurs par défaut des messages, typées par nodemailer 10 (`MailDefaults`). Le mailer
+        // (@nestjs-modules/mailer) type encore `defaults` comme des options de TRANSPORT, selon le
+        // découpage de @types/nodemailer 8 où les deux étaient fusionnés : décalage de types seulement,
+        // nodemailer reçoit ces défauts à l'exécution exactement comme avant.
+        const defaults: MailDefaults = { from };
         return {
           transport: {
             host,
@@ -46,9 +52,7 @@ function readMailConfig() {
                   }
                 : undefined,
           },
-          defaults: {
-            from,
-          },
+          defaults: defaults as MailerOptions['defaults'],
           template: {
             dir: join(__dirname, 'templates'),
             adapter: new HandlebarsAdapter(),

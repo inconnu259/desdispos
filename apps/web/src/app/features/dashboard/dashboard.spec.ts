@@ -2012,6 +2012,9 @@ describe('Dashboard — retirer de sa liste (Story 42.5)', () => {
     dialog.open.mockReturnValue({ afterClosed: () => of(true) });
 
     buttons(fixture)[0].click();
+    // La fenêtre est chargée à la demande (`import()` dans confirmHide) : `whenStable()` n'attend pas
+    // ce chargement. On attend l'effet réel du geste, sans quoi le test dépend d'un délai.
+    await vi.waitFor(() => expect(myPartiesSvc.hide).toHaveBeenCalled());
     await fixture.whenStable();
 
     const data = dialog.open.mock.calls[0][1].data;
@@ -2028,6 +2031,7 @@ describe('Dashboard — retirer de sa liste (Story 42.5)', () => {
     dialog.open.mockReturnValue({ afterClosed: () => of(false) });
 
     buttons(fixture)[0].click();
+    await vi.waitFor(() => expect(dialog.open).toHaveBeenCalled());
     await fixture.whenStable();
 
     expect(dialog.open).toHaveBeenCalledTimes(1);
@@ -2042,6 +2046,7 @@ describe('Dashboard — retirer de sa liste (Story 42.5)', () => {
     myPartiesSvc.hide.mockRejectedValue(new Error('400'));
 
     buttons(fixture)[0].click();
+    await vi.waitFor(() => expect(myPartiesSvc.hide).toHaveBeenCalled());
     await fixture.whenStable();
     fixture.detectChanges();
 

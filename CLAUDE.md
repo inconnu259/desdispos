@@ -17,7 +17,7 @@ complète pour Claude Code — les deux se lisent ensemble, sans redite.
   sur une valeur il l'efface et casse à l'exécution.
 - `packages/game-rules` : règles de jeu exécutables (Ryuutama) + leurs tests Vitest.
 - Base : **PostgreSQL 17**.
-- Versions épinglées : Node 24 LTS, pnpm 11.8, Angular 22, Nest 11, Prisma 7.
+- Versions épinglées : Node 24 LTS, pnpm 11.28, Angular 22, Nest 11, Prisma 7.
 
 ## ⛔ RÈGLE ABSOLUE — aucune installation de dépendance sans accord explicite
 

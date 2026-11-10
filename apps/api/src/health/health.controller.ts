@@ -8,7 +8,7 @@ export class HealthController {
 
   @Get()
   async check(): Promise<HealthStatus> {
-    let db: 'up' | 'down' = 'down';
+    let db: 'up' | 'down';
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       db = 'up';

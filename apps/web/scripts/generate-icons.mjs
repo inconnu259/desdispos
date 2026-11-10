@@ -410,6 +410,19 @@ export function renderRegistry(registry) {
 const normalize = (text) => text.replace(/\r\n/g, '\n');
 
 /**
+ * Registre déjà écrit, normalisé ; `null` s'il n'existe pas encore. Lu directement, sans
+ * `existsSync` préalable : aucune fenêtre entre la vérification et la lecture du fichier.
+ */
+function readExisting(file) {
+  try {
+    return normalize(readFileSync(file, 'utf8'));
+  } catch (e) {
+    if (e && e.code === 'ENOENT') return null;
+    throw e;
+  }
+}
+
+/**
  * Point d'entrée programmatique. Renvoie le code de sortie ; n'écrit rien en cas de refus.
  * @param {{ srcDir?: string, outFile?: string, check?: boolean, log?: (m: string) => void, error?: (m: string) => void }} options
  */
@@ -426,7 +439,7 @@ export function run({ srcDir = DEFAULT_SRC, outFile = DEFAULT_OUT, check = false
   }
   const where = relative(process.cwd(), outFile) || outFile;
   if (check) {
-    const current = existsSync(outFile) ? normalize(readFileSync(outFile, 'utf8')) : null;
+    const current = readExisting(outFile);
     if (current !== text) {
       error(
         `generate-icons : ${where} n’est pas à jour avec les SVG sources. Relancer « node scripts/generate-icons.mjs » et committer le résultat.`,
@@ -436,7 +449,7 @@ export function run({ srcDir = DEFAULT_SRC, outFile = DEFAULT_OUT, check = false
     log(`generate-icons : ${where} est à jour.`);
     return 0;
   }
-  const current = existsSync(outFile) ? normalize(readFileSync(outFile, 'utf8')) : null;
+  const current = readExisting(outFile);
   if (current === text) {
     log(`generate-icons : ${where} déjà à jour.`);
     return 0;

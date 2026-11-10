@@ -132,6 +132,14 @@ async function setup(level: number, reserve?: (string | null)[]) {
 }
 
 describe('ReserveSection (Story 33.6)', () => {
+  // Les requêtes portent sur tout le document (cf. `el` ci-dessous). Un autre fichier de test
+  // exécuté avant dans le même processus peut y laisser des éléments orphelins (fenêtres,
+  // superpositions) : comptés ici, ils faisaient échouer « niveau 1 » par intermittence en CI
+  // (5 boutons trouvés au lieu de 0). Chaque cas repart donc d'un <body> vide.
+  beforeEach(() => {
+    document.body.replaceChildren();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     TestBed.resetTestingModule();

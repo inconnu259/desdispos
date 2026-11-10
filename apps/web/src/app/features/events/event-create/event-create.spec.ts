@@ -55,7 +55,12 @@ const member = (userId: string, displayName: string): PartieMemberDto => ({
   joinedAt: '2026-01-01T00:00:00.000Z',
 });
 /** L'hôte (u1) figure parmi les membres du groupe : il ne doit jamais être proposé. */
-const MEMBERS = [member('u1', 'Léa'), member('u2', 'Zoé'), member('u3', 'Sam'), member('u4', 'Max')];
+const MEMBERS = [
+  member('u1', 'Léa'),
+  member('u2', 'Zoé'),
+  member('u3', 'Sam'),
+  member('u4', 'Max'),
+];
 
 describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)', () => {
   let api: { create: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn> };
@@ -84,7 +89,10 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
         { provide: ThemeToneService, useValue: { tone: signal(TONE) } },
         {
           provide: BreakpointObserver,
-          useValue: { isMatched: () => true, observe: () => of({ matches: true, breakpoints: {} }) },
+          useValue: {
+            isMatched: () => true,
+            observe: () => of({ matches: true, breakpoints: {} }),
+          },
         },
       ],
     }).compileComponents();
@@ -124,7 +132,16 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
     expect(panel.classList).toContain('detail-surface-panel--wide');
     expect(panel.getAttribute('aria-label')).toBe(TONE['partie.ralliement_event_create_title']);
 
-    const order = ['.ec__name', '.ec__date-mode', '.ec__day', '.ec__slot', '.ec__place', '.ec__time', '.ec__note', '.ec__participation'];
+    const order = [
+      '.ec__name',
+      '.ec__date-mode',
+      '.ec__day',
+      '.ec__slot',
+      '.ec__place',
+      '.ec__time',
+      '.ec__note',
+      '.ec__participation',
+    ];
     const nodes = order.map((sel) => q(sel)!);
     for (let i = 1; i < nodes.length; i++) {
       expect(
@@ -134,9 +151,9 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
     }
     expect(q<HTMLInputElement>('.ec__time')!.type).toBe('time');
     expect(q<HTMLInputElement>('.ec__day')!.type).toBe('date');
-    const poll = Array.from(document.body.querySelectorAll<HTMLButtonElement>('.ec__date-mode button')).find(
-      (b) => (b.textContent ?? '').trim() === TONE['partie.ralliement_event_date_poll'],
-    )!;
+    const poll = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('.ec__date-mode button'),
+    ).find((b) => (b.textContent ?? '').trim() === TONE['partie.ralliement_event_date_poll'])!;
     // Story 40.5 : le sondage de dates est offert à la création.
     expect(poll.disabled).toBe(false);
     // Le créneau ne propose jamais « Journée ».
@@ -241,17 +258,13 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
 
     api.create.mockRejectedValueOnce({ status: 0 });
     await click('.ec__submit');
-    expect(q('.ec__error')?.textContent?.trim()).toBe(
-      TONE['partie.ralliement_event_create_error'],
-    );
+    expect(q('.ec__error')?.textContent?.trim()).toBe(TONE['partie.ralliement_event_create_error']);
     expect(fixture.componentInstance.created()).toEqual(CARD);
   });
 
   describe('réserver une place à des membres (Story 40.4)', () => {
-    const chips = () =>
-      Array.from(document.body.querySelectorAll<HTMLButtonElement>('.ec__chip'));
-    const chipOf = (name: string) =>
-      chips().find((b) => (b.textContent ?? '').includes(name))!;
+    const chips = () => Array.from(document.body.querySelectorAll<HTMLButtonElement>('.ec__chip'));
+    const chipOf = (name: string) => chips().find((b) => (b.textContent ?? '').includes(name))!;
     const limited = TONE['partie.ralliement_event_participation_limited'];
 
     it('le sélecteur n’apparaît qu’avec des places limitées ; l’hôte n’est jamais proposé ; aide « rendue aux autres si déclinée »', async () => {
@@ -374,10 +387,7 @@ describe('EventCreate — fenêtre de création d’une conjonction (Story 40.1)
     const POLL_LABEL = TONE['partie.ralliement_event_date_poll'];
 
     /** Passe en mode sondage et place les créneaux (jour + créneau + « Ajouter »). */
-    async function addSlots(
-      h: Awaited<ReturnType<typeof mount>>,
-      entries: [number, string][],
-    ) {
+    async function addSlots(h: Awaited<ReturnType<typeof mount>>, entries: [number, string][]) {
       for (const [days, slot] of entries) {
         await h.type('.ec__poll-day', dayKey(days));
         await h.toggle('.ec__poll-slot', slot);

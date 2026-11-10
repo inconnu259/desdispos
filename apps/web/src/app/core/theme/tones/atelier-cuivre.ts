@@ -281,7 +281,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'account.calendar_intents_subtitle': 'Ce que je veux voir en ouvrant le registre.',
   // Story 52.6 — la case « Me rappeler de déclarer mes dispos » (libellé identique dans les trois thèmes).
   'account.availability_reminder_label': 'Me rappeler de déclarer mes dispos',
-  'account.availability_reminder_hint': 'Un rappel apparaît sur le tableau de bord quand rien n’est consigné pour les quatre semaines à venir.',
+  'account.availability_reminder_hint':
+    'Un rappel apparaît sur le tableau de bord quand rien n’est consigné pour les quatre semaines à venir.',
   'account.calendar_intent.disponibilites': 'Mes disponibilités & indisponibilités',
   'account.calendar_intent.seances': 'Mes séances confirmées',
   'account.calendar_intent.votes': 'Les votes en cours',
@@ -413,7 +414,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   /* — tableau de bord — */
   // Story 52.5 — le rappel « Dispos à déclarer » en tête du tableau de bord (titre identique dans les trois thèmes).
   'dashboard.reminder_title': 'Dispos à déclarer',
-  'dashboard.reminder_body': 'Aucune disponibilité au registre horaire pour les quatre semaines à venir.',
+  'dashboard.reminder_body':
+    'Aucune disponibilité au registre horaire pour les quatre semaines à venir.',
   // Story 52.6 — faire taire le rappel : bouton et « Annuler » identiques dans les trois thèmes, confirmation et échec par thème.
   'dashboard.reminder_silence': 'Ne plus me le rappeler',
   'dashboard.reminder_undo': 'Annuler',
@@ -494,8 +496,7 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'partie.cover_remove_error': 'La plaque n’a pu être retirée. Réessayez.',
   'partie.cover_changed': 'Plaque changée',
   'partie.cover_removed': 'Plaque retirée',
-  'partie.cover_remove_confirm':
-    'Retirer la plaque ? La bannière générée reprendra sa place.',
+  'partie.cover_remove_confirm': 'Retirer la plaque ? La bannière générée reprendra sa place.',
   'partie.cover_reject_type': 'Seuls les formats JPEG, PNG et WEBP sont admis.',
   'partie.cover_reject_size': 'Ce fichier dépasse 5 Mo : réduisez-le avant dépôt.',
   'partie.save_error': 'Cette mission n’a pu être enregistrée. Réessayez.',
@@ -511,8 +512,10 @@ export const atelierCuivre: Record<ToneKey, string> = {
   // trois thèmes (NEUTRAL_KEYS), et sans mot du JDR pour le mode soirée.
   'partie.mode_plain_quete': 'Jeu de rôle',
   'partie.mode_plain_ralliement': 'Soirée entre amis',
-  'partie.kind_plain_ONE_SHOT': 'Une seule séance : l’histoire commence et se termine le même soir.',
-  'partie.kind_plain_CAMPAGNE_LINEAIRE': 'Une histoire suivie sur plusieurs séances, avec la même troupe.',
+  'partie.kind_plain_ONE_SHOT':
+    'Une seule séance : l’histoire commence et se termine le même soir.',
+  'partie.kind_plain_CAMPAGNE_LINEAIRE':
+    'Une histoire suivie sur plusieurs séances, avec la même troupe.',
   'partie.kind_plain_CAMPAGNE_EPISODIQUE':
     'Plusieurs séances complètes chacune ; les joueurs peuvent changer d’une séance à l’autre.',
   'partie.ralliement_kind_plain_ONE_SHOT':
@@ -629,7 +632,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'partie.ralliement_event_pending_text': '{name} — invité·e, n’a pas encore accepté',
   'partie.ralliement_event_situation_reserved':
     'Une place vous est réservée à cette réunion : acceptez-la ou déclinez-la.',
-  'partie.ralliement_event_situation_reserved_past': 'Une place vous était réservée à cette réunion.',
+  'partie.ralliement_event_situation_reserved_past':
+    'Une place vous était réservée à cette réunion.',
   'partie.ralliement_event_accept_error':
     'Votre acceptation de cette place à la réunion n’a pu être enregistrée. Réessayez.',
   'partie.ralliement_event_decline_error':
@@ -849,7 +853,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'scenarios.seance_summary_mj_waiting': 'N’ont pas encore répondu : {names}',
   'scenarios.seance_summary_see_in_calendar': 'Voir dans le calendrier →',
   'scenarios.seance_situation_fix_date': 'Fixer la date…',
-  'scenarios.close_poll_confirm': 'Clôturer le scrutin sans fixer de date ? Les réponses ne pourront plus changer.',
+  'scenarios.close_poll_confirm':
+    'Clôturer le scrutin sans fixer de date ? Les réponses ne pourront plus changer.',
   'status.seance_poll_open': 'Vote en cours',
   'status.seance_inscriptions_ouvertes': 'Inscriptions ouvertes',
   'status.seance_programmee': 'Programmée',
@@ -1072,7 +1077,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   // Story 52.2 — le mode déclaration : bouton et bandeau d'aide (libellés du bouton identiques dans les trois thèmes).
   'calendar.declare_btn': 'Déclarer mes dispos',
   'calendar.declare_done': 'Terminer',
-  'calendar.declare_banner': 'Sélectionnez les créneaux où vous êtes disponible ou non, puis validez.',
+  'calendar.declare_banner':
+    'Sélectionnez les créneaux où vous êtes disponible ou non, puis validez.',
   // Story 52.3 — le bilan d'un lot enregistré en mode déclaration (une journée compte pour 1 créneau).
   'calendar.declared_available_one': '{n} créneau consigné disponible',
   'calendar.declared_available_many': '{n} créneaux consignés disponibles',
@@ -1173,7 +1179,8 @@ export const atelierCuivre: Record<ToneKey, string> = {
   'calendar.compose_deadline_hint_today': 'Par défaut : aujourd’hui.',
   'calendar.compose_deadline_past': 'La clôture du scrutin ne peut pas être passée.',
   'calendar.compose_deadline_ended_tag': 'échue',
-  'calendar.destiny_reopen_vote': 'Pour rouvrir le scrutin, révisez les dates et repoussez la clôture.',
+  'calendar.destiny_reopen_vote':
+    'Pour rouvrir le scrutin, révisez les dates et repoussez la clôture.',
   'calendar.selbar_scope_aria': 'Portée de la sélection',
   'calendar.selbar_toolbar_aria': 'Commandes de la sélection',
   /* — panneau de contraintes — */

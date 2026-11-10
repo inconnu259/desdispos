@@ -794,7 +794,14 @@ describe('PollService', () => {
 
       expect(duration.setDurationInTx).toHaveBeenCalledWith(anyOf(Object), 'poll1');
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-      expect(order).toEqual(['proprietaire', 'verrou', 'relit-vote', 'relit-option', 'ferme', 'date']);
+      expect(order).toEqual([
+        'proprietaire',
+        'verrou',
+        'relit-vote',
+        'relit-option',
+        'ferme',
+        'date',
+      ]);
       // La date écrite vient de l'option RELUE sous le verrou.
       expect(seanceDate.chooseDate).toHaveBeenCalledWith(anyOf(Object), 'poll1', d, 'EVENING');
     });

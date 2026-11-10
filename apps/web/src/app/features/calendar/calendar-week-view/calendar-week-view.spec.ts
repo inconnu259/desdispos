@@ -1412,7 +1412,9 @@ describe('CalendarWeekView — sceller depuis la barre de sélection (Story 36.1
   it('Story 47.5 — sealCandidate d’une plage porte « début → fin », pas seulement le créneau de départ', () => {
     create({
       canSeal: true,
-      entries: [{ ...voteEntry(2, 'EVENING'), endDate: dayKey(4), endSlot: 'AFTERNOON' } as AgendaEntry],
+      entries: [
+        { ...voteEntry(2, 'EVENING'), endDate: dayKey(4), endSlot: 'AFTERNOON' } as AgendaEntry,
+      ],
     });
     selectSingle(2, 'EVENING');
     const candidate = (fixture.componentInstance as any).sealCandidate();
@@ -1602,7 +1604,7 @@ describe('CalendarWeekView — une plage sur la semaine (Story 47.3)', () => {
     expect(label).toContain('au dimanche');
   });
 
-  it('chaque cellule couverte garde le style d\'une cellule d\'événement, même sans texte', () => {
+  it("chaque cellule couverte garde le style d'une cellule d'événement, même sans texte", () => {
     create([weekend()]);
     expect(cellAt('AFTERNOON', 5).classList.contains('has-event')).toBe(true);
     expect(cellAt('EVENING', 5).classList.contains('has-event')).toBe(true);
@@ -1620,7 +1622,9 @@ describe('CalendarWeekView — une plage sur la semaine (Story 47.3)', () => {
   });
 
   it('une plage commencée la semaine d’avant : la première cellule visible reprend « ← »', () => {
-    create([weekend({ date: dayKey(-2), slot: 'EVENING', endDate: dayKey(1), endSlot: 'AFTERNOON' })]);
+    create([
+      weekend({ date: dayKey(-2), slot: 'EVENING', endDate: dayKey(1), endSlot: 'AFTERNOON' }),
+    ]);
     const titles = Array.from(el.querySelectorAll('.ev-title')).map((n) => n.textContent?.trim());
     expect(titles).toEqual(['← Week-end jeux']);
   });
@@ -1812,7 +1816,9 @@ describe('CalendarWeekView — un tap suffit en mode déclaration (Story 52.3)',
     fixture.componentInstance.slotSelected.subscribe(selected);
 
     tap(cellAt('EVENING', 2));
-    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['EVENING']);
+    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual([
+      'EVENING',
+    ]);
     expect(barEl()).not.toBeNull();
     expect(fixture.componentInstance['currentCell']()?.slot).toBe('EVENING');
 
@@ -1826,7 +1832,9 @@ describe('CalendarWeekView — un tap suffit en mode déclaration (Story 52.3)',
     create();
     headerAt(3).click();
     fixture.detectChanges();
-    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['FULL_DAY']);
+    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual([
+      'FULL_DAY',
+    ]);
     expect(fixture.componentInstance['currentCell']()?.slot).toBe('FULL_DAY');
 
     headerAt(3).click();
@@ -1926,7 +1934,9 @@ describe('CalendarWeekView — un tap suffit en mode déclaration (Story 52.3)',
 
     header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     fixture.detectChanges();
-    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual(['FULL_DAY']);
+    expect(fixture.componentInstance['selectedCells']().map((c: any) => c.slot)).toEqual([
+      'FULL_DAY',
+    ]);
 
     header.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
     fixture.detectChanges();

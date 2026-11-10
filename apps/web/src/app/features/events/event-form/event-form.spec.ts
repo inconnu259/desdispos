@@ -94,13 +94,17 @@ describe('EventForm — modification d’une conjonction à sondage (Story 40.5)
     const base = pollCard(dayKey(5));
     const long = { ...base, seance: { ...base.seance!, durationSlots: 3 } };
     const { el } = await mount(long);
-    const chips = Array.from(el.querySelectorAll('.ec__chip-label')).map((n) => n.textContent ?? '');
+    const chips = Array.from(el.querySelectorAll('.ec__chip-label')).map(
+      (n) => n.textContent ?? '',
+    );
     expect(chips).toHaveLength(2);
     for (const text of chips) expect(text).toContain('→');
     TestBed.resetTestingModule();
 
     const single = await mount(base);
-    const plain = Array.from(single.el.querySelectorAll('.ec__chip-label')).map((n) => n.textContent ?? '');
+    const plain = Array.from(single.el.querySelectorAll('.ec__chip-label')).map(
+      (n) => n.textContent ?? '',
+    );
     for (const text of plain) expect(text).not.toContain('→');
   });
 
@@ -207,7 +211,9 @@ describe('EventForm — calendrier du groupe et brouillon (Story 40.5b)', () => 
     expect(el.querySelector('.ec__poll-calendar-btn')).toBeNull();
 
     const toggles = Array.from(el.querySelectorAll<HTMLButtonElement>('.ec__date-mode button'));
-    toggles.find((b) => b.textContent?.trim() === TONE['partie.ralliement_event_date_poll'])!.click();
+    toggles
+      .find((b) => b.textContent?.trim() === TONE['partie.ralliement_event_date_poll'])!
+      .click();
     fixture.detectChanges();
 
     const button = el.querySelector<HTMLButtonElement>('.ec__poll-calendar-btn')!;

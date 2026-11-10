@@ -10,7 +10,6 @@ import {
   type PollService,
 } from '../poll/poll.service';
 import type { CreateEventDto } from './dto/create-event.dto';
-import type { InvitationCleanupService } from '../invitations/invitation-cleanup.service';
 import type { EventCancellationMailer } from './event-cancellation-mailer.service';
 import { POLL_MODE_MESSAGE, type EventSeanceInput, type EventsService } from './events.service';
 import {
@@ -167,7 +166,7 @@ describe('GroupEventsService (Story 40.1)', () => {
       email as unknown as EmailService,
       polls as unknown as PollService,
       mailer as unknown as EventCancellationMailer,
-      cleanup as unknown as InvitationCleanupService,
+      cleanup,
     );
   });
 

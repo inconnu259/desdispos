@@ -213,7 +213,11 @@ export function entryIndexRange(e: AgendaEntry): [number, number] | null {
   // jour, c'est la fin de ce jour.
   const to =
     endDay +
-    (endNamed ? SLOT_ORDER[e.endSlot as RailSlot] : e.endDate === e.date && startNamed ? SLOT_ORDER[e.slot as RailSlot] : 2);
+    (endNamed
+      ? SLOT_ORDER[e.endSlot as RailSlot]
+      : e.endDate === e.date && startNamed
+        ? SLOT_ORDER[e.slot as RailSlot]
+        : 2);
   return to >= from ? [from, to] : single;
 }
 
@@ -228,7 +232,8 @@ export function entryCoversCell(e: AgendaEntry, dateKey: string, slot: DaySlot):
   const range = entryIndexRange(e);
   if (!range) return false;
   const day = dayNumber(dateKey) * 3;
-  const [cellFrom, cellTo] = slot === 'FULL_DAY' ? [day, day + 2] : [day + SLOT_ORDER[slot], day + SLOT_ORDER[slot]];
+  const [cellFrom, cellTo] =
+    slot === 'FULL_DAY' ? [day, day + 2] : [day + SLOT_ORDER[slot], day + SLOT_ORDER[slot]];
   return range[0] <= cellTo && cellFrom <= range[1];
 }
 

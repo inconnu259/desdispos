@@ -349,7 +349,10 @@ export class SeanceList {
     // Story 47.3 : une plage de plusieurs créneaux s'écrit du départ à la fin.
     const startIso = this.resolvedDate(seance);
     if (startIso && seance.endDate) {
-      const start = { date: startIso.substring(0, 10), slot: seance.poll?.chosenSlot ?? seance.slotValidee };
+      const start = {
+        date: startIso.substring(0, 10),
+        slot: seance.poll?.chosenSlot ?? seance.slotValidee,
+      };
       const end = { date: seance.endDate.substring(0, 10), slot: seance.endSlot };
       if (isSpan(start, end)) return spanShortLabel(start, end);
     }

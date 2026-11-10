@@ -38,10 +38,15 @@ describe('CharacterCreationEntries (Story 29.16)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('chaque ligne se termine par le pictogramme ouvrir, décoratif, sans caractère ›', async () => {
-    const { fixture } = await createFixture([makeEntry({ partieId: 'p1' }), makeEntry({ partieId: 'p2' })]);
+    const { fixture } = await createFixture([
+      makeEntry({ partieId: 'p1' }),
+      makeEntry({ partieId: 'p2' }),
+    ]);
 
     const chevrons = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.character-creation-entries__chevron'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        '.character-creation-entries__chevron',
+      ),
     ) as HTMLElement[];
     expect(chevrons.length).toBe(2);
     for (const chevron of chevrons) {

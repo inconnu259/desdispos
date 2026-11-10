@@ -147,7 +147,10 @@ describe('Durée d’un rendez-vous — Story 47.1', () => {
       const scenario = await scenarioWithSeance();
 
       const withDuration = body<{ seances: { id: string; durationSlots: number }[] }>(
-        await mj.agent.post(`/scenarios/${scenario.id}/seances`).send({ durationSlots: 6 }).expect(201),
+        await mj.agent
+          .post(`/scenarios/${scenario.id}/seances`)
+          .send({ durationSlots: 6 })
+          .expect(201),
       );
       const plain = body<{ seances: { id: string; durationSlots: number }[] }>(
         await mj.agent.post(`/scenarios/${scenario.id}/seances`).expect(201),
@@ -179,7 +182,10 @@ describe('Durée d’un rendez-vous — Story 47.1', () => {
         .expect(200);
       expect((await dbSeance(seanceId)).durationSlots).toBe(4);
 
-      await mj.agent.patch(`/scenarios/seances/${seanceId}/infos-pratiques`).send(infos).expect(200);
+      await mj.agent
+        .patch(`/scenarios/seances/${seanceId}/infos-pratiques`)
+        .send(infos)
+        .expect(200);
       expect((await dbSeance(seanceId)).durationSlots).toBe(4);
     });
   });

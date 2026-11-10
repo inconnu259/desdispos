@@ -467,7 +467,7 @@ describe('PartiesService', () => {
     const ALL_KINDS: PartieKind[] = ['ONE_SHOT', 'CAMPAGNE_LINEAIRE', 'CAMPAGNE_EPISODIQUE'];
     const cases = GAME_SYSTEMS.filter((g) => isOpenForCreation(g.id)).flatMap((g) =>
       ALL_KINDS.map((kind) => ({
-        id: g.id as string,
+        id: g.id,
         kind,
         allowed: kindsOf(g.id).includes(kind),
       })),

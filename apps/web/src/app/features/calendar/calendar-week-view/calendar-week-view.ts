@@ -23,7 +23,10 @@ import { computeDisplayStatus } from '../../../core/availability/compute-display
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { SLOT_LABELS } from '../agenda-badge.utils';
 import { entrySpanShortLabel } from '../span-label';
-import { overlapAriaLabel, overlapMarkLabel } from '../../../shared/duration-stepper/duration-labels';
+import {
+  overlapAriaLabel,
+  overlapMarkLabel,
+} from '../../../shared/duration-stepper/duration-labels';
 import type { AgendaEntry, AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import {
   buildMonthDetails,
@@ -508,7 +511,8 @@ export class CalendarWeekView {
       pollId: entry.vote.pollId,
       optionId: entry.vote.optionId,
       // Story 47.5 — une plage se scelle écrite de son début à sa fin.
-      dateLabel: entrySpanShortLabel(entry) ?? CalendarWeekView.sealDateLabel(entry.date, entry.slot),
+      dateLabel:
+        entrySpanShortLabel(entry) ?? CalendarWeekView.sealDateLabel(entry.date, entry.slot),
       pollLabel: entry.label,
     };
   });
@@ -551,7 +555,11 @@ export class CalendarWeekView {
     this.selectionCurrent.set(current);
     const range = weekRangeCells(anchor, current, this.cells());
     // Story 52.3 — en mode déclaration le glissement AJOUTE sa plage aux créneaux déjà retenus.
-    this.selectedCells.set(this.interaction() === 'declaration' && this.dragArmed() ? mergeCells(this.dragBase, range) : range);
+    this.selectedCells.set(
+      this.interaction() === 'declaration' && this.dragArmed()
+        ? mergeCells(this.dragBase, range)
+        : range,
+    );
   }
 
   /** AC17/AC18 — bascule **un créneau**. Retirer le dernier **quitte le mode modification**. */
@@ -690,7 +698,13 @@ export class CalendarWeekView {
     const vote = slotData ? this.eventVote(slotData) : null;
     if (vote && anchor) {
       // Story 47.5 — toutes les plages du vote qui couvrent ce créneau : une ligne chacune dans le sélecteur.
-      this.voteOptionActivated.emit({ vote, lines: this.eventVotes(slotData!), date, slot, anchor });
+      this.voteOptionActivated.emit({
+        vote,
+        lines: this.eventVotes(slotData!),
+        date,
+        slot,
+        anchor,
+      });
     }
   }
 
@@ -738,8 +752,7 @@ export class CalendarWeekView {
   protected eventTitle(slotData: SlotData): string | null {
     const d = slotData.detail;
     if (!d) return null;
-    const title =
-      d.winner === 'seance' ? d.seanceLabel : d.winner === 'vote' ? d.pollLabel : null;
+    const title = d.winner === 'seance' ? d.seanceLabel : d.winner === 'vote' ? d.pollLabel : null;
     // Story 47.3 : une plage n'est NOMMÉE que sur sa première cellule visible de la semaine, avec « ← » quand
     // cette cellule n'est pas son début ; les autres cellules couvertes restent marquées mais sans texte.
     const span = d.span;
@@ -991,7 +1004,9 @@ export class CalendarWeekView {
       // comprise : c'est lui qui sépare lire (tap court) de déclarer (appui long).
       // Story 52.3 — en mode déclaration il n'y a plus d'appui long : un tap lent bascule le créneau comme un tap vif.
       longPressTimer:
-        this.interaction() === 'declaration' ? null : setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
+        this.interaction() === 'declaration'
+          ? null
+          : setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
     };
   }
 
@@ -1066,7 +1081,8 @@ export class CalendarWeekView {
     // Story 52.3 — en mode déclaration, les créneaux déjà retenus survivent au geste : il y AJOUTE sa plage.
     this.dragBase = this.interaction() === 'declaration' ? this.selectedCells() : [];
     this.armSelection(cell.date, slot);
-    if (this.dragBase.length > 0) this.selectedCells.set(mergeCells(this.dragBase, this.selectedCells()));
+    if (this.dragBase.length > 0)
+      this.selectedCells.set(mergeCells(this.dragBase, this.selectedCells()));
   }
 
   /** Story 52.3 — les créneaux retenus avant le glissement en cours (mode déclaration), auxquels sa plage s'ajoute. */

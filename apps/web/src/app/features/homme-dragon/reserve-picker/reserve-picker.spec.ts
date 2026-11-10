@@ -169,7 +169,8 @@ describe('ReservePicker (Story 33.6)', () => {
 
     it('chevron : toujours deplier, pivoté de −90° (classe) quand la catégorie est repliée', async () => {
       const { fixture } = await setup({ level: 4, reserve: ['courage', 'chance', null] });
-      const chevron = (title: string) => cat(fixture, title).querySelector('app-icon') as HTMLElement;
+      const chevron = (title: string) =>
+        cat(fixture, title).querySelector('app-icon') as HTMLElement;
 
       // Ouvert : pas de rotation.
       expect(chevron('Destin').getAttribute('data-icon')).toBe('deplier');

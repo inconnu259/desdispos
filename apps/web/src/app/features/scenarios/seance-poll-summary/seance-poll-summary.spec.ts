@@ -82,7 +82,12 @@ describe('SeancePollSummary', () => {
             slot: 'EVENING',
             votes: [vote('me', 'YES'), vote('u2', 'YES')],
           },
-          { id: 'o2', date: '2026-11-08T00:00:00.000Z', slot: 'EVENING', votes: [vote('me', 'NO')] },
+          {
+            id: 'o2',
+            date: '2026-11-08T00:00:00.000Z',
+            slot: 'EVENING',
+            votes: [vote('me', 'NO')],
+          },
         ],
       }),
     );
@@ -94,7 +99,12 @@ describe('SeancePollSummary', () => {
     const { lines } = await create(
       poll({
         options: [
-          { id: 'o1', date: '2026-11-07T00:00:00.000Z', slot: 'EVENING', votes: [vote('me', 'YES')] },
+          {
+            id: 'o1',
+            date: '2026-11-07T00:00:00.000Z',
+            slot: 'EVENING',
+            votes: [vote('me', 'YES')],
+          },
           { id: 'o2', date: '2026-11-08T00:00:00.000Z', slot: 'EVENING', votes: [] },
         ],
       }),
@@ -104,7 +114,12 @@ describe('SeancePollSummary', () => {
 
   it('un seul absent → « 1 personne n’a pas encore répondu » ; aucun absent → ligne absente', async () => {
     const answered = (id: string) => [
-      { id: 'o1', date: '2026-11-07T00:00:00.000Z', slot: 'EVENING' as const, votes: [vote(id, 'YES')] },
+      {
+        id: 'o1',
+        date: '2026-11-07T00:00:00.000Z',
+        slot: 'EVENING' as const,
+        votes: [vote(id, 'YES')],
+      },
     ];
     const one = await create(
       poll({
@@ -130,7 +145,12 @@ describe('SeancePollSummary', () => {
       poll({
         durationSlots: 2,
         options: [
-          { id: 'o1', date: '2026-11-06T00:00:00.000Z', slot: 'EVENING', votes: [vote('u2', 'YES')] },
+          {
+            id: 'o1',
+            date: '2026-11-06T00:00:00.000Z',
+            slot: 'EVENING',
+            votes: [vote('u2', 'YES')],
+          },
         ],
       }),
     );
@@ -201,7 +221,11 @@ describe('SeancePollSummary — côté MJ (Story 54.3)', () => {
 
   async function createGm(
     value: SessionPollDto,
-    { loaded = true, dialogResult = of(true), theme = 'grimoire-emeraude' as (typeof THEMES)[number] } = {},
+    {
+      loaded = true,
+      dialogResult = of(true),
+      theme = 'grimoire-emeraude' as (typeof THEMES)[number],
+    } = {},
   ) {
     const open = vi.fn().mockReturnValue({ afterClosed: () => dialogResult });
     await TestBed.configureTestingModule({

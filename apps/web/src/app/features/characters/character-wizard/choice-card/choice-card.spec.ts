@@ -110,10 +110,12 @@ describe('ChoiceCard', () => {
 
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('button');
     expect(button.classList).toContain('choice-card--tint');
-    expect(fixture.nativeElement.querySelector('.choice-card__gem').getAttribute('aria-hidden')).toBe(
-      'true',
+    expect(
+      fixture.nativeElement.querySelector('.choice-card__gem').getAttribute('aria-hidden'),
+    ).toBe('true');
+    expect(fixture.nativeElement.querySelector('.choice-card__badge').textContent).toContain(
+      'Vert',
     );
-    expect(fixture.nativeElement.querySelector('.choice-card__badge').textContent).toContain('Vert');
     expect(fixture.nativeElement.querySelector('.choice-card__detail').textContent).toContain(
       'Le goût du voyage.',
     );

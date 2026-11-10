@@ -26,7 +26,10 @@ import { SelectionBar } from '../selection-bar/selection-bar';
 import { composeSpanKeys } from '../compose-span.utils';
 import { SLOT_LABELS } from '../agenda-badge.utils';
 import { entrySpanShortLabel } from '../span-label';
-import { overlapAriaLabel, overlapMarkLabel } from '../../../shared/duration-stepper/duration-labels';
+import {
+  overlapAriaLabel,
+  overlapMarkLabel,
+} from '../../../shared/duration-stepper/duration-labels';
 import type { AgendaEntry, AgendaSealRequest } from '../calendar-agenda-view/calendar-agenda-view';
 import {
   type DayDetail,
@@ -495,7 +498,8 @@ export class CalendarMonthView {
       pollId: entry.vote.pollId,
       optionId: entry.vote.optionId,
       // Story 47.5 — une plage se scelle écrite de son début à sa fin.
-      dateLabel: entrySpanShortLabel(entry) ?? CalendarMonthView.sealDateLabel(entry.date, entry.slot),
+      dateLabel:
+        entrySpanShortLabel(entry) ?? CalendarMonthView.sealDateLabel(entry.date, entry.slot),
       pollLabel: entry.label,
     };
   });
@@ -539,10 +543,15 @@ export class CalendarMonthView {
     const anchor = this.selectionAnchor();
     if (!anchor) return;
     this.selectionCurrent.set(current);
-    const range = monthRangeDays(anchor.date, current.date).map((date) => ({ date, slot: anchor.slot }));
+    const range = monthRangeDays(anchor.date, current.date).map((date) => ({
+      date,
+      slot: anchor.slot,
+    }));
     // Story 52.3 — en mode déclaration le glissement AJOUTE sa plage aux créneaux déjà retenus.
     this.selectedCells.set(
-      this.interaction() === 'declaration' && this.dragArmed() ? mergeCells(this.dragBase, range) : range,
+      this.interaction() === 'declaration' && this.dragArmed()
+        ? mergeCells(this.dragBase, range)
+        : range,
     );
   }
 
@@ -991,7 +1000,9 @@ export class CalendarMonthView {
       // ordinateur.
       // Story 52.3 — en mode déclaration il n'y a plus d'appui long : un tap lent bascule le créneau comme un tap vif.
       longPressTimer:
-        this.interaction() === 'declaration' ? null : setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
+        this.interaction() === 'declaration'
+          ? null
+          : setTimeout(() => this.armDrag(cell, slot), LONG_PRESS_MS),
       fromBand,
     };
   }
@@ -1082,7 +1093,8 @@ export class CalendarMonthView {
     // Story 52.3 — en mode déclaration, les créneaux déjà retenus survivent au geste : il y AJOUTE sa plage.
     this.dragBase = this.interaction() === 'declaration' ? this.selectedCells() : [];
     this.armSelection(cell.date, slot);
-    if (this.dragBase.length > 0) this.selectedCells.set(mergeCells(this.dragBase, this.selectedCells()));
+    if (this.dragBase.length > 0)
+      this.selectedCells.set(mergeCells(this.dragBase, this.selectedCells()));
   }
 
   /** Story 52.3 — les créneaux retenus avant le glissement en cours (mode déclaration), auxquels sa plage s'ajoute. */

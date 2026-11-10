@@ -283,7 +283,8 @@ export const grimoireEmeraude = {
   'account.calendar_intents_subtitle': 'Ce que je veux voir en ouvrant l’almanach.',
   // Story 52.6 — la case « Me rappeler de déclarer mes dispos » (libellé identique dans les trois thèmes).
   'account.availability_reminder_label': 'Me rappeler de déclarer mes dispos',
-  'account.availability_reminder_hint': 'Un rappel apparaît sur le tableau de bord quand rien n’est déclaré pour les quatre semaines à venir.',
+  'account.availability_reminder_hint':
+    'Un rappel apparaît sur le tableau de bord quand rien n’est déclaré pour les quatre semaines à venir.',
   'account.calendar_intent.disponibilites': 'Mes disponibilités & indisponibilités',
   'account.calendar_intent.seances': 'Mes séances confirmées',
   'account.calendar_intent.votes': 'Les votes en cours',
@@ -416,7 +417,8 @@ export const grimoireEmeraude = {
   /* — tableau de bord — */
   // Story 52.5 — le rappel « Dispos à déclarer » en tête du tableau de bord (titre identique dans les trois thèmes).
   'dashboard.reminder_title': 'Dispos à déclarer',
-  'dashboard.reminder_body': 'Rien n’est inscrit à votre almanach pour les quatre semaines à venir.',
+  'dashboard.reminder_body':
+    'Rien n’est inscrit à votre almanach pour les quatre semaines à venir.',
   // Story 52.6 — faire taire le rappel : bouton et « Annuler » identiques dans les trois thèmes, confirmation et échec par thème.
   'dashboard.reminder_silence': 'Ne plus me le rappeler',
   'dashboard.reminder_undo': 'Annuler',
@@ -497,8 +499,7 @@ export const grimoireEmeraude = {
   'partie.cover_remove_error': 'L’enluminure n’a pu être retirée. Réessayez.',
   'partie.cover_changed': 'Enluminure changée',
   'partie.cover_removed': 'Enluminure retirée',
-  'partie.cover_remove_confirm':
-    'Retirer l’enluminure ? La bannière générée reprendra sa place.',
+  'partie.cover_remove_confirm': 'Retirer l’enluminure ? La bannière générée reprendra sa place.',
   'partie.cover_reject_type': 'Seules les images JPEG, PNG et WEBP peuvent enluminer un grimoire.',
   'partie.cover_reject_size': 'Cette image dépasse 5 Mo : choisissez-en une plus légère.',
   'partie.save_error': 'Ce grimoire n’a pu être inscrit. Réessayez.',
@@ -514,8 +515,10 @@ export const grimoireEmeraude = {
   // trois thèmes (NEUTRAL_KEYS), et sans mot du JDR pour le mode soirée.
   'partie.mode_plain_quete': 'Jeu de rôle',
   'partie.mode_plain_ralliement': 'Soirée entre amis',
-  'partie.kind_plain_ONE_SHOT': 'Une seule séance : l’histoire commence et se termine le même soir.',
-  'partie.kind_plain_CAMPAGNE_LINEAIRE': 'Une histoire suivie sur plusieurs séances, avec la même troupe.',
+  'partie.kind_plain_ONE_SHOT':
+    'Une seule séance : l’histoire commence et se termine le même soir.',
+  'partie.kind_plain_CAMPAGNE_LINEAIRE':
+    'Une histoire suivie sur plusieurs séances, avec la même troupe.',
   'partie.kind_plain_CAMPAGNE_EPISODIQUE':
     'Plusieurs séances complètes chacune ; les joueurs peuvent changer d’une séance à l’autre.',
   'partie.ralliement_kind_plain_ONE_SHOT':
@@ -854,7 +857,8 @@ export const grimoireEmeraude = {
   'scenarios.seance_summary_mj_waiting': 'N’ont pas encore répondu : {names}',
   'scenarios.seance_summary_see_in_calendar': 'Voir dans le calendrier →',
   'scenarios.seance_situation_fix_date': 'Fixer la date…',
-  'scenarios.close_poll_confirm': 'Clore le conseil sans fixer de date ? Les réponses ne pourront plus changer.',
+  'scenarios.close_poll_confirm':
+    'Clore le conseil sans fixer de date ? Les réponses ne pourront plus changer.',
   'status.seance_poll_open': 'Vote en cours',
   'status.seance_inscriptions_ouvertes': 'Inscriptions ouvertes',
   'status.seance_programmee': 'Programmée',
@@ -1162,7 +1166,8 @@ export const grimoireEmeraude = {
   // Story 45.3 — la barre de sélection en version composition (désigner des créneaux du vote).
   'calendar.selbar_compose_add': 'Ajouter au vote',
   'calendar.selbar_compose_remove': 'Retirer',
-  'calendar.selbar_compose_pick_moment': 'Choisissez d’abord un moment (matin, après-midi ou soir).',
+  'calendar.selbar_compose_pick_moment':
+    'Choisissez d’abord un moment (matin, après-midi ou soir).',
   // Story 45.4 — la fin du vote dans le composer (champ, explication du défaut, refus, état « passée »).
   // Story 45.5 — la cible « soirée sans date » : aucun mot du JDR ni « partie ».
   'calendar.compose_target_evening': 'Dates à proposer : {title}',
@@ -1175,7 +1180,8 @@ export const grimoireEmeraude = {
   'calendar.compose_deadline_hint_today': 'Proposé : aujourd’hui.',
   'calendar.compose_deadline_past': 'La fin du vote ne peut pas être passée.',
   'calendar.compose_deadline_ended_tag': 'passée',
-  'calendar.destiny_reopen_vote': 'Pour rouvrir le vote, modifiez les dates et repoussez la fin du vote.',
+  'calendar.destiny_reopen_vote':
+    'Pour rouvrir le vote, modifiez les dates et repoussez la fin du vote.',
   'calendar.selbar_scope_aria': 'Étendue de la sélection',
   'calendar.selbar_toolbar_aria': 'Actions du grimoire sur la sélection',
   /* — panneau de contraintes — */

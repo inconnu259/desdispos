@@ -283,7 +283,9 @@ function spanEndOf(
 ): { endDate?: string; endSlot?: DaySlot } {
   if (!end) return {};
   const endDate = end.substring(0, 10);
-  if (!isSpan({ date: startDate.substring(0, 10), slot: startSlot }, { date: endDate, slot: endSlot })) {
+  if (
+    !isSpan({ date: startDate.substring(0, 10), slot: startSlot }, { date: endDate, slot: endSlot })
+  ) {
     return {};
   }
   return { endDate, ...(endSlot ? { endSlot } : {}) };
@@ -870,7 +872,9 @@ export class CalendarView implements OnInit {
       for (const { card, poll } of this.groupPolls()) {
         const eligible = new Set(poll.eligibleVoterIds);
         for (const option of poll.options) {
-          const votes = poll.votes.filter((v) => v.optionId === option.id && eligible.has(v.userId));
+          const votes = poll.votes.filter(
+            (v) => v.optionId === option.id && eligible.has(v.userId),
+          );
           const mine = votes.find((v) => v.userId === myId);
           entries.push({
             key: `poll-${poll.id}-${option.id}`,
@@ -1475,7 +1479,11 @@ export class CalendarView implements OnInit {
       this.selectedWindow.set(null);
       return;
     }
-    this.selectedWindow.set({ date: slot.date, slot: slot.slot, durationSlots: slot.durationSlots });
+    this.selectedWindow.set({
+      date: slot.date,
+      slot: slot.slot,
+      durationSlots: slot.durationSlots,
+    });
     this.moveGridTo(slot.date);
   }
 
@@ -1657,7 +1665,10 @@ export class CalendarView implements OnInit {
     const duration = entry.durationSlots;
     const heat = this.heatmap();
     const showWorst =
-      duration > 1 && entry.family === 'jdr' && this.partieId() === entry.partieId && heat.length > 0;
+      duration > 1 &&
+      entry.family === 'jdr' &&
+      this.partieId() === entry.partieId &&
+      heat.length > 0;
     return {
       title: entry.title,
       subtitle,
@@ -1665,7 +1676,8 @@ export class CalendarView implements OnInit {
       bestLabel: tone['calendar.destiny_board_best'],
       slots: slots.map((o) => ({
         optionId: o.optionId,
-        label: candidateSpanShort(o, duration) ?? `${shortDayLabel(o.date)} · ${SLOT_LABELS[o.slot]}`,
+        label:
+          candidateSpanShort(o, duration) ?? `${shortDayLabel(o.date)} · ${SLOT_LABELS[o.slot]}`,
         yesText: fillTone(tone['calendar.destiny_board_yes'], { n: o.yes }),
         availabilityText: this.worstAvailabilityText(showWorst ? heat : null, o, duration),
         ratio: eligible > 0 ? Math.min(1, o.yes / eligible) : 0,
@@ -2092,7 +2104,8 @@ export class CalendarView implements OnInit {
    *  pour 1), au singulier ou au pluriel. Muet hors du mode, et jamais après un dialogue de conflit abandonné. */
   private announceDeclared(count: number, kind: AvailKind): void {
     if (this.interactionState() !== 'declaration') return;
-    const key = `calendar.declared_${kind === 'AVAILABLE' ? 'available' : 'unavailable'}_${count > 1 ? 'many' : 'one'}` as const;
+    const key =
+      `calendar.declared_${kind === 'AVAILABLE' ? 'available' : 'unavailable'}_${count > 1 ? 'many' : 'one'}` as const;
     this.snack.open(fillTone(this.theme.tone()[key], { n: count }), undefined, { duration: 5000 });
   }
 
@@ -2893,7 +2906,10 @@ export class CalendarView implements OnInit {
 
     // ⚠️ Story 45.2 — le rendez-vous a été choisi avant : le dialogue ne s'ouvre plus que pour l'avertissement de
     // perte de réponses (modification d'un vote dont des créneaux retirés en portent). Créer n'en ouvre aucun.
-    if (target.kind === 'new' && !this.rendezvousRows().some((r) => r.seanceId === target.seanceId)) {
+    if (
+      target.kind === 'new' &&
+      !this.rendezvousRows().some((r) => r.seanceId === target.seanceId)
+    ) {
       // Daté ailleurs pendant la composition (EXPERIENCE §5.5) : rien n'est écrit, le composer se ferme.
       this.noteNoLongerDatable();
       this.cancelCompose();
@@ -3031,9 +3047,7 @@ export class CalendarView implements OnInit {
     return this.composedCells()
       .filter((c): c is SelectedCell & { slot: EventSlot } => c.slot !== 'FULL_DAY')
       .map((c) => ({ date: toDateKey(c.date), slot: c.slot }))
-      .sort((a, b) =>
-        a.date === b.date ? rank[a.slot] - rank[b.slot] : a.date < b.date ? -1 : 1,
-      );
+      .sort((a, b) => (a.date === b.date ? rank[a.slot] - rank[b.slot] : a.date < b.date ? -1 : 1));
   }
 
   /** Valider la composition d'une conjonction à créer : les créneaux rejoignent le brouillon, la
@@ -3640,7 +3654,7 @@ export class CalendarView implements OnInit {
       this.groupResolved.set(true);
       return;
     }
-    let group = false;
+    let group: boolean;
     try {
       const partie = await this.partiesSvc.get(id);
       if (this.partieId() === id) {
@@ -4052,7 +4066,10 @@ export class CalendarView implements OnInit {
   }
 
   /** AC8/AC9/AC10/AC11 — répondre. */
-  protected async onVoteAnswerChosen(answer: VoteAnswer, chosen?: VoteParticipation): Promise<void> {
+  protected async onVoteAnswerChosen(
+    answer: VoteAnswer,
+    chosen?: VoteParticipation,
+  ): Promise<void> {
     // Story 47.5 — avec plusieurs plages, la ligne touchée NOMME l'option ; sinon, l'unique vote du sélecteur.
     const vote = chosen ?? this.pickerVote();
     if (!vote || this.pollActionPending()) return;

@@ -13,11 +13,7 @@ import { DurationStepper } from './duration-stepper';
 
 @Component({
   imports: [DurationStepper],
-  template: `<app-duration-stepper
-    [(value)]="value"
-    [start]="start()"
-    [readonly]="locked()"
-  />`,
+  template: `<app-duration-stepper [(value)]="value" [start]="start()" [readonly]="locked()" />`,
 })
 class Host {
   value = signal(1);

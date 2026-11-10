@@ -91,10 +91,22 @@ describe('seanceSituationBox — joueur', () => {
     it('j’ai voté → l’inscription décide : participer, se_desinscrire ou null', () => {
       const open = { ...BARE, poll: POLL };
       expect(
-        seanceSituationBox({ ...open, inscription: inscription(['u2']) }, 'j_ai_vote', false, ME, TODAY),
+        seanceSituationBox(
+          { ...open, inscription: inscription(['u2']) },
+          'j_ai_vote',
+          false,
+          ME,
+          TODAY,
+        ),
       ).toBe('participer');
       expect(
-        seanceSituationBox({ ...open, inscription: inscription([ME]) }, 'j_ai_vote', false, ME, TODAY),
+        seanceSituationBox(
+          { ...open, inscription: inscription([ME]) },
+          'j_ai_vote',
+          false,
+          ME,
+          TODAY,
+        ),
       ).toBe('se_desinscrire');
       expect(
         seanceSituationBox(
@@ -113,7 +125,9 @@ describe('seanceSituationBox — joueur', () => {
   });
 
   it('un lecteur inconnu n’a aucun encadré', () => {
-    expect(seanceSituationBox({ ...BARE, poll: POLL }, 'vote_a_faire', false, undefined, TODAY)).toBeNull();
+    expect(
+      seanceSituationBox({ ...BARE, poll: POLL }, 'vote_a_faire', false, undefined, TODAY),
+    ).toBeNull();
   });
 });
 
@@ -124,7 +138,14 @@ describe('seanceSituationBox — MJ', () => {
 
   it('épisodique, capacité fixée → lancer_le_vote ; sans capacité → null', () => {
     expect(
-      seanceSituationBox({ ...BARE, inscription: inscription([]) }, 'je_mene', true, ME, TODAY, true),
+      seanceSituationBox(
+        { ...BARE, inscription: inscription([]) },
+        'je_mene',
+        true,
+        ME,
+        TODAY,
+        true,
+      ),
     ).toBe('lancer_le_vote');
     expect(seanceSituationBox(BARE, 'je_mene', true, ME, TODAY, true)).toBeNull();
   });
@@ -192,7 +213,13 @@ describe('seanceSituationBox — fixer_la_date (Story 54.3)', () => {
 
   it('sans can.choose (ou droit absent) → null, jamais déduit du rôle', () => {
     expect(
-      seanceSituationBox({ ...BARE, poll: OPEN_POLL, can: { choose: false } }, 'je_mene', true, ME, TODAY),
+      seanceSituationBox(
+        { ...BARE, poll: OPEN_POLL, can: { choose: false } },
+        'je_mene',
+        true,
+        ME,
+        TODAY,
+      ),
     ).toBeNull();
     expect(seanceSituationBox({ ...BARE, poll: OPEN_POLL }, 'je_mene', true, ME, TODAY)).toBeNull();
   });

@@ -236,7 +236,11 @@ export class HommeDragonCreationWizard implements OnInit {
       .filter((e) => (e.data as ArtefactData | null)?.race === race)
       .map((e) => {
         const a = (e.data ?? {}) as ArtefactData;
-        return { key: e.key, label: a.label?.trim() || e.key, description: a.description?.trim() ?? '' };
+        return {
+          key: e.key,
+          label: a.label?.trim() || e.key,
+          description: a.description?.trim() ?? '',
+        };
       });
     const souffles = this.souffleCatalog()
       .filter((e) => (e.data as SouffleData | null)?.race === race)

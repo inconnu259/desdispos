@@ -334,8 +334,9 @@ describe('Proposer des plages dans le composer — Story 47.4', () => {
           .expect(200),
       );
       const statusOf = (date: string, slot: string) =>
-        slots.find((x) => x.date === date && x.slot === slot)?.members.find((m) => m.userId === player.id)
-          ?.status;
+        slots
+          .find((x) => x.date === date && x.slot === slot)
+          ?.members.find((m) => m.userId === player.id)?.status;
       const covered: [string, string][] = [
         [isoDay(17), 'EVENING'],
         [isoDay(18), 'MORNING'],
@@ -410,7 +411,12 @@ describe('Proposer des plages dans le composer — Story 47.4', () => {
       const stale = card.poll!.options[0];
       await host.agent
         .patch(`/parties/${groupId}/events/${card.id}`)
-        .send({ title: 'Plage purgée', pollOptions: fridays, pollDeadline: isoDay(5), durationSlots: 2 })
+        .send({
+          title: 'Plage purgée',
+          pollOptions: fridays,
+          pollDeadline: isoDay(5),
+          durationSlots: 2,
+        })
         .expect(200);
 
       const res = await host.agent

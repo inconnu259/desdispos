@@ -92,7 +92,7 @@ describe('SetVisibilityLocksDto', () => {
     expect(errors.some((e) => e.property === 'paths')).toBe(true);
   });
 
-  it("rejette un subField inconnu sur une clé qui déclare pourtant une liste (attributes.foo)", async () => {
+  it('rejette un subField inconnu sur une clé qui déclare pourtant une liste (attributes.foo)', async () => {
     const dto = plainToInstance(SetVisibilityLocksDto, {
       paths: [{ fieldKey: 'attributes', subField: 'foo' }],
     });

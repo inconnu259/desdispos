@@ -404,7 +404,6 @@ describe('Anti-spoil serveur des scénarios', () => {
     let partieId: string;
     let brouillon: ScenarioLike;
     let poll: PollLike;
-    const query = { from: isoDay(0), to: isoDay(40) };
 
     beforeAll(async () => {
       partieId = await partie('CAMPAGNE_LINEAIRE', 'vote-brouillon');

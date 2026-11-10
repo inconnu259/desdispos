@@ -700,7 +700,7 @@ describe('ScenarioTimeline', () => {
       expect(fixture.nativeElement.textContent).toContain('août');
     });
 
-    it('Story 47.3 : une séance sur plusieurs jours s\'écrit « début → fin » sur la carte', async () => {
+    it("Story 47.3 : une séance sur plusieurs jours s'écrit « début → fin » sur la carte", async () => {
       const scenario = makeScenario({
         id: 's-plage',
         status: 'COURANT',
@@ -1180,7 +1180,9 @@ describe('ScenarioTimeline', () => {
       it('seance sans date ni vote -> aucune ligne, le badge seul', async () => {
         const { fixture } = await createComponent([single(makeSeance('s1', 'sc', null))]);
         expect(situationOf(fixture)).toBeNull();
-        expect(fixture.nativeElement.querySelector('.card-seances__row .status-badge')).toBeTruthy();
+        expect(
+          fixture.nativeElement.querySelector('.card-seances__row .status-badge'),
+        ).toBeTruthy();
       });
 
       it('vote clos non repondu et sans date -> aucune ligne', async () => {

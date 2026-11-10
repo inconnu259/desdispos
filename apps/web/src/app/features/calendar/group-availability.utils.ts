@@ -200,7 +200,8 @@ export function worstAvailability(
     return null;
   }
   const cells = new Map<string, number>();
-  for (const cell of heatmap) cells.set(`${cell.date.substring(0, 10)}|${cell.slot}`, cell.available);
+  for (const cell of heatmap)
+    cells.set(`${cell.date.substring(0, 10)}|${cell.slot}`, cell.available);
   let worst: number | null = null;
   for (const { date, slot } of covered) {
     const available = cells.get(`${date}|${slot}`);

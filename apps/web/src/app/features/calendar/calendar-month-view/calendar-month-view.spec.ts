@@ -1281,7 +1281,9 @@ describe('CalendarMonthView — une plage de plusieurs créneaux (Story 47.3)', 
   }
 
   const bandsOf = (day: number): HTMLElement[] => {
-    const cell = el.querySelector(`.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`);
+    const cell = el.querySelector(
+      `.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`,
+    );
     return Array.from(cell!.querySelectorAll<HTMLElement>('.band'));
   };
 
@@ -1317,7 +1319,9 @@ describe('CalendarMonthView — une plage de plusieurs créneaux (Story 47.3)', 
 
   it('le nom visible n’est écrit qu’une fois ; chaque bande couverte dit la plage entière', async () => {
     await createWith([WEEKEND]);
-    const labels = Array.from(el.querySelectorAll('.band__label')).map((n) => n.textContent?.trim());
+    const labels = Array.from(el.querySelectorAll('.band__label')).map((n) =>
+      n.textContent?.trim(),
+    );
     expect(labels).toEqual(['Week-end jeux']);
 
     const aria = bandsOf(22)[1].getAttribute('aria-label') ?? '';
@@ -1382,7 +1386,9 @@ describe('CalendarMonthView — plusieurs plages d’un même vote (Story 47.5)'
   }
 
   const bandsOf = (day: number): HTMLElement[] => {
-    const cell = el.querySelector(`.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`);
+    const cell = el.querySelector(
+      `.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`,
+    );
     return Array.from(cell!.querySelectorAll<HTMLElement>('.band'));
   };
 
@@ -1945,7 +1951,9 @@ describe('CalendarMonthView — mode de composition (Story 36.10)', () => {
     f.detectChanges();
     expect(f.componentInstance['selectedDays']()).toHaveLength(3);
 
-    (el.querySelector('app-selection-bar .scope-seg[aria-label="Soir"]') as HTMLButtonElement).click();
+    (
+      el.querySelector('app-selection-bar .scope-seg[aria-label="Soir"]') as HTMLButtonElement
+    ).click();
     f.detectChanges();
     barButton(GRIMOIRE_TONE['calendar.selbar_compose_add']).click();
     f.detectChanges();
@@ -2418,10 +2426,13 @@ describe('CalendarMonthView — un tap suffit en mode déclaration (Story 52.3)'
   }
 
   const cellOf = (day: number): HTMLElement =>
-    el.querySelector(`.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`) as HTMLElement;
+    el.querySelector(
+      `.day-cell[data-cell-date="${new Date(2026, 7, day).getTime()}"]`,
+    ) as HTMLElement;
   const bandOf = (day: number, index: number): HTMLElement =>
     [...cellOf(day).querySelectorAll('.band')][index] as HTMLElement;
-  const uniformBandOf = (day: number): HTMLElement => cellOf(day).querySelector('.band') as HTMLElement;
+  const uniformBandOf = (day: number): HTMLElement =>
+    cellOf(day).querySelector('.band') as HTMLElement;
   const gridEl = () => el.querySelector('.calendar-grid') as HTMLElement;
   const barEl = () => el.querySelector('app-selection-bar');
   const pointerAt = (type: string, x: number, y: number, pointerType = 'touch') =>
@@ -2487,7 +2498,9 @@ describe('CalendarMonthView — un tap suffit en mode déclaration (Story 52.3)'
     const f = await createWith();
     dragDays(21, 23);
     f.detectChanges();
-    expect(f.componentInstance['selectedDays']().map((d: Date) => d.getDate())).toEqual([21, 22, 23]);
+    expect(f.componentInstance['selectedDays']().map((d: Date) => d.getDate())).toEqual([
+      21, 22, 23,
+    ]);
     expect(barEl()).not.toBeNull();
   });
 
@@ -2499,7 +2512,9 @@ describe('CalendarMonthView — un tap suffit en mode déclaration (Story 52.3)'
     dragDays(24, 26);
     f.detectChanges();
 
-    expect(f.componentInstance['selectedDays']().map((d: Date) => d.getDate())).toEqual([20, 24, 25, 26]);
+    expect(f.componentInstance['selectedDays']().map((d: Date) => d.getDate())).toEqual([
+      20, 24, 25, 26,
+    ]);
   });
 
   it('un glissement parti à la verticale reste un défilement : aucune sélection, pas de tap au relâchement', async () => {

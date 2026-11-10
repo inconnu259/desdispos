@@ -1112,9 +1112,9 @@ describe('ScenarioReadDialog — séances en tête (Story 54.1)', () => {
     );
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.description')).toBeNull();
-    expect(
-      before(el.querySelector('.a-venir-note'), el.querySelector('app-seance-list')),
-    ).toBe(true);
+    expect(before(el.querySelector('.a-venir-note'), el.querySelector('app-seance-list'))).toBe(
+      true,
+    );
     expect(el.querySelector('app-scenario-status-badge')).toBeNull();
   });
 
@@ -1129,9 +1129,9 @@ describe('ScenarioReadDialog — séances en tête (Story 54.1)', () => {
       order.push('navigate');
       return Promise.resolve(true);
     });
-    const btn = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
-    ).find((b) => b.textContent?.trim() === 'Voter dans le calendrier');
+    const btn = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Voter dans le calendrier',
+    );
     expect(btn).toBeTruthy();
     btn!.click();
     expect(order).toEqual(['close', 'navigate']);

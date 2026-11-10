@@ -643,7 +643,9 @@ describe('event-card.util (Story 40.1)', () => {
         'dim. 25 oct. matin → lun. 26 oct. soir',
       ]);
       // Un créneau seul : le texte d’avant.
-      expect(pollPanel(pollCard({ votes: long.poll!.votes }), 'a', TODAY, TONE, name)!.bestLine).not.toContain('→');
+      expect(
+        pollPanel(pollCard({ votes: long.poll!.votes }), 'a', TODAY, TONE, name)!.bestLine,
+      ).not.toContain('→');
     });
   });
 
@@ -720,7 +722,17 @@ describe('event-card.util (Story 40.1)', () => {
       expect(pollSlotLabel({ date: '2026-10-24', slot: 'EVENING' }, 1)).toBe('sam. 24 oct. · soir');
       expect(
         rankedEntrySlots(
-          [{ optionId: 'x', date: '2026-10-24', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null }],
+          [
+            {
+              optionId: 'x',
+              date: '2026-10-24',
+              slot: 'EVENING',
+              yes: 1,
+              maybe: 0,
+              no: 0,
+              myAnswer: null,
+            },
+          ],
           TODAY,
           6,
         )[0].label,
@@ -769,7 +781,16 @@ describe('event-card.util (Story 40.1)', () => {
     it('décompte écrit : « n oui · n peut-être · n non »', () => {
       expect(
         pollCountsLabel(
-          { id: 'x', date: '2026-10-25', slot: 'EVENING', label: 'x', yes: 4, maybe: 0, no: 1, past: false },
+          {
+            id: 'x',
+            date: '2026-10-25',
+            slot: 'EVENING',
+            label: 'x',
+            yes: 4,
+            maybe: 0,
+            no: 1,
+            past: false,
+          },
           TONE,
         ),
       ).toBe('4 oui · 0 peut-être · 1 non');

@@ -156,14 +156,20 @@ async function createComponent(
 
 const root = (f: ComponentFixture<unknown>): HTMLElement => f.nativeElement;
 
-function navButtons(f: ComponentFixture<unknown>): { prev: HTMLButtonElement; next: HTMLButtonElement } {
+function navButtons(f: ComponentFixture<unknown>): {
+  prev: HTMLButtonElement;
+  next: HTMLButtonElement;
+} {
   const [prev, next] = Array.from(
     root(f).querySelectorAll<HTMLButtonElement>('.hdw__nav-bottom button'),
   );
   return { prev, next };
 }
 
-async function click(f: ComponentFixture<HommeDragonCreationWizard>, el: HTMLElement): Promise<void> {
+async function click(
+  f: ComponentFixture<HommeDragonCreationWizard>,
+  el: HTMLElement,
+): Promise<void> {
   el.click();
   await settle(f);
 }
@@ -272,7 +278,9 @@ describe('HommeDragonCreationWizard', () => {
     await click(fixture, cards(fixture)[0]);
     await next(fixture);
 
-    expect(root(fixture).querySelector('.hdw__title')!.textContent).toContain('Étape 2/5 · Artefact');
+    expect(root(fixture).querySelector('.hdw__title')!.textContent).toContain(
+      'Étape 2/5 · Artefact',
+    );
     expect(cards(fixture).map((c) => c.getAttribute('aria-label'))).toEqual([
       'Encyclopédie',
       'Lanterne',
@@ -340,9 +348,9 @@ describe('HommeDragonCreationWizard', () => {
     expect(component['race']()).toBe('DRAGON_VERT');
     await next(fixture);
     expect(component['artefactKey']()).toBe('lanterne');
-    expect(
-      (root(fixture).querySelector('.hdw__fields input') as HTMLInputElement).value,
-    ).toBe('Lumière');
+    expect((root(fixture).querySelector('.hdw__fields input') as HTMLInputElement).value).toBe(
+      'Lumière',
+    );
     await next(fixture);
     expect((root(fixture).querySelector('.hdw__fields input') as HTMLInputElement).value).toBe(
       'Ignis',
@@ -357,7 +365,9 @@ describe('HommeDragonCreationWizard', () => {
     component['stepIndex'].set(2);
     await settle(fixture);
 
-    expect(root(fixture).querySelector('.hdw__title')!.textContent).toContain('Étape 3/5 · Identité');
+    expect(root(fixture).querySelector('.hdw__title')!.textContent).toContain(
+      'Étape 3/5 · Identité',
+    );
     expect(navButtons(fixture).next.disabled).toBe(true);
     await typeIn(fixture, 0, 'Ignis');
     expect(navButtons(fixture).next.disabled).toBe(false);
@@ -492,7 +502,9 @@ describe('HommeDragonCreationWizard', () => {
 
     await click(fixture, navButtons(fixture).next);
 
-    expect(root(fixture).querySelector('.hdw__error')!.textContent).toContain('Impossible de créer');
+    expect(root(fixture).querySelector('.hdw__error')!.textContent).toContain(
+      'Impossible de créer',
+    );
     expect(emitted).toHaveLength(0);
     expect(component['nom']()).toBe('Ignis');
     expect(component['artefactNom']()).toBe('Arc de Kael');

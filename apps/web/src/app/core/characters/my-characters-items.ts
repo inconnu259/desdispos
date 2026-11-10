@@ -18,10 +18,16 @@ export function mergeMyItems(
   hommesDragons: readonly MyHommeDragonDto[],
 ): MyListItem[] {
   return [
-    ...characters.map((character): MyListItem => ({ kind: 'character', id: character.id, character })),
-    ...hommesDragons.map(
-      (hommeDragon): MyListItem => ({ kind: 'hommeDragon', id: hommeDragon.id, hommeDragon }),
-    ),
+    ...characters.map((character): MyListItem => ({
+      kind: 'character',
+      id: character.id,
+      character,
+    })),
+    ...hommesDragons.map((hommeDragon): MyListItem => ({
+      kind: 'hommeDragon',
+      id: hommeDragon.id,
+      hommeDragon,
+    })),
   ];
 }
 

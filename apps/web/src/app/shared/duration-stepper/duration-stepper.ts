@@ -1,6 +1,11 @@
 import { Component, computed, input, model } from '@angular/core';
 import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
-import { DURATION_TEXT, durationDetail, durationSlotsLabel, type SpanStart } from './duration-labels';
+import {
+  DURATION_TEXT,
+  durationDetail,
+  durationSlotsLabel,
+  type SpanStart,
+} from './duration-labels';
 
 let nextUid = 0;
 
@@ -37,12 +42,8 @@ export class DurationStepper {
   );
   protected readonly atMin = computed(() => this.value() <= 1);
   protected readonly atMax = computed(() => this.value() >= this.max());
-  protected readonly slotsText = computed(() =>
-    durationSlotsLabel(this.value()),
-  );
-  protected readonly detail = computed(() =>
-    durationDetail(this.value(), this.start()),
-  );
+  protected readonly slotsText = computed(() => durationSlotsLabel(this.value()));
+  protected readonly detail = computed(() => durationDetail(this.value(), this.start()));
   /** Annonce `aria-live` : la valeur, puis la plage ou la longueur en jours. */
   protected readonly announcement = computed(() =>
     this.detail() ? `${this.slotsText()}, ${this.detail()}` : this.slotsText(),

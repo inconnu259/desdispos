@@ -4,9 +4,9 @@ import type { RendezVousDurationPort } from './ports/rendez-vous-duration.port';
 /** Port des durées (Story 47.6) : `durationsOf` rend 1 pour un vote qu'on ne lui a pas décrit. */
 const durationPort = (map: Record<string, number> = {}) => {
   const port = {
-    durationsOf: jest.fn(async (ids: readonly string[]) => {
-      return new Map(ids.map((id) => [id, map[id] ?? 1]));
-    }),
+    durationsOf: jest.fn((ids: readonly string[]) =>
+      Promise.resolve(new Map(ids.map((id) => [id, map[id] ?? 1]))),
+    ),
     setDurationInTx: jest.fn(),
   };
   return port as typeof port & RendezVousDurationPort;

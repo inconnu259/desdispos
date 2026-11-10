@@ -146,7 +146,9 @@ export class Harness {
   async createUser(label: string): Promise<TestUser> {
     this.userCounter += 1;
     const handle = `c37-${label}-${this.userCounter}-${this.suffix}`;
-    const email = `${handle}@test.local`;
+    // En minuscules, comme l'application stocke toute adresse (`normalizeEmail`) : écrite telle quelle
+    // en base, une étiquette en majuscules (`DECLINED`) rendait la connexion impossible (401).
+    const email = `${handle}@test.local`.toLowerCase();
     const user = await this.prisma.user.create({
       data: {
         email,

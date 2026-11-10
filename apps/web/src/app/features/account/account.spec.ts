@@ -1206,7 +1206,8 @@ describe('Account — pictogrammes (story 51.7)', () => {
 
 describe('Account — « Me rappeler de déclarer mes dispos » (Story 52.6)', () => {
   const box = (el: HTMLElement) => el.querySelector<HTMLElement>('.reminder-pref mat-checkbox')!;
-  const input = (el: HTMLElement) => box(el).querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+  const input = (el: HTMLElement) =>
+    box(el).querySelector<HTMLInputElement>('input[type="checkbox"]')!;
 
   it('la case vient juste après « Ce que révèle mon calendrier » et avant la ligne de la Ludothèque', async () => {
     const { fixture } = await createFixture();
@@ -1215,8 +1216,12 @@ describe('Account — « Me rappeler de déclarer mes dispos » (Story 52.6)', (
     const ludotheque = el.querySelector('a.board-games-row')!;
 
     expect(box(el).textContent!.trim()).toBe('Me rappeler de déclarer mes dispos');
-    expect(calendar.compareDocumentPosition(box(el)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(box(el).compareDocumentPosition(ludotheque) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      calendar.compareDocumentPosition(box(el)) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      box(el).compareDocumentPosition(ludotheque) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('cochée par défaut (l’état du compte), décochée quand le compte l’a coupée', async () => {
@@ -1267,10 +1272,16 @@ describe('Account — « Me rappeler de déclarer mes dispos » (Story 52.6)', (
 
   it('les trois voix du sous-titre existent, le libellé de la case est identique partout', () => {
     for (const id of ['grimoire-emeraude', 'foret-ancienne', 'atelier-cuivre'] as const) {
-      expect(TONE_MAP[id]['account.availability_reminder_label']).toBe('Me rappeler de déclarer mes dispos');
-      expect(TONE_MAP[id]['account.availability_reminder_hint']).toContain('quatre semaines à venir');
+      expect(TONE_MAP[id]['account.availability_reminder_label']).toBe(
+        'Me rappeler de déclarer mes dispos',
+      );
+      expect(TONE_MAP[id]['account.availability_reminder_hint']).toContain(
+        'quatre semaines à venir',
+      );
     }
-    expect(TONE_MAP['foret-ancienne']['account.availability_reminder_hint']).toContain('ton tableau de bord');
+    expect(TONE_MAP['foret-ancienne']['account.availability_reminder_hint']).toContain(
+      'ton tableau de bord',
+    );
     expect(TONE_MAP['atelier-cuivre']['account.availability_reminder_hint']).toContain('consigné');
   });
 

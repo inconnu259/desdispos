@@ -111,9 +111,7 @@ export function candidateSpanSentence(
   durationSlots: number,
 ): string | null {
   const end = candidateEnd(option, durationSlots);
-  return end
-    ? spanSentence({ date: option.date.substring(0, 10), slot: option.slot }, end)
-    : null;
+  return end ? spanSentence({ date: option.date.substring(0, 10), slot: option.slot }, end) : null;
 }
 
 /** « ven. 6 soir → dim. 8 après-midi » — la forme compacte (sans mois) des lignes du sélecteur de réponse. */

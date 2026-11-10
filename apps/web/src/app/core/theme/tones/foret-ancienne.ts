@@ -278,7 +278,8 @@ export const foretAncienne: Record<ToneKey, string> = {
   'account.calendar_intents_subtitle': 'Ce que je veux voir en arrivant dans la forêt.',
   // Story 52.6 — la case « Me rappeler de déclarer mes dispos » (libellé identique dans les trois thèmes).
   'account.availability_reminder_label': 'Me rappeler de déclarer mes dispos',
-  'account.availability_reminder_hint': 'Un rappel apparaît sur ton tableau de bord quand tu n’as rien noté pour les quatre semaines à venir.',
+  'account.availability_reminder_hint':
+    'Un rappel apparaît sur ton tableau de bord quand tu n’as rien noté pour les quatre semaines à venir.',
   'account.calendar_intent.disponibilites': 'Mes disponibilités & indisponibilités',
   'account.calendar_intent.seances': 'Mes séances confirmées',
   'account.calendar_intent.votes': 'Les votes en cours',
@@ -409,7 +410,8 @@ export const foretAncienne: Record<ToneKey, string> = {
   /* — tableau de bord — */
   // Story 52.5 — le rappel « Dispos à déclarer » en tête du tableau de bord (titre identique dans les trois thèmes).
   'dashboard.reminder_title': 'Dispos à déclarer',
-  'dashboard.reminder_body': 'Rien n’est noté dans ton calendrier lunaire pour les quatre semaines à venir.',
+  'dashboard.reminder_body':
+    'Rien n’est noté dans ton calendrier lunaire pour les quatre semaines à venir.',
   // Story 52.6 — faire taire le rappel : bouton et « Annuler » identiques dans les trois thèmes, confirmation et échec par thème.
   'dashboard.reminder_silence': 'Ne plus me le rappeler',
   'dashboard.reminder_undo': 'Annuler',
@@ -490,8 +492,7 @@ export const foretAncienne: Record<ToneKey, string> = {
   'partie.cover_remove_error': 'L’image n’a pu être retirée. Réessaie.',
   'partie.cover_changed': 'Image changée',
   'partie.cover_removed': 'Image retirée',
-  'partie.cover_remove_confirm':
-    'Veux-tu ôter l’image ? La bannière générée reprendra sa place.',
+  'partie.cover_remove_confirm': 'Veux-tu ôter l’image ? La bannière générée reprendra sa place.',
   'partie.cover_reject_type': 'Seules les images JPEG, PNG et WEBP peuvent être plantées ici.',
   'partie.cover_reject_size': 'Cette image dépasse 5 Mo : choisis-en une plus légère.',
   'partie.save_error': 'Ce sentier n’a pu être tracé. Réessaie.',
@@ -507,8 +508,10 @@ export const foretAncienne: Record<ToneKey, string> = {
   // trois thèmes (NEUTRAL_KEYS), et sans mot du JDR pour le mode soirée.
   'partie.mode_plain_quete': 'Jeu de rôle',
   'partie.mode_plain_ralliement': 'Soirée entre amis',
-  'partie.kind_plain_ONE_SHOT': 'Une seule séance : l’histoire commence et se termine le même soir.',
-  'partie.kind_plain_CAMPAGNE_LINEAIRE': 'Une histoire suivie sur plusieurs séances, avec la même troupe.',
+  'partie.kind_plain_ONE_SHOT':
+    'Une seule séance : l’histoire commence et se termine le même soir.',
+  'partie.kind_plain_CAMPAGNE_LINEAIRE':
+    'Une histoire suivie sur plusieurs séances, avec la même troupe.',
   'partie.kind_plain_CAMPAGNE_EPISODIQUE':
     'Plusieurs séances complètes chacune ; les joueurs peuvent changer d’une séance à l’autre.',
   'partie.ralliement_kind_plain_ONE_SHOT':
@@ -630,8 +633,7 @@ export const foretAncienne: Record<ToneKey, string> = {
     'Ton acceptation de cette place n’a pas pu être notée. Réessaie.',
   'partie.ralliement_event_decline_error':
     'Ton refus de cette place n’a pas pu être noté. Réessaie.',
-  'partie.ralliement_event_reserve_error':
-    'Cette place n’a pas pu être gardée. Réessaie.',
+  'partie.ralliement_event_reserve_error': 'Cette place n’a pas pu être gardée. Réessaie.',
   'partie.ralliement_event_unreserve_error':
     'Cette place gardée n’a pas pu être relâchée. Réessaie.',
   /* — proposer une conjonction par sondage de dates (Story 40.5) : mots du contrat identiques, phrases adressées à la personne selon le thème — */
@@ -846,7 +848,8 @@ export const foretAncienne: Record<ToneKey, string> = {
   'scenarios.seance_summary_mj_waiting': 'N’ont pas encore répondu : {names}',
   'scenarios.seance_summary_see_in_calendar': 'Voir dans le calendrier →',
   'scenarios.seance_situation_fix_date': 'Fixer la date…',
-  'scenarios.close_poll_confirm': 'Clore le cercle sans fixer de date ? Les réponses ne pourront plus changer.',
+  'scenarios.close_poll_confirm':
+    'Clore le cercle sans fixer de date ? Les réponses ne pourront plus changer.',
   'status.seance_poll_open': 'Vote en cours',
   'status.seance_inscriptions_ouvertes': 'Inscriptions ouvertes',
   'status.seance_programmee': 'Programmée',
@@ -1169,7 +1172,8 @@ export const foretAncienne: Record<ToneKey, string> = {
   'calendar.compose_deadline_hint_today': 'Proposé : aujourd’hui.',
   'calendar.compose_deadline_past': 'La fin du vote ne peut pas être passée.',
   'calendar.compose_deadline_ended_tag': 'passée',
-  'calendar.destiny_reopen_vote': 'Pour rouvrir le vote, modifie les dates et repousse la fin du vote.',
+  'calendar.destiny_reopen_vote':
+    'Pour rouvrir le vote, modifie les dates et repousse la fin du vote.',
   'calendar.selbar_scope_aria': 'Étendue de la sélection dans la forêt',
   'calendar.selbar_toolbar_aria': 'Actions de la forêt sur la sélection',
   /* — panneau de contraintes — */

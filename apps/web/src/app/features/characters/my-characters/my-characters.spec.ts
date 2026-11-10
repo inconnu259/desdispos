@@ -90,7 +90,7 @@ function makeAccountService() {
   return { updatePreferences: vi.fn().mockResolvedValue(undefined) };
 }
 
-function makePartySignalsService(signalsMap: Map<string, PartySignalsDto> = new Map()) {
+function makePartySignalsService(signalsMap = new Map<string, PartySignalsDto>()) {
   return {
     signals: signal(signalsMap),
     refresh: vi.fn().mockResolvedValue(undefined),
@@ -349,12 +349,9 @@ describe('MyCharacters — section de création « À forger » (Story 29.16)', 
   });
 
   it('aucun signal PERSONNAGE_A_CREER → section absente (ni titre ni cadre)', async () => {
-    const { fixture } = await createFixture(
-      [],
-      {},
-      makeAccountService(),
-      { parties: [makePartie({ id: 'p1' })] },
-    );
+    const { fixture } = await createFixture([], {}, makeAccountService(), {
+      parties: [makePartie({ id: 'p1' })],
+    });
 
     expect(fixture.nativeElement.querySelector('.character-creation-entries')).toBeNull();
   });
@@ -363,15 +360,10 @@ describe('MyCharacters — section de création « À forger » (Story 29.16)', 
     const signalsMap = new Map<string, PartySignalsDto>([
       ['p1', { role: 'player', status: 'EN_COURS', signals: ['PERSONNAGE_A_CREER'] }],
     ]);
-    const { fixture } = await createFixture(
-      [],
-      {},
-      makeAccountService(),
-      {
-        partySignalsSvc: makePartySignalsService(signalsMap),
-        parties: [makePartie({ id: 'p1', name: 'Le Convoi du Nord', gameSystemId: 'ryuutama' })],
-      },
-    );
+    const { fixture } = await createFixture([], {}, makeAccountService(), {
+      partySignalsSvc: makePartySignalsService(signalsMap),
+      parties: [makePartie({ id: 'p1', name: 'Le Convoi du Nord', gameSystemId: 'ryuutama' })],
+    });
 
     const row: HTMLAnchorElement = fixture.nativeElement.querySelector(
       '.character-creation-entries__row',
@@ -386,15 +378,10 @@ describe('MyCharacters — section de création « À forger » (Story 29.16)', 
     const signalsMap = new Map<string, PartySignalsDto>([
       ['p1', { role: 'mj', status: 'EN_COURS', signals: ['AUCUN_MEMBRE_INVITE'] }],
     ]);
-    const { fixture } = await createFixture(
-      [],
-      {},
-      makeAccountService(),
-      {
-        partySignalsSvc: makePartySignalsService(signalsMap),
-        parties: [makePartie({ id: 'p1' })],
-      },
-    );
+    const { fixture } = await createFixture([], {}, makeAccountService(), {
+      partySignalsSvc: makePartySignalsService(signalsMap),
+      parties: [makePartie({ id: 'p1' })],
+    });
 
     expect(fixture.nativeElement.querySelector('.character-creation-entries')).toBeNull();
   });
@@ -403,15 +390,10 @@ describe('MyCharacters — section de création « À forger » (Story 29.16)', 
     const signalsMap = new Map<string, PartySignalsDto>([
       ['p1', { role: 'player', status: 'EN_COURS', signals: ['PERSONNAGE_A_CREER'] }],
     ]);
-    const { fixture } = await createFixture(
-      [],
-      {},
-      makeAccountService(),
-      {
-        partySignalsSvc: makePartySignalsService(signalsMap),
-        parties: [makePartie({ id: 'p1' })],
-      },
-    );
+    const { fixture } = await createFixture([], {}, makeAccountService(), {
+      partySignalsSvc: makePartySignalsService(signalsMap),
+      parties: [makePartie({ id: 'p1' })],
+    });
 
     const empty = fixture.nativeElement.querySelector('.empty');
     expect(empty.textContent.trim()).toBe(
@@ -719,9 +701,9 @@ describe('MyCharacters — Hommes Dragons (Story 33.5)', () => {
         ],
       });
 
-      expect(fixture.nativeElement.querySelectorAll('.character-creation-entries__row').length).toBe(
-        2,
-      );
+      expect(
+        fixture.nativeElement.querySelectorAll('.character-creation-entries__row').length,
+      ).toBe(2);
     });
   });
 });

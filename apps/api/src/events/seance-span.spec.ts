@@ -11,7 +11,10 @@ import {
 
 describe('spanEnd / spanSlots — créneaux enchaînés (Story 47.1, AD-10)', () => {
   it('une durée de 1 créneau : la fin est le départ', () => {
-    expect(spanEnd('2026-11-14', 'AFTERNOON', 1)).toEqual({ date: '2026-11-14', slot: 'AFTERNOON' });
+    expect(spanEnd('2026-11-14', 'AFTERNOON', 1)).toEqual({
+      date: '2026-11-14',
+      slot: 'AFTERNOON',
+    });
     expect(spanSlots('2026-11-14', 'AFTERNOON', 1)).toEqual([
       { date: '2026-11-14', slot: 'AFTERNOON' },
     ]);

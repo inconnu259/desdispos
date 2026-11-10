@@ -73,8 +73,7 @@ export class PollVoteCleanupService {
     const durations = await this.duration.durationsOf([...new Set(options.map((o) => o.pollId))]);
     return new Set(
       options.map(
-        (o) =>
-          `${o.date.toISOString().substring(0, 10)}|${o.slot}|${durations.get(o.pollId) ?? 1}`,
+        (o) => `${o.date.toISOString().substring(0, 10)}|${o.slot}|${durations.get(o.pollId) ?? 1}`,
       ),
     );
   }

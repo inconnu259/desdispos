@@ -164,7 +164,9 @@ describe('NotificationsService', () => {
     await service.sendDueReminders();
 
     const [, , data] = email.sendMail.mock.calls[0] as [string, string, { sessionDate: string }];
-    expect(data.sessionDate).toBe('du samedi 14 novembre (soir) au dimanche 15 novembre (après-midi)');
+    expect(data.sessionDate).toBe(
+      'du samedi 14 novembre (soir) au dimanche 15 novembre (après-midi)',
+    );
   });
 
   it('Story 47.2 : le rappel JDR dit « le … » pour un créneau et « du … au … » pour une plage', async () => {
@@ -183,12 +185,18 @@ describe('NotificationsService', () => {
     ]);
     await service.sendDueReminders();
     [, , data] = email.sendMail.mock.calls[0] as [string, string, { sessionPhrase: string }];
-    expect(data.sessionPhrase).toBe('du mardi 14 juillet (soir) au mercredi 15 juillet (après-midi)');
+    expect(data.sessionPhrase).toBe(
+      'du mardi 14 juillet (soir) au mercredi 15 juillet (après-midi)',
+    );
   });
 
   it('Story 47.2 : fin égale au début → texte d’un créneau', async () => {
     prisma.seance.findMany.mockResolvedValue([
-      makeSeance({ startSlot: 'EVENING', endDate: new Date('2026-07-14T00:00:00.000Z'), endSlot: 'EVENING' }),
+      makeSeance({
+        startSlot: 'EVENING',
+        endDate: new Date('2026-07-14T00:00:00.000Z'),
+        endSlot: 'EVENING',
+      }),
     ]);
 
     await service.sendDueReminders();

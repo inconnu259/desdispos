@@ -169,6 +169,7 @@
          annoncé. Jamais affiché en lecture. -->
     <div class="declare-banner-slot" role="status">
       @if (interaction() === 'declaration') {
+        <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -- Échap remonte du bouton du bandeau, seul élément focalisable ; le conteneur n'a pas à l'être -->
         <div class="declare-banner" (keydown.escape)="onDeclareEscape()">
           <span>{{ theme.tone()['calendar.declare_banner'] }}</span>
           <button type="button" class="declare-banner__done" (click)="endDeclaration()">

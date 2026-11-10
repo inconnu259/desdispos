@@ -1735,7 +1735,7 @@ function applyVisibilityMask(
       parent !== null &&
       typeof parent === 'object' &&
       !Array.isArray(parent) &&
-      Object.hasOwn(parent as object, subField)
+      Object.hasOwn(parent, subField)
     ) {
       delete (parent as Record<string, unknown>)[subField];
       removedPaths.push(path);

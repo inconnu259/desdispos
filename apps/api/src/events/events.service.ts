@@ -1353,7 +1353,10 @@ export class EventsService
     });
     if (!poll) throw new NotFoundException('Poll introuvable');
     // Story 47.1 : la fin se calcule sur la durée de la séance (1 créneau tant qu'aucune n'est posée).
-    const seance = await tx.seance.findFirst({ where: { pollId }, select: { durationSlots: true } });
+    const seance = await tx.seance.findFirst({
+      where: { pollId },
+      select: { durationSlots: true },
+    });
     await tx.seance.updateMany({
       where: { pollId },
       // Nouvelle date → le rappel de la veille de cette séance est ré-armé (Story 37.9).

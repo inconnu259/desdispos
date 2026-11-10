@@ -223,9 +223,13 @@ describe('poll.util — pollRankableOptions / pollAnswerCounts (Story 54.2)', ()
   });
 
   it('bestOption : aucun « oui » → null ; créneaux passés exclus', () => {
-    const noYes = makePoll([option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [vote('u1', 'NO')])]);
+    const noYes = makePoll([
+      option('a', '2026-11-07T00:00:00.000Z', 'MORNING', [vote('u1', 'NO')]),
+    ]);
     expect(bestOption(pollRankableOptions(noYes), '2026-11-01')).toBeNull();
-    const past = makePoll([option('a', '2026-10-01T00:00:00.000Z', 'MORNING', [vote('u1', 'YES')])]);
+    const past = makePoll([
+      option('a', '2026-10-01T00:00:00.000Z', 'MORNING', [vote('u1', 'YES')]),
+    ]);
     expect(bestOption(pollRankableOptions(past), '2026-11-01')).toBeNull();
   });
 

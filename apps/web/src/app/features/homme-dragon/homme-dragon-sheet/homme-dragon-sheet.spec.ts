@@ -63,21 +63,117 @@ const CATALOG: GameSystemContentDto = {
   ],
   // Story 33.7 — mêmes clés/niveaux que `homme-dragon-level-capacities.json`, textes abrégés.
   hommeDragonLevelCapacity: [
-    { key: 'reserve', data: { key: 'reserve', label: 'Réserve de souffles', level: 2, description: 'Une réserve dès le niveau 2.' } },
-    { key: 'augmentation-du-souffle', data: { key: 'augmentation-du-souffle', label: 'Augmentation du souffle', level: 3, description: 'PS portés à 5.' } },
-    { key: 'souffles-multicolores', data: { key: 'souffles-multicolores', label: 'Souffles multicolores', level: 3, description: "Souffles d'une autre race." } },
-    { key: 'artefact-cadeau', data: { key: 'artefact-cadeau', label: 'Artefact cadeau', level: 4, description: 'Un artefact offert.' } },
-    { key: 'invitation-au-voyage', data: { key: 'invitation-au-voyage', label: 'Invitation au voyage', level: 4, description: 'Une nouvelle forme.' } },
-    { key: 'envol-du-dragon-des-saisons', data: { key: 'envol-du-dragon-des-saisons', label: 'Envol du dragon des saisons', level: 5, description: 'Mère-dragon.' } },
+    {
+      key: 'reserve',
+      data: {
+        key: 'reserve',
+        label: 'Réserve de souffles',
+        level: 2,
+        description: 'Une réserve dès le niveau 2.',
+      },
+    },
+    {
+      key: 'augmentation-du-souffle',
+      data: {
+        key: 'augmentation-du-souffle',
+        label: 'Augmentation du souffle',
+        level: 3,
+        description: 'PS portés à 5.',
+      },
+    },
+    {
+      key: 'souffles-multicolores',
+      data: {
+        key: 'souffles-multicolores',
+        label: 'Souffles multicolores',
+        level: 3,
+        description: "Souffles d'une autre race.",
+      },
+    },
+    {
+      key: 'artefact-cadeau',
+      data: {
+        key: 'artefact-cadeau',
+        label: 'Artefact cadeau',
+        level: 4,
+        description: 'Un artefact offert.',
+      },
+    },
+    {
+      key: 'invitation-au-voyage',
+      data: {
+        key: 'invitation-au-voyage',
+        label: 'Invitation au voyage',
+        level: 4,
+        description: 'Une nouvelle forme.',
+      },
+    },
+    {
+      key: 'envol-du-dragon-des-saisons',
+      data: {
+        key: 'envol-du-dragon-des-saisons',
+        label: 'Envol du dragon des saisons',
+        level: 5,
+        description: 'Mère-dragon.',
+      },
+    },
   ],
   // Story 33.7 — sans race, famille ni reservable, `ps: 1` (cf. `souffles-rituels.json`).
   souffleRituel: [
-    { key: 'rituel-du-sommeil', data: { key: 'rituel-du-sommeil', label: 'Rituel du sommeil', ps: 1, description: 'Un joueur endormi paie.' } },
-    { key: 'rituel-du-tabou', data: { key: 'rituel-du-tabou', label: 'Rituel du tabou', ps: 1, description: 'Mots modernes interdits.' } },
-    { key: 'rituel-de-l-esprit-des-mots', data: { key: 'rituel-de-l-esprit-des-mots', label: "Rituel de l'esprit des mots", ps: 1, description: 'Une phrase se réalise.' } },
-    { key: 'rituel-de-la-guigne', data: { key: 'rituel-de-la-guigne', label: 'Rituel de la guigne', ps: 1, description: 'Peau de banane.' } },
-    { key: 'rituel-de-l-improvisation', data: { key: 'rituel-de-l-improvisation', label: "Rituel de l'improvisation", ps: 1, description: 'Scénario improvisé.' } },
-    { key: 'fete-des-poings', data: { key: 'fete-des-poings', label: 'Fête des poings', ps: 1, description: 'Pierre-papier-ciseaux.' } },
+    {
+      key: 'rituel-du-sommeil',
+      data: {
+        key: 'rituel-du-sommeil',
+        label: 'Rituel du sommeil',
+        ps: 1,
+        description: 'Un joueur endormi paie.',
+      },
+    },
+    {
+      key: 'rituel-du-tabou',
+      data: {
+        key: 'rituel-du-tabou',
+        label: 'Rituel du tabou',
+        ps: 1,
+        description: 'Mots modernes interdits.',
+      },
+    },
+    {
+      key: 'rituel-de-l-esprit-des-mots',
+      data: {
+        key: 'rituel-de-l-esprit-des-mots',
+        label: "Rituel de l'esprit des mots",
+        ps: 1,
+        description: 'Une phrase se réalise.',
+      },
+    },
+    {
+      key: 'rituel-de-la-guigne',
+      data: {
+        key: 'rituel-de-la-guigne',
+        label: 'Rituel de la guigne',
+        ps: 1,
+        description: 'Peau de banane.',
+      },
+    },
+    {
+      key: 'rituel-de-l-improvisation',
+      data: {
+        key: 'rituel-de-l-improvisation',
+        label: "Rituel de l'improvisation",
+        ps: 1,
+        description: 'Scénario improvisé.',
+      },
+    },
+    {
+      key: 'fete-des-poings',
+      data: {
+        key: 'fete-des-poings',
+        label: 'Fête des poings',
+        ps: 1,
+        description: 'Pierre-papier-ciseaux.',
+      },
+    },
   ],
   eveilPower: [
     {
@@ -1234,7 +1330,12 @@ describe('HommeDragonSheet', () => {
       expect(race.nativeElement.textContent).toContain('Souffles du Dragon Vert');
       expect(souffleLabels(race)).toEqual(['Nostalgie', 'Route', 'Voyage']);
 
-      expect(souffleLabels(section)).toEqual([...COMMON_SOUFFLE_LABELS, 'Nostalgie', 'Route', 'Voyage']);
+      expect(souffleLabels(section)).toEqual([
+        ...COMMON_SOUFFLE_LABELS,
+        'Nostalgie',
+        'Route',
+        'Voyage',
+      ]);
       expect(section.query(By.css('details'))).toBeFalsy();
       expect(section.nativeElement.textContent).not.toContain('Souffles des autres races');
     });
@@ -1248,9 +1349,7 @@ describe('HommeDragonSheet', () => {
         'Courage',
         'Renaissance',
       ]);
-      const commons = section
-        .queryAll(By.css('[data-famille]'))
-        .flatMap((g) => souffleLabels(g));
+      const commons = section.queryAll(By.css('[data-famille]')).flatMap((g) => souffleLabels(g));
       expect(commons).toEqual(COMMON_SOUFFLE_LABELS);
 
       const details = section.query(By.css('details.homme-dragon-sheet__souffles-autres-races'));
@@ -1277,9 +1376,9 @@ describe('HommeDragonSheet', () => {
       for (const label of ['Passé', 'Futur']) {
         const li = souffleItem(fixture, label);
         expect(li.query(By.css('.stat-pill')).nativeElement.textContent.trim()).toBe('2 PS');
-        expect(li.query(By.css('.homme-dragon-sheet__souffle-note')).nativeElement.textContent.trim()).toBe(
-          'non réservable',
-        );
+        expect(
+          li.query(By.css('.homme-dragon-sheet__souffle-note')).nativeElement.textContent.trim(),
+        ).toBe('non réservable');
       }
     });
 
@@ -1428,14 +1527,16 @@ describe('HommeDragonSheet', () => {
       const { fixture } = await createComponent(dragon(3));
 
       const items = qa(fixture, '.homme-dragon-sheet__capacity');
-      expect(items.map((li) => li.query(By.css('.homme-dragon-sheet__capacity-name')).nativeElement.textContent.trim())).toEqual([
-        'Réserve de souffles',
-        'Augmentation du souffle',
-        'Souffles multicolores',
-      ]);
+      expect(
+        items.map((li) =>
+          li.query(By.css('.homme-dragon-sheet__capacity-name')).nativeElement.textContent.trim(),
+        ),
+      ).toEqual(['Réserve de souffles', 'Augmentation du souffle', 'Souffles multicolores']);
       expect(items[0].nativeElement.textContent).toContain('Une réserve dès le niveau 2.');
       expect(items[2].nativeElement.textContent).toContain("Souffles d'une autre race.");
-      expect(items[1].query(By.css('.stat-pill')).nativeElement.textContent.trim()).toBe('Niveau 3');
+      expect(items[1].query(By.css('.stat-pill')).nativeElement.textContent.trim()).toBe(
+        'Niveau 3',
+      );
       expect(q(fixture, '.homme-dragon-sheet__cadeau-prompt')).toBeNull();
     });
 
@@ -1445,12 +1546,26 @@ describe('HommeDragonSheet', () => {
       const prompt = q(fixture, '.homme-dragon-sheet__cadeau-prompt');
       expect(prompt).toBeTruthy();
       const cards = prompt.queryAll(By.css('app-choice-card button.choice-card'));
-      const labels = cards.map((c) => (c.nativeElement.querySelector('.choice-card__label') as HTMLElement).textContent!.trim());
+      const labels = cards.map((c) =>
+        (c.nativeElement.querySelector('.choice-card__label') as HTMLElement).textContent!.trim(),
+      );
       expect(labels.sort()).toEqual(
-        ['Anneau', 'Coupe', 'Cristal', 'Dague', 'Encyclopédie', 'Lanterne', 'Mascotte', 'Miroir', 'Sextant'].sort(),
+        [
+          'Anneau',
+          'Coupe',
+          'Cristal',
+          'Dague',
+          'Encyclopédie',
+          'Lanterne',
+          'Mascotte',
+          'Miroir',
+          'Sextant',
+        ].sort(),
       );
       expect(labels).not.toContain('Grand arc');
-      const badges = cards.map((c) => (c.nativeElement.querySelector('.choice-card__badge') as HTMLElement).textContent!.trim());
+      const badges = cards.map((c) =>
+        (c.nativeElement.querySelector('.choice-card__badge') as HTMLElement).textContent!.trim(),
+      );
       expect(new Set(badges)).toEqual(new Set(['Vert', 'Bleu', 'Noir']));
     });
 
@@ -1537,12 +1652,16 @@ describe('HommeDragonSheet', () => {
       back.nativeElement.click();
       fixture.detectChanges();
       await settle(fixture);
-      expect(document.activeElement).toBe(q(fixture, '.homme-dragon-sheet__cadeau-next').nativeElement);
+      expect(document.activeElement).toBe(
+        q(fixture, '.homme-dragon-sheet__cadeau-next').nativeElement,
+      );
 
       component['askCadeauConfirmation']();
       await component['onConfirmCadeau']();
       fixture.detectChanges();
-      expect(q(fixture, '.homme-dragon-sheet__cadeau-prompt .error').attributes['role']).toBe('alert');
+      expect(q(fixture, '.homme-dragon-sheet__cadeau-prompt .error').attributes['role']).toBe(
+        'alert',
+      );
     });
 
     it("sans sélection, « Choisir cet artefact » est inactif ; confirmer sans passer par l'étape de confirmation n'envoie rien", async () => {
@@ -1550,7 +1669,10 @@ describe('HommeDragonSheet', () => {
       const { fixture } = await createComponent(hommeDragonSvc);
       const component = fixture.componentInstance;
 
-      expect((q(fixture, '.homme-dragon-sheet__cadeau-next').nativeElement as HTMLButtonElement).disabled).toBe(true);
+      expect(
+        (q(fixture, '.homme-dragon-sheet__cadeau-next').nativeElement as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
       component['selectCadeau']('miroir');
       await component['onConfirmCadeau']();
 
@@ -1573,7 +1695,7 @@ describe('HommeDragonSheet', () => {
       expect(component['hommeDragon']()?.sheetData.artefactCadeau).toBeUndefined();
     });
 
-    it('niveau 4, cadeau choisi → affiché sous l\'artefact principal, plus de sélecteur (matrice)', async () => {
+    it("niveau 4, cadeau choisi → affiché sous l'artefact principal, plus de sélecteur (matrice)", async () => {
       const { fixture } = await createComponent(dragon(4, { artefactCadeau: { key: 'miroir' } }));
 
       expect(q(fixture, '.homme-dragon-sheet__cadeau-prompt')).toBeNull();
@@ -1584,7 +1706,9 @@ describe('HommeDragonSheet', () => {
       expect(artefactCard.textContent).toContain('Miroir');
       expect(artefactCard.textContent).toContain('Dragon Noir');
       // Définitif : aucun second bouton « Modifier » pour le cadeau.
-      expect(artefactCard.querySelectorAll('button:not(.homme-dragon-sheet__detail-trigger)')).toHaveLength(1);
+      expect(
+        artefactCard.querySelectorAll('button:not(.homme-dragon-sheet__detail-trigger)'),
+      ).toHaveLength(1);
     });
 
     it('entrée retirée du catalogue → libellé = clé brute (matrice)', async () => {
@@ -1615,13 +1739,18 @@ describe('HommeDragonSheet', () => {
       );
       expect(section.nativeElement.textContent).not.toContain('sans réserve ni décompte');
       // Jamais classés parmi les souffles des autres races.
-      expect(q(fixture, '.homme-dragon-sheet__souffles-autres-races').nativeElement.textContent).not.toContain('Rituel');
+      expect(
+        q(fixture, '.homme-dragon-sheet__souffles-autres-races').nativeElement.textContent,
+      ).not.toContain('Rituel');
     });
 
     it('rituels : description consultable via la surface de détail', async () => {
       const { fixture } = await createComponent(dragon(5));
 
-      const trigger = qa(fixture, '.homme-dragon-sheet__rituals .homme-dragon-sheet__detail-trigger')[1];
+      const trigger = qa(
+        fixture,
+        '.homme-dragon-sheet__rituals .homme-dragon-sheet__detail-trigger',
+      )[1];
       (trigger.nativeElement as HTMLButtonElement).click();
       fixture.detectChanges();
 
@@ -1668,7 +1797,9 @@ describe('HommeDragonSheet', () => {
       await settle(fixture);
 
       expect(q(fixture, '.homme-dragon-sheet__cadeau-prompt')).toBeNull();
-      expect((q(fixture, '.homme-dragon-sheet__cadeau').nativeElement as HTMLElement).textContent).toContain('Lanterne');
+      expect(
+        (q(fixture, '.homme-dragon-sheet__cadeau').nativeElement as HTMLElement).textContent,
+      ).toContain('Lanterne');
     });
   });
 

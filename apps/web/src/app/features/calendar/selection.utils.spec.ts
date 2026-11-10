@@ -134,7 +134,11 @@ describe('mergeCells (Story 52.3)', () => {
 
   it('réunit sans doublon, trié par date, le créneau déjà retenu gardant sa place', () => {
     const base = [cell('2026-08-21', 'FULL_DAY'), cell('2026-08-20', 'EVENING')];
-    const added = [cell('2026-08-20', 'FULL_DAY'), cell('2026-08-21', 'FULL_DAY'), cell('2026-08-22', 'FULL_DAY')];
+    const added = [
+      cell('2026-08-20', 'FULL_DAY'),
+      cell('2026-08-21', 'FULL_DAY'),
+      cell('2026-08-22', 'FULL_DAY'),
+    ];
 
     const merged = mergeCells(base, added);
 

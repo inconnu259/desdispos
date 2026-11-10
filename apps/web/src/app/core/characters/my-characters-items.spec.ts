@@ -1,11 +1,6 @@
 import type { MyCharacterDto, MyHommeDragonDto } from '@master-jdr/shared';
 import { makeCharacterDto } from './character-dto.fixture';
-import {
-  filterMyItems,
-  itemName,
-  mergeMyItems,
-  sortMyItems,
-} from './my-characters-items';
+import { filterMyItems, itemName, mergeMyItems, sortMyItems } from './my-characters-items';
 
 function makeMyCharacter(overrides: Partial<MyCharacterDto> = {}): MyCharacterDto {
   return {
@@ -138,10 +133,7 @@ describe('my-characters-items (Story 33.5)', () => {
     });
 
     it('nom : les deux natures confondues, par nom affiché', () => {
-      const items = mergeMyItems(
-        [named('c1', 'Zorn')],
-        [makeDragon({ id: 'hd1', nom: 'Ambre' })],
-      );
+      const items = mergeMyItems([named('c1', 'Zorn')], [makeDragon({ id: 'hd1', nom: 'Ambre' })]);
 
       expect(sortMyItems(items, 'nom').map((i) => i.id)).toEqual(['hd1', 'c1']);
     });

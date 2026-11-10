@@ -73,23 +73,31 @@ const SOUFFLE_FAMILLE_INFO: Record<SouffleFamille, { label: string; consigne: st
  *  l'homme-dragon peut choisir des souffles appartenant à une autre race que la sienne. */
 const SOUFFLES_MULTICOLORES_LEVEL = 3;
 
-type SouffleData = {
+interface SouffleData {
   label?: string;
   description?: string;
   ps?: number;
   race?: string;
   famille?: string;
   reservable?: boolean;
-};
+}
 
 const souffleData = (entry: ContentEntryDto): SouffleData => (entry.data ?? {}) as SouffleData;
 
-type LevelCapacityData = { label?: string; description?: string; level?: number };
+interface LevelCapacityData {
+  label?: string;
+  description?: string;
+  level?: number;
+}
 
 const levelCapacityData = (entry: ContentEntryDto): LevelCapacityData =>
   (entry.data ?? {}) as LevelCapacityData;
 
-type ArtefactCatalogData = { label?: string; description?: string; race?: string };
+interface ArtefactCatalogData {
+  label?: string;
+  description?: string;
+  race?: string;
+}
 
 const artefactData = (entry: ContentEntryDto): ArtefactCatalogData =>
   (entry.data ?? {}) as ArtefactCatalogData;

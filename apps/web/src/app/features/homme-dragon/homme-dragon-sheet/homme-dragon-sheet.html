@@ -31,6 +31,7 @@
           </button>
           @if (exportMenuOpen()) {
             <div class="homme-dragon-sheet__export-backdrop" aria-hidden="true" (click)="closeExportMenu()"></div>
+            <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -- les touches remontent des boutons du menu, seuls éléments focalisables -->
             <div
               id="homme-dragon-export-menu"
               class="homme-dragon-sheet__export-menu"

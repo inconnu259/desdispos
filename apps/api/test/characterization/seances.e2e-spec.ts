@@ -312,8 +312,9 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
           .expect(200),
       );
       const statusOf = (date: string, slot: string) =>
-        slots.find((s) => s.date === date && s.slot === slot)?.members.find((m) => m.userId === joueur.id)
-          ?.status;
+        slots
+          .find((s) => s.date === date && s.slot === slot)
+          ?.members.find((m) => m.userId === joueur.id)?.status;
       expect(statusOf(day, 'EVENING')).toBe('UNAVAILABLE');
       expect(statusOf(lendemain, 'MORNING')).toBe('UNAVAILABLE');
       expect(statusOf(lendemain, 'AFTERNOON')).toBe('UNAVAILABLE');
@@ -323,9 +324,9 @@ describe('Caractérisation JDR — séances (Story 37.1)', () => {
 
       // Le calendrier personnel le sert sur son SECOND jour, avec sa fin, et pas après.
       const cal = async (from: string, to: string) =>
-        body<{ 'mes-seances': { seanceId: string; date: string; endDate: string; endSlot: string }[] }>(
-          await mjB.agent.get('/me/calendar').query({ from, to }).expect(200),
-        )['mes-seances'];
+        body<{
+          'mes-seances': { seanceId: string; date: string; endDate: string; endSlot: string }[];
+        }>(await mjB.agent.get('/me/calendar').query({ from, to }).expect(200))['mes-seances'];
       const onSecondDay = await cal(lendemain, lendemain);
       expect(onSecondDay).toHaveLength(1);
       expect(onSecondDay[0]).toMatchObject({ date: day, endDate: lendemain, endSlot: 'AFTERNOON' });

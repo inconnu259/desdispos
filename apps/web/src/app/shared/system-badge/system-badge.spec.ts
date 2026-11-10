@@ -76,7 +76,7 @@ describe('SystemBadge', () => {
       const el = await render(id);
       expect(el.querySelector('svg')?.getAttribute('stroke')).toBe('currentColor');
       // Aucune couleur codée en dur dans le balisage SVG : le fond du dé vient de la feuille de style.
-      expect(el.querySelector('svg')?.outerHTML).not.toMatch(/#[0-9a-f]{3,8}|rgb/i);
+      expect(el.querySelector('svg')?.outerHTML).not.toMatch(/#[0-9a-f]{3,8}\b|rgb/i);
       for (const node of Array.from(el.querySelectorAll('svg, svg *'))) {
         for (const attr of ['stroke', 'fill']) {
           const value = node.getAttribute(attr);

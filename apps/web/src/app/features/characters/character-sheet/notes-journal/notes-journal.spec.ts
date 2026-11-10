@@ -169,8 +169,12 @@ describe('NotesJournal', () => {
     expect(names).toEqual(['cadenas-ouvert', 'cadenas-ferme']);
     expect(names[0]).not.toBe(names[1]);
     // Le nom du bouton reste son aria-label d'état ; l'icône, à côté du texte, est décorative.
-    expect(toggles[0].getAttribute('aria-label')).toBe(GRIMOIRE_TONE['evolution.note_shared_label']);
-    expect(toggles[1].getAttribute('aria-label')).toBe(GRIMOIRE_TONE['evolution.note_private_label']);
+    expect(toggles[0].getAttribute('aria-label')).toBe(
+      GRIMOIRE_TONE['evolution.note_shared_label'],
+    );
+    expect(toggles[1].getAttribute('aria-label')).toBe(
+      GRIMOIRE_TONE['evolution.note_private_label'],
+    );
     expect(toggles[0].querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(toggles[0].textContent).not.toContain('🔓');
   });

@@ -300,7 +300,7 @@ describe('RyuutamaPdfService', () => {
         classId: 'chasseur',
         typeId: 'attaque',
         weaponId: 'arc-de-chasse',
-        attributes: { ESP: 6, INT: 6, VIG: 8 } as never,
+        attributes: { ESP: 6, INT: 6, VIG: 8 },
       },
     });
 

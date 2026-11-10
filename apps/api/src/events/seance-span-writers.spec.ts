@@ -84,7 +84,8 @@ describe('seul events/ écrit la durée et la fin d’une Seance (Story 47.1, AD
     });
 
     it('repère une écriture imbriquée et un SQL brut sur Seance', () => {
-      const nested = 'this.prisma.event.update({ where: { id }, data: { seances: { create: { endDate: d } } } });';
+      const nested =
+        'this.prisma.event.update({ where: { id }, data: { seances: { create: { endDate: d } } } });';
       expect(spanWrites('x/y.ts', nested)).toHaveLength(1);
       const raw = 'tx.$executeRaw`UPDATE "Seance" SET "durationSlots" = 3 WHERE "id" = ${id}`;';
       expect(spanWrites('x/y.ts', raw)).toHaveLength(1);

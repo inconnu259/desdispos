@@ -753,10 +753,11 @@ describe('CalendarAgendaView — options de plusieurs créneaux, écrites de bou
       ...o,
       slot: 'EVENING' as const,
       endDate: (
-        { '2026-08-28': '2026-08-30', '2026-08-29': '2026-08-31', '2026-08-30': '2026-09-01' } as Record<
-          string,
-          string
-        >
+        {
+          '2026-08-28': '2026-08-30',
+          '2026-08-29': '2026-08-31',
+          '2026-08-30': '2026-09-01',
+        } as Record<string, string>
       )[o.date],
       endSlot: 'AFTERNOON' as const,
     }));
@@ -773,8 +774,8 @@ describe('CalendarAgendaView — options de plusieurs créneaux, écrites de bou
   it('la demande de scellement porte la plage écrite', async () => {
     const fixture = await createMjAgenda(spanned());
     const requests: { dateLabel: string; optionId: string }[] = [];
-    fixture.componentInstance.sealRequested.subscribe((r: { dateLabel: string; optionId: string }) =>
-      requests.push(r),
+    fixture.componentInstance.sealRequested.subscribe(
+      (r: { dateLabel: string; optionId: string }) => requests.push(r),
     );
     (fixture.nativeElement.querySelector('.agenda-option__seal') as HTMLButtonElement).click();
 

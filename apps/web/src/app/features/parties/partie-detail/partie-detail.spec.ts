@@ -246,7 +246,9 @@ async function createFixture(
       provideRouter([]),
       // MatTabGroup anime le changement d'onglet via le Web Animations API, non fiable en jsdom —
       // les tests qui doivent naviguer entre onglets utilisent le mode noop pour un rendu synchrone.
-      options.noopAnimations || options.openTab ? provideNoopAnimations() : provideAnimationsAsync(),
+      options.noopAnimations || options.openTab
+        ? provideNoopAnimations()
+        : provideAnimationsAsync(),
       {
         provide: ActivatedRoute,
         useValue: {
@@ -373,9 +375,14 @@ async function createFixture(
           // Story 42.1 : annuler une conjonction.
           cancel: vi.fn(),
           // Story 49.1 : les jeux sur place d'une soirée (onglet posé après « Conjonction · Invités »).
-          boardGames: vi
-            .fn()
-            .mockResolvedValue(options.eventBoardGames ?? { games: [], brings: [], participantsCount: 1, envies: [] }),
+          boardGames: vi.fn().mockResolvedValue(
+            options.eventBoardGames ?? {
+              games: [],
+              brings: [],
+              participantsCount: 1,
+              envies: [],
+            },
+          ),
         },
       },
     ],
@@ -596,7 +603,10 @@ describe('PartieDetail — statut du vote', () => {
   }
 
   it('affiche la ligne de statut X/Y quand un poll OPEN existe — Y = poll.membersCount (MJ compris, deferred-work 2026-08-24)', async () => {
-    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, { members, poll: makePoll(['u1']) });
+    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, {
+      members,
+      poll: makePoll(['u1']),
+    });
     const line = el.querySelector('.poll-status-line');
     expect(line).toBeTruthy();
     // `members` ne porte que 2 entrées (le MJ n'a jamais de ligne Membership), mais
@@ -613,7 +623,10 @@ describe('PartieDetail — statut du vote', () => {
 
   it('le lien joueur utilise poll.vote_pending quand un poll est actif', async () => {
     const partie = makePartie({ ownerId: MJ_ID });
-    const { el } = await createFixtureOnDetails(partie, PLAYER_ID, { members, poll: makePoll(['u1']) });
+    const { el } = await createFixtureOnDetails(partie, PLAYER_ID, {
+      members,
+      poll: makePoll(['u1']),
+    });
     const link = el.querySelector('.scheduling-widget a[mat-stroked-button]');
     expect(link).toBeTruthy();
     expect(link!.textContent).toContain('Vote de date en cours');
@@ -648,7 +661,10 @@ describe('PartieDetail — statut du vote', () => {
   it('plusieurs votes OPEN en parallèle → message agrégé "N votes de date en cours" (Story 8.8, revue de code)', async () => {
     const poll1 = { ...makePoll(['u1']), id: 'poll1', partieId: 'party-1' };
     const poll2 = { ...makePoll([]), id: 'poll2', partieId: 'party-1' };
-    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, { members, polls: [poll1, poll2] });
+    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, {
+      members,
+      polls: [poll1, poll2],
+    });
 
     const line = el.querySelector('.poll-status-line');
     expect(line).toBeTruthy();
@@ -667,19 +683,28 @@ describe('PartieDetail — statut du vote', () => {
 
   it('vote ouvert auquel je n’ai pas répondu → badge « Vote en cours » ET pastille « Vote à faire »', async () => {
     // `makePoll([])` : personne n'a voté, donc le lecteur non plus.
-    const { el } = await createFixtureOnDetails(makePartie(), 'u1', { members, poll: makePoll([]) });
+    const { el } = await createFixtureOnDetails(makePartie(), 'u1', {
+      members,
+      poll: makePoll([]),
+    });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBe('Vote à faire');
   });
 
   it('vote ouvert auquel j’ai répondu → même badge, pastille « J’ai voté »', async () => {
-    const { el } = await createFixtureOnDetails(makePartie(), 'u1', { members, poll: makePoll(['u1']) });
+    const { el } = await createFixtureOnDetails(makePartie(), 'u1', {
+      members,
+      poll: makePoll(['u1']),
+    });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBe('J’ai voté');
   });
 
   it('🚨 le MJ n’a jamais de pastille, même avec un vote ouvert sans sa réponse', async () => {
-    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, { members, poll: makePoll([]) });
+    const { el } = await createFixtureOnDetails(makePartie(), MJ_ID, {
+      members,
+      poll: makePoll([]),
+    });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBeNull();
   });
@@ -694,7 +719,10 @@ describe('PartieDetail — statut du vote', () => {
     // l'appel à l'action — exactement ce que la story cherche à rendre visible.
     const poll1 = { ...makePoll(['u1']), id: 'poll1', partieId: 'party-1' };
     const poll2 = { ...makePoll([]), id: 'poll2', partieId: 'party-1' };
-    const { el } = await createFixtureOnDetails(makePartie(), 'u1', { members, polls: [poll1, poll2] });
+    const { el } = await createFixtureOnDetails(makePartie(), 'u1', {
+      members,
+      polls: [poll1, poll2],
+    });
     expect(widgetBadge(el)).toBe('Vote en cours');
     expect(widgetPill(el)).toBe('Vote à faire');
   });
@@ -1162,11 +1190,11 @@ describe('PartieDetail — roster (Story 6.1)', () => {
         {
           provide: MyPartiesService,
           useValue: {
-          refreshAll: vi.fn(),
-          playerParties: signal([]),
-          allParties: signal([]),
-          loaded: signal(true),
-        },
+            refreshAll: vi.fn(),
+            playerParties: signal([]),
+            allParties: signal([]),
+            loaded: signal(true),
+          },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -1482,11 +1510,11 @@ describe('PartieDetail — canCreateCharacter / atterrissage sur « Ma fiche » 
         {
           provide: MyPartiesService,
           useValue: {
-          refreshAll: vi.fn(),
-          playerParties: signal([]),
-          allParties: signal([]),
-          loaded: signal(true),
-        },
+            refreshAll: vi.fn(),
+            playerParties: signal([]),
+            allParties: signal([]),
+            loaded: signal(true),
+          },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -2506,11 +2534,11 @@ describe('PartieDetail — rechargement sur signal temps réel (Story 18.3)', ()
         {
           provide: MyPartiesService,
           useValue: {
-          refreshAll: vi.fn(),
-          playerParties: signal([]),
-          allParties: signal([]),
-          loaded: signal(true),
-        },
+            refreshAll: vi.fn(),
+            playerParties: signal([]),
+            allParties: signal([]),
+            loaded: signal(true),
+          },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -2718,11 +2746,11 @@ describe('PartieDetail — rechargement sur signal temps réel (Story 18.3)', ()
         {
           provide: MyPartiesService,
           useValue: {
-          refreshAll: vi.fn(),
-          playerParties: signal([]),
-          allParties: signal([]),
-          loaded: signal(true),
-        },
+            refreshAll: vi.fn(),
+            playerParties: signal([]),
+            allParties: signal([]),
+            loaded: signal(true),
+          },
         },
         { provide: AvailabilityService, useValue: { notifyChanged: vi.fn() } },
         {
@@ -3382,7 +3410,10 @@ describe('PartieDetail — barre d’icônes partagée (retouche UX 2026-09-23)'
   });
 
   it('le pied de carte (Retranscrire/Sceller/Clore/Supprimer) est une barre d’icônes -- "Supprimer" porte la classe de couleur destructrice', async () => {
-    const { el } = await createFixtureOnDetails(makePartie({ ownerId: MJ_ID, status: 'EN_COURS' }), MJ_ID);
+    const { el } = await createFixtureOnDetails(
+      makePartie({ ownerId: MJ_ID, status: 'EN_COURS' }),
+      MJ_ID,
+    );
 
     const actions = el.querySelector('mat-card-actions.icon-bar');
     expect(actions).toBeTruthy();
@@ -3516,9 +3547,9 @@ describe('PartieDetail — ralliement, garde minimale (Story 38.2)', () => {
     const links = Array.from(el.querySelectorAll('.icon-bar a')).map((a) => a.getAttribute('href'));
     expect(links).toEqual(['/parties/party-1/edit']);
     // Story 41.4 : « Clore » seulement — ni « Brûler » ni « Quitter l'office » (annuler : epic 42).
-    expect(Array.from(el.querySelectorAll('.icon-bar button')).map((b) => (b.textContent ?? '').trim())).toEqual([
-      expect.stringContaining(TONE_MAP['grimoire-emeraude']['partie.close_btn']),
-    ]);
+    expect(
+      Array.from(el.querySelectorAll('.icon-bar button')).map((b) => (b.textContent ?? '').trim()),
+    ).toEqual([expect.stringContaining(TONE_MAP['grimoire-emeraude']['partie.close_btn'])]);
   });
 
   /** Fait émettre les signaux temps réel des services de domaine, puis laisse les effets s'exécuter. */
@@ -3635,20 +3666,27 @@ describe('PartieDetail — page d’un ralliement selon sa famille (Story 38.4)'
   it.each([
     ['admin', MJ_ID, 'admin'],
     ['membre', OTHER_ID, 'member'],
-  ] as const)('%s : quatre onglets : Conjonctions, Reliques, Détails puis Missives', async (_nom, userId, role) => {
-    // Story 41.1 ⚠️ : la soirée isolée (ONE_SHOT) a ses propres onglets (describe dédié plus bas) ;
-    // « Détails puis Missives » est ici celui d'un groupe, après ses Conjonctions.
-    const { el } = await createFixture(ralliement({ role, kind: 'CAMPAGNE_EPISODIQUE' }), userId, {
-      members,
-    });
-    const tone = TONE_MAP['grimoire-emeraude'];
-    expect(tabLabels(el)).toEqual([
-      tone['partie.ralliement_conjonctions_tab'],
-      tone['event_games.tab'],
-      tone['parties.detail_tab_details'],
-      tone['partie.invitations_tab_label'],
-    ]);
-  });
+  ] as const)(
+    '%s : quatre onglets : Conjonctions, Reliques, Détails puis Missives',
+    async (_nom, userId, role) => {
+      // Story 41.1 ⚠️ : la soirée isolée (ONE_SHOT) a ses propres onglets (describe dédié plus bas) ;
+      // « Détails puis Missives » est ici celui d'un groupe, après ses Conjonctions.
+      const { el } = await createFixture(
+        ralliement({ role, kind: 'CAMPAGNE_EPISODIQUE' }),
+        userId,
+        {
+          members,
+        },
+      );
+      const tone = TONE_MAP['grimoire-emeraude'];
+      expect(tabLabels(el)).toEqual([
+        tone['partie.ralliement_conjonctions_tab'],
+        tone['event_games.tab'],
+        tone['parties.detail_tab_details'],
+        tone['partie.invitations_tab_label'],
+      ]);
+    },
+  );
 
   it('Détails : la description seule, ni widget de séance, ni calendrier, ni vote, ni XP', async () => {
     const { fixture, el } = await createFixture(
@@ -4102,7 +4140,8 @@ describe('PartieDetail — un groupe s’ouvre sur ses conjonctions (Story 39.1)
     expect(section?.textContent).toContain(TONE_MAP['grimoire-emeraude']['host_counts.title']);
     const reference = el.querySelector('.details-zone--reference') as HTMLElement;
     expect(
-      (section as HTMLElement).compareDocumentPosition(reference) & Node.DOCUMENT_POSITION_FOLLOWING,
+      (section as HTMLElement).compareDocumentPosition(reference) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -5918,7 +5957,10 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
         tone['partie.ralliement_event_close_btn'],
       ]);
       expect(
-        cardEl(el, 'a').closest('article')!.querySelector('app-situation-pill')?.textContent?.trim(),
+        cardEl(el, 'a')
+          .closest('article')!
+          .querySelector('app-situation-pill')
+          ?.textContent?.trim(),
       ).toBe(tone['situation.je_participe']);
       expect(q('.situation-pill--pas_inscrit')).toBeNull();
     });
@@ -6303,7 +6345,10 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
       );
       expect(document.body.querySelectorAll('app-participant-chip').length).toBe(4);
       expect(
-        cardEl(el, 'a').closest('article')!.querySelector('app-situation-pill')?.textContent?.trim(),
+        cardEl(el, 'a')
+          .closest('article')!
+          .querySelector('app-situation-pill')
+          ?.textContent?.trim(),
       ).toBe(tone['situation.je_participe']);
       // Il peut désormais se désinscrire.
       expect(q('.ed__unsubscribe')).not.toBeNull();
@@ -6368,7 +6413,10 @@ describe('PartieDetail — la fenêtre d’une conjonction (Story 40.2)', () => 
         events: [reservedView('a', -2)],
       });
       expect(
-        cardEl(el, 'a').closest('article')!.querySelector('app-situation-pill')?.textContent?.trim(),
+        cardEl(el, 'a')
+          .closest('article')!
+          .querySelector('app-situation-pill')
+          ?.textContent?.trim(),
       ).toBe(tone['situation.pas_inscrit']);
       await open(fixture, el, 'a');
       expect(q(ACCEPT)).toBeNull();
@@ -7314,7 +7362,9 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
     it('une soirée à venir offre « Clore » à l’hôte, rien à un invité', async () => {
       const host = await createFixture(soiree(), MJ_ID, { members, events: [event()] });
       expect(
-        Array.from(host.el.querySelectorAll('.icon-bar button')).map((b) => (b.textContent ?? '').trim()),
+        Array.from(host.el.querySelectorAll('.icon-bar button')).map((b) =>
+          (b.textContent ?? '').trim(),
+        ),
       ).toEqual([expect.stringContaining(TONE_MAP['grimoire-emeraude']['partie.close_btn'])]);
       TestBed.resetTestingModule();
 
@@ -7338,9 +7388,13 @@ describe('PartieDetail — une soirée isolée sur une seule page (Story 41.1)',
       await settle(fixture);
       const tone = TONE_MAP['grimoire-emeraude'];
       const banner = el.querySelector('.closed-banner');
-      expect(banner?.textContent).toContain(tone['partie.ralliement_soiree_status_cancelled_label']);
+      expect(banner?.textContent).toContain(
+        tone['partie.ralliement_soiree_status_cancelled_label'],
+      );
       expect(banner?.classList).toContain('closed-banner--cancelled');
-      expect(banner?.textContent).not.toContain(tone['partie.ralliement_soiree_status_closed_label']);
+      expect(banner?.textContent).not.toContain(
+        tone['partie.ralliement_soiree_status_closed_label'],
+      );
       expect(el.querySelector('.ed__badge')?.textContent?.trim()).toBe('Annulée');
       expect(el.querySelector('.ed__cancelled')).not.toBeNull();
       expect(el.querySelector('.ed__edit')).toBeNull();
@@ -7986,14 +8040,14 @@ describe('PartieDetail — icônes du jeu : membres, invitations et gouvernance 
 describe('PartieDetail — onglets adressés par clé, ordre et onglet d’arrivée (Story 53.4)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  type Comp = {
+  interface Comp {
     tabs: () => TabKey[];
     displayedTabKey: () => TabKey;
     selectedTabKey: { set: (k: TabKey | null) => void };
     partie: { (): PartieDto; set: (p: PartieDto) => void };
     openInvitationsTab: () => void;
     charactersLoaded: () => boolean;
-  };
+  }
   const comp = (fixture: ComponentFixture<PartieDetail>) =>
     fixture.componentInstance as unknown as Comp;
   const tabLabels = (el: HTMLElement) =>
@@ -8389,9 +8443,9 @@ describe('PartieDetail — la bannière illustrée et ses puces de couverture (S
     banner.partieChange.emit(fresh);
     fixture.detectChanges();
 
-    expect(
-      (fixture.componentInstance as unknown as { partie: () => PartieDto }).partie(),
-    ).toBe(fresh);
+    expect((fixture.componentInstance as unknown as { partie: () => PartieDto }).partie()).toBe(
+      fresh,
+    );
     expect(el.querySelector('app-editable-banner img.party-banner')?.getAttribute('src')).toContain(
       'v=v9',
     );
@@ -8409,9 +8463,9 @@ describe('PartieDetail — la bannière illustrée et ses puces de couverture (S
     banner.partieChange.emit(fresh);
     fixture.detectChanges();
 
-    expect(
-      (fixture.componentInstance as unknown as { partie: () => PartieDto }).partie(),
-    ).toBe(fresh);
+    expect((fixture.componentInstance as unknown as { partie: () => PartieDto }).partie()).toBe(
+      fresh,
+    );
     expect(el.querySelector('app-editable-banner img.party-banner')?.getAttribute('src')).toContain(
       'v=v9',
     );

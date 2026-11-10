@@ -23,6 +23,8 @@ type SignalsDto = Record<string, { role: string; status: string; signals: string
 
 /** Clés de `PartieDto` renvoyé par `GET /parties/:id` (avec l'identité du MJ). */
 const PARTIE_DTO_KEYS = [
+  // Story 53.5 — droits calculés par le serveur (couverture), portés par chaque PartieDto.
+  'can',
   'coverImageVersion',
   'createdAt',
   'description',

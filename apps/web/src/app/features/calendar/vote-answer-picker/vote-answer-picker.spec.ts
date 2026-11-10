@@ -170,7 +170,7 @@ describe('VoteAnswerPicker — une ligne par plage (Story 47.5)', () => {
   });
 
   it('la première ligne est la courante : son bouton « peut-être » (ma réponse) prend le focus', async () => {
-    const fixture = await createMulti();
+    await createMulti();
     const focused = document.activeElement as HTMLElement | null;
     expect(focused?.dataset['option']).toBe('o1');
     expect(focused?.dataset['answer']).toBe('MAYBE');

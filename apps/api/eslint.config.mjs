@@ -32,4 +32,18 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // Les tests manipulent des doublures typées `any` (Prisma, services simulés, corps de réponse
+    // supertest) : les règles `no-unsafe-*` n'y signalent que ce choix assumé, jamais un défaut du
+    // code livré. Elles restent actives sur tout le code de production.
+    files: ['**/*.spec.ts', 'test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      // `expect(service.méthode).toHaveBeenCalled()` : la méthode n'est jamais appelée détachée.
+      '@typescript-eslint/unbound-method': 'off',
+    },
+  },
 );

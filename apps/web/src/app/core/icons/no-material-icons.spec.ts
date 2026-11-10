@@ -128,23 +128,34 @@ describe('Plus de Material Icons (épic 51, story 51.8)', () => {
     expect(html).not.toContain('fonts.googleapis.com/icon');
     expect(html).toContain('family=Roboto');
     // Les deux `preconnect` eux-mêmes (le href googleapis seul figure aussi dans la feuille Roboto).
-    const preconnects = [...html.matchAll(/<link\b[^>]*\brel="preconnect"[^>]*>/g)].map((m) => m[0]);
-    expect(preconnects.some((link) => link.includes('href="https://fonts.googleapis.com"'))).toBe(true);
-    expect(preconnects.some((link) => link.includes('href="https://fonts.gstatic.com"'))).toBe(true);
+    const preconnects = [...html.matchAll(/<link\b[^>]*\brel="preconnect"[^>]*>/g)].map(
+      (m) => m[0],
+    );
+    expect(preconnects.some((link) => link.includes('href="https://fonts.googleapis.com"'))).toBe(
+      true,
+    );
+    expect(preconnects.some((link) => link.includes('href="https://fonts.gstatic.com"'))).toBe(
+      true,
+    );
   });
 
-  it.each(Object.keys(TONE_MAP))('%s : aucune valeur de ton ne contient de caractère-icône', (theme) => {
-    const tone = TONE_MAP[theme as keyof typeof TONE_MAP] as Record<string, unknown>;
-    const fautives = Object.entries(tone)
-      .filter(([, value]) => typeof value === 'string' && ICON_CHARACTERS.test(value))
-      .map(([key, value]) => `${key} = ${String(value)}`);
-    expect(fautives, fautives.join('\n')).toEqual([]);
-  });
+  it.each(Object.keys(TONE_MAP))(
+    '%s : aucune valeur de ton ne contient de caractère-icône',
+    (theme) => {
+      const tone = TONE_MAP[theme as keyof typeof TONE_MAP] as Record<string, unknown>;
+      const fautives = Object.entries(tone)
+        .filter(([, value]) => typeof value === 'string' && ICON_CHARACTERS.test(value))
+        .map(([key, value]) => `${key} = ${String(value)}`);
+      expect(fautives, fautives.join('\n')).toEqual([]);
+    },
+  );
 
   describe('le détecteur échoue sur chaque réintroduction (en nommant la raison)', () => {
     it('<mat-icon> dans un .html, dans un template en ligne, mais pas mat-icon-button ni un commentaire', () => {
       expect(problemsOf('a.html', '<mat-icon>home</mat-icon>')).toHaveLength(1);
-      expect(problemsOf('a.ts', 'x = { template: `<mat-icon>home</mat-icon>`, y: 1 }')).toHaveLength(1);
+      expect(
+        problemsOf('a.ts', 'x = { template: `<mat-icon>home</mat-icon>`, y: 1 }'),
+      ).toHaveLength(1);
       expect(problemsOf('a.ts', "x = { template: '<mat-icon>home</mat-icon>' }")).toHaveLength(1);
       expect(problemsOf('a.ts', "const T = '<mat-icon>home</mat-icon>';")).toHaveLength(1);
       expect(problemsOf('a.html', '<button mat-icon-button>x</button>')).toEqual([]);
@@ -152,24 +163,35 @@ describe('Plus de Material Icons (épic 51, story 51.8)', () => {
     });
 
     it("un import ou un symbole de l'icône Material", () => {
-      expect(problemsOf('a.ts', "import { MatIconModule } from '@angular/material/icon';").length).toBe(2);
+      expect(
+        problemsOf('a.ts', "import { MatIconModule } from '@angular/material/icon';").length,
+      ).toBe(2);
       expect(problemsOf('a.ts', 'inject(MatIconRegistry)')).toHaveLength(1);
       expect(problemsOf('a.ts', "// jamais d'import de '@angular/material/icon'")).toEqual([]);
     });
 
     it('la police et la classe', () => {
       expect(
-        problemsOf('index.html', '<link href="https://fonts.googleapis.com/icon?family=Material+Icons" />'),
+        problemsOf(
+          'index.html',
+          '<link href="https://fonts.googleapis.com/icon?family=Material+Icons" />',
+        ),
       ).toHaveLength(1);
       expect(problemsOf('index.html', '<!-- Material+Icons -->')).toHaveLength(1);
       expect(problemsOf('a.html', '<span class="material-icons">x</span>')).toHaveLength(1);
       expect(problemsOf('a.scss', ".x { font-family: 'Material Icons'; }")).toHaveLength(1);
-      for (const graphie of ['material icons', 'Material Symbols', 'Material%20Icons', 'MaterialIcons', 'Material+Symbols+Outlined']) {
+      for (const graphie of [
+        'material icons',
+        'Material Symbols',
+        'Material%20Icons',
+        'MaterialIcons',
+        'Material+Symbols+Outlined',
+      ]) {
         expect(problemsOf('a.scss', `.x { font-family: '${graphie}'; }`), graphie).toHaveLength(1);
       }
     });
 
-    it("chaque caractère-icône dans un gabarit, hors commentaire", () => {
+    it('chaque caractère-icône dans un gabarit, hors commentaire', () => {
       for (const character of [...'♥✦⚔🌿⚙✎✕✓▾▴▸⌄⌃✅⚠❌🔒🔓❮❯‹›☰']) {
         expect(problemsOf('a.html', `<span>${character}</span>`), character).toHaveLength(1);
       }
@@ -177,7 +199,7 @@ describe('Plus de Material Icons (épic 51, story 51.8)', () => {
         expect(problemsOf('a.html', `<span>${entity}</span>`), entity).toHaveLength(1);
       }
       expect(problemsOf('a.html', '<!-- ♥ -->')).toEqual([]);
-      expect(problemsOf('a.ts', "x = { template: `<b>✓</b>` }")).toHaveLength(1);
+      expect(problemsOf('a.ts', 'x = { template: `<b>✓</b>` }')).toHaveLength(1);
     });
   });
 });

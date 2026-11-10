@@ -44,24 +44,39 @@ describe('span-label (Story 47.3)', () => {
     const start = { date: '2026-11-06', slot: 'EVENING' as const };
     expect(isSpan(start, { date: '2026-11-05', slot: 'EVENING' })).toBe(false);
     expect(isSpan(start, { date: '2026-11-06', slot: 'MORNING' })).toBe(false);
-    expect(isSpan({ date: '2026-11-06', slot: 'MORNING' }, { date: '2026-11-06', slot: 'EVENING' })).toBe(true);
+    expect(
+      isSpan({ date: '2026-11-06', slot: 'MORNING' }, { date: '2026-11-06', slot: 'EVENING' }),
+    ).toBe(true);
     // Début sans créneau et fin « journée » le même jour : la même journée, pas une plage.
-    expect(isSpan({ date: '2026-11-06', slot: undefined }, { date: '2026-11-06', slot: 'FULL_DAY' })).toBe(false);
-    expect(isSpan({ date: '2026-11-06', slot: null }, { date: '2026-11-07', slot: null })).toBe(true);
+    expect(
+      isSpan({ date: '2026-11-06', slot: undefined }, { date: '2026-11-06', slot: 'FULL_DAY' }),
+    ).toBe(false);
+    expect(isSpan({ date: '2026-11-06', slot: null }, { date: '2026-11-07', slot: null })).toBe(
+      true,
+    );
   });
 
   it('forme courte « ven. 6 nov. soir → dim. 8 nov. après-midi »', () => {
     expect(
-      spanShortLabel({ date: '2026-11-06', slot: 'EVENING' }, { date: '2026-11-08', slot: 'AFTERNOON' }),
+      spanShortLabel(
+        { date: '2026-11-06', slot: 'EVENING' },
+        { date: '2026-11-08', slot: 'AFTERNOON' },
+      ),
     ).toBe('ven. 6 nov. soir → dim. 8 nov. après-midi');
   });
 
   it('phrase accessible : le mois n’est écrit que s’il diffère', () => {
     expect(
-      spanSentence({ date: '2026-11-06', slot: 'EVENING' }, { date: '2026-11-08', slot: 'AFTERNOON' }),
+      spanSentence(
+        { date: '2026-11-06', slot: 'EVENING' },
+        { date: '2026-11-08', slot: 'AFTERNOON' },
+      ),
     ).toBe('du vendredi 6 soir au dimanche 8 après-midi');
     expect(
-      spanSentence({ date: '2026-10-30', slot: 'EVENING' }, { date: '2026-11-01', slot: 'AFTERNOON' }),
+      spanSentence(
+        { date: '2026-10-30', slot: 'EVENING' },
+        { date: '2026-11-01', slot: 'AFTERNOON' },
+      ),
     ).toBe('du vendredi 30 octobre soir au dimanche 1er novembre après-midi');
   });
 });
@@ -99,7 +114,9 @@ describe('entryCoversCell / entryIndexRange — la plage dépliée (Story 47.3)'
 
   it('une fin sans créneau : le même jour, le créneau de départ ; un autre jour, la fin de ce jour', () => {
     const base: AgendaEntry = { ...WEEKEND, slot: 'MORNING', endSlot: undefined };
-    expect(entryCoversCell({ ...base, endDate: '2026-11-06' }, '2026-11-06', 'EVENING')).toBe(false);
+    expect(entryCoversCell({ ...base, endDate: '2026-11-06' }, '2026-11-06', 'EVENING')).toBe(
+      false,
+    );
     expect(entryCoversCell({ ...base, endDate: '2026-11-07' }, '2026-11-07', 'EVENING')).toBe(true);
   });
 
@@ -113,7 +130,11 @@ describe('buildDayDetail — la plage sur chaque jour (Story 47.3)', () => {
   it('porte la plage, ses bords et son nom accessible', () => {
     const sat = buildDayDetail('2026-11-07', [WEEKEND], ALL_LAYERS, [], NOW);
     const [morning, afternoon, evening] = sat.slots;
-    expect([morning.winner, afternoon.winner, evening.winner]).toEqual(['seance', 'seance', 'seance']);
+    expect([morning.winner, afternoon.winner, evening.winner]).toEqual([
+      'seance',
+      'seance',
+      'seance',
+    ]);
     expect(morning.span).toMatchObject({
       range: 'du vendredi 6 soir au dimanche 8 après-midi',
       continuesBefore: true,
@@ -135,7 +156,11 @@ describe('buildDayDetail — la plage sur chaque jour (Story 47.3)', () => {
   it('le premier jour : seul le soir est couvert, sans connecteur « venant de »', () => {
     const fri = buildDayDetail('2026-11-06', [WEEKEND], ALL_LAYERS, [], NOW);
     expect(fri.slots.map((s) => s.winner)).toEqual(['none', 'none', 'seance']);
-    expect(fri.slots[2].span).toMatchObject({ isStart: true, isFirstDay: true, continuesAfter: true });
+    expect(fri.slots[2].span).toMatchObject({
+      isStart: true,
+      isFirstDay: true,
+      continuesAfter: true,
+    });
   });
 
   it('couche « mes séances » éteinte : l’indisponibilité reste, le nom et les connecteurs disparaissent', () => {

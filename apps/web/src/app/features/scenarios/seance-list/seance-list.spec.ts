@@ -474,7 +474,7 @@ describe('SeanceList', () => {
       );
       expect(fixture.nativeElement.querySelector('app-fill-indicator')).toBeTruthy();
       expect(fixture.nativeElement.querySelector('app-seance-poll-summary')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-poll-status')).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-poll-status')).toBeNull();
       expect(fixture.nativeElement.textContent).toContain(GRIMOIRE_TONE['common.cloturer_le_vote']);
     });
 
@@ -1015,8 +1015,9 @@ describe('SeanceList', () => {
           { ...SCENARIO, seances: [closedRange] },
           { isMj },
         );
-        const text = (fixture.nativeElement as HTMLElement).querySelector('.seance-row__chosen-date')
-          ?.textContent;
+        const text = (fixture.nativeElement as HTMLElement).querySelector(
+          '.seance-row__chosen-date',
+        )?.textContent;
         expect(text, isMj ? 'MJ' : 'joueur').toContain('ven. 6 nov. soir → dim. 8 nov. après-midi');
         TestBed.resetTestingModule();
       }
@@ -1572,9 +1573,9 @@ describe('SeanceList — encadré de situation (Story 54.1)', () => {
       { isEpisodique: true, currentUserId: 'u1' },
     );
     expect(find(fixture.nativeElement, 'Voter dans le calendrier')).toHaveLength(0);
-    expect(
-      find(fixture.nativeElement, GRIMOIRE_TONE['scenarios.seances_inscrire']),
-    ).toHaveLength(1);
+    expect(find(fixture.nativeElement, GRIMOIRE_TONE['scenarios.seances_inscrire'])).toHaveLength(
+      1,
+    );
   });
 
   it('joueur, vote clos sans date : le message reste en ligne, sans encadré', async () => {
@@ -1722,9 +1723,9 @@ describe('SeanceList — encadré de situation, cas limites (Story 54.1, revue)'
       { isMj: true, isEpisodique: true },
     );
     expect(fixture.nativeElement.querySelector('app-seance-situation')).not.toBeNull();
-    const edit = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
-    ).find((b) => b.textContent?.trim() === GRIMOIRE_TONE['scenarios.seances_edit_capacity']);
+    const edit = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === GRIMOIRE_TONE['scenarios.seances_edit_capacity'],
+    );
     edit!.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.capacity-form')).not.toBeNull();
@@ -1936,7 +1937,9 @@ describe('SeanceList — résumé et « Fixer la date… » côté MJ (Story 54.
     async function open(seance: SeanceDto, afterClosed: unknown) {
       const created = await createGm(seance);
       const dialog = (
-        created.fixture.componentInstance as unknown as { dialog: { open: (...a: unknown[]) => unknown } }
+        created.fixture.componentInstance as unknown as {
+          dialog: { open: (...a: unknown[]) => unknown };
+        }
       ).dialog;
       const open = vi
         .spyOn(dialog, 'open')
@@ -2004,7 +2007,9 @@ describe('SeanceList — résumé et « Fixer la date… » côté MJ (Story 54.
     const summary = a.fixture.nativeElement.querySelector('app-seance-poll-summary');
     expect(summary).not.toBeNull();
     // La confirmation vit dans le résumé (testée dans seance-poll-summary.spec) ; ici, la sortie.
-    const comp = a.fixture.componentInstance as unknown as { onClosePoll(id: string): Promise<void> };
+    const comp = a.fixture.componentInstance as unknown as {
+      onClosePoll(id: string): Promise<void>;
+    };
     await comp.onClosePoll('poll1');
     expect(a.pollSvc.closePoll).toHaveBeenCalledWith('p1', 'poll1');
   });
@@ -2120,7 +2125,9 @@ describe('SeanceList — câblage du résumé du MJ, cas de la revue (Story 54.3
     const dialog = (
       fixture.componentInstance as unknown as { dialog: { open: (...a: unknown[]) => unknown } }
     ).dialog;
-    const open = vi.spyOn(dialog, 'open').mockReturnValue({ afterClosed: () => of(false) }) as unknown as {
+    const open = vi
+      .spyOn(dialog, 'open')
+      .mockReturnValue({ afterClosed: () => of(false) }) as unknown as {
       mock: { calls: any[][] };
     };
     find(fixture.nativeElement, 'Fixer la date…')[0].click();

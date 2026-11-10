@@ -5,7 +5,10 @@ import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../core/theme/tones';
 import { THEMES } from '@master-jdr/shared';
 
-async function createFixture(compact: boolean, theme: (typeof THEMES)[number] = 'grimoire-emeraude') {
+async function createFixture(
+  compact: boolean,
+  theme: (typeof THEMES)[number] = 'grimoire-emeraude',
+) {
   await TestBed.configureTestingModule({
     imports: [NatureMarker],
     providers: [{ provide: ThemeToneService, useValue: { tone: signal(TONE_MAP[theme]) } }],

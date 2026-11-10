@@ -222,7 +222,7 @@ function pollCreates(pollService: ReturnType<typeof makePollService>, pollId: st
         write: (tx: unknown, durationSlots: number) => Promise<{ id: string }>,
       ) => Promise<void>,
     ) => {
-      await persist?.(async () => ({ id: pollId }));
+      await persist?.(() => Promise.resolve({ id: pollId }));
       return { id: pollId };
     },
   );

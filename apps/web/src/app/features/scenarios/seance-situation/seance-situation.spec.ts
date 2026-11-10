@@ -18,7 +18,12 @@ async function create(
 ) {
   await TestBed.configureTestingModule({
     imports: [SeanceSituationComponent],
-    providers: [{ provide: ThemeToneService, useValue: { tone: signal(TONE_MAP[theme]), activeTheme: signal(theme) } }],
+    providers: [
+      {
+        provide: ThemeToneService,
+        useValue: { tone: signal(TONE_MAP[theme]), activeTheme: signal(theme) },
+      },
+    ],
   }).compileComponents();
   const fixture = TestBed.createComponent(SeanceSituationComponent);
   fixture.componentRef.setInput('box', box);
@@ -126,9 +131,7 @@ describe('SeanceSituationComponent', () => {
 
   it('Forêt : « Tu participes. » (tutoiement)', async () => {
     const { el } = await create('se_desinscrire', { theme: 'foret-ancienne' });
-    expect(el.querySelector('.seance-situation__text')?.textContent?.trim()).toBe(
-      'Tu participes.',
-    );
+    expect(el.querySelector('.seance-situation__text')?.textContent?.trim()).toBe('Tu participes.');
   });
 });
 

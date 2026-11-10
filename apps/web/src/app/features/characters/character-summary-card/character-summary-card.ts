@@ -72,7 +72,9 @@ export class CharacterSummaryCard {
   protected readonly avatarSize = computed(() => AVATAR_SIZE_BY_DENSITY[this.density()]);
   /** Gabarit « Niv. {n} » — même patron `.replace()` que `Dashboard.moreLabel()`. */
   protected readonly levelLabel = computed(() =>
-    this.theme.tone()['character.level_badge'].replace('{n}', String(this.character()?.level ?? '')),
+    this.theme
+      .tone()
+      ['character.level_badge'].replace('{n}', String(this.character()?.level ?? '')),
   );
 
   /** Sous-ligne unique du mode liste (Story 29.9, retour utilisateur) — « Classe · Partie ».

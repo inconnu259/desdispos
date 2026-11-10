@@ -49,7 +49,11 @@ export class SeanceSituationComponent {
       case 'fixer_la_date': {
         const deadline = this.expiresAt();
         // Story 54.3 : le vote encore ouvert au-delà de son échéance se conclut encore (la date se fixe).
-        if (this.box() === 'fixer_la_date' && deadline && deadline.substring(0, 10) < this.todayKey()) {
+        if (
+          this.box() === 'fixer_la_date' &&
+          deadline &&
+          deadline.substring(0, 10) < this.todayKey()
+        ) {
           return tone['scenarios.seance_summary_ended'];
         }
         return deadline

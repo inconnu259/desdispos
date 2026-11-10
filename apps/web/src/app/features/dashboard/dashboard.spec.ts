@@ -2414,7 +2414,9 @@ describe('Dashboard — le rappel « Dispos à déclarer » (Story 52.5)', () =>
   it('aucun bandeau quand le serveur ne demande rien (ni pendant le chargement)', async () => {
     const { fixture } = await withReminder(false);
     expect(banner(fixture)).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain(GRIMOIRE_TONE['dashboard.reminder_title']);
+    expect(fixture.nativeElement.textContent).not.toContain(
+      GRIMOIRE_TONE['dashboard.reminder_title'],
+    );
   });
 
   it('un seul bandeau, en tête de page : avant les invitations reçues et les cartes', async () => {
@@ -2422,7 +2424,12 @@ describe('Dashboard — le rappel « Dispos à déclarer » (Story 52.5)', () =>
     invitations.listReceived.mockResolvedValue([
       {
         id: 'inv1',
-        partie: { id: 'p9', name: 'La Compagnie', kind: 'CAMPAGNE_LINEAIRE', gameSystemId: 'ryuutama' },
+        partie: {
+          id: 'p9',
+          name: 'La Compagnie',
+          kind: 'CAMPAGNE_LINEAIRE',
+          gameSystemId: 'ryuutama',
+        },
         inviterPseudo: 'mj',
       },
     ]);

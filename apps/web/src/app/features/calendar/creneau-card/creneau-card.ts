@@ -53,7 +53,10 @@ export class CreneauCard {
   /** Story 47.6 — une fenêtre de plusieurs créneaux s'écrit sur UNE ligne « début → fin » (`span-label`), jamais en
    *  deux lignes jour/créneau ; un créneau seul garde son écriture. */
   protected readonly rangeLabel = computed(() =>
-    candidateSpanShort({ date: this.slot().date, slot: this.slot().slot }, this.slot().durationSlots),
+    candidateSpanShort(
+      { date: this.slot().date, slot: this.slot().slot },
+      this.slot().durationSlots,
+    ),
   );
 
   protected readonly allAvailable = computed(() =>

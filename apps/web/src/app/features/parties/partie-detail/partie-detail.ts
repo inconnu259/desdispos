@@ -563,7 +563,8 @@ export class PartieDetail implements OnInit {
   /** Détermine l'ensemble des onglets (rôle MJ/joueur, nature de la partie après conversion, famille) —
    *  un changement renvoie à l'onglet d'arrivée du nouveau jeu d'onglets. */
   private readonly tabSetKey = computed(
-    () => `${this.isMj()}|${this.partie()?.kind ?? ''}|${familyOf(this.partie()?.gameSystemId ?? '')}`,
+    () =>
+      `${this.isMj()}|${this.partie()?.kind ?? ''}|${familyOf(this.partie()?.gameSystemId ?? '')}`,
   );
 
   /** Le `mat-tab-group` rend un index : on le ramène à la clé de l'onglet. */

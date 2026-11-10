@@ -25,7 +25,12 @@ const BASE: ScenarioDto = {
 
 const DRAFT_1: ScenarioDto = BASE;
 const DRAFT_2: ScenarioDto = { ...BASE, id: 's2', title: 'Les Ombres du Passé' };
-const A_VENIR: ScenarioDto = { ...BASE, id: 's3', title: 'La Route des Lanternes', status: 'A_VENIR' };
+const A_VENIR: ScenarioDto = {
+  ...BASE,
+  id: 's3',
+  title: 'La Route des Lanternes',
+  status: 'A_VENIR',
+};
 const COURANT: ScenarioDto = { ...BASE, id: 's4', title: 'Le Pont de Verre', status: 'COURANT' };
 const PASSE_1: ScenarioDto = { ...BASE, id: 's5', title: 'La Vallée Blanche', status: 'PASSE' };
 const PASSE_2: ScenarioDto = { ...BASE, id: 's6', title: 'Les Cendres', status: 'PASSE' };
@@ -115,14 +120,7 @@ describe('ScenarioList', () => {
     const badges = [...fixture.nativeElement.querySelectorAll('.status-badge')].map((n: Element) =>
       (n.textContent ?? '').trim(),
     );
-    expect(badges).toEqual([
-      'Brouillon',
-      'Brouillon',
-      'Courant',
-      'À venir',
-      'Passé',
-      'Passé',
-    ]);
+    expect(badges).toEqual(['Brouillon', 'Brouillon', 'Courant', 'À venir', 'Passé', 'Passé']);
   });
 
   it('une section sans contenu ne s’affiche pas du tout', async () => {
@@ -217,7 +215,10 @@ describe('ScenarioList', () => {
 
     const AVEC_PROCHAINE: ScenarioDto = {
       ...A_VENIR,
-      seances: [seance('x1', 's3', '2020-06-12T00:00:00.000Z'), seance('x2', 's3', '2099-10-10T00:00:00.000Z')],
+      seances: [
+        seance('x1', 's3', '2020-06-12T00:00:00.000Z'),
+        seance('x2', 's3', '2099-10-10T00:00:00.000Z'),
+      ],
     };
     const SANS_PROCHAINE: ScenarioDto = {
       ...PASSE_1,

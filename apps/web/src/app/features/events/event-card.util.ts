@@ -195,7 +195,10 @@ export function eventDateLabel(card: EventCardDto, tone: EventTone): string {
   // Story 47.3 : une plage de plusieurs créneaux se lit du début à la fin (« Ven. 6 nov. soir → dim. 8 nov. après-midi »).
   const endDate = card.seance?.endDate;
   if (endDate && isSpan({ date: day, slot }, { date: endDate, slot: card.seance?.endSlot })) {
-    const range = spanShortLabel({ date: day, slot }, { date: endDate, slot: card.seance?.endSlot });
+    const range = spanShortLabel(
+      { date: day, slot },
+      { date: endDate, slot: card.seance?.endSlot },
+    );
     return range.charAt(0).toLocaleUpperCase('fr-FR') + range.slice(1);
   }
   return slot ? `${date} · ${SLOT_LABELS[slot].toLocaleLowerCase('fr-FR')}` : date;
@@ -677,11 +680,7 @@ export function rankedPollSlots(card: EventCardDto, todayKey: string): RankedPol
  */
 export function rankedEntrySlots<
   T extends Pick<OpenPollOption, 'optionId' | 'date' | 'slot' | 'yes' | 'maybe' | 'no'>,
->(
-  options: readonly T[],
-  todayKey: string,
-  durationSlots = 1,
-): RankedPollSlot[] {
+>(options: readonly T[], todayKey: string, durationSlots = 1): RankedPollSlot[] {
   return options
     .map((o) => ({
       id: o.optionId,

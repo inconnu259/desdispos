@@ -89,7 +89,7 @@ export class AvailabilityReminderService {
       this.appliedSeq = this.seq + 1;
     }
 
-    let updated: AuthUser | null = null;
+    let updated: AuthUser | null;
     try {
       updated = await this.account.updatePreferences({ availabilityReminder: enabled });
     } catch {

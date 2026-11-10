@@ -37,7 +37,13 @@ interface LockableField {
  */
 @Component({
   selector: 'app-visibility-locks',
-  imports: [RouterLink, MatButtonModule, MatCardModule, MatCheckboxModule, MatProgressSpinnerModule],
+  imports: [
+    RouterLink,
+    MatButtonModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatProgressSpinnerModule,
+  ],
   templateUrl: './visibility-locks.html',
   styleUrl: './visibility-locks.scss',
 })

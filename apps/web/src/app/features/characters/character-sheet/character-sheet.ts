@@ -27,7 +27,11 @@ import { CdkTrapFocus } from '@angular/cdk/a11y';
 import type { CharacterDto, GameSystemContentDto } from '@master-jdr/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
-import { characterName, findContentEntry, isFieldHidden } from '../../../core/characters/character.util';
+import {
+  characterName,
+  findContentEntry,
+  isFieldHidden,
+} from '../../../core/characters/character.util';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { IdentityLabel } from '../../../shared/identity/identity-label';
 import { DetailSurface } from '../../../shared/detail-surface/detail-surface';

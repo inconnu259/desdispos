@@ -1709,9 +1709,13 @@ describe('Tones — une voix par thème (Story 35.3)', () => {
     const confirm = THEMES.map((theme) => TONE_MAP[theme]['scenarios.close_poll_confirm']);
     expect(new Set(confirm).size).toBe(THEMES.length);
     expect(NEUTRAL_KEYS.has('scenarios.close_poll_confirm')).toBe(false);
-    expect(TONE_MAP['grimoire-emeraude']['scenarios.close_poll_confirm']).toMatch(/^Clore le conseil/);
+    expect(TONE_MAP['grimoire-emeraude']['scenarios.close_poll_confirm']).toMatch(
+      /^Clore le conseil/,
+    );
     expect(TONE_MAP['foret-ancienne']['scenarios.close_poll_confirm']).toMatch(/^Clore le cercle/);
-    expect(TONE_MAP['atelier-cuivre']['scenarios.close_poll_confirm']).toMatch(/^Clôturer le scrutin/);
+    expect(TONE_MAP['atelier-cuivre']['scenarios.close_poll_confirm']).toMatch(
+      /^Clôturer le scrutin/,
+    );
     for (const key of [
       'pollui.status_voters_aria',
       'pollui.status_missing_aria',

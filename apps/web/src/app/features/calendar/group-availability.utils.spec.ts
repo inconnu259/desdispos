@@ -244,12 +244,16 @@ describe('worstAvailability — le plus petit nombre de disponibles sur la plage
   });
 
   it('un zéro est un chiffre (personne de libre sur toute la plage)', () => {
-    const zero = weekend.map((c) => (c.slot === 'MORNING' && c.date === '2026-11-07' ? cell(c.date, 'MORNING', 0) : c));
+    const zero = weekend.map((c) =>
+      c.slot === 'MORNING' && c.date === '2026-11-07' ? cell(c.date, 'MORNING', 0) : c,
+    );
     expect(worstAvailability(zero, { date: '2026-11-06', slot: 'EVENING' }, 6)).toBe(0);
   });
 
   it('accepte une date ISO complète côté carte comme côté départ', () => {
     const iso = weekend.map((c) => ({ ...c, date: `${c.date}T00:00:00.000Z` }));
-    expect(worstAvailability(iso, { date: '2026-11-06T00:00:00.000Z', slot: 'EVENING' }, 6)).toBe(2);
+    expect(worstAvailability(iso, { date: '2026-11-06T00:00:00.000Z', slot: 'EVENING' }, 6)).toBe(
+      2,
+    );
   });
 });

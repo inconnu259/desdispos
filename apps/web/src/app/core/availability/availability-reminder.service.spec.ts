@@ -10,7 +10,10 @@ import { AvailabilityReminderService } from './availability-reminder.service';
 describe('AvailabilityReminderService (Story 52.5)', () => {
   let service: AvailabilityReminderService;
   let http: HttpTestingController;
-  type TestUser = { id: string; availabilityReminder: boolean };
+  interface TestUser {
+    id: string;
+    availabilityReminder: boolean;
+  }
   let currentUser: ReturnType<typeof signal<TestUser | null>>;
   let updatePreferences: ReturnType<typeof vi.fn>;
 

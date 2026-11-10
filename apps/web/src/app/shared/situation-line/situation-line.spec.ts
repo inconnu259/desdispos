@@ -24,9 +24,7 @@ describe('SituationLine — rendu', () => {
   for (const theme of THEMES) {
     it(`${theme} : libellé + pastille pour une valeur`, async () => {
       const el = await createLine('vote_a_faire', theme);
-      expect(el.querySelector('.situation-line__label')?.textContent?.trim()).toBe(
-        'Ma situation',
-      );
+      expect(el.querySelector('.situation-line__label')?.textContent?.trim()).toBe('Ma situation');
       expect(el.querySelector('.situation-pill')?.textContent?.trim()).toBe('Vote à faire');
     });
   }

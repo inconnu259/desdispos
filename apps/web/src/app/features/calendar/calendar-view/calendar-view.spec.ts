@@ -268,7 +268,9 @@ async function createCalendarView(options?: CreateOptions | 'mj' | 'personal') {
   const dialog = makeMatDialog();
   const partiesSvc: any = makePartiesService(opts.members);
   if (opts.partie) {
-    partiesSvc.get = vi.fn().mockResolvedValue({ gameSystemId: 'ryuutama', status: 'EN_COURS', ...opts.partie });
+    partiesSvc.get = vi
+      .fn()
+      .mockResolvedValue({ gameSystemId: 'ryuutama', status: 'EN_COURS', ...opts.partie });
   }
   const datableSvc = {
     entries: signal<DatableSeanceEntry[]>(opts.datable ?? []),
@@ -477,7 +479,9 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
   });
 
   const notice = (fixture: any) =>
-    (fixture.nativeElement as HTMLElement).querySelector('.calendar-notice span')?.textContent?.trim() ?? null;
+    (fixture.nativeElement as HTMLElement)
+      .querySelector('.calendar-notice span')
+      ?.textContent?.trim() ?? null;
 
   it('?seanceId arme un vote NEUF pour ce rendez-vous, sans panneau 8.7, la barre le nomme', async () => {
     arriveAt('seanceId=sc1-s1');
@@ -532,25 +536,36 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
 
   it.each([
     ['séance datée', scenario('sc1', { dateValidee: '2099-01-01' }), 'sc1-s1'],
-    ['vote déjà lancé et clos', scenario('sc1', { poll: openPoll('p', { status: 'CLOSED' }) }), 'sc1-s1'],
+    [
+      'vote déjà lancé et clos',
+      scenario('sc1', { poll: openPoll('p', { status: 'CLOSED' }) }),
+      'sc1-s1',
+    ],
     ['scénario clôturé', scenario('sc1', {}, { status: 'PASSE' }), 'sc1-s1'],
     ['pas le droit de proposer', scenario('sc1', { can: NOBODY }), 'sc1-s1'],
-    ['pas le droit de modifier le vote', scenario('sc1', { poll: openPoll('p'), can: NOBODY }), 'sc1-s1'],
+    [
+      'pas le droit de modifier le vote',
+      scenario('sc1', { poll: openPoll('p'), can: NOBODY }),
+      'sc1-s1',
+    ],
     ['rendez-vous inconnu ou d’une autre partie', scenario('sc1'), 'ailleurs-s1'],
-  ])('lien périmé (%s) : calendrier normal, message une fois, paramètre retiré', async (_label, sc, seanceId) => {
-    arriveAt(`seanceId=${seanceId}`);
-    const { fixture, location } = await createCalendarView({
-      mode: 'mj',
-      partieId: 'partie-1',
-      queryParams: { seanceId },
-      scenarios: [sc],
-    });
-    await tick(fixture);
+  ])(
+    'lien périmé (%s) : calendrier normal, message une fois, paramètre retiré',
+    async (_label, sc, seanceId) => {
+      arriveAt(`seanceId=${seanceId}`);
+      const { fixture, location } = await createCalendarView({
+        mode: 'mj',
+        partieId: 'partie-1',
+        queryParams: { seanceId },
+        scenarios: [sc],
+      });
+      await tick(fixture);
 
-    expect((fixture.componentInstance as any).interaction()).not.toBe('composer');
-    expect(notice(fixture)).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
-    expect(location.path()).not.toContain('seanceId');
-  });
+      expect((fixture.componentInstance as any).interaction()).not.toBe('composer');
+      expect(notice(fixture)).toBe(GRIMOIRE_TONE['calendar.compose_link_stale']);
+      expect(location.path()).not.toContain('seanceId');
+    },
+  );
 
   it('la vitrine n’arme jamais de composer : sans partie dans la route, `?seanceId` est ignoré', async () => {
     const { fixture } = await createCalendarView({
@@ -574,7 +589,8 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       await tick(r.fixture);
       return r;
     };
-    const keysOf = (comp: any) => comp.composedCells().map((c: any) => `${c.date.getDate()}|${c.slot}`);
+    const keysOf = (comp: any) =>
+      comp.composedCells().map((c: any) => `${c.date.getDate()}|${c.slot}`);
 
     it('« Ajouter au vote » CUMULE : l’union avec les créneaux existants, sans doublon, l’ordre gardé', async () => {
       const { fixture } = await armed();
@@ -694,7 +710,9 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
       const { comp } = await armNew();
       comp.onComposeAdded([cell(dayIn(0), 'EVENING'), cell(dayIn(2), 'EVENING')]);
       expect(comp.composeDeadline()).toBe(dayIn(0));
-      expect(comp.composeDeadlineHint()).toBe(GRIMOIRE_TONE['calendar.compose_deadline_hint_today']);
+      expect(comp.composeDeadlineHint()).toBe(
+        GRIMOIRE_TONE['calendar.compose_deadline_hint_today'],
+      );
       expect(comp.composeDeadlinePast()).toBe(false);
     });
 
@@ -815,8 +833,24 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
             title: 'Chapitre sc1',
             can: canEdit ? ORGANIZER : NOBODY,
             options: [
-              { optionId: 'poll1-a', date: '2026-08-01', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
-              { optionId: 'poll1-b', date: '2026-08-02', slot: 'MORNING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+              {
+                optionId: 'poll1-a',
+                date: '2026-08-01',
+                slot: 'EVENING',
+                yes: 0,
+                maybe: 0,
+                no: 0,
+                myAnswer: null,
+              },
+              {
+                optionId: 'poll1-b',
+                date: '2026-08-02',
+                slot: 'MORNING',
+                yes: 0,
+                maybe: 0,
+                no: 0,
+                myAnswer: null,
+              },
             ],
           }),
         ],
@@ -830,7 +864,10 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
 
     it('atelier : le plateau offre « Modifier les dates » et le lien, et « Modifier » arme le composer prérempli', async () => {
       const { comp } = await atelierWith(2);
-      expect(comp.destinyBoard().actions).toMatchObject({ modifyLabel: MODIFY(), otherLabel: OTHER() });
+      expect(comp.destinyBoard().actions).toMatchObject({
+        modifyLabel: MODIFY(),
+        otherLabel: OTHER(),
+      });
 
       comp.openDestinyModify();
 
@@ -855,7 +892,10 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
 
     it('atelier : sans rien à proposer, « Modifier » seulement — jamais un lien vers un choix vide', async () => {
       const { comp } = await atelierWith(0);
-      expect(comp.destinyBoard().actions).toMatchObject({ modifyLabel: MODIFY(), otherLabel: null });
+      expect(comp.destinyBoard().actions).toMatchObject({
+        modifyLabel: MODIFY(),
+        otherLabel: null,
+      });
     });
 
     it('pas organisateur : ni « Modifier » ni lien, et rien ne s’arme', async () => {
@@ -889,8 +929,24 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
             title: 'Chapitre 4',
             can: ORGANIZER,
             options: [
-              { optionId: 'a1', date: '2099-03-04', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
-              { optionId: 'a2', date: '2099-03-06', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+              {
+                optionId: 'a1',
+                date: '2099-03-04',
+                slot: 'EVENING',
+                yes: 0,
+                maybe: 0,
+                no: 0,
+                myAnswer: null,
+              },
+              {
+                optionId: 'a2',
+                date: '2099-03-06',
+                slot: 'EVENING',
+                yes: 0,
+                maybe: 0,
+                no: 0,
+                myAnswer: null,
+              },
             ],
             ...over,
           }),
@@ -918,12 +974,17 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
 
     it('vitrine : « Modifier les dates » (plateau ET bouton) ouvre l’atelier de CE vote, `?seanceId` et `?poll` ; aucun composer', async () => {
       const { comp, fixture, navigate } = await vitrine({}, [row('x')]);
-      expect(comp.destinyBoard().actions).toMatchObject({ modifyLabel: MODIFY(), otherLabel: OTHER() });
+      expect(comp.destinyBoard().actions).toMatchObject({
+        modifyLabel: MODIFY(),
+        otherLabel: OTHER(),
+      });
       const button = fixture.nativeElement.querySelector('.compose-arm') as HTMLButtonElement;
       expect(button.textContent?.trim()).toBe(MODIFY());
 
       comp.openDestinyModify();
-      expect(navigate).toHaveBeenLastCalledWith('/parties/partie-J/calendar?poll=poll-j&seanceId=seance-j');
+      expect(navigate).toHaveBeenLastCalledWith(
+        '/parties/partie-J/calendar?poll=poll-j&seanceId=seance-j',
+      );
       button.click();
       expect(navigate).toHaveBeenCalledTimes(2);
       expect(comp.interaction()).not.toBe('composer');
@@ -932,7 +993,9 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
     it('vitrine, vote de groupe : l’atelier du groupe (`/guild-calendar`)', async () => {
       const { comp, navigate } = await vitrine({ family: 'ralliement', partieId: 'partie-G' });
       comp.openDestinyModify();
-      expect(navigate).toHaveBeenCalledWith('/parties/partie-G/guild-calendar?poll=poll-j&seanceId=seance-j');
+      expect(navigate).toHaveBeenCalledWith(
+        '/parties/partie-G/guild-calendar?poll=poll-j&seanceId=seance-j',
+      );
     });
 
     it('vitrine : le lien « autre rendez-vous » ouvre le choix (plusieurs) ou passe directement à l’atelier (un seul)', async () => {
@@ -1007,7 +1070,10 @@ describe('CalendarView — arriver dans l’atelier avec le composer prêt (Stor
           { id: 'n2', date: '2026-09-05T00:00:00.000Z', slot: 'MORNING', votes: [] },
         ],
       });
-      const after = [scenario('sc1', { poll: openPoll('pollX') }), scenario('sc2', { poll: created })];
+      const after = [
+        scenario('sc1', { poll: openPoll('pollX') }),
+        scenario('sc2', { poll: created }),
+      ];
       scenariosSvc.createSeancePoll.mockResolvedValue(after[1]);
       scenariosSvc.listAll.mockResolvedValue(after);
 
@@ -3465,7 +3531,6 @@ describe('CalendarView — le mode Destinée (Story 36.9)', () => {
     expect(control!.textContent).toContain('Chapitre 1');
   });
 
-
   it('AC1 — le calendrier personnel connaît aussi ses votes ouverts, à travers plusieurs parties', async () => {
     const { fixture } = await createCalendarView({
       mode: 'personal',
@@ -3664,7 +3729,11 @@ describe('CalendarView — la liste des destinées (Story 44.3)', () => {
       title: 'Chapitre 4',
       expiresAt: '2020-01-01T00:00:00.000Z',
       can: ORGANIZER,
-      options: [opt('a1', '2030-03-04', 0, 1), opt('a2', '2030-03-06', 3, 0), opt('a3', '2030-03-08', 3, 2)],
+      options: [
+        opt('a1', '2030-03-04', 0, 1),
+        opt('a2', '2030-03-06', 3, 0),
+        opt('a3', '2030-03-08', 3, 2),
+      ],
     }),
     openPollEntry({
       pollId: 'poll-b',
@@ -3704,7 +3773,9 @@ describe('CalendarView — la liste des destinées (Story 44.3)', () => {
   it('la puce ouvre la liste au lieu de basculer le mode : fond fermé par défaut, aria-expanded à jour', async () => {
     const { fixture } = await createCalendarView({ mode: 'personal', openPolls: POLLS });
     const comp = fixture.componentInstance as any;
-    const chip = fixture.nativeElement.querySelector('app-destiny-control button') as HTMLButtonElement;
+    const chip = fixture.nativeElement.querySelector(
+      'app-destiny-control button',
+    ) as HTMLButtonElement;
 
     expect(list()).toBeNull();
     chip.click();
@@ -3745,7 +3816,9 @@ describe('CalendarView — la liste des destinées (Story 44.3)', () => {
   it('Échap ferme la liste sans rien changer et rend le focus à la puce', async () => {
     const { fixture } = await createCalendarView({ mode: 'personal', openPolls: POLLS });
     const comp = fixture.componentInstance as any;
-    const chip = fixture.nativeElement.querySelector('app-destiny-control button') as HTMLButtonElement;
+    const chip = fixture.nativeElement.querySelector(
+      'app-destiny-control button',
+    ) as HTMLButtonElement;
 
     comp.toggleDestinyList();
     await tick(fixture);
@@ -3877,7 +3950,9 @@ describe('CalendarView — la liste des destinées (Story 44.3)', () => {
     expect(list()!.querySelector('.destiny-list__quit')!.textContent!.trim()).toBe(
       'Quitter la Destinée',
     );
-    const rows = Array.from(list()!.querySelectorAll('.destiny-list__row')).map((r) => r.textContent);
+    const rows = Array.from(list()!.querySelectorAll('.destiny-list__row')).map(
+      (r) => r.textContent,
+    );
     expect(rows.some((t) => t!.includes('Séance 2'))).toBe(false);
 
     (list()!.querySelector('.destiny-list__quit') as HTMLButtonElement).click();
@@ -3908,9 +3983,9 @@ describe('CalendarView — la liste des destinées (Story 44.3)', () => {
     (fixture.componentInstance as any).toggleDestinyList();
     await tick(fixture);
 
-    const names = Array.from(list()!.querySelectorAll('.destiny-list__row .destiny-list__name')).map(
-      (n) => n.textContent!.trim(),
-    );
+    const names = Array.from(
+      list()!.querySelectorAll('.destiny-list__row .destiny-list__name'),
+    ).map((n) => n.textContent!.trim());
     expect(names).toEqual(['Chapitre 1']);
   });
 
@@ -4560,9 +4635,7 @@ describe('CalendarView — mode de composition (Story 36.10)', () => {
       const { comp } = await armOnSpanPoll();
       comp.cancelCompose();
 
-      const entry = comp
-        .allCalendarEntries()
-        .find((e: any) => e.key === 'poll-poll1-optA');
+      const entry = comp.allCalendarEntries().find((e: any) => e.key === 'poll-poll1-optA');
       expect(entry).toMatchObject({
         date: '2026-08-01',
         slot: 'EVENING',
@@ -5229,7 +5302,6 @@ describe('CalendarView — « Lancer un vote » depuis l’Agenda (Story 36.12, 
     expect(comp.composedCells()).toEqual([]);
     expect(fixture.nativeElement.querySelector('app-compose-bar')).not.toBeNull();
   });
-
 });
 
 describe('CalendarView — le regroupement ne touche PAS les grilles (Story 36.12, AC7)', () => {
@@ -5735,9 +5807,9 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
     expect(comp.composedCells()).toHaveLength(before + 1);
     expect(comp.composedCells().some((c: any) => c.slot === 'FULL_DAY')).toBe(false);
-    expect(fixture.nativeElement.querySelector('.calendar-error--compose')?.textContent?.trim()).toBe(
-      GRIMOIRE_TONE['partie.ralliement_calendar_compose_full_day'],
-    );
+    expect(
+      fixture.nativeElement.querySelector('.calendar-error--compose')?.textContent?.trim(),
+    ).toBe(GRIMOIRE_TONE['partie.ralliement_calendar_compose_full_day']);
 
     comp.onComposeAdded([cell('2099-11-29', 'MORNING')]);
     fixture.detectChanges();
@@ -5769,7 +5841,10 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
     it('la soirée sans date est proposée ; la composer l’arme en vue Semaine, sans journée entière, avec une fin proposée', async () => {
       const { comp, fixture } = await createGroupView({
-        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless()],
+      });
       expect(comp.rendezvousRows().map((r: any) => r.seanceId)).toEqual(['s1']);
 
       comp.startCompose('s1');
@@ -5801,7 +5876,12 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
         userId: HOST,
         events: [dateless()],
         openPolls: [
-          openPollEntry({ pollId: 'p1', partieId: 'g1', family: 'ralliement', title: 'Soirée plateaux' }),
+          openPollEntry({
+            pollId: 'p1',
+            partieId: 'g1',
+            family: 'ralliement',
+            title: 'Soirée plateaux',
+          }),
         ],
       });
       comp.startCompose('s1');
@@ -5852,20 +5932,26 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
     it('la journée entière est refusée avec sa raison, comme pour une conjonction', async () => {
       const { comp, fixture } = await createGroupView({
-        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless()],
+      });
       comp.startCompose('s1');
       comp.onComposeAdded([cell('2099-11-27', 'FULL_DAY'), cell('2099-11-28', 'EVENING')]);
       fixture.detectChanges();
 
       expect(comp.composedCells()).toHaveLength(1);
-      expect(fixture.nativeElement.querySelector('.calendar-error--compose')?.textContent?.trim()).toBe(
-        GRIMOIRE_TONE['partie.ralliement_calendar_compose_full_day'],
-      );
+      expect(
+        fixture.nativeElement.querySelector('.calendar-error--compose')?.textContent?.trim(),
+      ).toBe(GRIMOIRE_TONE['partie.ralliement_calendar_compose_full_day']);
     });
 
     it('moins de deux créneaux ou fin passée : Valider bloqué, rien n’est écrit', async () => {
       const { comp, eventsApi } = await createGroupView({
-        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless()],
+      });
       comp.startCompose('s1');
       comp.onComposeAdded([cell('2099-11-27', 'EVENING')]);
       expect(comp.composeCanConfirm()).toBe(false);
@@ -5900,7 +5986,10 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
 
     it('un refus du serveur reste affiché et le composer est conservé', async () => {
       const { comp, eventsApi } = await createGroupView({
-        party: EVENING_PARTY, userId: HOST, events: [dateless()] });
+        party: EVENING_PARTY,
+        userId: HOST,
+        events: [dateless()],
+      });
       comp.startCompose('s1');
       comp.onComposeAdded([cell('2099-11-27', 'EVENING'), cell('2099-11-28', 'EVENING')]);
       eventsApi.update.mockRejectedValueOnce({ error: { message: 'Soirée terminée.' } });
@@ -6078,7 +6167,13 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       comp.groupEvents.set([
         groupCard({
           title: 'Soirée jeux de société',
-          seance: { ...base.seance, lieu: 'Chez Max', heureRdv: '20:00', notePratique: null, capacity: 8 },
+          seance: {
+            ...base.seance,
+            lieu: 'Chez Max',
+            heureRdv: '20:00',
+            notePratique: null,
+            capacity: 8,
+          },
         }),
       ]);
       return { component, config, afterClosed: () => of(true) } as any;
@@ -6173,7 +6268,9 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
   it('un autre :id (autre groupe) : conjonctions relues pour lui, composition fermée', async () => {
     const { comp, eventsApi, tick } = await createGroupView({ userId: HOST });
     comp.startGroupCompose('e1');
-    eventsApi.list.mockResolvedValue([groupCard({ id: 'e2', title: 'Autre groupe' }, { id: 'p2' })]);
+    eventsApi.list.mockResolvedValue([
+      groupCard({ id: 'e2', title: 'Autre groupe' }, { id: 'p2' }),
+    ]);
     (TestBed.inject(ActivatedRoute) as any).paramMap.next(convertToParamMap({ id: 'g2' }));
     await tick();
 
@@ -6348,8 +6445,24 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     expiresAt: null,
     durationSlots: 1,
     options: [
-      { optionId: 'o1', date: '2099-11-24', slot: 'EVENING', yes: 1, maybe: 1, no: 0, myAnswer: null },
-      { optionId: 'o2', date: '2099-11-25', slot: 'MORNING', yes: 0, maybe: 0, no: 1, myAnswer: null },
+      {
+        optionId: 'o1',
+        date: '2099-11-24',
+        slot: 'EVENING',
+        yes: 1,
+        maybe: 1,
+        no: 0,
+        myAnswer: null,
+      },
+      {
+        optionId: 'o2',
+        date: '2099-11-25',
+        slot: 'MORNING',
+        yes: 0,
+        maybe: 0,
+        no: 1,
+        myAnswer: null,
+      },
     ],
     eligibleCount: 3,
     answeredCount: 2,
@@ -6407,11 +6520,13 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     fixture.nativeElement.querySelector('.destiny-board__extend') as HTMLButtonElement | null;
 
   it('44.6 : l’hôte fixe la date par DateFixDialog, le meilleur créneau en tête, puis la liste est relue', async () => {
-    const { comp, fixture, tick, dialog, pollSvc, eventsApi, openPollsSvc } = await createGroupView({
-      userId: HOST,
-      members: MEMBERS,
-      openPolls: [GROUP_POLL_ENTRY({ can: HOST_CAN })],
-    });
+    const { comp, fixture, tick, dialog, pollSvc, eventsApi, openPollsSvc } = await createGroupView(
+      {
+        userId: HOST,
+        members: MEMBERS,
+        openPolls: [GROUP_POLL_ENTRY({ can: HOST_CAN })],
+      },
+    );
     comp.chooseDestiny('p1');
     await tick();
     dialog.__result = true;
@@ -6470,8 +6585,14 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
       fixture.nativeElement.querySelector('.calendar-notice span')?.textContent?.trim() ?? null;
     const dated = { ...groupCard().seance, date: '2099-11-24', slot: 'EVENING' };
     const cases: [any[], string][] = [
-      [[groupCard({ seance: dated }, { status: 'CLOSED' })], 'Ce vote est clos : sa date est fixée.'],
-      [[groupCard({ cancelled: true }, { status: 'CLOSED' })], 'Ce vote est clos : le rendez-vous est annulé.'],
+      [
+        [groupCard({ seance: dated }, { status: 'CLOSED' })],
+        'Ce vote est clos : sa date est fixée.',
+      ],
+      [
+        [groupCard({ cancelled: true }, { status: 'CLOSED' })],
+        'Ce vote est clos : le rendez-vous est annulé.',
+      ],
       [[], 'Ce vote est clos.'],
     ];
     for (const [events, expected] of cases) {
@@ -6511,7 +6632,9 @@ describe('CalendarView — le calendrier d’un groupe (Story 40.5b)', () => {
     comp.chooseDestiny('p1');
     await tick();
     expect(root.querySelector('.group-polls')).toBeNull();
-    expect(root.querySelector('.destiny-board-col:not(.destiny-board-col--partie) app-destiny-board')).not.toBeNull();
+    expect(
+      root.querySelector('.destiny-board-col:not(.destiny-board-col--partie) app-destiny-board'),
+    ).not.toBeNull();
 
     comp.quitDestiny();
     await tick();
@@ -6556,7 +6679,11 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
       eligibleCount: 5,
       answeredCount: 2,
       // Volontairement dans le désordre : le plateau les range dans l'ordre chronologique.
-      options: [opt('a2', '2030-03-06', 1), opt('a1', '2030-03-04', 0, 1), opt('a3', '2030-03-08', 3, 2)],
+      options: [
+        opt('a2', '2030-03-06', 1),
+        opt('a1', '2030-03-04', 0, 1),
+        opt('a3', '2030-03-08', 3, 2),
+      ],
       ...over,
     });
 
@@ -6586,7 +6713,9 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
     comp.chooseDestiny('poll-a');
     await tick(fixture);
 
-    expect(root(fixture).querySelector('.destiny-board__title')!.textContent).toContain('Chapitre 4');
+    expect(root(fixture).querySelector('.destiny-board__title')!.textContent).toContain(
+      'Chapitre 4',
+    );
     expect(root(fixture).querySelector('.destiny-board__subtitle')!.textContent!.trim()).toMatch(
       /^Fin du vote .+ · 2 réponses sur 5$/,
     );
@@ -6707,7 +6836,9 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
     comp.chooseDestiny('poll1');
     await tick(fixture);
     expect(root(fixture).querySelector('.mj-results-panel')).toBeNull();
-    expect(root(fixture).querySelector('.destiny-board-col--partie app-destiny-board')).not.toBeNull();
+    expect(
+      root(fixture).querySelector('.destiny-board-col--partie app-destiny-board'),
+    ).not.toBeNull();
 
     comp.quitDestiny();
     await tick(fixture);
@@ -6920,7 +7051,9 @@ describe('CalendarView — le plateau de la destinée (Story 44.4)', () => {
     await tick(fixture);
     expect(comp.destinyOptionId()).toBe('a2');
 
-    openPollsSvc.entries.set([poll({ options: [opt('a1', '2030-03-04'), opt('a3', '2030-03-08')] })]);
+    openPollsSvc.entries.set([
+      poll({ options: [opt('a1', '2030-03-04'), opt('a3', '2030-03-08')] }),
+    ]);
     await tick(fixture);
 
     expect(comp.destinyPollId()).toBe('poll-a');
@@ -7002,7 +7135,11 @@ describe('CalendarView — le tiroir de la destinée (Story 44.5)', () => {
       expiresAt: '2099-01-01T00:00:00.000Z',
       eligibleCount: 5,
       answeredCount: 2,
-      options: [opt('a2', '2030-03-06', 1), opt('a1', '2030-03-04', 0, 1), opt('a3', '2030-03-08', 3, 2)],
+      options: [
+        opt('a2', '2030-03-06', 1),
+        opt('a1', '2030-03-04', 0, 1),
+        opt('a3', '2030-03-08', 3, 2),
+      ],
       ...over,
     });
 
@@ -7026,7 +7163,9 @@ describe('CalendarView — le tiroir de la destinée (Story 44.5)', () => {
     expect(sheet(fixture)).not.toBeNull();
     expect(root(fixture).querySelector('app-destiny-board')).toBeNull();
     expect(root(fixture).querySelector('.destiny-board-col')).toBeNull();
-    expect(root(fixture).querySelector('.destiny-sheet__title')!.textContent).toContain('Chapitre 4');
+    expect(root(fixture).querySelector('.destiny-sheet__title')!.textContent).toContain(
+      'Chapitre 4',
+    );
     expect(toggle(fixture).textContent).toContain('Voir les 3 dates');
     expect(
       root(fixture).querySelector('.destiny-sheet__handle')!.getAttribute('aria-expanded'),
@@ -7193,7 +7332,6 @@ describe('CalendarView — le tiroir de la destinée (Story 44.5)', () => {
   });
 });
 
-
 // ─── Story 44.6 — fixer la date ou prolonger le vote depuis le plateau ────────
 
 describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () => {
@@ -7228,12 +7366,17 @@ describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () 
       eligibleCount: 5,
       answeredCount: 2,
       can: ORGANIZER,
-      options: [opt('a2', '2030-03-06', 1), opt('a1', '2030-03-04', 0, 1), opt('a3', '2030-03-08', 3, 2)],
+      options: [
+        opt('a2', '2030-03-06', 1),
+        opt('a1', '2030-03-04', 0, 1),
+        opt('a3', '2030-03-08', 3, 2),
+      ],
       ...over,
     });
 
   const root = (fixture: any) => fixture.nativeElement as HTMLElement;
-  const fix = (fixture: any) => root(fixture).querySelector<HTMLButtonElement>('.destiny-board__fix');
+  const fix = (fixture: any) =>
+    root(fixture).querySelector<HTMLButtonElement>('.destiny-board__fix');
   const extend = (fixture: any) =>
     root(fixture).querySelector<HTMLButtonElement>('.destiny-board__extend');
   const notice = (fixture: any) =>
@@ -7292,7 +7435,9 @@ describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () 
   });
 
   it('sans droit, aucune action ; jamais « Prolonger » en JDR même si le droit le dirait', async () => {
-    const none = await enter(poll({ can: { propose: false, edit: false, choose: false, extend: false } }));
+    const none = await enter(
+      poll({ can: { propose: false, edit: false, choose: false, extend: false } }),
+    );
     expect(root(none.fixture).querySelector('.destiny-board__actions')).toBeNull();
     TestBed.resetTestingModule();
 
@@ -7325,7 +7470,9 @@ describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () 
 
     expect(comp.destinyPollId()).toBeNull();
     expect(notice(fixture)).toBe('Ce vote n’est plus ouvert.');
-    expect(root(fixture).querySelector('.calendar-notice-slot')!.getAttribute('role')).toBe('status');
+    expect(root(fixture).querySelector('.calendar-notice-slot')!.getAttribute('role')).toBe(
+      'status',
+    );
 
     // « Fermer » l'efface ; une nouvelle entrée en Destinée l'efface aussi.
     root(fixture).querySelector<HTMLButtonElement>('.calendar-notice__close')!.click();
@@ -7388,7 +7535,6 @@ describe('CalendarView — conclure le vote depuis le plateau (Story 44.6)', () 
   });
 });
 
-
 // ─── Story 44.7 — arriver en Destinée par un lien ─────────────────────────────
 
 describe('CalendarView — arriver en Destinée par un lien (Story 44.7)', () => {
@@ -7422,7 +7568,9 @@ describe('CalendarView — arriver en Destinée par un lien (Story 44.7)', () =>
     });
 
   const notice = (fixture: any) =>
-    (fixture.nativeElement as HTMLElement).querySelector('.calendar-notice span')?.textContent?.trim() ?? null;
+    (fixture.nativeElement as HTMLElement)
+      .querySelector('.calendar-notice span')
+      ?.textContent?.trim() ?? null;
 
   it('vitrine : ?poll ouvre la Destinée sur ce vote, en Mois, tiroir replié sur téléphone, adresse conservée', async () => {
     const { fixture, location } = await createCalendarView({
@@ -7574,7 +7722,15 @@ describe('CalendarView — filtrer par partie (Story 44.8)', () => {
       title: `Vote ${partieName}`,
       expiresAt: null,
       options: [
-        { optionId: `${pollId}-o`, date: TODAY, slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
+        {
+          optionId: `${pollId}-o`,
+          date: TODAY,
+          slot: 'EVENING',
+          yes: 1,
+          maybe: 0,
+          no: 0,
+          myAnswer: null,
+        },
       ],
     });
 
@@ -7651,8 +7807,18 @@ describe('CalendarView — filtrer par partie (Story 44.8)', () => {
     await tick(fixture);
 
     expect(partiesIn(comp.calendarEntries())).toEqual(new Set(['pA', 'pB']));
-    expect(comp.destinyPolls().map((p: any) => p.pollId).sort()).toEqual(['poll-a', 'poll-b']);
-    expect(comp.destinyListItems().map((i: any) => i.pollId).sort()).toEqual(['poll-a', 'poll-b']);
+    expect(
+      comp
+        .destinyPolls()
+        .map((p: any) => p.pollId)
+        .sort(),
+    ).toEqual(['poll-a', 'poll-b']);
+    expect(
+      comp
+        .destinyListItems()
+        .map((i: any) => i.pollId)
+        .sort(),
+    ).toEqual(['poll-a', 'poll-b']);
     comp.railDate.set(new Date());
     expect(comp.railDetail().slots.some((s: any) => s.status === 'UNAVAILABLE')).toBe(true);
   });
@@ -7665,9 +7831,17 @@ describe('CalendarView — filtrer par partie (Story 44.8)', () => {
       month
         .weeks()
         .flat()
-        .find((c: any) => c.isToday).bands as { slot: string; winner: string; status: string; text: string | null }[];
+        .find((c: any) => c.isToday).bands as {
+        slot: string;
+        winner: string;
+        status: string;
+        text: string | null;
+      }[];
     // Le matin d'aujourd'hui : la séance de pA et celle de pB (nommée) ; le soir : un vote par partie.
-    const named = () => todayBands().filter((b) => b.text).map((b) => b.text);
+    const named = () =>
+      todayBands()
+        .filter((b) => b.text)
+        .map((b) => b.text);
     const namedBefore = named().length;
     expect(namedBefore).toBeGreaterThan(0);
 
@@ -7977,7 +8151,12 @@ describe('CalendarView — Proposer des dates (Story 45.1)', () => {
       const { fixture } = await createCalendarView({
         mode: 'personal',
         datable: [
-          entry('s1', 'La Tour', { partieId: 'pT', title: 'Chapitre', seanceRank: 2, seanceCount: 3 }),
+          entry('s1', 'La Tour', {
+            partieId: 'pT',
+            title: 'Chapitre',
+            seanceRank: 2,
+            seanceCount: 3,
+          }),
           entry('s2', 'Les Dragons', { partieId: 'pD', title: 'Épilogue' }),
         ],
       });
@@ -8043,8 +8222,24 @@ describe('CalendarView — plateau d’un vote de JDR terminé (Story 45.4)', ()
       family: 'jdr',
       title: 'Chapitre 4',
       options: [
-        { optionId: 'a1', date: '2099-03-04', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
-        { optionId: 'a2', date: '2099-03-06', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+        {
+          optionId: 'a1',
+          date: '2099-03-04',
+          slot: 'EVENING',
+          yes: 1,
+          maybe: 0,
+          no: 0,
+          myAnswer: null,
+        },
+        {
+          optionId: 'a2',
+          date: '2099-03-06',
+          slot: 'EVENING',
+          yes: 0,
+          maybe: 0,
+          no: 0,
+          myAnswer: null,
+        },
       ],
       ...over,
     });
@@ -8070,8 +8265,12 @@ describe('CalendarView — plateau d’un vote de JDR terminé (Story 45.4)', ()
   });
 
   it('fin non passée, ou pas organisateur, ou groupe : aucune phrase', async () => {
-    expect(await reopenHint(entry({ expiresAt: '2099-01-01T23:59:59.999Z', can: ORGANIZER }))).toBeNull();
-    expect(await reopenHint(entry({ expiresAt: '2020-01-01T23:59:59.999Z', can: NOBODY }))).toBeNull();
+    expect(
+      await reopenHint(entry({ expiresAt: '2099-01-01T23:59:59.999Z', can: ORGANIZER })),
+    ).toBeNull();
+    expect(
+      await reopenHint(entry({ expiresAt: '2020-01-01T23:59:59.999Z', can: NOBODY })),
+    ).toBeNull();
     expect(
       await reopenHint(
         entry({ expiresAt: '2020-01-01T23:59:59.999Z', can: ORGANIZER, family: 'ralliement' }),
@@ -8105,7 +8304,8 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
     root(fixture).querySelector<HTMLButtonElement>('.side-dock__bar .side-dock__button');
   const reopenButton = (fixture: any) =>
     root(fixture).querySelector<HTMLButtonElement>('.side-dock .side-dock__button');
-  const dockLabel = (fixture: any) => root(fixture).querySelector('.side-dock__label')?.textContent?.trim();
+  const dockLabel = (fixture: any) =>
+    root(fixture).querySelector('.side-dock__label')?.textContent?.trim();
 
   const poll = () =>
     openPollEntry({
@@ -8118,13 +8318,33 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
       answeredCount: 2,
       can: ORGANIZER,
       options: [
-        { optionId: 'a1', date: '2030-03-04', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
-        { optionId: 'a2', date: '2030-03-06', slot: 'EVENING', yes: 2, maybe: 0, no: 0, myAnswer: null },
+        {
+          optionId: 'a1',
+          date: '2030-03-04',
+          slot: 'EVENING',
+          yes: 1,
+          maybe: 0,
+          no: 0,
+          myAnswer: null,
+        },
+        {
+          optionId: 'a2',
+          date: '2030-03-06',
+          slot: 'EVENING',
+          yes: 2,
+          maybe: 0,
+          no: 0,
+          myAnswer: null,
+        },
       ],
     });
 
   it('colonne MJ : › range la colonne en dock « Éphémérides · N », ‹ la rouvre, la clé est écrite', async () => {
-    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [] });
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [],
+    });
     await tick(fixture);
 
     const dock = dockButton(fixture)!;
@@ -8175,7 +8395,9 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
 
     dockButton(fixture)!.click();
     await tick(fixture);
-    expect(dockLabel(fixture)).toBe(`${GRIMOIRE_TONE['partie.ralliement_calendar_polls_heading']} · 0`);
+    expect(dockLabel(fixture)).toBe(
+      `${GRIMOIRE_TONE['partie.ralliement_calendar_polls_heading']} · 0`,
+    );
   });
 
   it('plateau de la destinée : titre seul + pictogramme destinee, et entrer en Destinée rouvre la colonne rangée', async () => {
@@ -8207,7 +8429,11 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
 
   it('au rechargement : l’état retenu « rangé » rouvre la colonne rangée', async () => {
     localStorage.setItem(LS_KEY, 'closed');
-    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [] });
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [],
+    });
     await tick(fixture);
     expect(root(fixture).querySelector('app-side-dock.mj-results-panel')!.classList).toContain(
       'side-dock--docked',
@@ -8215,7 +8441,11 @@ describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
   });
 
   it('stockage qui jette : on range quand même, sans erreur', async () => {
-    const { fixture } = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [] });
+    const { fixture } = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [],
+    });
     await tick(fixture);
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('quota');
@@ -8276,12 +8506,20 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
   }
 
   const root = (fixture: any) => fixture.nativeElement as HTMLElement;
-  const cards = (fixture: any) => [...root(fixture).querySelectorAll<HTMLElement>('.mj-results-panel .creneau-card')];
-  const headers = (fixture: any) =>
-    [...root(fixture).querySelectorAll<HTMLButtonElement>('.mj-results-panel .creneau-card__select')];
+  const cards = (fixture: any) => [
+    ...root(fixture).querySelectorAll<HTMLElement>('.mj-results-panel .creneau-card'),
+  ];
+  const headers = (fixture: any) => [
+    ...root(fixture).querySelectorAll<HTMLButtonElement>('.mj-results-panel .creneau-card__select'),
+  ];
 
   async function atelier(extra: Record<string, unknown> = {}) {
-    const ctx = await createCalendarView({ mode: 'mj', partieId: 'partie-1', scenarios: [], ...extra });
+    const ctx = await createCalendarView({
+      mode: 'mj',
+      partieId: 'partie-1',
+      scenarios: [],
+      ...extra,
+    });
     const comp = ctx.fixture.componentInstance as any;
     comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
     comp.availableSlots.set([WIN_A, WIN_B]);
@@ -8300,8 +8538,24 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
       answeredCount: 1,
       can: ORGANIZER,
       options: [
-        { optionId: 'a1', date: '2030-04-04', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
-        { optionId: 'a2', date: '2030-04-06', slot: 'EVENING', yes: 1, maybe: 0, no: 0, myAnswer: null },
+        {
+          optionId: 'a1',
+          date: '2030-04-04',
+          slot: 'EVENING',
+          yes: 1,
+          maybe: 0,
+          no: 0,
+          myAnswer: null,
+        },
+        {
+          optionId: 'a2',
+          date: '2030-04-06',
+          slot: 'EVENING',
+          yes: 1,
+          maybe: 0,
+          no: 0,
+          myAnswer: null,
+        },
       ],
     });
 
@@ -8314,7 +8568,9 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
 
     expect(comp.selectedWindowKey()).toBe(KEY_A);
     expect([...comp.destinyDates()]).toEqual(['2030-03-06']);
-    expect(cards(fixture).filter((c) => c.classList.contains('creneau-card--selected'))).toHaveLength(1);
+    expect(
+      cards(fixture).filter((c) => c.classList.contains('creneau-card--selected')),
+    ).toHaveLength(1);
     // La grille se place sur mars 2030 (« Mars 2030 » dans le titre de la vue Mois).
     expect(comp.sharedDate().getUTCFullYear?.() ?? comp.sharedDate().getFullYear()).toBe(2030);
     expect(comp.sharedDate().getMonth()).toBe(2);
@@ -8329,7 +8585,9 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
     await tick(fixture);
 
     expect(comp.selectedWindowKey()).toBe('2030-03-09|MORNING');
-    expect(cards(fixture).filter((c) => c.classList.contains('creneau-card--selected'))).toHaveLength(1);
+    expect(
+      cards(fixture).filter((c) => c.classList.contains('creneau-card--selected')),
+    ).toHaveLength(1);
   });
 
   it('retoucher la carte sélectionnée désélectionne : affichage normal', async () => {
@@ -8388,7 +8646,9 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
     const { fixture } = await createCalendarView({ mode: 'personal', partieId: 'partie-1' });
     const comp = fixture.componentInstance as any;
     comp.activeLayers.set([...DEFAULT_CALENDAR_LAYER_KEYS, 'disponibilite-groupe']);
-    comp.availableSlots.set([{ date: '2030-03-06', slot: 'EVENING', total: 2, available: 2, unavailable: 0 }]);
+    comp.availableSlots.set([
+      { date: '2030-03-06', slot: 'EVENING', total: 2, available: 2, unavailable: 0 },
+    ]);
     await tick(fixture);
 
     expect(comp.windowSelectable()).toBe(false);
@@ -8414,22 +8674,30 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
     it('le plateau garde en pied « Éphémérides · N » replié ; le déplier montre les cartes', async () => {
       const { fixture, comp } = await destinee();
       const foot = root(fixture).querySelector('.destiny-board-col__slots')!;
-      expect(foot.querySelector('.available-slots__title span')!.textContent!.trim()).toBe('Éphémérides · 2');
+      expect(foot.querySelector('.available-slots__title span')!.textContent!.trim()).toBe(
+        'Éphémérides · 2',
+      );
       expect(foot.querySelectorAll('.creneau-card')).toHaveLength(0);
 
       foot.querySelector<HTMLButtonElement>('.available-slots__fold')!.click();
       await tick(fixture);
       expect(comp.boardSlotsOpen()).toBe(true);
-      expect(root(fixture).querySelectorAll('.destiny-board-col__slots .creneau-card')).toHaveLength(2);
+      expect(
+        root(fixture).querySelectorAll('.destiny-board-col__slots .creneau-card'),
+      ).toHaveLength(2);
     });
 
     it('toucher une carte suspend la Destinée (le plateau cède la place) ; désélectionner la rétablit', async () => {
       const { fixture, comp } = await destinee();
-      root(fixture).querySelector<HTMLButtonElement>('.destiny-board-col__slots .available-slots__fold')!.click();
+      root(fixture)
+        .querySelector<HTMLButtonElement>('.destiny-board-col__slots .available-slots__fold')!
+        .click();
       await tick(fixture);
       expect(root(fixture).querySelector('app-destiny-board')).not.toBeNull();
 
-      root(fixture).querySelector<HTMLButtonElement>('.destiny-board-col__slots .creneau-card__select')!.click();
+      root(fixture)
+        .querySelector<HTMLButtonElement>('.destiny-board-col__slots .creneau-card__select')!
+        .click();
       await tick(fixture);
       expect(root(fixture).querySelector('app-destiny-board')).toBeNull();
       expect(root(fixture).querySelector('.mj-results-panel')).not.toBeNull();
@@ -8548,7 +8816,9 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
 
   it('le bouton « Ajouter au vote » de la carte sélectionnée fait la même chose', async () => {
     const { fixture, comp } = await atelier([freeScenario('sc1', 'Chapitre 1')]);
-    root(fixture).querySelector<HTMLButtonElement>('.mj-results-panel .creneau-card__select')!.click();
+    root(fixture)
+      .querySelector<HTMLButtonElement>('.mj-results-panel .creneau-card__select')!
+      .click();
     await tick(fixture);
     root(fixture)
       .querySelector<HTMLButtonElement>('.mj-results-panel .creneau-card__action--primary')!
@@ -8581,8 +8851,24 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
           partieId: 'partie-1',
           can: ORGANIZER,
           options: [
-            { optionId: 'o1', date: '2030-04-04', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
-            { optionId: 'o2', date: '2030-04-06', slot: 'EVENING', yes: 0, maybe: 0, no: 0, myAnswer: null },
+            {
+              optionId: 'o1',
+              date: '2030-04-04',
+              slot: 'EVENING',
+              yes: 0,
+              maybe: 0,
+              no: 0,
+              myAnswer: null,
+            },
+            {
+              optionId: 'o2',
+              date: '2030-04-06',
+              slot: 'EVENING',
+              yes: 0,
+              maybe: 0,
+              no: 0,
+              myAnswer: null,
+            },
           ],
         }),
       ],
@@ -8597,7 +8883,11 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
 
     expect(comp.rendezvousPickerOpen()).toBe(false);
     expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll9' });
-    expect(keys(comp).sort()).toEqual(['2030-03-06|EVENING', '2030-04-04|EVENING', '2030-04-06|EVENING']);
+    expect(keys(comp).sort()).toEqual([
+      '2030-03-06|EVENING',
+      '2030-04-04|EVENING',
+      '2030-04-06|EVENING',
+    ]);
   });
 
   it('plusieurs composables : le choix s’ouvre (à dater ET au vote ouvert) ; en choisir un arme le composer et y verse la fenêtre', async () => {
@@ -8614,7 +8904,9 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
     expect(comp.rendezvousPickerShown()).toBe(true);
     expect(comp.interaction()).not.toBe('composer');
     const rows = [...document.body.querySelectorAll('.rendezvous-picker__row')];
-    expect(rows.map((r) => r.querySelector('.rendezvous-picker__meta')!.textContent!.trim())).toEqual([
+    expect(
+      rows.map((r) => r.querySelector('.rendezvous-picker__meta')!.textContent!.trim()),
+    ).toEqual([
       GRIMOIRE_TONE['calendar.rendezvous_nature_seance'],
       GRIMOIRE_TONE['calendar.rendezvous_nature_seance_poll'],
     ]);
@@ -8623,7 +8915,11 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
     await tick(fixture);
     expect(comp.rendezvousPickerOpen()).toBe(false);
     expect(comp.composeTarget()).toEqual({ kind: 'poll', pollId: 'poll9' });
-    expect(keys(comp).sort()).toEqual(['2030-03-06|EVENING', '2030-04-04|EVENING', '2030-04-06|EVENING']);
+    expect(keys(comp).sort()).toEqual([
+      '2030-03-06|EVENING',
+      '2030-04-04|EVENING',
+      '2030-04-06|EVENING',
+    ]);
   });
 
   it('plusieurs composables : choisir une séance à dater crée un vote neuf avec la fenêtre', async () => {
@@ -8686,7 +8982,9 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
   it('rien de composable (date posée, droit absent) : ajouter n’arme rien et n’écrit rien', async () => {
     const { fixture, comp, pollSvc, scenariosSvc } = await atelier([
       freeScenario('sc1', 'A', { dateValidee: '2099-01-01' }),
-      freeScenario('sc2', 'B', { can: { propose: false, edit: false, choose: false, extend: false } }),
+      freeScenario('sc2', 'B', {
+        can: { propose: false, edit: false, choose: false, extend: false },
+      }),
     ]);
     comp.onWindowSelected(WIN_A);
     comp.addSelectedWindow();
@@ -8832,7 +9130,9 @@ describe('CalendarView — masquer une fenêtre de l’automate (Story 46.4)', (
     const { fixture, comp } = await atelier();
     root(fixture).querySelector<HTMLButtonElement>('.available-slots__hidden-toggle')!.click();
     await tick(fixture);
-    root(fixture).querySelector<HTMLElement>('.available-slots__list--hidden .creneau-card')!.click();
+    root(fixture)
+      .querySelector<HTMLElement>('.available-slots__list--hidden .creneau-card')!
+      .click();
     await tick(fixture);
     expect(comp.selectedWindow()).toBeNull();
   });
@@ -9136,7 +9436,9 @@ describe('CalendarView — voter et fixer une plage (Story 47.5)', () => {
       expect(comp.pickerLines()).toEqual([]);
       expect(document.body.querySelector('.picker__line')).toBeNull();
       document.body
-        .querySelector<HTMLButtonElement>('app-vote-answer-picker .opt2--answer[data-answer="YES"]')!
+        .querySelector<HTMLButtonElement>(
+          'app-vote-answer-picker .opt2--answer[data-answer="YES"]',
+        )!
         .click();
       await tick(fixture);
 
@@ -9539,7 +9841,9 @@ describe('CalendarView — le bouton « Déclarer mes dispos » et le mode décl
     expect(armBtn(fixture).getAttribute('aria-pressed')).toBe('true');
     expect(armBtn(fixture).classList).toContain('declare-arm--on');
     expect(banner(fixture)!.textContent).toContain(GRIMOIRE_TONE['calendar.declare_banner']);
-    expect(root(fixture).querySelector('.declare-banner-slot')!.getAttribute('role')).toBe('status');
+    expect(root(fixture).querySelector('.declare-banner-slot')!.getAttribute('role')).toBe(
+      'status',
+    );
     expect(monthHost(fixture)!.classList).toContain('declare-grid');
   });
 
@@ -9599,7 +9903,9 @@ describe('CalendarView — le bouton « Déclarer mes dispos » et le mode décl
     comp.onViewChange('week');
     await tick(fixture);
     expect(comp.interaction()).toBe('declaration');
-    expect(root(fixture).querySelector('app-calendar-week-view')!.classList).toContain('declare-grid');
+    expect(root(fixture).querySelector('app-calendar-week-view')!.classList).toContain(
+      'declare-grid',
+    );
 
     comp.onViewChange('agenda');
     await tick(fixture);
@@ -9806,7 +10112,10 @@ describe('CalendarView — un tap suffit en mode déclaration (Story 52.3)', () 
 
   it('hors du mode déclaration, aucun bilan n’est annoncé', async () => {
     const { fixture, snack } = await createCalendarView('personal');
-    await (fixture.componentInstance as any).onBatchDeclareRequested({ cells: CELLS, kind: 'AVAILABLE' });
+    await (fixture.componentInstance as any).onBatchDeclareRequested({
+      cells: CELLS,
+      kind: 'AVAILABLE',
+    });
     expect(snack.open).not.toHaveBeenCalled();
   });
 
@@ -10003,11 +10312,14 @@ describe('CalendarView — declarer ne revient pas par la navigation de plage (S
     await createCalendarView({ mode: 'mj', partieId: 'partie-1', queryParams: { declarer: '1' } });
 
     const merged = navigate.mock.calls.filter(
-      ([, extras]) => (extras as { queryParamsHandling?: string } | undefined)?.queryParamsHandling === 'merge',
+      ([, extras]) =>
+        (extras as { queryParamsHandling?: string } | undefined)?.queryParamsHandling === 'merge',
     );
     expect(merged.length).toBeGreaterThan(0);
     for (const [, extras] of merged) {
-      expect((extras as { queryParams: Record<string, unknown> }).queryParams['declarer']).toBeNull();
+      expect(
+        (extras as { queryParams: Record<string, unknown> }).queryParams['declarer'],
+      ).toBeNull();
     }
   });
 });

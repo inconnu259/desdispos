@@ -1526,14 +1526,30 @@ describe('ScenarioEditor — résumé du vote du MJ (Story 54.3)', () => {
       { userId: 'sam', pseudo: 'sam', displayName: 'Sam', role: 'MEMBER', joinedAt: '' },
     ];
     const { fixture } = await createComponent(
-      WITH_VOTE, [], [], null, PARTIE, [], vi.fn().mockResolvedValue(undefined), null, members,
+      WITH_VOTE,
+      [],
+      [],
+      null,
+      PARTIE,
+      [],
+      vi.fn().mockResolvedValue(undefined),
+      null,
+      members,
     );
     expect(lines(fixture.nativeElement)).toContain('N’ont pas encore répondu : Sam');
   });
 
   it('chargement des membres en échec : le résumé retombe sur le nombre d’absents', async () => {
     const { fixture } = await createComponent(
-      WITH_VOTE, [], [], null, PARTIE, [], vi.fn().mockResolvedValue(undefined), null, new Error('boom'),
+      WITH_VOTE,
+      [],
+      [],
+      null,
+      PARTIE,
+      [],
+      vi.fn().mockResolvedValue(undefined),
+      null,
+      new Error('boom'),
     );
     expect(lines(fixture.nativeElement)).toContain('2 personnes n’ont pas encore répondu');
   });

@@ -54,10 +54,11 @@ const LOCKABLE_FIELD_KEYS = [
  * verrouillable pour `narrative` — même défaut que celui déjà corrigé pour `fieldKey` (`levelUps`),
  * jamais étendu à `subField`.
  */
-const LOCKABLE_SUB_FIELDS: Partial<Record<(typeof LOCKABLE_FIELD_KEYS)[number], readonly string[]>> =
-  {
-    attributes: ['AGI', 'ESP', 'INT', 'VIG'],
-  };
+const LOCKABLE_SUB_FIELDS: Partial<
+  Record<(typeof LOCKABLE_FIELD_KEYS)[number], readonly string[]>
+> = {
+  attributes: ['AGI', 'ESP', 'INT', 'VIG'],
+};
 
 @ValidatorConstraint({ name: 'subFieldMatchesFieldKey', async: false })
 class SubFieldMatchesFieldKeyConstraint implements ValidatorConstraintInterface {
@@ -65,7 +66,7 @@ class SubFieldMatchesFieldKeyConstraint implements ValidatorConstraintInterface 
     if (subField === undefined) return true;
     const fieldKey = (args.object as VisibilityLockPathInput).fieldKey;
     const allowed = LOCKABLE_SUB_FIELDS[fieldKey as (typeof LOCKABLE_FIELD_KEYS)[number]];
-    return Array.isArray(allowed) && allowed.includes(subField as string);
+    return Array.isArray(allowed) && allowed.includes(subField);
   }
 
   defaultMessage(args: ValidationArguments): string {

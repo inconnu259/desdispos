@@ -1,6 +1,6 @@
-import { boardGameNameKey } from '@master-jdr/shared';
+import { boardGameNameKey } from '@desdispos/shared';
 
-// Story 48.1 — la normalisation unique des noms de jeu vit dans @master-jdr/shared, qui n'a pas de
+// Story 48.1 — la normalisation unique des noms de jeu vit dans @desdispos/shared, qui n'a pas de
 // lanceur de tests : elle est éprouvée ici, côté API, son premier consommateur.
 describe('boardGameNameKey (Story 48.1)', () => {
   it('ignore la casse', () => {

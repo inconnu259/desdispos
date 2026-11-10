@@ -3,7 +3,7 @@ import {
   destinyEntryOption,
   sortOptionsChronologically,
   type RankableOption,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 const TODAY = '2026-10-20';
 

@@ -1,4 +1,4 @@
-import { isDatableSeance } from '@master-jdr/shared';
+import { isDatableSeance } from '@desdispos/shared';
 import type { PermissionService } from '../permissions/permission.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import { DatableSeancesService } from './datable-seances.service';

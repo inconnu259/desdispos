@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { AnnouncementDto, AuthUser } from '@master-jdr/shared';
+import type { AnnouncementDto, AuthUser } from '@desdispos/shared';
 import { UnseenAnnouncementsService } from './unseen-announcements.service';
 import { AccountService } from '../account/account.service';
 import { AuthService } from '../auth/auth.service';

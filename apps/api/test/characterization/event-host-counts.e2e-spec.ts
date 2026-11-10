@@ -1,5 +1,5 @@
 import request from 'supertest';
-import type { HostCountsDto } from '@master-jdr/shared';
+import type { HostCountsDto } from '@desdispos/shared';
 import { RALLIEMENT_UNAVAILABLE_MESSAGE } from '../../src/permissions/permission.service';
 import { Harness, body, isoDay, type TestUser } from './harness';
 

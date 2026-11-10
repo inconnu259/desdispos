@@ -17,7 +17,7 @@
       }
     ]
   },
-  "transformIgnorePatterns": ["/node_modules/(?!@master-jdr/)"],
+  "transformIgnorePatterns": ["/node_modules/(?!@desdispos/)"],
   "moduleNameMapper": {
     "^(\\.{1,2}/.*)\\.js$": "$1"
   }

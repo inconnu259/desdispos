@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PDFDocument } from 'pdf-lib';
-import type { CharacterNoteDto } from '@master-jdr/shared';
-import { mapNotesToPdfFields } from '@master-jdr/game-rules';
+import type { CharacterNoteDto } from '@desdispos/shared';
+import { mapNotesToPdfFields } from '@desdispos/game-rules';
 
 const PDF_TEMPLATE_PATH = join(
   process.cwd(),

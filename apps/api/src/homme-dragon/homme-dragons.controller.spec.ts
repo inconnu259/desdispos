@@ -1,4 +1,4 @@
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validateHommeDragon: jest.fn(),
 }));
 
@@ -16,7 +16,7 @@ import { HommeDragonService } from './homme-dragon.service';
 import { HommeDragonPdfService } from './homme-dragon.pdf.service';
 import { HommeDragonModule } from './homme-dragon.module';
 import type { ChooseEveilPowerDto } from './dto/choose-eveil-power.dto';
-import type { HommeDragonDto, UpdateHommeDragonDto } from '@master-jdr/shared';
+import type { HommeDragonDto, UpdateHommeDragonDto } from '@desdispos/shared';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 

@@ -1,5 +1,5 @@
 import { IsBoolean, IsIn, IsOptional } from 'class-validator';
-import type { MembershipRole } from '@master-jdr/shared';
+import type { MembershipRole } from '@desdispos/shared';
 
 const MEMBERSHIP_ROLES: MembershipRole[] = ['ADMIN', 'MEMBER'];
 

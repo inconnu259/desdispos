@@ -1,4 +1,4 @@
-import { defaultPollDeadline } from '@master-jdr/shared';
+import { defaultPollDeadline } from '@desdispos/shared';
 
 // Story 45.4 — `defaultPollDeadline` : le plus TÔT de « dans 14 jours » et de « la veille du premier créneau »,
 // jamais avant aujourd'hui. Fonction partagée par le composer et le serveur.

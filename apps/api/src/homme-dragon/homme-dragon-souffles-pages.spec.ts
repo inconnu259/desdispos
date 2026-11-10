@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PDFDocument, PDFPage, StandardFonts } from 'pdf-lib';
-import type { SouffleGroup } from '@master-jdr/game-rules';
+import type { SouffleGroup } from '@desdispos/game-rules';
 import { drawSoufflesPages, sanitizeWinAnsi } from './homme-dragon-souffles-pages';
 
 interface CatalogueEntry {
@@ -150,7 +150,7 @@ describe('drawSoufflesPages', () => {
   });
 
   it('catalogue réel niveau 5 : pages ajoutées, souffles des autres races présents, nom de chaque souffle dessiné', async () => {
-    const { availableSouffles } = await import('@master-jdr/game-rules');
+    const { availableSouffles } = await import('@desdispos/game-rules');
     const groups = availableSouffles(
       5,
       'DRAGON_ROUGE',

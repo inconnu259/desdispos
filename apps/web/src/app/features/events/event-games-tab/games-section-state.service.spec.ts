@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { GamesSectionStateService } from './games-section-state.service';
 
-const LS_KEY = 'master-jdr.event-games.collapsed-sections';
+const LS_KEY = 'desdispos.event-games.collapsed-sections';
 
 describe('GamesSectionStateService (Story 49.1)', () => {
   beforeEach(() => {

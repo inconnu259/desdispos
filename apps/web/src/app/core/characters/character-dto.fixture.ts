@@ -1,4 +1,4 @@
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto } from '@desdispos/shared';
 
 /**
  * Factory de fixture partagée pour `CharacterDto` dans les tests — évite que chaque story

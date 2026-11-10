@@ -1,4 +1,4 @@
-import type { DaySlot, VoteAnswer } from '@master-jdr/shared';
+import type { DaySlot, VoteAnswer } from '@desdispos/shared';
 import { fillTone } from '../../core/theme/tone-format';
 
 /**

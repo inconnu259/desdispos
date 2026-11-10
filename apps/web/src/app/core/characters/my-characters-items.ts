@@ -1,4 +1,4 @@
-import type { CharacterSort, MyCharacterDto, MyHommeDragonDto } from '@master-jdr/shared';
+import type { CharacterSort, MyCharacterDto, MyHommeDragonDto } from '@desdispos/shared';
 import { characterName } from './character.util';
 import { sortCharacters } from './character-sort';
 import { hommeDragonName } from '../homme-dragon/homme-dragon.util';

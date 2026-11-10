@@ -1,4 +1,4 @@
-import { atelierPath, atelierQuery, atelierUrl } from '@master-jdr/shared';
+import { atelierPath, atelierQuery, atelierUrl } from '@desdispos/shared';
 
 describe('atelierUrl (Story 44.7)', () => {
   const jdrMj = { partieId: 'p1', family: 'jdr', role: 'mj' } as const;

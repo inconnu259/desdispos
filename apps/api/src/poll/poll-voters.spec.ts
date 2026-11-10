@@ -1,4 +1,4 @@
-import { hasAnswered, isPartieActive, partieStatus } from '@master-jdr/shared';
+import { hasAnswered, isPartieActive, partieStatus } from '@desdispos/shared';
 import { pollVoters } from './poll-voters';
 
 // Story 44.2 — les trois définitions UNIQUES du lot : qui vote, qui a répondu, quelle partie est active.

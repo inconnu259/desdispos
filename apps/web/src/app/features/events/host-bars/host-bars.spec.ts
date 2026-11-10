@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { vi } from 'vitest';
-import type { HostCountDto, HostCountsDto } from '@master-jdr/shared';
+import type { HostCountDto, HostCountsDto } from '@desdispos/shared';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP, type Theme } from '../../../core/theme/tones';

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { hasAnswered, hasCapability } from '@master-jdr/shared';
-import type { PartieDto, PartySignalCode, PartySignalsDto } from '@master-jdr/shared';
+import { hasAnswered, hasCapability } from '@desdispos/shared';
+import type { PartieDto, PartySignalCode, PartySignalsDto } from '@desdispos/shared';
 import { VISIBLE_POLL_WHERE } from '../permissions/scenario-visibility';
 import { PrismaService } from '../prisma/prisma.service';
 import { PartiesService } from './parties.service';

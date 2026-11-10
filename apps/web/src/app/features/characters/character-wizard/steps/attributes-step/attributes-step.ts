@@ -8,7 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { ContentEntryDto } from '@master-jdr/shared';
+import type { ContentEntryDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../../../core/theme/tone-format';
 import { ChoiceCard, type ChoiceCardOption } from '../../choice-card/choice-card';

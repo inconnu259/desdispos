@@ -1,5 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
-import type { PartieMemberDto, SessionPollDto } from '@master-jdr/shared';
+import type { PartieMemberDto, SessionPollDto } from '@desdispos/shared';
 import { getMissingVoters } from '../../../core/poll/poll.util';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { IdentityLabel } from '../../../shared/identity/identity-label';

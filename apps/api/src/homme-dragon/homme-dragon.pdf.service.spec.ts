@@ -1,10 +1,10 @@
-import type { HommeDragonDto } from '@master-jdr/shared';
+import type { HommeDragonDto } from '@desdispos/shared';
 import { Test } from '@nestjs/testing';
 
 jest.mock('node:fs/promises', () => ({
   readFile: jest.fn(),
 }));
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   mapHommeDragonToPdfFields: jest.fn(() => [
     { field: 'nom', value: 'Ignis', kind: 'text' },
     { field: 'niveau', value: '3', kind: 'text' },
@@ -20,7 +20,7 @@ jest.mock('./homme-dragon-souffles-pages', () => ({
 }));
 
 import { readFile } from 'node:fs/promises';
-import { availableSouffles, mapHommeDragonToPdfFields } from '@master-jdr/game-rules';
+import { availableSouffles, mapHommeDragonToPdfFields } from '@desdispos/game-rules';
 import { HommeDragonPdfService } from './homme-dragon.pdf.service';
 import { drawSoufflesPages, sanitizeWinAnsi } from './homme-dragon-souffles-pages';
 import { GameSystemService } from '../game-systems/game-system.service';

@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { ComponentFixture } from '@angular/core/testing';
 import { CreneauCard } from './creneau-card';
-import type { AvailableSlotDto } from '@master-jdr/shared';
+import type { AvailableSlotDto } from '@desdispos/shared';
 import { TONE_MAP } from '../../../core/theme/tones';
 
 const GRIMOIRE_TONE = TONE_MAP['grimoire-emeraude'];

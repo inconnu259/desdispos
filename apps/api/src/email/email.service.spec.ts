@@ -14,7 +14,7 @@ describe('EmailService', () => {
   it('transmet to/template/context à MailerService et renvoie { ok: true }', async () => {
     const result = await service.sendMail('invitation', 'ami@example.com', {
       partieName: 'La Forêt Ancienne',
-      link: 'https://jdr-master.local/invite/abc',
+      link: 'https://desdispos.local/invite/abc',
     });
 
     expect(mailer.sendMail).toHaveBeenCalledWith({
@@ -23,7 +23,7 @@ describe('EmailService', () => {
       template: 'invitation',
       context: {
         partieName: 'La Forêt Ancienne',
-        link: 'https://jdr-master.local/invite/abc',
+        link: 'https://desdispos.local/invite/abc',
         actionLabel: 'Rejoindre la partie',
       },
     });

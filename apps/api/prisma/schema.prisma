@@ -22,7 +22,7 @@ model User {
   createdAt         DateTime   @default(now())
   theme             String? // AD-13 — null = jamais choisi, le thème local est alors adopté une fois
   mustResetPassword Boolean    @default(false) // Story 28.6 — posé par rollbackEmailChange(), remis à false par resetPassword()
-  partiesSort         String  @default("urgence") // AD-1 — union fermée dans @master-jdr/shared (Story 29.8)
+  partiesSort         String  @default("urgence") // AD-1 — union fermée dans @desdispos/shared (Story 29.8)
   hideFinishedParties Boolean @default(false) // AD-1 — préférence d'affichage, appliquée côté front (Story 29.8)
   availabilityReminder Boolean @default(true) // AD-5 (Story 52.4) — rappel « Dispos à déclarer » ; vrai par défaut, aucune reprise de données
   partiesViewMode     String  @default("medium") // AD-1 — une paire PAR LISTE, jamais partagée (Story 29.9)
@@ -155,7 +155,7 @@ model PartieHidden {
 }
 
 /// Un jeu de la Ludothèque d'une personne (Story 48.1, épic 48). Saisie manuelle seulement : nom
-/// obligatoire, joueurs et durée facultatifs. `nameKey` = `boardGameNameKey(name)` (@master-jdr/shared),
+/// obligatoire, joueurs et durée facultatifs. `nameKey` = `boardGameNameKey(name)` (@desdispos/shared),
 /// calculée par l'API à l'écriture : deux jeux de même clé sont refusés dans une même Ludothèque.
 /// Seul `board-games/` écrit cette table ; elle disparaît en cascade avec son propriétaire. Story 49.2 : un jeu
 /// apporté à une soirée vit dans `EventGameBring` (écrit par `events/`) ; retirer le jeu retire ses apports.
@@ -199,7 +199,7 @@ model SlotWindowHidden {
 /// Une couche de calendrier active pour un utilisateur (Story 30.4) — état multi-valué, donc
 /// relationnel (AD-16, application directe d'AD-1 au cas ensemble-de-valeurs) : une ligne par
 /// couche ACTIVE, l'absence de ligne vaut couche éteinte. `layerKey` est une union fermée
-/// déclarée dans `@master-jdr/shared` (`CalendarLayerKey`), validée à l'écriture, jamais une
+/// déclarée dans `@desdispos/shared` (`CalendarLayerKey`), validée à l'écriture, jamais une
 /// chaîne libre. `User.calendarLayersSetAt` distingue « jamais réglé » (le défaut s'applique) de
 /// « réglé, y compris à vide ».
 model UserCalendarLayer {

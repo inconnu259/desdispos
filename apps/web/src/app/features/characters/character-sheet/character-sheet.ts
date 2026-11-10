@@ -24,7 +24,7 @@ import {
 } from '@angular/cdk/overlay';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import type { CharacterDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { CharacterDto, GameSystemContentDto } from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
 import {
@@ -68,7 +68,7 @@ import {
   type WeaponItemEntry,
   type WeaponItemContentData,
   type WeaponCategoryContentData,
-} from '@master-jdr/game-rules';
+} from '@desdispos/game-rules';
 
 interface ClassTalentFull {
   id?: string;

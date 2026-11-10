@@ -1,5 +1,5 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import type { AuthUser, GroupBoardGamesDto } from '@master-jdr/shared';
+import type { AuthUser, GroupBoardGamesDto } from '@desdispos/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { BoardGamesService } from './board-games.service';

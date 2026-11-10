@@ -9,7 +9,7 @@ import type {
   MyHommeDragonDto,
   PartieDto,
   PartySignalsDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { MyCharacters } from './my-characters';
 import { CharacterService } from '../../../core/characters/character.service';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';

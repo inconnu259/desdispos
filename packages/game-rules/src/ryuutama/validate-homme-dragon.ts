@@ -1,6 +1,6 @@
 import type { ValidationError, ValidationResult } from './types.ts';
 
-/** Race de l'Homme Dragon — miroir local de `HommeDragonRace` (`@master-jdr/shared`), jamais
+/** Race de l'Homme Dragon — miroir local de `HommeDragonRace` (`@desdispos/shared`), jamais
  * importé en valeur runtime depuis `packages/shared` (frontière types-only, cf. `types.ts`). */
 export type HommeDragonRace = 'DRAGON_VERT' | 'DRAGON_BLEU' | 'DRAGON_ROUGE' | 'DRAGON_NOIR';
 

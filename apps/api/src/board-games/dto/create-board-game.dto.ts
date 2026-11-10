@@ -1,6 +1,6 @@
 import { Transform } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
-import type { CreateBoardGameInput } from '@master-jdr/shared';
+import type { CreateBoardGameInput } from '@desdispos/shared';
 import { trimIfString } from '../../common/dto/trim.transform';
 
 /** Bornes d'un jeu de la Ludothèque (épic 48) — reprises telles quelles par les tests. */

@@ -6,7 +6,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import type { ScenarioDto, SeanceDto, SessionPollDto } from '@master-jdr/shared';
+import type { ScenarioDto, SeanceDto, SessionPollDto } from '@desdispos/shared';
 import { ScenarioTimeline } from './scenario-timeline';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';

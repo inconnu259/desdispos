@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 import {
   DURATION_TEXT,
   durationDetail,

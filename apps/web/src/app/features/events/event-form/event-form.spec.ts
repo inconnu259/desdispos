@@ -1,7 +1,7 @@
 import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import type { EventCardDto } from '@master-jdr/shared';
+import type { EventCardDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../../core/theme/tones';
 import type { ConjonctionDraft } from '../conjonction-draft.service';

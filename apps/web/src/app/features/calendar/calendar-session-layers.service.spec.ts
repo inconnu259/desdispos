@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import type { AuthUser, CalendarLayerKey } from '@master-jdr/shared';
+import type { AuthUser, CalendarLayerKey } from '@desdispos/shared';
 import { AuthService } from '../../core/auth/auth.service';
 import {
   CalendarSessionLayersService,

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { CharacterNoteDto } from '@master-jdr/shared';
+import type { CharacterNoteDto } from '@desdispos/shared';
 import { NotesJournal } from './notes-journal';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { TONE_MAP } from '../../../../core/theme/tones';

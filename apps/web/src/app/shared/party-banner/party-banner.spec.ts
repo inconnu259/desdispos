@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import type { Theme } from '@master-jdr/shared';
+import type { Theme } from '@desdispos/shared';
 import { PartyBanner } from './party-banner';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../core/theme/tones';

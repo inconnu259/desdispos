@@ -1,9 +1,9 @@
 import { Test } from '@nestjs/testing';
 
 // ScenariosService (import réel pour servir de jeton DI, transitif via AnnouncementsService)
-// importe CharacterService -> @master-jdr/game-rules (ESM, non transformé par ts-jest) — même
+// importe CharacterService -> @desdispos/game-rules (ESM, non transformé par ts-jest) — même
 // mock que scenarios.service.spec.ts pour éviter "Unexpected token export" au chargement.
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   pendingLevels: jest.fn(),

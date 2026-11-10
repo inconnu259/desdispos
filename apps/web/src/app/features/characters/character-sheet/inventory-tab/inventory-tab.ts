@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto } from '@desdispos/shared';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { isFieldHidden } from '../../../../core/characters/character.util';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';

@@ -1,4 +1,4 @@
-import type { PartieKind } from '@master-jdr/shared';
+import type { PartieKind } from '@desdispos/shared';
 
 /**
  * Port de la couche 1 : fixer la date d'une conjonction depuis son sondage (Story 40.6). Implémenté par

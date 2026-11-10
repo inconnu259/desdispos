@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import type { HommeDragonDto, MyHommeDragonDto } from '@master-jdr/shared';
+import type { HommeDragonDto, MyHommeDragonDto } from '@desdispos/shared';
 import { HommeDragonAventurePanel } from './homme-dragon-aventure-panel';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { TONE_MAP } from '../../../core/theme/tones';

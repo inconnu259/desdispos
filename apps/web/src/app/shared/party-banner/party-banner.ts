@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import type { ListViewMode } from '@master-jdr/shared';
+import type { ListViewMode } from '@desdispos/shared';
 import { API_BASE } from '../../core/api-base';
 import { ThemeToneService } from '../../core/theme/theme-tone.service';
 import {

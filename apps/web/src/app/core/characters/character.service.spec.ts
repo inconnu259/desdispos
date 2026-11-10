@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { GameSystemDto } from '@master-jdr/shared';
+import type { GameSystemDto } from '@desdispos/shared';
 import { CharacterService } from './character.service';
 import { API_BASE as API } from '../api-base';
 import { makeCharacterDto } from './character-dto.fixture';

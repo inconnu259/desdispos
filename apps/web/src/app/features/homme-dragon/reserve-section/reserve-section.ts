@@ -10,8 +10,8 @@ import {
   output,
   signal,
 } from '@angular/core';
-import type { ContentEntryDto, HommeDragonDto, HommeDragonRace } from '@master-jdr/shared';
-import { reserveCapacity } from '@master-jdr/game-rules';
+import type { ContentEntryDto, HommeDragonDto, HommeDragonRace } from '@desdispos/shared';
+import { reserveCapacity } from '@desdispos/game-rules';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

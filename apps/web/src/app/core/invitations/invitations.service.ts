@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { InvitationDto } from '@master-jdr/shared';
+import type { InvitationDto } from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 
 // Source unique de l'URL d'API (cf. core/api-base.ts) — plus de redéfinition en dur ici.

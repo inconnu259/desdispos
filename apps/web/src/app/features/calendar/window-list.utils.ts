@@ -1,4 +1,4 @@
-import type { AggregatedSlotDto, AvailableSlotDto } from '@master-jdr/shared';
+import type { AggregatedSlotDto, AvailableSlotDto } from '@desdispos/shared';
 
 type AnySlot = AvailableSlotDto | AggregatedSlotDto;
 

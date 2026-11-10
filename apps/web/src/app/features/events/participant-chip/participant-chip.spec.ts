@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { EventParticipantDto } from '@master-jdr/shared';
+import type { EventParticipantDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../../core/theme/tones';
 import { ParticipantChip } from './participant-chip';

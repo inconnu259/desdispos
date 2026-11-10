@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import type { ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDto } from '@desdispos/shared';
 import { ScenariosService, matchesPartie } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService, partieTopic } from '../../../core/realtime/realtime.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

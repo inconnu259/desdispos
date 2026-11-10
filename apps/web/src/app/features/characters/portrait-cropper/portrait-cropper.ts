@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { RYUUTAMA_PDF_PORTRAIT_ASPECT_RATIO } from '@master-jdr/shared';
+import { RYUUTAMA_PDF_PORTRAIT_ASPECT_RATIO } from '@desdispos/shared';
 import { CharacterService } from '../../../core/characters/character.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 

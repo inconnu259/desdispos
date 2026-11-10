@@ -20,7 +20,7 @@ import type {
   PartieDto,
   PartieMemberDto,
   SessionPollDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CharacterService } from '../../../core/characters/character.service';
 import { makeAnnouncementDto } from '../../../core/announcements/announcement-dto.fixture';

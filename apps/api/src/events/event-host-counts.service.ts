@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import type { HostCountsDto } from '@master-jdr/shared';
+import type { HostCountsDto } from '@desdispos/shared';
 import {
   PermissionService,
   RALLIEMENT_UNAVAILABLE_MESSAGE,

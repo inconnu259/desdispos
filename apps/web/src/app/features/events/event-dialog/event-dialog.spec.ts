@@ -6,7 +6,7 @@ import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import type { EventCardDto, PartieMemberDto } from '@master-jdr/shared';
+import type { EventCardDto, PartieMemberDto } from '@desdispos/shared';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

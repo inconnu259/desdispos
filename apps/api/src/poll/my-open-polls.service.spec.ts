@@ -1,5 +1,5 @@
-import type { OrganizerCan } from '@master-jdr/shared';
-import type { PartieRole } from '@master-jdr/shared';
+import type { OrganizerCan } from '@desdispos/shared';
+import type { PartieRole } from '@desdispos/shared';
 import { PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MyOpenPollsService } from './my-open-polls.service';

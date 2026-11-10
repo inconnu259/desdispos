@@ -1,4 +1,4 @@
-# CLAUDE.md — master-jdr
+# CLAUDE.md — desdispos
 
 Plateforme web open source de gestion de parties de JDR (multi-systèmes, MJ + joueurs).
 **Vision : `docs/spec.md` · Feuille de route : `docs/backlog.md`.** Lire ces deux fichiers en début de session.

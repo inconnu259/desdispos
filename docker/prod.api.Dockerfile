@@ -1,6 +1,6 @@
 # Image de PRODUCTION de l'API (NestJS + Prisma). Construite par docker-compose.prod.yml.
 #
-# Les paquets du workspace (@master-jdr/shared, @master-jdr/game-rules) exportent leur source TypeScript
+# Les paquets du workspace (@desdispos/shared, @desdispos/game-rules) exportent leur source TypeScript
 # et Node l'exécute nativement (type stripping) — ce qui est refusé sous node_modules/. On garde donc la
 # disposition du monorepo (liens symboliques vers packages/*) au lieu de `pnpm deploy`, qui les copierait
 # dans node_modules/.

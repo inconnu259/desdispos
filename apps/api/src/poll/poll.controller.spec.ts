@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 
 import { PollController } from './poll.controller';
 import { PollService } from './poll.service';

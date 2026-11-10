@@ -1,5 +1,5 @@
 import { IsIn } from 'class-validator';
-import { LIST_VIEW_MODES, type ListViewMode } from '@master-jdr/shared';
+import { LIST_VIEW_MODES, type ListViewMode } from '@desdispos/shared';
 
 /**
  * `mode` validé contre l'union fermée des modes d'affichage (Story 29.12, AC9) — jamais une

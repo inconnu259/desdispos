@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import type { CharacterDto, CreateXpDistributionDto } from '@master-jdr/shared';
+import type { CharacterDto, CreateXpDistributionDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { PartiesService } from '../../../core/parties/parties.service';

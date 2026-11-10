@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { PartieKind } from '@master-jdr/shared';
+import type { PartieKind } from '@desdispos/shared';
 import { EmailService } from '../email/email.service';
 import { PermissionService } from '../permissions/permission.service';
 import type { GroupPollChoosePort } from '../poll/ports/group-poll-choose.port';

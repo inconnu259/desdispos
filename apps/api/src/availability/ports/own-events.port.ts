@@ -3,7 +3,7 @@ import type {
   MyCalendarSeanceEntry,
   PartieKind,
   PartieRole,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 /** Une partie de l'utilisateur lecteur (propriétaire ou membre) — le strict nécessaire au calendrier. */
 export interface OwnPartie {

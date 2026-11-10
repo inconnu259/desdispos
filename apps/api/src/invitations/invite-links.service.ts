@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import type { InviteLink, Prisma } from '@prisma/client';
-import type { InviteLinkPreviewDto } from '@master-jdr/shared';
-import { familyOf } from '@master-jdr/shared';
+import type { InviteLinkPreviewDto } from '@desdispos/shared';
+import { familyOf } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
 import { PartiesService } from '../parties/parties.service';

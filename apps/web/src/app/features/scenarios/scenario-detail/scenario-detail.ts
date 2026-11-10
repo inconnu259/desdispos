@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import type { ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDto } from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { ScenarioEditor } from '../scenario-editor/scenario-editor';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';

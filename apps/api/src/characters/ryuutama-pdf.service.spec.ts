@@ -1,10 +1,10 @@
-import type { CharacterDto } from '@master-jdr/shared';
+import type { CharacterDto } from '@desdispos/shared';
 import { Test } from '@nestjs/testing';
 
 jest.mock('node:fs/promises', () => ({
   readFile: jest.fn(),
 }));
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   mapToPdfFields: jest.fn(
     (
       data: { attributes?: { AGI?: number; ESP?: number; INT?: number; VIG?: number } },
@@ -106,7 +106,7 @@ jest.mock('@master-jdr/game-rules', () => ({
 }));
 
 import { readFile } from 'node:fs/promises';
-import { mapToPdfFields } from '@master-jdr/game-rules';
+import { mapToPdfFields } from '@desdispos/game-rules';
 import { RyuutamaPdfService, fitCentered, computePdfCropDraw } from './ryuutama-pdf.service';
 import { GameSystemService } from '../game-systems/game-system.service';
 import { anyOf, objectLike } from '../common/test-utils/jest-typed';

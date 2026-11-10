@@ -1,6 +1,6 @@
 # Image de dev commune (Node 24 + OpenSSL + pnpm) — construite une fois, partagée.
 x-dev: &dev
-  image: master-jdr-dev:local
+  image: desdispos-dev:local
   build:
     context: .
     dockerfile: docker/dev.Dockerfile

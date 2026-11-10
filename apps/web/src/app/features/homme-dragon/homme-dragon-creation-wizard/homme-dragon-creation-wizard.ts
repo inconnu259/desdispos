@@ -7,7 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import type { ContentEntryDto, HommeDragonDto, HommeDragonRace } from '@master-jdr/shared';
+import type { ContentEntryDto, HommeDragonDto, HommeDragonRace } from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { CharacterService } from '../../../core/characters/character.service';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';

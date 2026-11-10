@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { EventCardDto } from '@master-jdr/shared';
+import type { EventCardDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
 import { SituationPill } from '../../../shared/situation-pill/situation-pill';

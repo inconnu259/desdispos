@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { AnnouncementDto } from '@master-jdr/shared';
+import type { AnnouncementDto } from '@desdispos/shared';
 import { AnnonceCard } from './annonce-card';
 
 function makeAnnouncement(overrides: Partial<AnnouncementDto> = {}): AnnouncementDto {

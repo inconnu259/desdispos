@@ -19,7 +19,7 @@ import type {
   CharacterSnapshotDto,
   MyCharacterDto,
   SetSheetFieldResultDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import {
   computeDerived,
   validate,
@@ -30,7 +30,7 @@ import {
   type RyuutamaCatalog,
   type RyuutamaSheetData,
   type EquipmentCatalogEntry,
-} from '@master-jdr/game-rules';
+} from '@desdispos/game-rules';
 import { PartiesService } from '../parties/parties.service';
 import { PermissionService } from '../permissions/permission.service';
 import { PrismaService } from '../prisma/prisma.service';

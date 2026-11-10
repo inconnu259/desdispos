@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import type { UserSearchResultDto } from '@master-jdr/shared';
+import type { UserSearchResultDto } from '@desdispos/shared';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { UsersService } from './users.service';
 import { SearchUsersDto } from './dto/search-users.dto';

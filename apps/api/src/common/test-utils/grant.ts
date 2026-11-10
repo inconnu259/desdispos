@@ -1,4 +1,4 @@
-import type { PartieRole, PermissionAction } from '@master-jdr/shared';
+import type { PartieRole, PermissionAction } from '@desdispos/shared';
 import type { PartieGrant, ResolvedTarget } from '../../permissions/permission.service';
 
 /**

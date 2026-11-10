@@ -1,4 +1,4 @@
-import type { PartieRole } from '@master-jdr/shared';
+import type { PartieRole } from '@desdispos/shared';
 import type { IconName } from './icon-registry.generated';
 
 /** Icônes de rôle : le seul sous-ensemble que `roleIconName` peut renvoyer. */

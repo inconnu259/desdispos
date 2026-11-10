@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AvailabilityDeclarationDto } from '@master-jdr/shared';
+import type { AvailabilityDeclarationDto } from '@desdispos/shared';
 import { AvailabilityService } from '../../../core/availability/availability.service';
 import { ConstraintPanel } from './constraint-panel';
 import { buildConstraintDto } from './constraint-panel.utils';

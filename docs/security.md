@@ -1,4 +1,4 @@
-# Sécurité — modèle de menaces & checklist (master-jdr)
+# Sécurité — modèle de menaces & checklist (Dés Dispos)
 
 > **Statut : v0.1 — vivant.** Sécurité = transversale : on coche les items au fil des paliers.
 > Mémo des actions *manuelles* à ne pas oublier : `docs/checklist.md`.

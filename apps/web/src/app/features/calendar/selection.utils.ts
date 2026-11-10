@@ -1,4 +1,4 @@
-import type { AvailKind, CreateAvailabilityBatchItem, DaySlot } from '@master-jdr/shared';
+import type { AvailKind, CreateAvailabilityBatchItem, DaySlot } from '@desdispos/shared';
 import { toISODate } from './constraint-panel/constraint-panel.utils';
 import type { WeekCell } from './calendar-week-view/calendar-week-view';
 

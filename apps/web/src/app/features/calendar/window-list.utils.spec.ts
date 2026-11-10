@@ -1,4 +1,4 @@
-import type { AvailableSlotDto } from '@master-jdr/shared';
+import type { AvailableSlotDto } from '@desdispos/shared';
 import { displayedWindows, windowKeyOf } from './window-list.utils';
 
 const win = (date: string, slot: AvailableSlotDto['slot']): AvailableSlotDto => ({

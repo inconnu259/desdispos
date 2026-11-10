@@ -1,6 +1,6 @@
 // L'import de HommeDragonModule charge game-rules (ESM, non transformé par ts-jest) — même
 // neutralisation que homme-dragon.controller.spec.ts.
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validateHommeDragon: jest.fn(),
 }));
 

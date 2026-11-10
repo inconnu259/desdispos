@@ -1,5 +1,5 @@
-import { spanSlots } from '@master-jdr/shared';
-import type { AggregatedSlotDto, DaySlot, SlotMemberDto } from '@master-jdr/shared';
+import { spanSlots } from '@desdispos/shared';
+import type { AggregatedSlotDto, DaySlot, SlotMemberDto } from '@desdispos/shared';
 import { fillTone } from '../../core/theme/tone-format';
 
 /** Dictionnaire de ton lisible par les fonctions pures (`theme.tone()` d'un composant). */
@@ -181,7 +181,7 @@ export function groupCounterLabel(group: GroupAvailability): string {
 
 /**
  * Story 47.5 (FR-23) — la PIRE disponibilité d'une plage candidate : le plus petit `available` du groupe sur chacun
- * des créneaux que couvre le candidat (`spanSlots`, `@master-jdr/shared` — LA fonction des créneaux couverts).
+ * des créneaux que couvre le candidat (`spanSlots`, `@desdispos/shared` — LA fonction des créneaux couverts).
  * « 2 » veut dire : au pire, deux personnes sont libres sur toute la plage.
  *
  * `null` = pas de chiffre : un créneau de la plage manque dans la carte de chaleur chargée (hors du mois servi,

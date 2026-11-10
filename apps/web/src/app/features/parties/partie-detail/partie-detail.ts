@@ -23,7 +23,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { atelierPath, familyOf, hasCapability } from '@master-jdr/shared';
+import { atelierPath, familyOf, hasCapability } from '@desdispos/shared';
 import type {
   AnnouncementDto,
   CharacterDto,
@@ -36,7 +36,7 @@ import type {
   SessionPollDto,
   UserSearchResultDto,
   XpDistributionDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 const SLOT_LABELS: Record<DaySlot, string> = {
   MORNING: 'Matin',

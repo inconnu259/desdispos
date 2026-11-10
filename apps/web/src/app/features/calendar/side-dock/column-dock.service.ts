@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 /** Une seule clé pour toutes les colonnes de droite : ce que l'on retient, c'est « j'ai rangé la colonne ». */
-const LS_KEY = 'master-jdr.calendar.column-closed';
+const LS_KEY = 'desdispos.calendar.column-closed';
 
 /**
  * Story 46.1 — l'état « rangé » de la colonne de droite des calendriers (MJ, joueur, groupe, plateau).

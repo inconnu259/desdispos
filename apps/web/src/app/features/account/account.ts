@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
-import { CALENDAR_LAYER_KEYS, type CalendarLayerKey } from '@master-jdr/shared';
+import { CALENDAR_LAYER_KEYS, type CalendarLayerKey } from '@desdispos/shared';
 import { AppIcon } from '../../core/icons/app-icon';
 import { AuthService } from '../../core/auth/auth.service';
 import { AccountService } from '../../core/account/account.service';

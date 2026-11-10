@@ -13,9 +13,9 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 // Import RUNTIME : le plafond est une valeur (un `import type` l'effacerait).
-import { MAX_SLOT_WINDOW_SLOTS } from '@master-jdr/shared';
+import { MAX_SLOT_WINDOW_SLOTS } from '@desdispos/shared';
 
 /** Story 47.4 : refus d'une durée hors bornes — mêmes textes que `events/seance-span.ts` (la couche 1
  *  n'importe pas `events/`). */

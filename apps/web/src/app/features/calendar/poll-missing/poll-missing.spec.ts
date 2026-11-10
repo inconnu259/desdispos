@@ -1,7 +1,7 @@
 import '@angular/compiler';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { PartieMemberDto, SessionPollDto } from '@master-jdr/shared';
+import type { PartieMemberDto, SessionPollDto } from '@desdispos/shared';
 import { PollMissingPanel } from './poll-missing';
 
 /** Story 36.9 — le panneau « Vote en cours » du calendrier, réduit à des personnes. */

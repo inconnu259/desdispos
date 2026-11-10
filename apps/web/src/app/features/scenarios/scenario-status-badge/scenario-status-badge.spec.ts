@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { ScenarioStatus } from '@master-jdr/shared';
+import type { ScenarioStatus } from '@desdispos/shared';
 import { ScenarioStatusBadge } from './scenario-status-badge';
 
 async function createComponent(status: ScenarioStatus) {

@@ -9,7 +9,7 @@ import {
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   mapToPdfFields: jest.fn(),

@@ -10,7 +10,7 @@ import {
   rectangle,
   type PDFImage,
 } from 'pdf-lib';
-import type { CharacterDto, DerivedStats } from '@master-jdr/shared';
+import type { CharacterDto, DerivedStats } from '@desdispos/shared';
 import {
   mapToPdfFields,
   resolveWeapon,
@@ -18,7 +18,7 @@ import {
   type RyuutamaPdfContent,
   type WeaponItemContentData,
   type WeaponCategoryContentData,
-} from '@master-jdr/game-rules';
+} from '@desdispos/game-rules';
 import { GameSystemService } from '../game-systems/game-system.service';
 import { RYUUTAMA_ID } from '../game-systems/supported-game-systems';
 import {
@@ -63,12 +63,12 @@ const ATTRIBUTE_PDF_FIELDS = ['AGI', 'ESP', 'INT', 'VIG'] as const;
  * incrustation de vérification superposée sur le rendu réel) — bord intérieur du cadre.
  * Remplace l'estimation initiale (90×110, jamais vérifiée) très en-deçà de la vraie zone et
  * mal positionnée, cf. captures utilisateur lors de la revue de la Story 4.6.
- * Dupliquées avec `RYUUTAMA_PDF_PORTRAIT_WIDTH/HEIGHT` (`@master-jdr/shared`, consommées par
+ * Dupliquées avec `RYUUTAMA_PDF_PORTRAIT_WIDTH/HEIGHT` (`@desdispos/shared`, consommées par
  * `PortraitCropper` côté web). Héritage, plus une nécessité : la duplication datait d'une époque
  * où Jest ne transformait pas ce package comme dépendance de workspace (`node_modules`, hors
  * `rootDir` de l'API), et où tout import de valeur runtime cassait la suite `api`
  * (`SyntaxError: Unexpected token 'export'`). `transformIgnorePatterns` couvre désormais
- * `@master-jdr/shared` et l'API importe déjà des valeurs de ce package (`GAME_SYSTEMS` dans
+ * `@desdispos/shared` et l'API importe déjà des valeurs de ce package (`GAME_SYSTEMS` dans
  * `parties/dto/create-partie.dto.ts`, `THEMES` dans `auth/auth.service.ts`) : ces constantes
  * pourraient donc être importées plutôt que redéclarées. Tant que ce n'est pas fait, si ces
  * valeurs changent, mettre à jour les deux emplacements.

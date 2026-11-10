@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 
 /**
  * Une plage occupée par une séance datée (Story 37.8, AD-9) : la date (jour UTC) et le créneau,

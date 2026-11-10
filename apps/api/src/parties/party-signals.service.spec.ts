@@ -1,4 +1,4 @@
-import type { PartieDto } from '@master-jdr/shared';
+import type { PartieDto } from '@desdispos/shared';
 import { PartySignalsService } from './party-signals.service';
 import { callArg, objectLike } from '../common/test-utils/jest-typed';
 import { VISIBLE_POLL_WHERE } from '../permissions/scenario-visibility';

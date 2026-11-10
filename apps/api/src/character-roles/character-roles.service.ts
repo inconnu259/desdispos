@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CharacterGroupRoleDto } from '@master-jdr/shared';
+import type { CharacterGroupRoleDto } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { hasPrismaErrorCode } from '../common/prisma-error.util';
 import { PermissionService } from '../permissions/permission.service';

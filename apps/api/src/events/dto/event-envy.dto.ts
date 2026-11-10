@@ -6,7 +6,7 @@ import {
   ValidatorConstraint,
   type ValidatorConstraintInterface,
 } from 'class-validator';
-import { boardGameNameKey, type EventEnvyInput } from '@master-jdr/shared';
+import { boardGameNameKey, type EventEnvyInput } from '@desdispos/shared';
 import { BOARD_GAME_NAME_MAX } from '../../board-games/dto/create-board-game.dto';
 
 /** La clé reçue doit déjà être normalisée : `boardGameNameKey(clé) === clé`. Jamais renormalisée en silence —

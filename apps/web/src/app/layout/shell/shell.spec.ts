@@ -3,7 +3,7 @@ import { Component, signal } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
-import type { AnnouncementDto, PartieDto } from '@master-jdr/shared';
+import type { AnnouncementDto, PartieDto } from '@desdispos/shared';
 import { Shell } from './shell';
 import { MyPartiesService } from '../../core/my-parties/my-parties.service';
 import { OpenPollsService } from '../../core/poll/open-polls.service';

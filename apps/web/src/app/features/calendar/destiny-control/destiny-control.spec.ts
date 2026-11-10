@@ -1,6 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { Theme } from '@master-jdr/shared';
+import type { Theme } from '@desdispos/shared';
 import { THEMED_ICONS } from '../../../core/icons/icon-registry.generated';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../../core/theme/tones';

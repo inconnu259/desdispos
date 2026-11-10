@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
+import { DEFAULT_CALENDAR_LAYER_KEYS } from '@desdispos/shared';
 import { LocalStrategy } from './local.strategy';
 import { AuthService } from './auth.service';
 

@@ -11,7 +11,7 @@ describe('readAdminSeedConfig', () => {
   it('utilise email/pseudo par défaut si non renseignés dans l’environnement', () => {
     const config = readAdminSeedConfig({ ADMIN_PASSWORD: 'secret' });
     expect(config).toEqual({
-      email: 'admin@master-jdr.local',
+      email: 'admin@desdispos.local',
       pseudo: 'admin',
       password: 'secret',
     });

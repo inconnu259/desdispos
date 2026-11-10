@@ -1,4 +1,4 @@
-import type { Theme } from '@master-jdr/shared';
+import type { Theme } from '@desdispos/shared';
 
 /**
  * POINT DE DÉRIVATION UNIQUE de la bannière générative (AD-19, Story 29.10).

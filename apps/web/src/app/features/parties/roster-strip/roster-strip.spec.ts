@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { PartieMemberDto } from '@master-jdr/shared';
+import type { PartieMemberDto } from '@desdispos/shared';
 import { RosterStrip } from './roster-strip';
 import { makeCharacterDto } from '../../../core/characters/character-dto.fixture';
 import { fillTone } from '../../../core/theme/tone-format';

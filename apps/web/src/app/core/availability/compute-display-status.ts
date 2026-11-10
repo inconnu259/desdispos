@@ -1,4 +1,4 @@
-import type { AvailabilityDeclarationDto, DaySlot, SlotStatus } from '@master-jdr/shared';
+import type { AvailabilityDeclarationDto, DaySlot, SlotStatus } from '@desdispos/shared';
 
 type QuerySlot = 'MORNING' | 'AFTERNOON' | 'EVENING';
 

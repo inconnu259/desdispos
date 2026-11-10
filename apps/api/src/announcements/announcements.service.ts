@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { AnnouncementDto } from '@master-jdr/shared';
+import type { AnnouncementDto } from '@desdispos/shared';
 import type { Announcement } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../permissions/permission.service';

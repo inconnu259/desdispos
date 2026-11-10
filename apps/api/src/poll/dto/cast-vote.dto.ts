@@ -1,5 +1,5 @@
 import { IsEnum, IsUUID } from 'class-validator';
-import type { VoteAnswer } from '@master-jdr/shared';
+import type { VoteAnswer } from '@desdispos/shared';
 
 export class CastVoteDto {
   @IsUUID()

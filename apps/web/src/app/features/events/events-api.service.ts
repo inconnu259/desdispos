@@ -9,7 +9,7 @@ import type {
   ExtendPollDto,
   HostCountsDto,
   UpdateEventDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { API_BASE } from '../../core/api-base';
 
 /**

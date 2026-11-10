@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import type { CharacterDto, XpDistributionDto } from '@master-jdr/shared';
+import type { CharacterDto, XpDistributionDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { characterName } from '../../../core/characters/character.util';
 import { IdentityLabel } from '../../../shared/identity/identity-label';

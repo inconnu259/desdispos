@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { EventCardDto, UpdateEventDto } from '@master-jdr/shared';
+import type { EventCardDto, UpdateEventDto } from '@desdispos/shared';
 import {
   PermissionService,
   RALLIEMENT_UNAVAILABLE_MESSAGE,

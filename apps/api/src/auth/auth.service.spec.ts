@@ -1,8 +1,8 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 
-// AuthService -> import RUNTIME (pas `import type`) de THEMES depuis @master-jdr/shared (ESM, non
-// transformé par ts-jest) — même piège déjà documenté pour GAME_SYSTEMS/@master-jdr/game-rules et
+// AuthService -> import RUNTIME (pas `import type`) de THEMES depuis @desdispos/shared (ESM, non
+// transformé par ts-jest) — même piège déjà documenté pour GAME_SYSTEMS/@desdispos/game-rules et
 // pour update-theme.dto.ts (Story 28.4, revue de code).
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';

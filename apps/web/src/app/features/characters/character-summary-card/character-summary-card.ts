@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { CharacterDto, ListViewMode, MyHommeDragonDto } from '@master-jdr/shared';
+import type { CharacterDto, ListViewMode, MyHommeDragonDto } from '@desdispos/shared';
 import { characterName } from '../../../core/characters/character.util';
 import { CharacterAvatar } from '../character-avatar/character-avatar';
 import { IdentityLabel } from '../../../shared/identity/identity-label';

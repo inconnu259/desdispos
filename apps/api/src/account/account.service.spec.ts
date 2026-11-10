@@ -3,9 +3,9 @@ import { Prisma } from '@prisma/client';
 import { Test } from '@nestjs/testing';
 
 // AccountService importe toDto() depuis AnnouncementsService (Story 29.13, AD-17) qui importe
-// transitivement CharacterService -> @master-jdr/game-rules (ESM, non transformé par ts-jest) —
+// transitivement CharacterService -> @desdispos/game-rules (ESM, non transformé par ts-jest) —
 // même mock que announcements.service.spec.ts pour éviter "Unexpected token export".
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   pendingLevels: jest.fn(),

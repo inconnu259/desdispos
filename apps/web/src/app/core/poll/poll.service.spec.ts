@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import type { CastVoteDto, ChooseDateDto } from '@master-jdr/shared';
+import type { CastVoteDto, ChooseDateDto } from '@desdispos/shared';
 import { PollService } from './poll.service';
 import { API_BASE } from '../api-base';
 

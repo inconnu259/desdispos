@@ -1,4 +1,4 @@
-import { boardGameNameKey, type GroupBoardGameDto } from '@master-jdr/shared';
+import { boardGameNameKey, type GroupBoardGameDto } from '@desdispos/shared';
 import { fitsHeadcount } from '../board-game-measures';
 
 /** Les puces « Jouable à : 2 · 4 · 6 · 8+ » (Story 50.1) : `8` désigne « 8+ ». */

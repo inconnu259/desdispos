@@ -1,4 +1,4 @@
-import type { PartySignalCode } from '@master-jdr/shared';
+import type { PartySignalCode } from '@desdispos/shared';
 import { dominantCategory, dominantSignal, sortByPriority } from './party-signal-priority';
 
 describe('dominantSignal (Story 29.7, AC8)', () => {

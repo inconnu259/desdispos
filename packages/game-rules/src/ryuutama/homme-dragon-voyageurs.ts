@@ -1,4 +1,4 @@
-/** Un voyageur protégé, tel que porté par une aventure de `HommeDragonDto` (`@master-jdr/shared`) —
+/** Un voyageur protégé, tel que porté par une aventure de `HommeDragonDto` (`@desdispos/shared`) —
  * miroir local minimal (jamais d'import de `shared`, même convention que le reste du package). */
 export interface HommeDragonVoyageur {
   userId: string;

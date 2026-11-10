@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 import type { AgendaEntry } from './calendar-agenda-view/calendar-agenda-view';
 import { respondedCount, type VoteParticipation } from './poll-track.utils';
 // Story 32.3 — teintes, paliers et libellés humains vivent désormais dans `core/status`, partagés

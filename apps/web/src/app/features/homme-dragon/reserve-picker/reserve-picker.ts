@@ -8,7 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { ContentEntryDto, HommeDragonRace } from '@master-jdr/shared';
+import type { ContentEntryDto, HommeDragonRace } from '@desdispos/shared';
 import {
   RESERVE_REASON_AUTRE_RACE_NIVEAU,
   RESERVE_REASON_QUOTA_AUTRE_RACE,
@@ -17,7 +17,7 @@ import {
   reserveSouffleKind,
   type ReserveCatalogs,
   type ReservePlacement,
-} from '@master-jdr/game-rules';
+} from '@desdispos/game-rules';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../core/theme/tone-format';
@@ -81,7 +81,7 @@ const data = (e: ContentEntryDto) => (e.data ?? {}) as { race?: string; famille?
  *
  * Aucun souffle n'est masqué : ceux qui ne peuvent pas être placés sont grisés (`aria-disabled`,
  * jamais `disabled` : ils restent focalisables et consultables) avec leur raison écrite. Les règles
- * viennent de `@master-jdr/game-rules` (`reservePlacements`), les mêmes que celles du serveur, qui
+ * viennent de `@desdispos/game-rules` (`reservePlacements`), les mêmes que celles du serveur, qui
  * reste l'autorité. Une ligne = un `<button>` natif ; Entrée/Espace = consulter (et non placer) ;
  * « Mettre dans l'emplacement N » place le souffle consulté.
  */

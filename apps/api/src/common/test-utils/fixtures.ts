@@ -9,7 +9,7 @@
  * dans chaque spec garantit qu'ils divergeront, et que l'ajout d'un champ au contrat cassera
  * autant de fichiers qu'il y a de copies. Un point de passage unique règle les deux.
  */
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 
 /**
  * Utilisateur authentifié complet, conforme au contrat `AuthUser`.
@@ -34,7 +34,7 @@ export function makeAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
     charactersViewMode: 'medium',
     charactersSort: 'partie',
     // Liste explicite plutôt qu'un spread de `DEFAULT_CALENDAR_LAYER_KEYS` : plusieurs specs
-    // font `jest.mock('@master-jdr/shared')` en n'exposant qu'une partie des exports, et un
+    // font `jest.mock('@desdispos/shared')` en n'exposant qu'une partie des exports, et un
     // import de VALEUR runtime y devient alors `undefined` (« not iterable »). Le garde-fou
     // reste en place sans cet import : ces chaînes sont contextuellement typées par
     // `AuthUser['defaultCalendarLayers']`, donc renommer une clé du contrat casse la

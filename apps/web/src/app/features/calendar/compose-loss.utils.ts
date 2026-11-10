@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 
 /** Une option d'un vote existant, telle que le composer la compare : son départ et le nombre de réponses qu'elle porte. */
 export interface LossOption {

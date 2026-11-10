@@ -6,8 +6,8 @@ import type {
   ListViewMode,
   PartieSort,
   Theme,
-} from '@master-jdr/shared';
-import { DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
+} from '@desdispos/shared';
+import { DEFAULT_CALENDAR_LAYER_KEYS } from '@desdispos/shared';
 
 /** Construit la forme `AuthUser` renvoyée au front — strip `passwordHash` et résout
  *  `defaultCalendarLayers` (Story 30.4, AD-16) : `calendarLayersSetAt === null` → jamais réglé,

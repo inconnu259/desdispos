@@ -13,7 +13,7 @@ import type {
   ScenarioDto,
   SeanceDto,
   SessionPollDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { ScenarioReadDialog, type ScenarioReadDialogData } from './scenario-read-dialog';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';

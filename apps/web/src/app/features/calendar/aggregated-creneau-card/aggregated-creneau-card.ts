@@ -1,5 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
-import type { AggregatedSlotDto } from '@master-jdr/shared';
+import type { AggregatedSlotDto } from '@desdispos/shared';
 import { AppIcon } from '../../../core/icons/app-icon';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 

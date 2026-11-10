@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { VoteAnswer } from '@master-jdr/shared';
+import type { VoteAnswer } from '@desdispos/shared';
 import { VoteAnswerPicker } from './vote-answer-picker';
 import type { VoteParticipation } from '../poll-track.utils';
 

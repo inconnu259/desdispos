@@ -12,7 +12,7 @@ import { CalendarView } from './calendar-view';
 import { CalendarWeekView } from '../calendar-week-view/calendar-week-view';
 import { CalendarMonthView } from '../calendar-month-view/calendar-month-view';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import type { AuthUser, DatableSeanceEntry, OpenPollEntry } from '@master-jdr/shared';
+import type { AuthUser, DatableSeanceEntry, OpenPollEntry } from '@desdispos/shared';
 import {
   AvailabilityService,
   ConflictError,
@@ -23,7 +23,7 @@ import { DatableSeancesService } from '../../../core/poll/datable-seances.servic
 import { OpenPollsService } from '../../../core/poll/open-polls.service';
 import { PollService } from '../../../core/poll/poll.service';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
-import { CALENDAR_LAYER_KEYS, DEFAULT_CALENDAR_LAYER_KEYS } from '@master-jdr/shared';
+import { CALENDAR_LAYER_KEYS, DEFAULT_CALENDAR_LAYER_KEYS } from '@desdispos/shared';
 import { toDateKey } from '../day-detail.utils';
 import { composeCellKey } from '../selection.utils';
 import { RealtimeService, partieTopic, userTopic } from '../../../core/realtime/realtime.service';
@@ -8283,7 +8283,7 @@ describe('CalendarView — plateau d’un vote de JDR terminé (Story 45.4)', ()
 // Story 46.1 — ranger la colonne de droite (≥ 768 px) et replier les éphémérides (< 768 px)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('CalendarView — ranger la colonne de droite (Story 46.1)', () => {
-  const LS_KEY = 'master-jdr.calendar.column-closed';
+  const LS_KEY = 'desdispos.calendar.column-closed';
   const ORGANIZER = { propose: true, edit: true, choose: true, extend: false };
 
   beforeEach(() => localStorage.removeItem(LS_KEY));
@@ -8495,7 +8495,7 @@ describe('CalendarView — fenêtre de l’automate en évidence (Story 46.2)', 
   const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[], durationSlots: 1 };
   const KEY_A = '2030-03-06|EVENING';
 
-  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  beforeEach(() => localStorage.removeItem('desdispos.calendar.column-closed'));
   afterEach(() => TestBed.resetTestingModule());
 
   async function tick(fixture: any) {
@@ -8721,7 +8721,7 @@ describe('CalendarView — ajouter une fenêtre au vote (Story 46.3)', () => {
   const WIN_A = { date: '2030-03-06', slot: 'EVENING', members: [] as any[], durationSlots: 1 };
   const WIN_B = { date: '2030-03-09', slot: 'MORNING', members: [] as any[], durationSlots: 1 };
 
-  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  beforeEach(() => localStorage.removeItem('desdispos.calendar.column-closed'));
   afterEach(() => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((n) => n.remove());
     TestBed.resetTestingModule();
@@ -9028,7 +9028,7 @@ describe('CalendarView — masquer une fenêtre de l’automate (Story 46.4)', (
     hidden: true,
   };
 
-  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  beforeEach(() => localStorage.removeItem('desdispos.calendar.column-closed'));
   afterEach(() => TestBed.resetTestingModule());
 
   async function tick(fixture: any) {
@@ -9484,7 +9484,7 @@ describe('CalendarView — fenêtres de la bonne durée (Story 47.6)', () => {
   const WIN_1 = win('2030-03-06', 'EVENING', 1);
   const WIN_2 = win('2030-03-09', 'AFTERNOON', 2);
 
-  beforeEach(() => localStorage.removeItem('master-jdr.calendar.column-closed'));
+  beforeEach(() => localStorage.removeItem('desdispos.calendar.column-closed'));
   afterEach(() => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((n) => n.remove());
     TestBed.resetTestingModule();

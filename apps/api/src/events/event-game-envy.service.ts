@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { familyOf, type EventEnvyDto } from '@master-jdr/shared';
+import { familyOf, type EventEnvyDto } from '@desdispos/shared';
 import {
   PermissionService,
   RALLIEMENT_UNAVAILABLE_MESSAGE,

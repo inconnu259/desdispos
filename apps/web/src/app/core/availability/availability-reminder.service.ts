@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { AuthUser, AvailabilityReminderDto } from '@master-jdr/shared';
+import type { AuthUser, AvailabilityReminderDto } from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 import { AccountService } from '../account/account.service';
 import { AuthService } from '../auth/auth.service';

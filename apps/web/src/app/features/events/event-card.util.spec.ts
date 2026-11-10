@@ -1,4 +1,4 @@
-import type { EventCardDto } from '@master-jdr/shared';
+import type { EventCardDto } from '@desdispos/shared';
 import { TONE_MAP } from '../../core/theme/tones';
 import {
   answeredSlotCount,

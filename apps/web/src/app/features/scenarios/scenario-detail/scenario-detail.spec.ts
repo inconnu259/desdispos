@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import type { ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDto } from '@desdispos/shared';
 import { ScenarioDetail } from './scenario-detail';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { RealtimeService } from '../../../core/realtime/realtime.service';

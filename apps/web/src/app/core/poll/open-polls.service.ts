@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import type { OpenPollEntry } from '@master-jdr/shared';
+import type { OpenPollEntry } from '@desdispos/shared';
 import { MyPartiesService } from '../my-parties/my-parties.service';
 import { PollService } from './poll.service';
 

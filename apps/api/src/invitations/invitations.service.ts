@@ -5,8 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { InvitationDto } from '@master-jdr/shared';
-import { familyOf } from '@master-jdr/shared';
+import type { InvitationDto } from '@desdispos/shared';
+import { familyOf } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
 import { formatSessionDate, formatSessionSpan } from '../events/session-date';

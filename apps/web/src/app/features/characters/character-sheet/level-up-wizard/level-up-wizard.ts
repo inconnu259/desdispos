@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import type { CharacterDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { CharacterDto, GameSystemContentDto } from '@desdispos/shared';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { ThemeToneService } from '../../../../core/theme/theme-tone.service';
 import { fillTone } from '../../../../core/theme/tone-format';

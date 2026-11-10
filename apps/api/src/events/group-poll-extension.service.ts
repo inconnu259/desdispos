@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import type { PartieKind } from '@master-jdr/shared';
+import type { PartieKind } from '@desdispos/shared';
 import { PermissionService } from '../permissions/permission.service';
 import type { GroupPollExtendPort } from '../poll/ports/group-poll-extend.port';
 import { EventsService } from './events.service';

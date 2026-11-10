@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import type { EventPollOptionInput } from '@master-jdr/shared';
+import type { EventPollOptionInput } from '@desdispos/shared';
 
 /**
  * Brouillon d'une conjonction par sondage de dates (Story 40.5b) : tout ce que la fenêtre de création

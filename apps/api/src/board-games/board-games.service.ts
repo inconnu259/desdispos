@@ -14,7 +14,7 @@ import {
   type GroupBoardGameDto,
   type GroupBoardGamesDto,
   type UserLibraryDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { hasPrismaErrorCode } from '../common/prisma-error.util';
 import {
   LIBRARY_NOT_FOUND_MESSAGE,
@@ -36,7 +36,7 @@ export const BOARD_GAME_NOT_FOUND = 'Jeu introuvable dans votre Ludothèque';
 /** Systèmes de la famille `ralliement` : seules ces parties (groupes, rencontres isolées) entendent
  *  parler des jeux de leurs membres — une partie de JDR jamais (même copie locale que
  *  `NotificationsService`, Story 40.7). Lus À L'APPEL, pas à l'import : `events/` importe ce module
- *  (Story 49.5) et certains tests doublent `@master-jdr/shared` sans `GAME_SYSTEMS`. */
+ *  (Story 49.5) et certains tests doublent `@desdispos/shared` sans `GAME_SYSTEMS`. */
 function ralliementSystemIds(): string[] {
   return GAME_SYSTEMS.filter((g) => g.family === 'ralliement').map((g) => g.id);
 }

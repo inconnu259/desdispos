@@ -29,8 +29,8 @@ import type {
   PartieSort,
   PartieStatus,
   PartySignalCode,
-} from '@master-jdr/shared';
-import { PARTIE_SORTS, familyOf } from '@master-jdr/shared';
+} from '@desdispos/shared';
+import { PARTIE_SORTS, familyOf } from '@desdispos/shared';
 import {
   ListControlBar,
   type ListControlBarSortOption,

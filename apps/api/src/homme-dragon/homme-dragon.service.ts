@@ -16,7 +16,7 @@ import type {
   HommeDragonSheetData,
   MyHommeDragonDto,
   UpdateHommeDragonDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import {
   ARTEFACT_CADEAU_LEVEL,
   validateHommeDragon,
@@ -26,7 +26,7 @@ import {
   reserveCapacity,
   validateReserve,
   type HommeDragonArtefactCatalogEntry,
-} from '@master-jdr/game-rules';
+} from '@desdispos/game-rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { PartiesService } from '../parties/parties.service';
 import { PermissionService } from '../permissions/permission.service';

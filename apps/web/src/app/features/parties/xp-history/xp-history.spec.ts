@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import type { XpDistributionDto } from '@master-jdr/shared';
+import type { XpDistributionDto } from '@desdispos/shared';
 import { XpHistory } from './xp-history';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { TONE_MAP } from '../../../core/theme/tones';

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 import { AuthService } from './auth.service';
 import { ThemeToneService } from '../theme/theme-tone.service';
 import { API_BASE as API } from '../api-base';

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { AggregatedSlotDto } from '@master-jdr/shared';
+import type { AggregatedSlotDto } from '@desdispos/shared';
 import { AggregatedCreneauCard } from './aggregated-creneau-card';
 
 // Story 51.5 — les compteurs de disponibilité se disent par la FORME du dessin (oui / partiel / non),

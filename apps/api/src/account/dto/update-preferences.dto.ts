@@ -8,7 +8,7 @@ import {
   type CharacterSort,
   type ListViewMode,
   type PartieSort,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 
 export class UpdatePreferencesDto {
   @IsOptional()

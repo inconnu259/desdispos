@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 import { SLOT_LABELS } from '../../calendar/agenda-badge.utils';
 import { candidateSpanSentence } from '../../calendar/span-label';
 

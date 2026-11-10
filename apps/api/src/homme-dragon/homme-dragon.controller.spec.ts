@@ -1,4 +1,4 @@
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validateHommeDragon: jest.fn(),
 }));
 
@@ -16,7 +16,7 @@ import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { HommeDragonController } from './homme-dragon.controller';
 import { HommeDragonService } from './homme-dragon.service';
 import { HommeDragonModule } from './homme-dragon.module';
-import type { CreateHommeDragonDto } from '@master-jdr/shared';
+import type { CreateHommeDragonDto } from '@desdispos/shared';
 
 const PARTIE_ID = '11111111-1111-4111-8111-111111111111';
 const HD_ID = '22222222-2222-4222-8222-222222222222';

@@ -1,8 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { AuthUser } from '@master-jdr/shared';
-import { THEMES } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
+import { THEMES } from '@desdispos/shared';
 import { API_BASE } from '../api-base';
 import { AccountService } from '../account/account.service';
 import { ThemeToneService } from '../theme/theme-tone.service';

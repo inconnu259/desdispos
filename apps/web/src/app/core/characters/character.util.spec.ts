@@ -1,4 +1,4 @@
-import type { GameSystemContentDto } from '@master-jdr/shared';
+import type { GameSystemContentDto } from '@desdispos/shared';
 import { characterName, findContentEntry, isFieldHidden } from './character.util';
 import { makeCharacterDto as makeCharacter } from './character-dto.fixture';
 

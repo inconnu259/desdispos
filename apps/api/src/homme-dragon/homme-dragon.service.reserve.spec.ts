@@ -1,4 +1,4 @@
-// `@master-jdr/game-rules` RÉEL (pas de jest.mock) : les règles de la réserve (capacité, souffles
+// `@desdispos/game-rules` RÉEL (pas de jest.mock) : les règles de la réserve (capacité, souffles
 // du temps, autre race, rituels) sont l'objet même de ces tests — les mocker ne prouverait rien.
 // Le catalogue est celui seedé en base (`game-systems/ryuutama/data`).
 import { readFileSync } from 'node:fs';

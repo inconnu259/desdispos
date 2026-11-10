@@ -1,7 +1,7 @@
 import '@angular/compiler';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AvailabilityDeclarationDto, CalendarLayerKey } from '@master-jdr/shared';
+import type { AvailabilityDeclarationDto, CalendarLayerKey } from '@desdispos/shared';
 import type { AgendaEntry } from '../calendar-agenda-view/calendar-agenda-view';
 import { CalendarWeekView, buildWeek, getWeekStart } from './calendar-week-view';
 import { LONG_PRESS_MS } from '../selection.utils';

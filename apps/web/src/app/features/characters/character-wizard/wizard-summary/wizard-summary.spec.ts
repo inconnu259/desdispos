@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import type { GameSystemContentDto } from '@master-jdr/shared';
-import type { DerivedStats, RyuutamaSheetData } from '@master-jdr/game-rules';
+import type { GameSystemContentDto } from '@desdispos/shared';
+import type { DerivedStats, RyuutamaSheetData } from '@desdispos/game-rules';
 import { WizardSummary } from './wizard-summary';
 
 const CONTENT: GameSystemContentDto = {

@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { familyOf } from '@master-jdr/shared';
+import { familyOf } from '@desdispos/shared';
 import { BOARD_GAME_NOT_FOUND, BoardGamesService } from '../board-games/board-games.service';
 import { hasPrismaErrorCode } from '../common/prisma-error.util';
 import {

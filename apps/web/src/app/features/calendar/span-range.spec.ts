@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CalendarLayerKey } from '@master-jdr/shared';
+import type { CalendarLayerKey } from '@desdispos/shared';
 import type { AgendaEntry } from './calendar-agenda-view/calendar-agenda-view';
 import { buildMonth, nameSpansOncePerRow } from './calendar-month-view/calendar-month-view';
 import { buildDayDetail, entryCoversCell, entryIndexRange } from './day-detail.utils';

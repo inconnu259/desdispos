@@ -1,4 +1,4 @@
-import type { SeanceInscriptionDto, SessionPollDto } from '@master-jdr/shared';
+import type { SeanceInscriptionDto, SessionPollDto } from '@desdispos/shared';
 import {
   nextSeanceOf,
   scenarioState,

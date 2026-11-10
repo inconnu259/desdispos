@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 
 /**
  * Story 32.3 — **la** source unique des teintes de statut et des seuils d'imminence.

@@ -10,7 +10,7 @@ import type {
   PartieDto,
   ScenarioDocumentDto,
   ScenarioDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { ScenarioEditor } from './scenario-editor';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { CharacterService } from '../../../core/characters/character.service';

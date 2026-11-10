@@ -1,4 +1,4 @@
-# Mémo — actions manuelles à ne pas oublier (master-jdr)
+# Mémo — actions manuelles à ne pas oublier (Dés Dispos)
 
 > Ce que **toi (humain)** dois penser à faire — des actions que Claude ne peut pas déclencher à ta place,
 > ou des décisions qui t'appartiennent. **Claude te rappellera ces points aux bons moments**

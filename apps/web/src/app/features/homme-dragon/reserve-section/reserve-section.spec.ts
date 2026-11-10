@@ -4,7 +4,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import type { ContentEntryDto, HommeDragonDto } from '@master-jdr/shared';
+import type { ContentEntryDto, HommeDragonDto } from '@desdispos/shared';
 import { ReserveSection, UNDO_DELAY_MS } from './reserve-section';
 import { HommeDragonService } from '../../../core/homme-dragon/homme-dragon.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

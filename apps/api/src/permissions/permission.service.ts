@@ -13,11 +13,11 @@ import type {
   PartieCan,
   PartieRole,
   PermissionAction,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 // Import RUNTIME du registre des systèmes (Story 37.5) : la famille du système de la partie choisit
 // la politique de droits, ses capacités gardent les actions de couche 3 (Story 37.7). Jamais
 // `import type` sur une valeur.
-import { GAME_SYSTEMS, familyOf, hasCapability } from '@master-jdr/shared';
+import { GAME_SYSTEMS, familyOf, hasCapability } from '@desdispos/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Clés d'identifiant qu'une cible de décision de droit peut porter (une seule à la fois). */

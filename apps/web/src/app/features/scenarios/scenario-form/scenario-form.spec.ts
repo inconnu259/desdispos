@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
-import type { ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDto } from '@desdispos/shared';
 import { ScenarioForm } from './scenario-form';
 import { ScenariosService } from '../../../core/scenarios/scenarios.service';
 import { TONE_MAP } from '../../../core/theme/tones';

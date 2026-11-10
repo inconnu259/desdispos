@@ -18,7 +18,7 @@ import type {
   CreateAvailabilityDto,
   DaySlot,
   SlotStatus,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { computeDisplayStatus } from '../../../core/availability/compute-display-status';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { SLOT_LABELS } from '../agenda-badge.utils';

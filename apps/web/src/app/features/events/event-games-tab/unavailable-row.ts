@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { BoardGameDto } from '@master-jdr/shared';
+import type { BoardGameDto } from '@desdispos/shared';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';
 import { formatBoardGameMeasures } from '../../board-games/board-game-measures';
 

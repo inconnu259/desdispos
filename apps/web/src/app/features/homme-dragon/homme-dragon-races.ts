@@ -1,4 +1,4 @@
-import type { HommeDragonRace } from '@master-jdr/shared';
+import type { HommeDragonRace } from '@desdispos/shared';
 
 /** Les 4 races, dans l'ordre d'affichage — partagé par la fiche et le parcours de création. */
 export const RACES: HommeDragonRace[] = [

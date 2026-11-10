@@ -177,7 +177,7 @@ Chaque entrée de contenu a un **scope** :
 
 ## 7. Pile technique (recommandée — à valider ✅)
 
-- **Projet : `master-jdr`** (scope npm `@master-jdr/*`).
+- **Projet : `desdispos`** (« Dés Dispos », anciennement `master-jdr`) (scope npm `@desdispos/*`).
 - **Monorepo** (workspaces pnpm) : `apps/web` (Angular), `apps/api` (NestJS), `packages/shared` (types partagés).
 - **Front** : Angular.
 - **Back** : **NestJS** (Node/TS) — modules natifs = parfait pour les plugins de système ; TS partagé avec le front.
@@ -244,5 +244,5 @@ Options réalistes, par préférence :
 3. PDF : serveur ou navigateur ?
 4. ORM : Prisma ou TypeORM ?
 5. Notifications : e-mail, in-app, les deux ?
-6. Nom du projet = **master-jdr** ✅.
+6. Nom du projet = **desdispos** (« Dés Dispos », renommé depuis `master-jdr`) ✅.
 7. Ampleur « multi-MJ » visée (entre amis ↔ plateforme publique avec modération).

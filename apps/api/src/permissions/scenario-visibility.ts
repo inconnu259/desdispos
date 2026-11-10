@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type { PartieKind, PartieRole, ScenarioStatus } from '@master-jdr/shared';
+import type { PartieKind, PartieRole, ScenarioStatus } from '@desdispos/shared';
 
 /**
  * Anti-spoil côté serveur (PRD FR-5/FR-6) : DÉFINITION UNIQUE de ce qu'un joueur n'a pas le droit

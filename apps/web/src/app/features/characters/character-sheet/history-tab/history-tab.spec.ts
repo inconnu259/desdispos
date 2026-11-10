@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { CharacterSnapshotDto, GameSystemContentDto } from '@master-jdr/shared';
+import type { CharacterSnapshotDto, GameSystemContentDto } from '@desdispos/shared';
 import { HistoryTab } from './history-tab';
 import { CharacterService } from '../../../../core/characters/character.service';
 import { TONE_MAP } from '../../../../core/theme/tones';

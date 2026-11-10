@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import type { ScenarioDocumentDto, ScenarioDto } from '@master-jdr/shared';
+import type { ScenarioDocumentDto, ScenarioDto } from '@desdispos/shared';
 import { ScenariosService, matchesPartie } from './scenarios.service';
 import { API_BASE as API } from '../api-base';
 

@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import type { DatableSeanceEntry } from '@master-jdr/shared';
+import type { DatableSeanceEntry } from '@desdispos/shared';
 import { DatableSeancesService } from './datable-seances.service';
 
 // Story 45.1 — `DatableSeancesService` : une lecture paresseuse de `GET /me/datable-seances`, relue sur

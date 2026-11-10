@@ -1,5 +1,5 @@
-import { GAME_SYSTEMS } from '@master-jdr/shared';
-import type { PartieKind } from '@master-jdr/shared';
+import { GAME_SYSTEMS } from '@desdispos/shared';
+import type { PartieKind } from '@desdispos/shared';
 
 export function gameSystemName(id: string): string {
   return GAME_SYSTEMS.find((s) => s.id === id)?.name ?? id;

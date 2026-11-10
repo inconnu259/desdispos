@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { badgeOf, type GameSystemBadge } from '@master-jdr/shared';
+import { badgeOf, type GameSystemBadge } from '@desdispos/shared';
 
 /** Glyphe à afficher pour un système : R1 (Ryuutama), L1 (famille ralliement) ou aucun. */
 export type SystemBadgeGlyph = GameSystemBadge;

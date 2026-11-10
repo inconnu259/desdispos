@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { familyOf, partieStatus } from '@master-jdr/shared';
+import { familyOf, partieStatus } from '@desdispos/shared';
 import { PermissionService } from '../permissions/permission.service';
 import type { OpenPollContext, OpenPollContextPort } from '../poll/ports/open-poll-context.port';
 import { PrismaService } from '../prisma/prisma.service';

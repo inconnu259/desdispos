@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ComponentFixture } from '@angular/core/testing';
 import { AvailableSlotsPanel } from './available-slots';
-import type { AvailableSlotDto } from '@master-jdr/shared';
+import type { AvailableSlotDto } from '@desdispos/shared';
 
 const SLOT: AvailableSlotDto = {
   date: '2026-07-04',

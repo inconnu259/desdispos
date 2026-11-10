@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { familyOf, hasAnswered, isPartieActive, type OpenPollEntry } from '@master-jdr/shared';
+import { familyOf, hasAnswered, isPartieActive, type OpenPollEntry } from '@desdispos/shared';
 import { PermissionService } from '../permissions/permission.service';
 import { isHiddenDraft, isSpoilRestricted } from '../permissions/scenario-visibility';
 import { PrismaService } from '../prisma/prisma.service';

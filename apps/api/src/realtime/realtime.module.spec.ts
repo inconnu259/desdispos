@@ -3,10 +3,10 @@ import { Test } from '@nestjs/testing';
 
 // RealtimeModule importe désormais PartiesModule (Story 18.2, Task 1, AD-9), qui importe
 // PartiesController -> create-partie.dto.ts -> import RUNTIME (pas `import type`) de GAME_SYSTEMS
-// depuis @master-jdr/shared (ESM, non transformé par ts-jest) — même mécanisme que le piège déjà
-// documenté pour @master-jdr/game-rules (mémoire projet "game-rules ESM jest.mock"), jamais
-// rencontré avant pour @master-jdr/shared car aucun autre spec n'importe le VRAI PartiesModule.
-jest.mock('@master-jdr/shared', () => ({
+// depuis @desdispos/shared (ESM, non transformé par ts-jest) — même mécanisme que le piège déjà
+// documenté pour @desdispos/game-rules (mémoire projet "game-rules ESM jest.mock"), jamais
+// rencontré avant pour @desdispos/shared car aucun autre spec n'importe le VRAI PartiesModule.
+jest.mock('@desdispos/shared', () => ({
   // Réduit à ce que lisent les DTO (`id`, `name`) — pas la forme complète du registre (37.5).
   GAME_SYSTEMS: [{ id: 'ryuutama', name: 'Ryuutama' }],
 }));

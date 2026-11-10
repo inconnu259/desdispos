@@ -1,7 +1,7 @@
 <!-- bmad:context -->
 <!-- Verified 2026-08-25 against 7ec746e. Managed by bmad-project-context; edits inside this block are replaced on refresh. Keep anything you want preserved outside the markers. -->
 
-## master-jdr
+## desdispos
 
 Plateforme web de gestion de parties de JDR, multi-systèmes (MJ + joueurs). Angular 22 + NestJS 11 + Prisma 7 sur PostgreSQL 17, monorepo pnpm, exécution 100 % Docker. Vision dans `docs/spec.md`, feuille de route dans `docs/backlog.md`, démarrage dans `README.md`. Lire `CLAUDE.md` avant d'écrire du code : il porte les règles Docker, dépendances, langue, architecture plugin, temps réel SSE et Context7.
 
@@ -28,11 +28,11 @@ Plateforme web de gestion de parties de JDR, multi-systèmes (MJ + joueurs). Ang
 - **Toujours supprimer les trois volumes ensemble, `project_node_modules_root` compris.** Les fichiers d'état de pnpm (`.modules.yaml`, `.pnpm-workspace-state-v1.json`) vivent dans le volume racine : tant qu'ils survivent, pnpm considère tous les projets installés et ne repeuple aucun volume vidé, quelle que soit l'option passée. Ne recréer que `project_node_modules_api` ne répare rien — piège vérifié.
 - Ne jamais lancer deux installations `pnpm` en parallèle dans deux conteneurs : elles écrivent dans le même store `node_modules_root` et le corrompent (`ERR_PNPM_ENOENT` sur un `rename` de fichier temporaire). Attention, pnpm 11 déclenche un install implicite avant chaque script (`runDepsStatusCheck`) — un simple `docker compose exec api pnpm <...>` suffit à entrer en collision avec un `deps` en cours.
 - Ne pas régénérer le client Prisma ni appliquer les migrations à la main : `docker compose up` enchaîne `prisma generate`, `migrate deploy` et le seed admin (idempotent, `upsert` avec `update: {}`) à chaque démarrage.
-- Ne pas conclure d'un `pnpm test` vert dans `apps/api` que `@master-jdr/game-rules` se charge : tous les specs unitaires qui l'atteignent le neutralisent par `jest.mock('@master-jdr/game-rules', …)`. Seuls les e2e (`test/`, config propre, `pnpm test:e2e`) le chargent pour de vrai.
+- Ne pas conclure d'un `pnpm test` vert dans `apps/api` que `@desdispos/game-rules` se charge : tous les specs unitaires qui l'atteignent le neutralisent par `jest.mock('@desdispos/game-rules', …)`. Seuls les e2e (`test/`, config propre, `pnpm test:e2e`) le chargent pour de vrai.
 - Ne pas retirer le `moduleNameMapper` `"^(\.{1,2}/.*)\.js$": "$1"` des deux configs Jest d'`apps/api` (bloc `jest` de `package.json` et `test/jest-e2e.json`) : `rewriteRelativeImportExtensions` du `tsconfig.json` réécrit à l'émission les imports `.ts` de `packages/game-rules/src/index.ts` en `.js` qui n'existent pas sur le disque. Sans ce mapper, tout chargement réel du paquet échoue — c'est ce qui cassait `app.e2e-spec.ts` de `3567c58` (2026-07-26) au 2026-08-25.
 
 ## Conventions qui s'écartent des défauts
 
-- Ne pas importer `@master-jdr/shared` avec `import type` par défaut : le paquet exporte aussi des valeurs runtime (`THEMES`, `GAME_SYSTEMS`, `CALENDAR_LAYER_KEYS`, `checkPartieKindTransition()`). `import type` sur une valeur l'efface et casse à l'exécution — `import type` pour les types, import normal pour les valeurs.
+- Ne pas importer `@desdispos/shared` avec `import type` par défaut : le paquet exporte aussi des valeurs runtime (`THEMES`, `GAME_SYSTEMS`, `CALENDAR_LAYER_KEYS`, `checkPartieKindTransition()`). `import type` sur une valeur l'efface et casse à l'exécution — `import type` pour les types, import normal pour les valeurs.
 
 <!-- /bmad:context -->

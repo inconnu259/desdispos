@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   levelForXp: jest.fn((xp: number) => (xp >= 100 ? 2 : 1)),
@@ -62,7 +62,7 @@ import {
   computeDerived,
   pendingLevels,
   resolveStartingEquipment,
-} from '@master-jdr/game-rules';
+} from '@desdispos/game-rules';
 import { mkdir, writeFile, unlink, readFile } from 'node:fs/promises';
 import { stripImageMetadata } from '../common/image-upload.util';
 import { CharacterService } from './character.service';
@@ -933,7 +933,7 @@ describe('CharacterService', () => {
     });
   });
 
-  it('create() utilise validate et computeDerived de @master-jdr/game-rules', async () => {
+  it('create() utilise validate et computeDerived de @desdispos/game-rules', async () => {
     permissions.assert.mockImplementation(
       grantByOwner({ id: 'p1', ownerId: 'mj1', gameSystemId: 'ryuutama' }),
     );

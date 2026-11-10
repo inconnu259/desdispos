@@ -1,13 +1,13 @@
 import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import type { AuthUser } from '@master-jdr/shared';
+import type { AuthUser } from '@desdispos/shared';
 import { makeAuthUser } from '../common/test-utils/fixtures';
 
 // ScenariosService importe désormais CharacterService (Story 8.6), qui importe transitivement
-// @master-jdr/game-rules (ESM, non transformé par ts-jest) — même mock que
+// @desdispos/game-rules (ESM, non transformé par ts-jest) — même mock que
 // character.service.spec.ts/scenarios.service.spec.ts pour éviter "Unexpected token export".
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   pendingLevels: jest.fn(),

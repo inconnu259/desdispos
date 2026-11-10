@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import type { ScenarioStatus } from '@master-jdr/shared';
+import type { ScenarioStatus } from '@desdispos/shared';
 import { scenarioState } from '../../../core/status/status-derivation';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 

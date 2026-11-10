@@ -19,7 +19,7 @@ import type {
   EventBoardGamesDto,
   EventBringDto,
   EventCardDto,
-} from '@master-jdr/shared';
+} from '@desdispos/shared';
 import { BoardGamesService } from '../../../core/board-games/board-games.service';
 import { PartiesService } from '../../../core/parties/parties.service';
 import { ThemeToneService } from '../../../core/theme/theme-tone.service';

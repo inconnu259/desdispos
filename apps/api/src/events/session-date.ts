@@ -1,4 +1,4 @@
-import type { DaySlot } from '@master-jdr/shared';
+import type { DaySlot } from '@desdispos/shared';
 
 const SLOT_LABELS: Record<DaySlot, string> = {
   MORNING: 'matin',

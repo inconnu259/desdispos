@@ -1,4 +1,4 @@
-import type { CharacterSort, MyCharacterDto } from '@master-jdr/shared';
+import type { CharacterSort, MyCharacterDto } from '@desdispos/shared';
 import { characterName } from './character.util';
 
 /** Tri pur (Story 29.9, AC1/AC4) — ne mute jamais le tableau reçu en entrée. Même patron que

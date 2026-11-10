@@ -2,7 +2,7 @@ import '@angular/compiler';
 import { TestBed } from '@angular/core/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { CalendarLayerKey } from '@master-jdr/shared';
+import type { CalendarLayerKey } from '@desdispos/shared';
 import { CalendarDetailRail } from './calendar-detail-rail';
 import type { AgendaEntry } from '../calendar-agenda-view/calendar-agenda-view';
 import { type DayDetail, buildDayDetail } from '../day-detail.utils';

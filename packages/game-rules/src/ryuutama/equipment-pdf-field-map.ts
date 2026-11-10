@@ -1,7 +1,7 @@
 import type { PdfFieldValue } from './pdf-field-map.ts';
 
 /** Miroir local des données nécessaires au mapping PDF équipement — jamais un import direct de
- * `CharacterDto`/`RyuutamaSheetData` depuis `@master-jdr/shared` (frontière types-only, effacée
+ * `CharacterDto`/`RyuutamaSheetData` depuis `@desdispos/shared` (frontière types-only, effacée
  * au runtime — importer une valeur depuis ce package casse la suite `api`, cf. Story 10.5). */
 export interface EquipmentPdfInput {
   ownerPseudo: string;

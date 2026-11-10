@@ -79,7 +79,7 @@ BACKUP_DIR=/mnt/ssd/backups KEEP_DAYS=30 docker/backup.sh   # autre dossier, aut
 **Chaque nuit** (`crontab -e` sur le Pi, chemin du dépôt à adapter) :
 
 ```cron
-0 3 * * * cd /home/pi/master-jdr && docker/backup.sh >> backups/backup.log 2>&1
+0 3 * * * cd /home/pi/desdispos && docker/backup.sh >> backups/backup.log 2>&1
 ```
 
 ⚠️ **Copier les sauvegardes HORS du Pi** (disque externe, autre machine, stockage distant via

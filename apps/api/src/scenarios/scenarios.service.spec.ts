@@ -18,9 +18,9 @@ jest.mock('./document-storage.util', () => ({
   deleteDocumentFile: jest.fn(),
 }));
 // CharacterService (import réel pour servir de jeton DI, cf. plus bas) importe transitivement
-// @master-jdr/game-rules (ESM, non transformé par ts-jest) — même mock que character.service.spec.ts
+// @desdispos/game-rules (ESM, non transformé par ts-jest) — même mock que character.service.spec.ts
 // pour éviter "Unexpected token export" au chargement du module.
-jest.mock('@master-jdr/game-rules', () => ({
+jest.mock('@desdispos/game-rules', () => ({
   validate: jest.fn(),
   computeDerived: jest.fn(),
   pendingLevels: jest.fn(),

@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import type { AnnouncementDto } from '@master-jdr/shared';
+import type { AnnouncementDto } from '@desdispos/shared';
 import { AccountService } from '../account/account.service';
 import { AuthService } from '../auth/auth.service';
 

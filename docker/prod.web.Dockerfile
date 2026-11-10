@@ -2,7 +2,7 @@
 # relaie /api vers l'API (docker/nginx.conf). Construite par docker-compose.prod.yml.
 
 FROM node:24.17.0-bookworm-slim AS build
-RUN corepack enable && corepack prepare pnpm@11.8.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.28.11 --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/

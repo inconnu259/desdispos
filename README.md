@@ -195,5 +195,5 @@ Procédure complète (secrets, tunnel, journaux, sauvegarde et restauration) :
 
 ## Versions épinglées
 
-Node 24 LTS · pnpm 11.8 · Angular 22 · NestJS 11 · Prisma 7 · PostgreSQL 17
+Node 24 LTS · pnpm 11.28 · Angular 22 · NestJS 11 · Prisma 7 · PostgreSQL 17
 (Node et pnpm : `.tool-versions` et `packageManager` du `package.json` racine).
